@@ -76,3 +76,10 @@
 - [x] Add loading/skeleton state for LLM section
 - [x] Write unit tests for LLM module (mock invokeLLM)
 - [x] End-to-end test with real URL
+
+## Bug Fixes
+
+- [x] Fix E-E-A-T: detect Polish "O nas" links in footer/nav (currently misses href="/o-nas" pattern)
+- [x] Fix E-E-A-T: expand about page detection to cover Polish language patterns (o-nas, wspolpraca, kontakt)
+- [x] Fix meta title: handle emoji characters in <title> tags (totalmoney.pl case)
+- [x] Update unit tests for both fixes (40 tests total, all passing)

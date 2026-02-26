@@ -6,8 +6,10 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
   const $ = page.$;
 
   // 1. Title tag
+  // Use Unicode code points (spread) instead of .length to correctly handle
+  // multi-byte characters such as emoji (e.g. 💸 counts as 2 in .length but 1 code point)
   const title = $("title").first().text().trim();
-  const titleLen = title.length;
+  const titleLen = Array.from(title).length; // code-point-aware length (handles emoji correctly)
   const titleStatus =
     titleLen >= 30 && titleLen <= 65
       ? "pass"
@@ -22,10 +24,10 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
       titleLen === 0
         ? "No title tag found. The title is critical for AI engines to understand page topic."
         : titleLen < 30
-        ? `Title is too short (${titleLen} chars): "${title}". Aim for 50–65 characters.`
+        ? `Title is too short (${titleLen} chars): \"${title}\". Aim for 50–65 characters.`
         : titleLen > 65
-        ? `Title is too long (${titleLen} chars): "${title.slice(0, 65)}...". Keep under 65 characters.`
-        : `Title tag: "${title}" (${titleLen} chars)`,
+        ? `Title is too long (${titleLen} chars): \"${Array.from(title).slice(0, 65).join('')}...\". Keep under 65 characters.`
+        : `Title tag: \"${title}\" (${titleLen} chars)`,
     impact: "high",
     value: title || null,
   });

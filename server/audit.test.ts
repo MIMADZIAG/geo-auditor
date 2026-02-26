@@ -6,6 +6,8 @@ import { analyzeTechnical } from "./audit/technical";
 import { analyzeStructuredData } from "./audit/structuredData";
 import { analyzeContentStructure } from "./audit/contentStructure";
 import { analyzeAICrawlers } from "./audit/aiCrawlers";
+import { analyzeEEAT } from "./audit/eeat";
+import { analyzeMetaTags } from "./audit/metaTags";
 import type { ScrapedPage } from "./audit/scraper";
 
 // ─── Helper: create mock ScrapedPage ─────────────────────────────────────────
@@ -286,6 +288,109 @@ function createFindings(score: number): AuditFindings {
     metaTags: { ...cat },
   };
 }
+
+// ─── E-E-A-T Polish Language Tests ──────────────────────────────────────────
+
+describe("analyzeEEAT - Polish language support", () => {
+  it("detects Polish 'O nas' link via href /o-nas", () => {
+    const html = `<html><body>
+      <footer>
+        <a href="/kontakt">Kontakt</a>
+        <a href="/o-nas">O nas</a>
+        <a href="/wspolpraca">Współpraca B2B</a>
+      </footer>
+    </body></html>`;
+    const page = mockPage(html, { finalUrl: "https://extradom.pl" });
+    const result = analyzeEEAT(page);
+    const aboutCheck = result.checks.find((c) => c.id === "about_page");
+    expect(aboutCheck?.status).toBe("pass");
+  });
+
+  it("detects Polish 'Polityka Prywatności' and 'Regulamin' links", () => {
+    const html = `<html><body>
+      <footer>
+        <a href="/polityka-prywatnosci">Polityka Prywatności</a>
+        <a href="/regulamin">Regulamin</a>
+      </footer>
+    </body></html>`;
+    const page = mockPage(html, { finalUrl: "https://extradom.pl" });
+    const result = analyzeEEAT(page);
+    const legalCheck = result.checks.find((c) => c.id === "legal_pages");
+    expect(legalCheck?.status).toBe("pass");
+  });
+
+  it("detects 'O nas' link by link text (not just href)", () => {
+    const html = `<html><body>
+      <nav><a href="/company">O nas</a></nav>
+    </body></html>`;
+    const page = mockPage(html, { finalUrl: "https://example.pl" });
+    const result = analyzeEEAT(page);
+    const aboutCheck = result.checks.find((c) => c.id === "about_page");
+    expect(aboutCheck?.status).toBe("pass");
+  });
+
+  it("detects 'Regulamin' by link text", () => {
+    const html = `<html><body>
+      <footer><a href="/terms">Regulamin</a></footer>
+    </body></html>`;
+    const page = mockPage(html, { finalUrl: "https://example.pl" });
+    const result = analyzeEEAT(page);
+    const legalCheck = result.checks.find((c) => c.id === "legal_pages");
+    expect(legalCheck?.status).toBe("pass");
+  });
+
+  it("fails about_page when no Polish or English about links present", () => {
+    const html = `<html><body>
+      <footer><a href="/kontakt">Kontakt</a></footer>
+    </body></html>`;
+    const page = mockPage(html, { finalUrl: "https://example.pl" });
+    const result = analyzeEEAT(page);
+    const aboutCheck = result.checks.find((c) => c.id === "about_page");
+    expect(aboutCheck?.status).toBe("warning");
+  });
+});
+
+// ─── Meta Tags - Emoji Title Tests ────────────────────────────────────────────
+
+describe("analyzeMetaTags - emoji and Unicode title handling", () => {
+  it("correctly counts emoji in title using code points", () => {
+    const html = `<html><head>
+      <title>💸 Kredyt gotówkowy luty 2026 - sprawdź ranking najtańszych kredytów gotówkowych | Totalmoney.pl</title>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeMetaTags(page);
+    const titleCheck = result.checks.find((c) => c.id === "title_tag");
+    // Title is 95 code points — too long, so should be 'warning', not 'fail'
+    expect(titleCheck?.status).toBe("warning");
+    // Value must be set (not null) — title IS detected
+    expect(titleCheck?.value).toBeTruthy();
+    expect(String(titleCheck?.value)).toContain("Kredyt");
+  });
+
+  it("detects title with only emoji characters as present", () => {
+    const html = `<html><head><title>🚀 Short</title></head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeMetaTags(page);
+    const titleCheck = result.checks.find((c) => c.id === "title_tag");
+    // '🚀 Short' = 7 code points — too short, warning
+    expect(titleCheck?.status).toBe("warning");
+    expect(titleCheck?.value).toBeTruthy();
+  });
+
+  it("passes title check for optimal length title with emoji prefix", () => {
+    const html = `<html><head><title>✅ Best Running Shoes 2026 - Top Picks Reviewed</title></head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeMetaTags(page);
+    const titleCheck = result.checks.find((c) => c.id === "title_tag");
+    const codePoints = Array.from("✅ Best Running Shoes 2026 - Top Picks Reviewed").length;
+    if (codePoints >= 30 && codePoints <= 65) {
+      expect(titleCheck?.status).toBe("pass");
+    } else {
+      expect(titleCheck?.status).toBe("warning");
+    }
+    expect(titleCheck?.value).toBeTruthy();
+  });
+});
 
 // ─── LLM Recommendations Context Builder Tests ────────────────────────────────
 

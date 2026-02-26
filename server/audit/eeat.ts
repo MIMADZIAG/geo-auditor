@@ -44,9 +44,23 @@ export function analyzeEEAT(page: ScrapedPage): CategoryResult {
     value: hasAuthorBio,
   });
 
-  // 3. About page link
-  const aboutLinks = $('a[href*="about"]');
-  const hasAboutLink = aboutLinks.length > 0;
+  // 3. About page link — supports English and Polish patterns
+  const aboutSelectors = [
+    'a[href*="about"]',
+    'a[href*="o-nas"]',
+    'a[href*="o_nas"]',
+    'a[href*="about-us"]',
+    'a[href*="about_us"]',
+    'a[href*="kim-jestesmy"]',
+    'a[href*="firma"]',
+    'a[href*="o-firmie"]',
+    'a[href*="wspolpraca"]',
+  ];
+  const aboutLinks = $(aboutSelectors.join(", "));
+  // Also check link text for Polish/English about-page keywords
+  const aboutTextPatterns = /\bo\s+nas\b|\babout\s+us\b|\bkim\s+jeste/i;
+  const hasAboutByText = $('a').toArray().some((el) => aboutTextPatterns.test($(el).text()));
+  const hasAboutLink = aboutLinks.length > 0 || hasAboutByText;
   checks.push({
     id: "about_page",
     label: "About Page Link",
@@ -108,9 +122,25 @@ export function analyzeEEAT(page: ScrapedPage): CategoryResult {
     value: externalLinks.length,
   });
 
-  // 6. Privacy policy / Terms
-  const legalLinks = $('a[href*="privacy"], a[href*="terms"], a[href*="legal"]');
-  const hasLegalLinks = legalLinks.length > 0;
+  // 6. Privacy policy / Terms — supports English and Polish patterns
+  const legalSelectors = [
+    'a[href*="privacy"]',
+    'a[href*="terms"]',
+    'a[href*="legal"]',
+    'a[href*="polityka"]',
+    'a[href*="regulamin"]',
+    'a[href*="rodo"]',
+    'a[href*="gdpr"]',
+    'a[href*="cookies"]',
+    'a[href*="cookie"]',
+    'a[href*="prywatnosci"]',
+    'a[href*="prywatności"]',
+  ];
+  const legalLinks = $(legalSelectors.join(", "));
+  // Also check link text for Polish/English legal keywords
+  const legalTextPatterns = /polityka\s+prywatno|regulamin|privacy\s+policy|terms\s+of|cookie\s+policy/i;
+  const hasLegalByText = $('a').toArray().some((el) => legalTextPatterns.test($(el).text()));
+  const hasLegalLinks = legalLinks.length > 0 || hasLegalByText;
   checks.push({
     id: "legal_pages",
     label: "Privacy Policy / Terms Links",
