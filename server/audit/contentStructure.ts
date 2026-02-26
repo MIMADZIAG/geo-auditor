@@ -1,7 +1,8 @@
 import type { ScrapedPage } from "./scraper";
+import type { PageType } from "./pageTypeDetector";
 import type { AuditCheck, CategoryResult } from "./types";
 
-export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
+export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = "generic"): CategoryResult {
   const checks: AuditCheck[] = [];
   const $ = page.$;
 
@@ -10,7 +11,7 @@ export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
-  // 1. H1 present
+  // ── 1. H1 present ─────────────────────────────────────────────────────────
   const h1Count = $("h1").length;
   checks.push({
     id: "h1_present",
@@ -26,7 +27,7 @@ export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
     value: h1Count,
   });
 
-  // 2. Heading hierarchy
+  // ── 2. Heading hierarchy ──────────────────────────────────────────────────
   const h2Count = $("h2").length;
   const h3Count = $("h3").length;
   const hasGoodHierarchy = h1Count >= 1 && h2Count >= 2;
@@ -38,48 +39,67 @@ export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
       ? `Good structure: ${h1Count} H1, ${h2Count} H2, ${h3Count} H3 headings.`
       : h2Count === 0
       ? "No H2 headings found. Use H2 subheadings to structure content for AI scanning."
-      : `Only ${h2Count} H2 heading${h2Count > 1 ? "s" : ""}. Add more H2 sections to improve scannability.`,
+      : `Only ${h2Count} H2 heading${h2Count > 1 ? "s" : ""}. Add at least 2 H2 sections to improve scannability.`,
     impact: "high",
     value: `H1:${h1Count}, H2:${h2Count}, H3:${h3Count}`,
   });
 
-  // 3. TL;DR / Summary block
+  // ── 3. TL;DR / Summary block ──────────────────────────────────────────────
+  // For product listings and single products, this is less critical
+  const tldrRelevant = !["product", "product-listing"].includes(pageType);
   const fullHtml = $.html() ?? "";
   const hasTldr =
-    /\b(tl;?dr|summary|key\s+takeaways?|in\s+brief|quick\s+answer|overview)\b/i.test(
+    /\b(tl;?dr|summary|key\s+takeaways?|in\s+brief|quick\s+answer|overview|streszczenie|podsumowanie|kluczowe\s+informacje)\b/i.test(
       fullHtml
     );
+
   checks.push({
     id: "tldr_summary",
     label: "TL;DR / Summary Block",
-    status: hasTldr ? "pass" : "warning",
+    // GEO-critical for articles/guides; warning for others; info for product pages
+    status: hasTldr
+      ? "pass"
+      : tldrRelevant
+      ? "fail"   // ← was warning — now FAIL for article/blog/homepage/service
+      : "warning",
     description: hasTldr
       ? "Summary or TL;DR section detected — AI engines can quote this directly."
-      : "No TL;DR or summary section found. Adding a short summary at the top dramatically increases AI citation rates.",
+      : tldrRelevant
+      ? "No TL;DR or summary section found. This is a critical GEO gap — AI engines heavily quote page summaries. Add a 2–4 sentence summary at the top labeled 'TL;DR', 'Summary', or 'Key Takeaways'."
+      : "No summary section found. Consider adding a short product description summary for AI citation.",
     impact: "high",
     value: hasTldr,
   });
 
-  // 4. FAQ section
+  // ── 4. FAQ section ────────────────────────────────────────────────────────
   const faqKeywords =
-    /\b(faq|frequently\s+asked|common\s+questions?|questions?\s+and\s+answers?)\b/i;
+    /\b(faq|frequently\s+asked|common\s+questions?|questions?\s+and\s+answers?|najczęściej\s+zadawane|pytania\s+i\s+odpowiedzi)\b/i;
   const hasFaqSection =
     faqKeywords.test(fullHtml) ||
     $("h2, h3")
       .toArray()
       .some((el) => faqKeywords.test($(el).text()));
+
+  // FAQ is critical for articles/service pages; less so for pure product listings
+  const faqRelevant = !["product-listing"].includes(pageType);
   checks.push({
     id: "faq_section",
     label: "FAQ Section",
-    status: hasFaqSection ? "pass" : "warning",
+    status: hasFaqSection
+      ? "pass"
+      : faqRelevant
+      ? "fail"   // ← was warning — now FAIL for most page types
+      : "warning",
     description: hasFaqSection
       ? "FAQ section detected — great for AI answer inclusion."
-      : "No FAQ section found. Adding a FAQ section with Q&A pairs is one of the most effective GEO tactics.",
+      : faqRelevant
+      ? "No FAQ section found. This is a major GEO gap — FAQ content is one of the most cited formats in AI-generated answers. Add 5–10 Q&A pairs about your page topic."
+      : "No FAQ section found. Adding a FAQ to your category page can improve AI citation rates.",
     impact: "high",
     value: hasFaqSection,
   });
 
-  // 5. Lists (ul/ol)
+  // ── 5. Lists (ul/ol) ──────────────────────────────────────────────────────
   const listCount = $("ul, ol").length;
   const hasLists = listCount >= 2;
   checks.push({
@@ -89,47 +109,88 @@ export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
     description: hasLists
       ? `${listCount} list elements found — structured content is preferred by AI engines.`
       : listCount === 1
-      ? "Only 1 list found. Use more bullet/numbered lists to make content scannable."
+      ? "Only 1 list found. Use more bullet/numbered lists to make content scannable by AI."
       : "No lists found. AI engines prefer structured content with bullet points and numbered steps.",
     impact: "medium",
     value: listCount,
   });
 
-  // 6. Content length
-  const goodLength = wordCount >= 300;
-  const richLength = wordCount >= 800;
+  // ── 6. Content length ─────────────────────────────────────────────────────
+  // Thresholds adjusted per page type
+  const minWords = ["product", "product-listing"].includes(pageType) ? 200 : 300;
+  const richWords = ["product", "product-listing"].includes(pageType) ? 400 : 800;
+
   checks.push({
     id: "content_length",
     label: "Adequate Content Length",
-    status: richLength ? "pass" : goodLength ? "warning" : "fail",
-    description: richLength
-      ? `${wordCount} words — rich content length, good for AI citation.`
-      : goodLength
-      ? `${wordCount} words — adequate but consider expanding to 800+ words for better AI coverage.`
-      : `${wordCount} words — thin content. AI engines prefer pages with at least 300 words.`,
+    status: wordCount >= richWords ? "pass" : wordCount >= minWords ? "warning" : "fail",
+    description:
+      wordCount >= richWords
+        ? `${wordCount} words — rich content length, good for AI citation.`
+        : wordCount >= minWords
+        ? `${wordCount} words — adequate but consider expanding to ${richWords}+ words for better AI coverage.`
+        : `${wordCount} words — thin content. AI engines prefer pages with at least ${minWords} words.`,
     impact: "high",
     value: wordCount,
   });
 
-  // 7. Definition / explanation patterns
-  const hasDefinitions =
-    /\b(is\s+defined\s+as|refers?\s+to|means?\s+that|in\s+other\s+words|for\s+example)\b/i.test(
+  // ── 7. Answer-pattern detection ───────────────────────────────────────────
+  // Detects Q&A patterns, direct answers — highly cited by AI
+  const hasAnswerPatterns =
+    /\b(is\s+defined\s+as|refers?\s+to|means?\s+that|in\s+other\s+words|for\s+example|the\s+answer\s+is|oznacza|definiuje\s+się|to\s+znaczy)\b/i.test(
       bodyText
     );
   checks.push({
-    id: "definitions",
-    label: "Definitions & Explanations",
-    status: hasDefinitions ? "pass" : "info",
-    description: hasDefinitions
-      ? "Definitional language detected — AI engines love quotable definitions."
-      : "Consider adding clear definitions and explanations for key terms to improve citation potential.",
+    id: "answer_patterns",
+    label: "Direct Answer Patterns",
+    status: hasAnswerPatterns ? "pass" : "info",
+    description: hasAnswerPatterns
+      ? "Definitional and answer-pattern language detected — AI engines love quotable direct answers."
+      : "Consider adding clear definitions and direct answers to likely user questions to improve citation potential.",
     impact: "medium",
-    value: hasDefinitions,
+    value: hasAnswerPatterns,
   });
 
-  // 8. Key facts in text (not just images)
+  // ── 8. External citations / outbound links ────────────────────────────────
+  // Count outbound links to external domains
+  const pageHost = (() => {
+    try { return new URL(page.url).hostname; } catch { return ""; }
+  })();
+  let externalLinkCount = 0;
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    if (href.startsWith("http") && !href.includes(pageHost)) {
+      externalLinkCount++;
+    }
+  });
+
+  const citationRelevant = ["article", "service", "homepage"].includes(pageType);
+  checks.push({
+    id: "external_citations",
+    label: "External Citations & Links",
+    status:
+      externalLinkCount >= 3
+        ? "pass"
+        : externalLinkCount >= 1
+        ? "warning"
+        : citationRelevant
+        ? "fail"
+        : "info",
+    description:
+      externalLinkCount >= 3
+        ? `${externalLinkCount} external links found — good citation signals for AI engines.`
+        : externalLinkCount >= 1
+        ? `Only ${externalLinkCount} external link found. Add 3–5 links to authoritative sources.`
+        : citationRelevant
+        ? "No external citations found. Linking to authoritative sources (research, statistics, official sites) is a key E-E-A-T and GEO signal."
+        : "No external links found. Consider citing sources where relevant.",
+    impact: "medium",
+    value: externalLinkCount,
+  });
+
+  // ── 9. Data points in text ────────────────────────────────────────────────
   const hasDataPoints =
-    /\b(\d+%|\$\d+|\d+\s*(million|billion|thousand)|[\d,]+\s*(users|customers|results?))\b/i.test(
+    /\b(\d+%|\$\d+|\d+\s*(million|billion|thousand|mln|mld)|[\d,]+\s*(users|customers|results?|klientów|użytkowników))\b/i.test(
       bodyText
     );
   checks.push({
@@ -139,22 +200,8 @@ export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
     description: hasDataPoints
       ? "Numerical facts and data points found in text — AI engines can cite these directly."
       : "No clear data points found in text. Include statistics and facts in text (not just images) for AI citation.",
-    impact: "medium",
-    value: hasDataPoints,
-  });
-
-  // 9. Paragraph structure
-  const paragraphs = $("p").length;
-  const hasGoodParagraphs = paragraphs >= 3;
-  checks.push({
-    id: "paragraph_structure",
-    label: "Paragraph Structure",
-    status: hasGoodParagraphs ? "pass" : "warning",
-    description: hasGoodParagraphs
-      ? `${paragraphs} paragraphs found — good content structure.`
-      : `Only ${paragraphs} paragraph${paragraphs !== 1 ? "s" : ""} found. Use proper paragraph structure for readability.`,
     impact: "low",
-    value: paragraphs,
+    value: hasDataPoints,
   });
 
   const score = computeScore(checks);
@@ -163,21 +210,21 @@ export function analyzeContentStructure(page: ScrapedPage): CategoryResult {
     score,
     maxScore: 100,
     checks,
-    summary: buildSummary(score, wordCount, hasFaqSection, hasTldr),
+    summary: buildSummary(score, wordCount, hasFaqSection, hasTldr, pageType),
   };
 }
 
 function computeScore(checks: AuditCheck[]): number {
   const weights: Record<string, number> = {
-    h1_present: 15,
-    heading_hierarchy: 15,
-    tldr_summary: 15,
-    faq_section: 15,
-    lists_present: 10,
-    content_length: 15,
-    definitions: 5,
-    data_points: 5,
-    paragraph_structure: 5,
+    h1_present: 12,
+    heading_hierarchy: 12,
+    tldr_summary: 18,   // ← increased — critical GEO signal
+    faq_section: 18,    // ← increased — critical GEO signal
+    lists_present: 8,
+    content_length: 14,
+    answer_patterns: 6,
+    external_citations: 8,
+    data_points: 4,
   };
 
   let earned = 0;
@@ -187,8 +234,9 @@ function computeScore(checks: AuditCheck[]): number {
     const w = weights[check.id] ?? 5;
     total += w;
     if (check.status === "pass") earned += w;
-    else if (check.status === "warning") earned += w * 0.5;
-    else if (check.status === "info") earned += w * 0.3;
+    else if (check.status === "warning") earned += w * 0.2;  // ← was 0.5 — now 0.2
+    else if (check.status === "info") earned += w * 0.1;     // ← was 0.3 — now 0.1
+    // fail = 0
   }
 
   return Math.round((earned / total) * 100);
@@ -198,15 +246,17 @@ function buildSummary(
   score: number,
   wordCount: number,
   hasFaq: boolean,
-  hasTldr: boolean
+  hasTldr: boolean,
+  pageType: PageType
 ): string {
+  const typeLabel = pageType === "article" ? "article" : pageType === "product-listing" ? "category page" : "page";
   if (score >= 80)
-    return "Content is well-structured for AI citation with good length, headings, and Q&A content.";
-  const missing = [];
-  if (!hasTldr) missing.push("TL;DR summary");
+    return `Content is well-structured for AI citation with good length, headings, and Q&A content.`;
+  const missing: string[] = [];
+  if (!hasTldr && !["product", "product-listing"].includes(pageType)) missing.push("TL;DR summary");
   if (!hasFaq) missing.push("FAQ section");
   if (wordCount < 300) missing.push("more content");
   if (missing.length > 0)
-    return `Missing key citation elements: ${missing.join(", ")}.`;
+    return `Missing key GEO elements for this ${typeLabel}: ${missing.join(", ")}.`;
   return `Content structure score: ${score}/100. Improve heading hierarchy and add structured Q&A content.`;
 }

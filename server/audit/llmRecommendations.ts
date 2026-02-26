@@ -30,7 +30,8 @@ export interface LLMRecommendationsResult {
 
 function buildPageContext(
   page: ScrapedPage,
-  findings: AuditFindings
+  findings: AuditFindings,
+  pageType?: string
 ): string {
   const $ = page.$;
 
@@ -196,9 +197,10 @@ const LLM_RESPONSE_SCHEMA = {
 
 export async function generateLLMRecommendations(
   page: ScrapedPage,
-  findings: AuditFindings
+  findings: AuditFindings,
+  pageType?: string
 ): Promise<LLMRecommendationsResult> {
-  const pageContext = buildPageContext(page, findings);
+  const pageContext = buildPageContext(page, findings, pageType);
 
   const systemPrompt = `You are an expert in GEO (Generative Engine Optimization) and AEO (Answer Engine Optimization). 
 Your task is to analyze a web page's audit results and generate highly personalized, actionable recommendations 

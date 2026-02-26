@@ -118,3 +118,34 @@
 - [x] Update LLM context builder to pass all detected nested schema types
 - [x] Update LLM system prompt: NEVER suggest adding already-present schema types
 - [x] Update unit tests for nested schema detection (3 new tests, 43 total passing)
+
+## Scoring Recalibration & Page Type Detection
+
+### Page Type Detector
+- [ ] Create server/audit/pageTypeDetector.ts — detect: article, product-listing, category, homepage, landing-page, generic
+- [ ] Detection signals: JSON-LD @type (Product, ItemList, Article, WebPage), URL patterns, H1 content, page structure
+- [ ] Export PageType enum and detectPageType(page) function
+
+### Scoring Recalibration
+- [ ] Change warning multiplier: 0.5 → 0.2 (warning is now a real penalty, not a half-pass)
+- [ ] GEO-specific criteria: TL;DR, FAQ section, FAQ schema → change from warning to fail when absent
+- [ ] Organization schema → change from warning to fail when absent on homepage/landing; warning on others
+- [ ] Recalibrate score label thresholds: Excellent ≥85, Good ≥65, Fair ≥45, Poor <45
+- [ ] Adjust category weights: bump Content Structure to 30%, reduce Technical to 20% (technical is table stakes)
+- [ ] Add new content checks: citation-readiness (external links count), answer-pattern detection (Q: A: format)
+
+### Adaptive E-E-A-T
+- [ ] article/blog: author byline = fail if missing (high weight), external citations = fail if missing
+- [ ] product-listing / category: author = removed; add: seller_info (return policy, guarantee), review_signals (star ratings, review count), trust_badges
+- [ ] homepage: author = removed; add: team_info (founders/team section), company_history, awards/press
+- [ ] landing-page: author = optional; add: social_proof (testimonials, logos), case_study_links
+- [ ] generic: author = warning (medium weight), external citations = warning
+- [ ] Update E-E-A-T summary messages to reflect page type context
+- [ ] Update LLM context builder to include detected page type
+
+### Tests & Validation
+- [ ] Add unit tests for pageTypeDetector
+- [ ] Add unit tests for adaptive E-E-A-T per page type
+- [ ] Verify: typical e-commerce listing scores 45–65/100
+- [ ] Verify: well-optimized article scores 70–85/100
+- [ ] Verify: fully optimized page can reach 90+/100

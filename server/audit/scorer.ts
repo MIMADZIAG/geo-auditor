@@ -1,13 +1,15 @@
 import type { AuditFindings, AuditResult, Recommendation } from "./types";
 
 // Category weights for overall score (must sum to 100)
+// Recalibrated: Content Structure and Structured Data are the primary GEO differentiators.
+// Technical is table stakes (most sites pass) so its weight is reduced.
 const CATEGORY_WEIGHTS = {
-  technical: 25,
-  structuredData: 20,
-  contentStructure: 25,
-  eeat: 15,
-  aiCrawlers: 10,
-  metaTags: 5,
+  technical: 15,        // ← reduced from 25 (table stakes, most sites pass)
+  structuredData: 25,   // ← increased from 20 (primary GEO signal)
+  contentStructure: 30, // ← increased from 25 (FAQ, TL;DR, structure)
+  eeat: 15,             // unchanged
+  aiCrawlers: 8,        // ← reduced from 10 (most sites don't block)
+  metaTags: 7,          // ← increased from 5
 };
 
 export function computeOverallScore(findings: AuditFindings): number {
@@ -22,9 +24,10 @@ export function computeOverallScore(findings: AuditFindings): number {
 export function getScoreLabel(
   score: number
 ): "Excellent" | "Good" | "Fair" | "Poor" {
-  if (score >= 80) return "Excellent";
-  if (score >= 60) return "Good";
-  if (score >= 40) return "Fair";
+  // Recalibrated thresholds — higher bar required for positive labels
+  if (score >= 85) return "Excellent";  // ← was 80
+  if (score >= 65) return "Good";       // ← was 60
+  if (score >= 45) return "Fair";       // ← was 40
   return "Poor";
 }
 

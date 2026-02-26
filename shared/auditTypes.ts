@@ -59,10 +59,14 @@ export interface LLMRecommendationsResult {
   topPriority: string;
 }
 
+export type PageType = "article" | "product" | "product-listing" | "homepage" | "landing" | "service" | "generic";
+
 export interface AuditResult {
   url: string;
   finalUrl: string;
   pageTitle: string;
+  pageType: PageType;
+  pageTypeLabel: string;
   overallScore: number;
   scoreLabel: "Excellent" | "Good" | "Fair" | "Poor";
   findings: AuditFindings;

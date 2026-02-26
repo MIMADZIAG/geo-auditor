@@ -52,8 +52,8 @@ describe("computeOverallScore", () => {
       aiCrawlers: { score: 0, maxScore: 100, checks: [], summary: "" },
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
     };
-    // technical weight = 25, so score should be 25
-    expect(computeOverallScore(findings)).toBe(25);
+    // technical weight = 15 (recalibrated), so score should be 15
+    expect(computeOverallScore(findings)).toBe(15);
   });
 
   it("returns a value between 0 and 100 for mixed scores", () => {
@@ -65,21 +65,21 @@ describe("computeOverallScore", () => {
 });
 
 describe("getScoreLabel", () => {
-  it("returns Excellent for 80+", () => {
-    expect(getScoreLabel(80)).toBe("Excellent");
+  it("returns Excellent for 85+", () => {
+    expect(getScoreLabel(85)).toBe("Excellent");
     expect(getScoreLabel(100)).toBe("Excellent");
   });
-  it("returns Good for 60-79", () => {
-    expect(getScoreLabel(60)).toBe("Good");
-    expect(getScoreLabel(79)).toBe("Good");
+  it("returns Good for 65-84", () => {
+    expect(getScoreLabel(65)).toBe("Good");
+    expect(getScoreLabel(84)).toBe("Good");
   });
-  it("returns Fair for 40-59", () => {
-    expect(getScoreLabel(40)).toBe("Fair");
-    expect(getScoreLabel(59)).toBe("Fair");
+  it("returns Fair for 45-64", () => {
+    expect(getScoreLabel(45)).toBe("Fair");
+    expect(getScoreLabel(64)).toBe("Fair");
   });
-  it("returns Poor for below 40", () => {
+  it("returns Poor for below 45", () => {
     expect(getScoreLabel(0)).toBe("Poor");
-    expect(getScoreLabel(39)).toBe("Poor");
+    expect(getScoreLabel(44)).toBe("Poor");
   });
 });
 
@@ -402,9 +402,23 @@ describe("analyzeEEAT - Polish language support", () => {
     expect(aboutCheck?.status).toBe("pass");
   });
 
-  it("detects 'Regulamin' by link text", () => {
+  it("detects 'Regulamin' by link text (terms only = warning, need both)", () => {
     const html = `<html><body>
       <footer><a href="/terms">Regulamin</a></footer>
+    </body></html>`;
+    const page = mockPage(html, { finalUrl: "https://example.pl" });
+    const result = analyzeEEAT(page);
+    const legalCheck = result.checks.find((c) => c.id === "legal_pages");
+    // Only Terms found, no Privacy Policy → warning (not pass)
+    expect(legalCheck?.status).toBe("warning");
+  });
+
+  it("detects both Regulamin and Polityka Prywatnosci = pass", () => {
+    const html = `<html><body>
+      <footer>
+        <a href="/regulamin">Regulamin</a>
+        <a href="/polityka-prywatnosci">Polityka Prywatności</a>
+      </footer>
     </body></html>`;
     const page = mockPage(html, { finalUrl: "https://example.pl" });
     const result = analyzeEEAT(page);

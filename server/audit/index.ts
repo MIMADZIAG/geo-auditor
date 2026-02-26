@@ -7,12 +7,15 @@ import { analyzeAICrawlers } from "./aiCrawlers";
 import { analyzeMetaTags } from "./metaTags";
 import { computeOverallScore, getScoreLabel, generateRecommendations } from "./scorer";
 import { generateLLMRecommendations, type LLMRecommendationsResult } from "./llmRecommendations";
+import { detectPageType, getPageTypeLabel, type PageType } from "./pageTypeDetector";
 import type { AuditFindings, Recommendation } from "./types";
 
 export interface AuditResult {
   url: string;
   finalUrl: string;
   pageTitle: string;
+  pageType: PageType;
+  pageTypeLabel: string;
   overallScore: number;
   scoreLabel: "Excellent" | "Good" | "Fair" | "Poor";
   findings: AuditFindings;
@@ -30,6 +33,8 @@ export async function runAudit(url: string): Promise<AuditResult> {
       url: page.url,
       finalUrl: page.finalUrl,
       pageTitle: "",
+      pageType: "generic" as PageType,
+      pageTypeLabel: "Web Page",
       overallScore: 0,
       scoreLabel: "Poor",
       findings: createEmptyFindings(),
@@ -39,10 +44,15 @@ export async function runAudit(url: string): Promise<AuditResult> {
     };
   }
 
+  // Detect page type first — used to adapt audit criteria
+  const pageTypeResult = detectPageType(page);
+  const pageType = pageTypeResult.type;
+  const pageTypeLabel = getPageTypeLabel(pageType);
+
   const technical = analyzeTechnical(page);
   const structuredDataResult = analyzeStructuredData(page);
-  const contentStructure = analyzeContentStructure(page);
-  const eeat = analyzeEEAT(page);
+  const contentStructure = analyzeContentStructure(page, pageType);
+  const eeat = analyzeEEAT(page, pageType);
   const aiCrawlers = analyzeAICrawlers(page);
   const metaTags = analyzeMetaTags(page);
 
@@ -66,7 +76,7 @@ export async function runAudit(url: string): Promise<AuditResult> {
   // Generate LLM-powered personalized recommendations (best-effort, non-fatal)
   let llmResult: LLMRecommendationsResult | undefined;
   try {
-    llmResult = await generateLLMRecommendations(page, findings);
+    llmResult = await generateLLMRecommendations(page, findings, pageType);
   } catch (err) {
     console.warn(
       "[LLM] Failed to generate LLM recommendations:",
@@ -79,6 +89,8 @@ export async function runAudit(url: string): Promise<AuditResult> {
     url: page.url,
     finalUrl: page.finalUrl,
     pageTitle: page.title,
+    pageType,
+    pageTypeLabel,
     overallScore,
     scoreLabel,
     findings,
