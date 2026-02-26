@@ -198,6 +198,79 @@ describe("analyzeStructuredData", () => {
     const faqCheck = result.checks.find((c) => c.id === "faq_schema");
     expect(faqCheck?.status).toBe("pass");
   });
+
+  it("detects Product nested inside ItemList @graph (Ochnik-style)", () => {
+    const ochnikSchema = {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "ItemList",
+          "numberOfItems": 36,
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "item": {
+                "@type": "Product",
+                "name": "Zamszowa torebka TORES-1191",
+                "offers": { "@type": "Offer", "price": 699.9, "priceCurrency": "PLN" }
+              }
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "item": { "@type": "Product", "name": "Czarna listonoszka TORES-1102A" }
+            }
+          ]
+        },
+        { "@type": "BreadcrumbList", "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home" }] }
+      ]
+    };
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify(ochnikSchema)}</script>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeStructuredData(page);
+    const types = result.schemas.map((s) => s.type);
+    expect(types).toContain("Product");
+    expect(types).toContain("ItemList");
+    expect(types).toContain("BreadcrumbList");
+    // article_product_schema check should pass because Product is detected
+    const productCheck = result.checks.find((c) => c.id === "article_product_schema");
+    expect(productCheck?.status).toBe("pass");
+  });
+
+  it("detects schema types in @graph without itemListElement nesting", () => {
+    const schema = {
+      "@context": "https://schema.org",
+      "@graph": [
+        { "@type": "WebPage", "name": "Home" },
+        { "@type": "Organization", "name": "Acme Corp", "url": "https://acme.com" }
+      ]
+    };
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify(schema)}</script>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeStructuredData(page);
+    const types = result.schemas.map((s) => s.type);
+    expect(types).toContain("WebPage");
+    expect(types).toContain("Organization");
+    const orgCheck = result.checks.find((c) => c.id === "organization_schema");
+    expect(orgCheck?.status).toBe("pass");
+  });
+
+  it("handles @type as array (multi-type nodes)", () => {
+    const schema = { "@type": ["LocalBusiness", "Restaurant"], "name": "Test Restaurant" };
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify(schema)}</script>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeStructuredData(page);
+    expect(result.schemas.length).toBeGreaterThan(0);
+    // Type should be joined string
+    expect(result.schemas[0].type).toBe("LocalBusiness, Restaurant");
+  });
 });
 
 // ─── Content Structure Tests ──────────────────────────────────────────────────

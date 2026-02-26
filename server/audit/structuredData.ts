@@ -34,18 +34,88 @@ interface ParsedSchema {
   hasFaqItems: boolean;
 }
 
+/**
+ * Recursively collect all nodes that have an @type from a JSON-LD object.
+ * Handles: top-level, @graph arrays, itemListElement[].item, nested arrays, etc.
+ */
+function collectNodes(
+  node: unknown,
+  depth = 0
+): Record<string, unknown>[] {
+  if (depth > 6 || node === null || typeof node !== "object") return [];
+
+  const obj = node as Record<string, unknown>;
+  const results: Record<string, unknown>[] = [];
+
+  // If this node itself has @type, collect it
+  if (obj["@type"]) {
+    results.push(obj);
+  }
+
+  // Recurse into @graph
+  if (Array.isArray(obj["@graph"])) {
+    for (const child of obj["@graph"] as unknown[]) {
+      results.push(...collectNodes(child, depth + 1));
+    }
+  }
+
+  // Recurse into itemListElement (ListItem → item)
+  if (Array.isArray(obj["itemListElement"])) {
+    for (const listItem of obj["itemListElement"] as unknown[]) {
+      results.push(...collectNodes(listItem, depth + 1));
+      // Also recurse into ListItem.item
+      if (listItem && typeof listItem === "object") {
+        const li = listItem as Record<string, unknown>;
+        if (li["item"]) results.push(...collectNodes(li["item"], depth + 1));
+      }
+    }
+  }
+
+  // Recurse into mainEntity (FAQPage)
+  if (Array.isArray(obj["mainEntity"])) {
+    for (const child of obj["mainEntity"] as unknown[]) {
+      results.push(...collectNodes(child, depth + 1));
+    }
+  }
+
+  // Recurse into any array-valued property that contains objects with @type
+  for (const key of Object.keys(obj)) {
+    if (["@graph", "itemListElement", "mainEntity"].includes(key)) continue;
+    const val = obj[key];
+    if (Array.isArray(val)) {
+      for (const child of val as unknown[]) {
+        if (child && typeof child === "object" && (child as Record<string, unknown>)["@type"]) {
+          results.push(...collectNodes(child, depth + 1));
+        }
+      }
+    } else if (val && typeof val === "object" && (val as Record<string, unknown>)["@type"]) {
+      results.push(...collectNodes(val, depth + 1));
+    }
+  }
+
+  return results;
+}
+
 function extractSchemas($: ScrapedPage["$"]): ParsedSchema[] {
   const schemas: ParsedSchema[] = [];
+  // Deduplicate by reference to avoid counting the same node twice
+  const seen = new WeakSet<Record<string, unknown>>();
 
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
       const raw = JSON.parse($(el).html() ?? "{}") as Record<string, unknown>;
-      const items = Array.isArray(raw["@graph"])
-        ? (raw["@graph"] as Record<string, unknown>[])
-        : [raw];
+      const nodes = collectNodes(raw);
 
-      for (const item of items) {
-        const type = String(item["@type"] ?? "Unknown");
+      for (const item of nodes) {
+        if (seen.has(item)) continue;
+        seen.add(item);
+
+        // Normalise @type — can be a string or an array of strings
+        const rawType = item["@type"];
+        const type = Array.isArray(rawType)
+          ? (rawType as string[]).join(", ")
+          : String(rawType ?? "Unknown");
+
         schemas.push({
           type,
           raw: item,
@@ -62,7 +132,7 @@ function extractSchemas($: ScrapedPage["$"]): ParsedSchema[] {
         });
       }
     } catch {
-      // Malformed JSON-LD
+      // Malformed JSON-LD — skip block
     }
   });
 

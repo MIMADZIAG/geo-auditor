@@ -53,12 +53,18 @@ function buildPageContext(
     if (text) headings.push(`${tag.toUpperCase()}: ${text}`);
   });
 
-  // Extract existing JSON-LD
+  // Extract existing JSON-LD (first 500 chars per block)
   const jsonldBlocks: string[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     const content = $(el).html()?.trim();
     if (content) jsonldBlocks.push(content.slice(0, 500));
   });
+
+  // Extract all detected schema types from the structured data analysis
+  const structuredDataFindings = findings.structuredData as { checks: AuditCheck[]; schemas?: Array<{ type: string }> };
+  const detectedSchemaTypes: string[] = structuredDataFindings.schemas
+    ? Array.from(new Set(structuredDataFindings.schemas.map((s) => s.type)))
+    : [];
 
   // Extract meta description
   const metaDesc =
@@ -86,7 +92,10 @@ Response Time: ${page.responseTimeMs}ms
 --- HEADING STRUCTURE ---
 ${headings.slice(0, 15).join("\n") || "(no headings found)"}
 
---- EXISTING JSON-LD SCHEMAS ---
+--- DETECTED SCHEMA TYPES (already present on page) ---
+${detectedSchemaTypes.length > 0 ? detectedSchemaTypes.join(", ") : "(none found)"}
+
+--- EXISTING JSON-LD RAW (first 500 chars per block) ---
 ${jsonldBlocks.length > 0 ? jsonldBlocks.join("\n---\n") : "(none found)"}
 
 --- PAGE CONTENT EXCERPT ---
@@ -202,8 +211,10 @@ CRITICAL RULES:
 4. Prioritize the 3–5 most impactful improvements based on the audit scores.
 5. Write in plain language that a non-technical website owner can understand.
 6. Always explain WHY each fix matters for AI visibility specifically.
-7. If the page already has JSON-LD, improve it rather than replacing it wholesale.
-8. Focus on gaps that will have the highest impact on AI citation rates.`;
+7. NEVER suggest adding a schema type that is already listed under "DETECTED SCHEMA TYPES". If Product is already present, do NOT recommend adding Product schema.
+8. If the page already has JSON-LD, improve or EXTEND it rather than replacing it. Focus on what is MISSING.
+9. Focus on gaps that will have the highest impact on AI citation rates.
+10. If a schema type is already present, acknowledge it and suggest improvements (e.g., missing properties) rather than re-adding it.`;
 
   const userPrompt = `Analyze this web page audit and generate personalized GEO recommendations:
 

@@ -109,3 +109,12 @@
 ### Free Plan Limit Update
 - [x] Changed rate limit to 5/month per IP (aligned with new plan table)
 - [x] Home nav: Sign In button for non-auth, Dashboard button for auth users
+
+## Bug Fix: Nested Schema Detection
+
+- [x] Fix structuredData.ts: detect @type inside @graph arrays (e.g. Product inside ItemList/@graph)
+- [x] Fix structuredData.ts: detect @type inside nested item objects (e.g. ListItem.item.@type)
+- [x] Fix structuredData.ts: handle @type as array (multi-type nodes like LocalBusiness+Restaurant)
+- [x] Update LLM context builder to pass all detected nested schema types
+- [x] Update LLM system prompt: NEVER suggest adding already-present schema types
+- [x] Update unit tests for nested schema detection (3 new tests, 43 total passing)
