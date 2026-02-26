@@ -6,7 +6,21 @@ import { analyzeEEAT } from "./eeat";
 import { analyzeAICrawlers } from "./aiCrawlers";
 import { analyzeMetaTags } from "./metaTags";
 import { computeOverallScore, getScoreLabel, generateRecommendations } from "./scorer";
-import type { AuditResult, AuditFindings } from "./types";
+import { generateLLMRecommendations, type LLMRecommendationsResult } from "./llmRecommendations";
+import type { AuditFindings, Recommendation } from "./types";
+
+export interface AuditResult {
+  url: string;
+  finalUrl: string;
+  pageTitle: string;
+  overallScore: number;
+  scoreLabel: "Excellent" | "Good" | "Fair" | "Poor";
+  findings: AuditFindings;
+  recommendations: Recommendation[];
+  llmResult?: LLMRecommendationsResult;
+  responseTimeMs: number;
+  error?: string;
+}
 
 export async function runAudit(url: string): Promise<AuditResult> {
   const page = await scrapePage(url);
@@ -49,6 +63,18 @@ export async function runAudit(url: string): Promise<AuditResult> {
   const scoreLabel = getScoreLabel(overallScore);
   const recommendations = generateRecommendations(findings);
 
+  // Generate LLM-powered personalized recommendations (best-effort, non-fatal)
+  let llmResult: LLMRecommendationsResult | undefined;
+  try {
+    llmResult = await generateLLMRecommendations(page, findings);
+  } catch (err) {
+    console.warn(
+      "[LLM] Failed to generate LLM recommendations:",
+      err instanceof Error ? err.message : err
+    );
+    // Non-fatal: audit still succeeds without LLM recommendations
+  }
+
   return {
     url: page.url,
     finalUrl: page.finalUrl,
@@ -57,6 +83,7 @@ export async function runAudit(url: string): Promise<AuditResult> {
     scoreLabel,
     findings,
     recommendations,
+    llmResult,
     responseTimeMs: page.responseTimeMs,
   };
 }
@@ -78,5 +105,5 @@ function createEmptyFindings(): AuditFindings {
   };
 }
 
-export type { AuditResult, AuditFindings };
+export type { AuditFindings };
 export { type Recommendation } from "./types";

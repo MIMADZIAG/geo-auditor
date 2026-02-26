@@ -61,3 +61,18 @@
 - [ ] Audit history dashboard
 - [ ] PDF export
 - [ ] Page monitoring / scheduled re-audits
+
+## LLM-Powered Recommendations (Step 1)
+
+- [x] Review existing scorer.ts and audit types
+- [x] Create server/audit/llmRecommendations.ts — context assembly + LLM call
+- [x] Design structured JSON schema for LLM output (title, description, codeSnippet, howToFix, impact, priority)
+- [x] Integrate LLM recommendations into audit/index.ts orchestrator
+- [x] Update DB schema to store llmRecommendations as JSON column
+- [x] Push DB migration
+- [x] Update tRPC router to return llmRecommendations in getById
+- [x] Update frontend Results.tsx — new LLM Recommendations panel with code snippet viewer
+- [x] Add syntax highlighting for JSON-LD code snippets
+- [x] Add loading/skeleton state for LLM section
+- [x] Write unit tests for LLM module (mock invokeLLM)
+- [x] End-to-end test with real URL

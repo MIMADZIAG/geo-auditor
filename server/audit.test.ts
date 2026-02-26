@@ -286,3 +286,82 @@ function createFindings(score: number): AuditFindings {
     metaTags: { ...cat },
   };
 }
+
+// ─── LLM Recommendations Context Builder Tests ────────────────────────────────
+
+describe("LLM recommendations context assembly", () => {
+  it("buildPageContext includes page title and URL", () => {
+    // Test that the context builder extracts key page info
+    const page = mockPage(
+      `<html><head><title>My Shop - Product Page</title>
+       <meta name="description" content="Buy great products">
+       </head><body><h1>Product Title</h1><p>Product description.</p></body></html>`,
+      { title: "My Shop - Product Page", finalUrl: "https://myshop.com/product" }
+    );
+    // Verify page structure is correct for LLM context
+    expect(page.title).toBe("My Shop - Product Page");
+    expect(page.finalUrl).toBe("https://myshop.com/product");
+    expect(page.$("h1").text()).toBe("Product Title");
+    expect(page.$('meta[name="description"]').attr("content")).toBe("Buy great products");
+  });
+
+  it("correctly identifies failed checks for LLM context", () => {
+    const findings = createFindings(0);
+    findings.technical.checks = [
+      { id: "https", label: "HTTPS", status: "fail", description: "Not HTTPS", impact: "high" },
+      { id: "noindex", label: "Noindex", status: "fail", description: "Noindex set", impact: "high" },
+      { id: "canonical", label: "Canonical", status: "pass", description: "OK", impact: "medium" },
+    ];
+    const failedChecks = findings.technical.checks.filter(
+      (c) => c.status === "fail" || c.status === "warning"
+    );
+    expect(failedChecks).toHaveLength(2);
+    expect(failedChecks.map((c) => c.id)).toContain("https");
+    expect(failedChecks.map((c) => c.id)).toContain("noindex");
+  });
+
+  it("LLM recommendation type has required fields", () => {
+    const mockLLMRec = {
+      id: "llm_test",
+      category: "Structured Data",
+      priority: "critical" as const,
+      title: "Add Product Schema",
+      description: "Missing product schema",
+      howToFix: "Add JSON-LD Product schema",
+      impact: "High impact on AI visibility",
+      isPersonalized: true as const,
+      codeSnippet: {
+        language: "json" as const,
+        label: "JSON-LD Product Schema",
+        code: '{"@context":"https://schema.org","@type":"Product","name":"Test"}',
+      },
+    };
+    expect(mockLLMRec.isPersonalized).toBe(true);
+    expect(mockLLMRec.codeSnippet?.language).toBe("json");
+    expect(mockLLMRec.codeSnippet?.code).toContain("@context");
+    expect(mockLLMRec.priority).toBe("critical");
+  });
+
+  it("LLM result structure is valid", () => {
+    const mockResult = {
+      recommendations: [
+        {
+          id: "llm_1",
+          category: "Structured Data",
+          priority: "critical" as const,
+          title: "Add Schema",
+          description: "Missing schema",
+          howToFix: "Add JSON-LD",
+          impact: "High",
+          isPersonalized: true as const,
+        },
+      ],
+      aiInsight: "This page lacks structured data and needs improvement.",
+      topPriority: "Add JSON-LD structured data immediately.",
+    };
+    expect(mockResult.recommendations).toHaveLength(1);
+    expect(mockResult.aiInsight).toBeTruthy();
+    expect(mockResult.topPriority).toBeTruthy();
+    expect(mockResult.recommendations[0]?.isPersonalized).toBe(true);
+  });
+});

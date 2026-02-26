@@ -35,6 +35,30 @@ export interface Recommendation {
   impact: string;
 }
 
+export interface LLMCodeSnippet {
+  language: "json" | "html" | "markdown" | "text";
+  label: string;
+  code: string;
+}
+
+export interface LLMRecommendation {
+  id: string;
+  category: string;
+  priority: "critical" | "high" | "medium" | "low";
+  title: string;
+  description: string;
+  howToFix: string;
+  impact: string;
+  codeSnippet?: LLMCodeSnippet;
+  isPersonalized: true;
+}
+
+export interface LLMRecommendationsResult {
+  recommendations: LLMRecommendation[];
+  aiInsight: string;
+  topPriority: string;
+}
+
 export interface AuditResult {
   url: string;
   finalUrl: string;
