@@ -1,17 +1,7 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, float } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +15,35 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+export const audits = mysqlTable("audits", {
+  id: int("id").autoincrement().primaryKey(),
+  url: varchar("url", { length: 2048 }).notNull(),
+  userId: int("userId"),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  status: mysqlEnum("status", ["pending", "running", "completed", "failed"]).default("pending").notNull(),
+  overallScore: float("overallScore"),
+  technicalScore: float("technicalScore"),
+  structuredDataScore: float("structuredDataScore"),
+  contentStructureScore: float("contentStructureScore"),
+  eeatScore: float("eeatScore"),
+  aiCrawlerScore: float("aiCrawlerScore"),
+  metaTagsScore: float("metaTagsScore"),
+  findings: json("findings"),
+  recommendations: json("recommendations"),
+  pageTitle: text("pageTitle"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type Audit = typeof audits.$inferSelect;
+export type InsertAudit = typeof audits.$inferInsert;
+
+export const auditRateLimits = mysqlTable("audit_rate_limits", {
+  id: int("id").autoincrement().primaryKey(),
+  ipAddress: varchar("ipAddress", { length: 64 }).notNull(),
+  auditCount: int("auditCount").default(1).notNull(),
+  windowStart: timestamp("windowStart").defaultNow().notNull(),
+});
+
+export type AuditRateLimit = typeof auditRateLimits.$inferSelect;

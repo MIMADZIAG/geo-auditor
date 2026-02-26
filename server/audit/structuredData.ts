@@ -1,0 +1,237 @@
+import type { ScrapedPage } from "./scraper";
+import type { AuditCheck, CategoryResult } from "./types";
+
+const HIGH_VALUE_TYPES = [
+  "Article",
+  "NewsArticle",
+  "BlogPosting",
+  "Product",
+  "FAQPage",
+  "HowTo",
+  "Organization",
+  "LocalBusiness",
+  "Person",
+  "Review",
+  "AggregateRating",
+  "BreadcrumbList",
+  "WebPage",
+  "WebSite",
+  "Event",
+  "Recipe",
+  "VideoObject",
+  "ImageObject",
+];
+
+interface ParsedSchema {
+  type: string;
+  raw: Record<string, unknown>;
+  hasAuthor: boolean;
+  hasDateModified: boolean;
+  hasDatePublished: boolean;
+  hasDescription: boolean;
+  hasName: boolean;
+  hasImage: boolean;
+  hasFaqItems: boolean;
+}
+
+function extractSchemas($: ScrapedPage["$"]): ParsedSchema[] {
+  const schemas: ParsedSchema[] = [];
+
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const raw = JSON.parse($(el).html() ?? "{}") as Record<string, unknown>;
+      const items = Array.isArray(raw["@graph"])
+        ? (raw["@graph"] as Record<string, unknown>[])
+        : [raw];
+
+      for (const item of items) {
+        const type = String(item["@type"] ?? "Unknown");
+        schemas.push({
+          type,
+          raw: item,
+          hasAuthor: !!item["author"],
+          hasDateModified: !!item["dateModified"],
+          hasDatePublished: !!item["datePublished"],
+          hasDescription: !!item["description"],
+          hasName: !!item["name"],
+          hasImage: !!item["image"],
+          hasFaqItems:
+            type === "FAQPage" &&
+            Array.isArray(item["mainEntity"]) &&
+            (item["mainEntity"] as unknown[]).length > 0,
+        });
+      }
+    } catch {
+      // Malformed JSON-LD
+    }
+  });
+
+  return schemas;
+}
+
+export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { schemas: ParsedSchema[] } {
+  const checks: AuditCheck[] = [];
+  const schemas = extractSchemas(page.$);
+  const detectedTypes = schemas.map((s) => s.type);
+
+  // 1. Any JSON-LD present
+  checks.push({
+    id: "jsonld_present",
+    label: "JSON-LD Schema Present",
+    status: schemas.length > 0 ? "pass" : "fail",
+    description:
+      schemas.length > 0
+        ? `Found ${schemas.length} JSON-LD schema block${schemas.length > 1 ? "s" : ""}: ${detectedTypes.join(", ")}`
+        : "No JSON-LD structured data found. Schema markup is essential for AI engines to understand your content.",
+    impact: "high",
+    value: schemas.length,
+  });
+
+  // 2. High-value schema types
+  const foundHighValue = detectedTypes.filter((t) => HIGH_VALUE_TYPES.includes(t));
+  checks.push({
+    id: "high_value_schema",
+    label: "High-Value Schema Types",
+    status:
+      foundHighValue.length >= 2
+        ? "pass"
+        : foundHighValue.length === 1
+        ? "warning"
+        : "fail",
+    description:
+      foundHighValue.length > 0
+        ? `Detected: ${foundHighValue.join(", ")}`
+        : "No high-value schema types (Article, Product, FAQ, Organization) detected.",
+    impact: "high",
+    value: foundHighValue.join(", ") || null,
+  });
+
+  // 3. FAQ schema
+  const hasFaq = schemas.some((s) => s.type === "FAQPage" && s.hasFaqItems);
+  checks.push({
+    id: "faq_schema",
+    label: "FAQPage Schema",
+    status: hasFaq ? "pass" : "warning",
+    description: hasFaq
+      ? "FAQPage schema with mainEntity items found — excellent for AI citation."
+      : "No FAQPage schema. Adding FAQ structured data significantly improves AI answer inclusion.",
+    impact: "high",
+    value: hasFaq,
+  });
+
+  // 4. Article / Product schema
+  const hasArticleOrProduct = detectedTypes.some((t) =>
+    ["Article", "NewsArticle", "BlogPosting", "Product"].includes(t)
+  );
+  checks.push({
+    id: "article_product_schema",
+    label: "Article or Product Schema",
+    status: hasArticleOrProduct ? "pass" : "warning",
+    description: hasArticleOrProduct
+      ? "Article or Product schema detected — helps AI engines categorize your content."
+      : "No Article or Product schema. Add appropriate schema for your page type.",
+    impact: "medium",
+    value: hasArticleOrProduct,
+  });
+
+  // 5. Organization schema
+  const hasOrg = detectedTypes.some((t) =>
+    ["Organization", "LocalBusiness", "WebSite"].includes(t)
+  );
+  checks.push({
+    id: "organization_schema",
+    label: "Organization / WebSite Schema",
+    status: hasOrg ? "pass" : "warning",
+    description: hasOrg
+      ? "Organization or WebSite schema found — establishes entity identity for AI engines."
+      : "No Organization schema. Add Organization or WebSite schema to establish entity identity.",
+    impact: "medium",
+    value: hasOrg,
+  });
+
+  // 6. Author markup
+  const hasAuthor = schemas.some((s) => s.hasAuthor);
+  checks.push({
+    id: "author_schema",
+    label: "Author Markup",
+    status: hasAuthor ? "pass" : "warning",
+    description: hasAuthor
+      ? "Author property found in schema — supports E-E-A-T signals."
+      : "No author markup in schema. Add 'author' property to Article schema for E-E-A-T.",
+    impact: "medium",
+    value: hasAuthor,
+  });
+
+  // 7. dateModified
+  const hasDateModified = schemas.some((s) => s.hasDateModified);
+  checks.push({
+    id: "date_modified",
+    label: "dateModified Property",
+    status: hasDateModified ? "pass" : "warning",
+    description: hasDateModified
+      ? "dateModified property found — helps AI engines assess content freshness."
+      : "No dateModified property. Add dateModified to signal content freshness to AI crawlers.",
+    impact: "medium",
+    value: hasDateModified,
+  });
+
+  // 8. BreadcrumbList
+  const hasBreadcrumb = detectedTypes.includes("BreadcrumbList");
+  checks.push({
+    id: "breadcrumb_schema",
+    label: "BreadcrumbList Schema",
+    status: hasBreadcrumb ? "pass" : "info",
+    description: hasBreadcrumb
+      ? "BreadcrumbList schema found — improves navigation context for AI engines."
+      : "No BreadcrumbList schema. Consider adding breadcrumb markup for better context.",
+    impact: "low",
+    value: hasBreadcrumb,
+  });
+
+  const score = computeScore(checks);
+
+  return {
+    score,
+    maxScore: 100,
+    checks,
+    schemas,
+    summary: buildSummary(score, schemas.length, foundHighValue.length),
+  };
+}
+
+function computeScore(checks: AuditCheck[]): number {
+  const weights: Record<string, number> = {
+    jsonld_present: 25,
+    high_value_schema: 20,
+    faq_schema: 20,
+    article_product_schema: 15,
+    organization_schema: 10,
+    author_schema: 5,
+    date_modified: 3,
+    breadcrumb_schema: 2,
+  };
+
+  let earned = 0;
+  let total = 0;
+
+  for (const check of checks) {
+    const w = weights[check.id] ?? 5;
+    total += w;
+    if (check.status === "pass") earned += w;
+    else if (check.status === "warning") earned += w * 0.4;
+  }
+
+  return Math.round((earned / total) * 100);
+}
+
+function buildSummary(
+  score: number,
+  schemaCount: number,
+  highValueCount: number
+): string {
+  if (schemaCount === 0)
+    return "No structured data found. Adding JSON-LD schema is the single highest-impact improvement for AI visibility.";
+  if (score >= 80)
+    return `Strong structured data with ${schemaCount} schema block${schemaCount > 1 ? "s" : ""} including ${highValueCount} high-value type${highValueCount > 1 ? "s" : ""}.`;
+  return `${schemaCount} schema block${schemaCount > 1 ? "s" : ""} found but missing key types. Add FAQPage, Article, and Organization schemas.`;
+}
