@@ -12,6 +12,13 @@ import {
   getAuditsByUser,
   checkRateLimit,
   incrementRateLimit,
+  getMonitoredPagesByUser,
+  addMonitoredPage,
+  removeMonitoredPage,
+  updateMonitoredPageAfterAudit,
+  addScoreSnapshot,
+  getScoreSnapshots,
+  MAX_MONITORING_SLOTS_FREE,
 } from "./db";
 
 export const appRouter = router({
@@ -30,16 +37,16 @@ export const appRouter = router({
       .input(
         z.object({
           url: z.string().url("Please enter a valid URL (e.g. https://example.com)"),
+          monitoredPageId: z.number().optional(), // if triggered by monitoring scheduler
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // Get client IP for rate limiting
         const ip =
           (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
           (ctx.req as unknown as { ip?: string }).ip ??
           "unknown";
 
-        // Check rate limit (skip for authenticated users — they get more)
+        // Rate limit only anonymous users
         if (!ctx.user) {
           const { allowed, remaining, resetAt } = await checkRateLimit(ip);
           if (!allowed) {
@@ -50,7 +57,6 @@ export const appRouter = router({
           }
         }
 
-        // Create audit record
         const insertResult = await createAudit({
           url: input.url,
           userId: ctx.user?.id ?? null,
@@ -61,10 +67,8 @@ export const appRouter = router({
         const auditId = Number((insertResult as unknown as [{ insertId: number }, unknown])[0]?.insertId);
 
         try {
-          // Run the full audit
           const result = await runAudit(input.url);
 
-          // Persist results
           await updateAudit(auditId, {
             status: result.error ? "failed" : "completed",
             overallScore: result.overallScore,
@@ -84,7 +88,22 @@ export const appRouter = router({
             completedAt: new Date(),
           });
 
-          // Increment rate limit counter for anonymous users
+          // If this audit was triggered for a monitored page, update it + add snapshot
+          if (input.monitoredPageId && result.overallScore != null) {
+            await updateMonitoredPageAfterAudit(input.monitoredPageId, auditId, result.overallScore);
+            await addScoreSnapshot({
+              monitoredPageId: input.monitoredPageId,
+              auditId,
+              overallScore: result.overallScore,
+              technicalScore: result.findings.technical.score,
+              structuredDataScore: result.findings.structuredData.score,
+              contentStructureScore: result.findings.contentStructure.score,
+              eeatScore: result.findings.eeat.score,
+              aiCrawlerScore: result.findings.aiCrawlers.score,
+              metaTagsScore: result.findings.metaTags.score,
+            });
+          }
+
           if (!ctx.user) {
             await incrementRateLimit(ip);
           }
@@ -103,6 +122,7 @@ export const appRouter = router({
         }
       }),
 
+    // Public endpoint — anyone can view a report by ID (for share links)
     getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
@@ -117,6 +137,65 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
       .query(async ({ ctx, input }) => {
         return getAuditsByUser(ctx.user.id, input.limit);
+      }),
+  }),
+
+  // ─── Monitoring procedures ────────────────────────────────────────────────────
+
+  monitoring: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const pages = await getMonitoredPagesByUser(ctx.user.id);
+      return pages;
+    }),
+
+    add: protectedProcedure
+      .input(
+        z.object({
+          url: z.string().url("Please enter a valid URL"),
+          label: z.string().max(255).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getMonitoredPagesByUser(ctx.user.id);
+
+        // Free plan: max 1 monitored page
+        if (existing.length >= MAX_MONITORING_SLOTS_FREE) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Free plan allows monitoring ${MAX_MONITORING_SLOTS_FREE} page. Upgrade to monitor more.`,
+          });
+        }
+
+        // Schedule first audit immediately (nextAuditAt = now)
+        const nextAuditAt = new Date();
+        const id = await addMonitoredPage({
+          userId: ctx.user.id,
+          url: input.url,
+          label: input.label ?? null,
+          nextAuditAt,
+        });
+
+        return { id };
+      }),
+
+    remove: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await removeMonitoredPage(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    getSnapshots: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number(), limit: z.number().default(10) }))
+      .query(async ({ ctx, input }) => {
+        // Verify ownership
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Monitored page not found." });
+        }
+        const snapshots = await getScoreSnapshots(input.monitoredPageId, input.limit);
+        return snapshots;
       }),
   }),
 });

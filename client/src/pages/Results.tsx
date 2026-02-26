@@ -22,8 +22,16 @@ import {
   Sparkles,
   Lightbulb,
   Target,
+  Share2,
+  Lock,
+  TrendingUp,
+  LayoutDashboard,
+  ArrowRight,
+  LogIn,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
@@ -40,6 +48,7 @@ export default function Results() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const auditId = parseInt(params.id ?? "0");
+  const { isAuthenticated } = useAuth();
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
     { id: auditId },
@@ -72,6 +81,22 @@ export default function Results() {
       ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "" }
       : null;
 
+  const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
+
+  const handleShare = (platform: "linkedin" | "twitter" | "facebook" | "copy") => {
+    const text = `I checked my website's AI-Readiness with GEO-Auditor and scored ${Math.round(overallScore)}/100! See the full report:`;
+    const encodedText = encodeURIComponent(text);
+    const encodedUrl = encodeURIComponent(reportUrl);
+    if (platform === "copy") {
+      navigator.clipboard.writeText(reportUrl);
+      toast.success("Report link copied!");
+      return;
+    }
+    if (platform === "linkedin") window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, "_blank");
+    else if (platform === "twitter") window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, "_blank");
+    else if (platform === "facebook") window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, "_blank");
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -93,16 +118,48 @@ export default function Results() {
               <span className="text-sm font-medium hidden sm:inline">GEO-Auditor</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 max-w-sm overflow-hidden">
-            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <a
-              href={audit.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground truncate hover:text-foreground transition-colors"
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 max-w-xs overflow-hidden">
+              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <a
+                href={audit.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground truncate hover:text-foreground transition-colors"
+              >
+                {audit.url}
+              </a>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleShare("copy")}
+              className="gap-1.5 text-xs"
             >
-              {audit.url}
-            </a>
+              <Share2 className="w-3.5 h-3.5" />
+              Share
+            </Button>
+            {isAuthenticated ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/dashboard")}
+                className="gap-1.5 text-xs"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                Dashboard
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => (window.location.href = getLoginUrl())}
+                className="gap-1.5 text-xs text-primary"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -141,20 +198,14 @@ export default function Results() {
         {/* Detailed Checks */}
         {findings && <DetailedChecks findings={findings} />}
 
-        {/* CTA */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/5 border border-primary/20 p-8 text-center">
-          <h3 className="text-xl font-bold mb-2">Want to track improvements over time?</h3>
-          <p className="text-muted-foreground text-sm mb-6">
-            Create a free account to save audit history, monitor multiple pages, and get weekly AI
-            visibility reports.
-          </p>
-          <Button
-            onClick={() => navigate("/")}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-          >
-            Audit Another Page
-          </Button>
-        </div>
+        {/* Share Panel */}
+        <ResultsSharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
+
+        {/* PLG: Score History Teaser (locked for non-auth) */}
+        {!isAuthenticated && <ScoreHistoryTeaser />}
+
+        {/* PLG: Upgrade CTA */}
+        <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />
       </main>
     </div>
   );
@@ -756,4 +807,190 @@ function getScoreColor(score: number): string {
   if (score >= 60) return "oklch(0.72 0.18 160)";
   if (score >= 40) return "oklch(0.78 0.18 75)";
   return "oklch(0.65 0.22 25)";
+}
+
+// ─── PLG: Results Share Panel ─────────────────────────────────────────────────
+
+function ResultsSharePanel({
+  score,
+  onShare,
+  reportUrl,
+}: {
+  score: number;
+  onShare: (platform: "linkedin" | "twitter" | "facebook" | "copy") => void;
+  reportUrl: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onShare("copy");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="rounded-2xl bg-card border border-border/50 p-5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Share2 className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">Share your AI-Readiness score</div>
+            <div className="text-xs text-muted-foreground">Let others know how AI-ready your site is</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <button
+            onClick={() => onShare("linkedin")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors border border-blue-500/20"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+            </svg>
+            LinkedIn
+          </button>
+          <button
+            onClick={() => onShare("twitter")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 transition-colors border border-sky-500/20"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            X
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/50 text-muted-foreground hover:bg-muted transition-colors border border-border/50"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PLG: Score History Teaser ────────────────────────────────────────────────
+
+function ScoreHistoryTeaser() {
+  return (
+    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+      <div className="p-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <TrendingUp className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">Score History</div>
+            <div className="text-xs text-muted-foreground">Track how your AI-Readiness improves over time</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Free account required</span>
+        </div>
+      </div>
+      {/* Blurred fake chart */}
+      <div className="relative h-28 mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden">
+        <div className="absolute inset-0 flex items-end px-4 pb-3 gap-2 opacity-30">
+          {[45, 52, 48, 61, 58, 67, 72, 75].map((v, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t bg-primary"
+              style={{ height: `${v}%` }}
+            />
+          ))}
+        </div>
+        <div className="absolute inset-0 backdrop-blur-sm bg-background/40 flex flex-col items-center justify-center gap-2">
+          <Lock className="w-5 h-5 text-muted-foreground" />
+          <p className="text-xs text-muted-foreground">Sign in to unlock score history</p>
+          <button
+            onClick={() => (window.location.href = getLoginUrl())}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <LogIn className="w-3 h-3" />
+            Sign In — Free
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PLG: Upgrade Banner ──────────────────────────────────────────────────────
+
+function PLGUpgradeBanner({
+  isAuthenticated,
+  navigate,
+}: {
+  isAuthenticated: boolean;
+  navigate: (path: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-violet-500/5 to-indigo-500/5 border border-primary/20 p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          {isAuthenticated ? (
+            <>
+              <h3 className="font-semibold mb-1">Monitor this page automatically</h3>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Weekly re-audits
+                </span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Score change alerts
+                </span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Track improvements over time
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="font-semibold mb-1">Want to track improvements over time?</h3>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Free account — 1 monitored page
+                </span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Score history & weekly alerts
+                </span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  5 audits/month
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+        {isAuthenticated ? (
+          <Button
+            onClick={() => navigate("/dashboard")}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Go to Dashboard
+          </Button>
+        ) : (
+          <Button
+            onClick={() => (window.location.href = getLoginUrl())}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            Sign In — Free
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }

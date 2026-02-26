@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -17,11 +19,14 @@ import {
   Globe,
   Code2,
   Brain,
+  LayoutDashboard,
+  LogIn,
 } from "lucide-react";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [, navigate] = useLocation();
+  const { isAuthenticated, user } = useAuth();
 
   const auditMutation = trpc.audit.run.useMutation({
     onSuccess: (data) => {
@@ -59,7 +64,33 @@ export default function Home() {
             <span className="font-semibold text-foreground tracking-tight">GEO-Auditor</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground hidden sm:block">Free · No signup required</span>
+            {isAuthenticated ? (
+              <>
+                <span className="text-xs text-muted-foreground hidden sm:block">{user?.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/dashboard")}
+                  className="gap-1.5 text-xs"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  Dashboard
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-muted-foreground hidden sm:block">Free · No signup required</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => (window.location.href = getLoginUrl())}
+                  className="gap-1.5 text-xs text-primary"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  Sign In
+                </Button>
+              </>
+            )}
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
         </div>

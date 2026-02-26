@@ -50,3 +50,39 @@ export const auditRateLimits = mysqlTable("audit_rate_limits", {
 });
 
 export type AuditRateLimit = typeof auditRateLimits.$inferSelect;
+
+// Monitored pages — users subscribe a URL to periodic re-audits
+export const monitoredPages = mysqlTable("monitored_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  url: varchar("url", { length: 2048 }).notNull(),
+  label: varchar("label", { length: 255 }),
+  // plan context: free users get 1 slot, paid users get more
+  lastAuditId: int("lastAuditId"),
+  lastScore: float("lastScore"),
+  lastAuditAt: timestamp("lastAuditAt"),
+  nextAuditAt: timestamp("nextAuditAt"),
+  isActive: mysqlEnum("isActive", ["yes", "no"]).default("yes").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MonitoredPage = typeof monitoredPages.$inferSelect;
+export type InsertMonitoredPage = typeof monitoredPages.$inferInsert;
+
+// Score snapshots — one row per completed audit for a monitored page (for history chart)
+export const scoreSnapshots = mysqlTable("score_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  monitoredPageId: int("monitoredPageId").notNull(),
+  auditId: int("auditId").notNull(),
+  overallScore: float("overallScore").notNull(),
+  technicalScore: float("technicalScore"),
+  structuredDataScore: float("structuredDataScore"),
+  contentStructureScore: float("contentStructureScore"),
+  eeatScore: float("eeatScore"),
+  aiCrawlerScore: float("aiCrawlerScore"),
+  metaTagsScore: float("metaTagsScore"),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+
+export type ScoreSnapshot = typeof scoreSnapshots.$inferSelect;
+export type InsertScoreSnapshot = typeof scoreSnapshots.$inferInsert;

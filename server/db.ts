@@ -1,6 +1,9 @@
-import { eq, desc, and, gte } from "drizzle-orm";
+import { eq, desc, and, gte, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, audits, auditRateLimits, InsertAudit } from "../drizzle/schema";
+import {
+  InsertUser, users, audits, auditRateLimits, InsertAudit,
+  monitoredPages, InsertMonitoredPage, scoreSnapshots, InsertScoreSnapshot,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -107,8 +110,9 @@ export async function getAuditsByUser(userId: number, limit = 20) {
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────────
 
-const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
-const FREE_AUDITS_PER_WINDOW = 3;
+// Rate limit: 5 audits per 30-day rolling window for anonymous users
+const RATE_LIMIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const FREE_AUDITS_PER_WINDOW = 5;
 
 export async function checkRateLimit(ipAddress: string): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
   const db = await getDb();
@@ -164,4 +168,85 @@ export async function incrementRateLimit(ipAddress: string): Promise<void> {
       .set({ auditCount: (existing[0]!.auditCount ?? 0) + 1 })
       .where(eq(auditRateLimits.id, existing[0]!.id));
   }
+}
+
+// ─── Monitored Pages helpers ──────────────────────────────────────────────────
+
+export const FREE_MONITORING_SLOTS = 1;
+export const MAX_MONITORING_SLOTS_FREE = 1;
+
+export async function getMonitoredPagesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(monitoredPages)
+    .where(and(eq(monitoredPages.userId, userId), eq(monitoredPages.isActive, "yes")))
+    .orderBy(desc(monitoredPages.createdAt));
+}
+
+export async function addMonitoredPage(data: InsertMonitoredPage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(monitoredPages).values(data);
+  const [res] = result as unknown as [{ insertId: number }];
+  return res.insertId;
+}
+
+export async function removeMonitoredPage(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(monitoredPages)
+    .set({ isActive: "no" })
+    .where(and(eq(monitoredPages.id, id), eq(monitoredPages.userId, userId)));
+}
+
+export async function updateMonitoredPageAfterAudit(
+  id: number,
+  auditId: number,
+  score: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  const nextAuditAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await db
+    .update(monitoredPages)
+    .set({ lastAuditId: auditId, lastScore: score, lastAuditAt: new Date(), nextAuditAt })
+    .where(eq(monitoredPages.id, id));
+}
+
+export async function getMonitoredPagesDueForAudit() {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  return db
+    .select()
+    .from(monitoredPages)
+    .where(
+      and(
+        eq(monitoredPages.isActive, "yes"),
+        lt(monitoredPages.nextAuditAt, now)
+      )
+    )
+    .limit(50);
+}
+
+// ─── Score Snapshots helpers ──────────────────────────────────────────────────
+
+export async function addScoreSnapshot(data: InsertScoreSnapshot) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(scoreSnapshots).values(data);
+}
+
+export async function getScoreSnapshots(monitoredPageId: number, limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(scoreSnapshots)
+    .where(eq(scoreSnapshots.monitoredPageId, monitoredPageId))
+    .orderBy(desc(scoreSnapshots.recordedAt))
+    .limit(limit);
 }
