@@ -61,6 +61,27 @@ export interface LLMRecommendationsResult {
 
 export type PageType = "article" | "product" | "product-listing" | "homepage" | "landing" | "service" | "generic";
 
+export interface ContentIntelligenceCheck {
+  id: string;
+  label: string;
+  score: number;
+  status: CheckStatus;
+  description: string;
+  recommendation: string;
+  impact: "high" | "medium" | "low";
+  examples?: string[];
+}
+
+export interface ContentIntelligenceResult {
+  overallScore: number;
+  citeabilityScore: number;
+  checks: ContentIntelligenceCheck[];
+  summary: string;
+  topOpportunity: string;
+  pageTopics: string[];
+  isLLMPowered: true;
+}
+
 export interface AuditResult {
   url: string;
   finalUrl: string;
@@ -71,6 +92,8 @@ export interface AuditResult {
   scoreLabel: "Excellent" | "Good" | "Fair" | "Poor";
   findings: AuditFindings;
   recommendations: Recommendation[];
+  llmResult?: LLMRecommendationsResult;
+  contentIntelligence?: ContentIntelligenceResult;
   responseTimeMs: number;
   error?: string;
 }

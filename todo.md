@@ -165,3 +165,27 @@
 - [x] Fix scraper.ts: add jitter to retry delays to avoid thundering herd
 - [x] Fix error messaging: transient errors are retried silently, transparent to user
 - [x] Update tests for retry logic (5 new tests, 52 total passing)
+
+## Content Intelligence (LLM-Powered Content Quality)
+
+- [x] Build server/audit/contentIntelligence.ts with 5 LLM-powered checks:
+  - [x] Answer Density: does the page directly answer top questions for its topic?
+  - [x] Factual Density: count of numbers, dates, named entities, specs per 1000 words
+  - [x] Duplicate Risk: does content sound generic/copied vs. unique perspective?
+  - [x] Citation Readiness: are there citable claims with dates/authors/sources?
+  - [x] Query Coverage: does content cover the questions users ask AI for this topic?
+- [x] Update DB schema: add contentIntelligence JSON column to audits table
+- [x] Push DB migration
+- [x] Integrate contentIntelligence into audit/index.ts orchestrator
+- [x] Recalibrate category weights: Content Structure 25%→30%, Technical 25%→20%
+- [x] Update shared/auditTypes.ts with ContentIntelligence types
+- [x] Build ContentIntelligence premium UI panel in Results.tsx
+  - [x] Citeability Score gauge (SVG ring, 0-100)
+  - [x] 5 expandable check cards (Answer Density, Factual Density, Duplicate Risk, Citation Readiness, Query Coverage)
+  - [x] Page topics tags
+  - [x] Top opportunity highlight
+  - [x] PLG sign-in nudge for non-authenticated users
+  - [x] "AI Citeability Score" — single number 0-100 for virality/shareability
+  - [x] Specific improvement suggestions per check with examples
+- [x] Write unit tests for contentIntelligence module (55 tests passing)
+- [x] Verify end-to-end with real URLs

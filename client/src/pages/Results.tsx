@@ -42,6 +42,8 @@ import type {
   Recommendation,
   LLMRecommendation,
   LLMRecommendationsResult,
+  ContentIntelligenceResult,
+  ContentIntelligenceCheck,
 } from "../../../shared/auditTypes";
 
 export default function Results() {
@@ -80,6 +82,8 @@ export default function Results() {
     llmRecs && llmAiInsight
       ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "" }
       : null;
+
+  const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
 
   const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
 
@@ -181,6 +185,12 @@ export default function Results() {
             topPriority={llmResult.topPriority}
           />
         )}
+
+        {/* Content Intelligence Panel — LLM-powered content quality analysis */}
+        <ContentIntelligencePanel
+          contentIntelligence={contentIntelligence}
+          isAuthenticated={isAuthenticated}
+        />
 
         {/* LLM Personalized Recommendations */}
         {llmResult && llmResult.recommendations.length > 0 && (
@@ -785,6 +795,226 @@ const STATUS_CONFIG = {
   warning: { icon: AlertTriangle, colorClass: "text-status-warning" },
   info: { icon: Info, colorClass: "text-status-info" },
 };
+
+// ─── Content Intelligence Panel ─────────────────────────────────────────────
+
+function ContentIntelligencePanel({
+  contentIntelligence,
+  isAuthenticated,
+}: {
+  contentIntelligence: ContentIntelligenceResult | null;
+  isAuthenticated: boolean;
+}) {
+  const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+
+  if (!contentIntelligence) {
+    return (
+      <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
+            <Brain className="w-5 h-5 text-violet-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">Content Intelligence</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Deep content quality analysis for AI discoverability</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border/40">
+          <div className="w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin shrink-0" />
+          <p className="text-sm text-muted-foreground">Analyzing content quality, answer density, and citeability...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const citeColor = getScoreColor(contentIntelligence.citeabilityScore);
+  const ciColor = getScoreColor(contentIntelligence.overallScore);
+  const circumference = 2 * Math.PI * 36;
+  const citeOffset = circumference - (contentIntelligence.citeabilityScore / 100) * circumference;
+
+  const impactOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const sortedChecks = [...contentIntelligence.checks].sort(
+    (a, b) => impactOrder[a.impact] - impactOrder[b.impact]
+  );
+
+  return (
+    <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background overflow-hidden">
+      {/* Header */}
+      <div className="p-6 pb-4">
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold">Content Intelligence</h2>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+              </div>
+              <p className="text-xs text-muted-foreground">How well your content will be cited by AI search engines</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Two-column: Scores + Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+          {/* Citeability Score Gauge */}
+          <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-background/60 border border-border/40">
+            <div className="relative mb-2">
+              <svg width="90" height="90" viewBox="0 0 90 90" className="-rotate-90">
+                <circle cx="45" cy="45" r="36" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="7" />
+                <circle
+                  cx="45" cy="45" r="36" fill="none"
+                  stroke={citeColor} strokeWidth="7" strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={citeOffset}
+                  style={{ transition: "stroke-dashoffset 1s ease-out" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold" style={{ color: citeColor }}>{Math.round(contentIntelligence.citeabilityScore)}</span>
+                <span className="text-[9px] text-muted-foreground">/100</span>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-center">Citeability Score</div>
+            <div className="text-[10px] text-muted-foreground text-center mt-0.5">Likelihood of AI citation</div>
+          </div>
+
+          {/* CI Overall Score */}
+          <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-background/60 border border-border/40">
+            <div className="text-4xl font-bold mb-1" style={{ color: ciColor }}>{Math.round(contentIntelligence.overallScore)}</div>
+            <div className="text-xs font-semibold text-center">Content Quality</div>
+            <div className="text-[10px] text-muted-foreground text-center mt-0.5">Overall content score</div>
+            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${contentIntelligence.overallScore}%`, backgroundColor: ciColor }} />
+            </div>
+          </div>
+
+          {/* Summary + Top Opportunity */}
+          <div className="flex flex-col gap-2 p-4 rounded-xl bg-background/60 border border-border/40">
+            <p className="text-xs text-foreground/80 leading-relaxed">{contentIntelligence.summary}</p>
+            {contentIntelligence.topOpportunity && (
+              <div className="flex items-start gap-1.5 mt-auto pt-2 border-t border-border/30">
+                <TrendingUp className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-400/90 leading-relaxed">{contentIntelligence.topOpportunity}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Page Topics */}
+        {contentIntelligence.pageTopics.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-5">
+            <span className="text-[10px] text-muted-foreground mr-1 self-center">Topics detected:</span>
+            {contentIntelligence.pageTopics.map((topic) => (
+              <span key={topic} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Checks */}
+      <div className="px-6 pb-6 space-y-2">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">5 Content Quality Dimensions</div>
+        {sortedChecks.map((check) => {
+          const isExpanded = expandedCheck === check.id;
+          const checkColor = check.score >= 70 ? "oklch(0.72 0.18 145)" : check.score >= 40 ? "oklch(0.78 0.18 75)" : "oklch(0.65 0.22 25)";
+          const statusIcon =
+            check.status === "pass" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> :
+            check.status === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-400" /> :
+            <XCircle className="w-4 h-4 text-red-400" />;
+
+          return (
+            <div key={check.id} className="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
+              <button
+                onClick={() => setExpandedCheck(isExpanded ? null : check.id)}
+                className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/20 transition-colors"
+              >
+                {statusIcon}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{check.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      check.impact === "high" ? "bg-red-500/15 text-red-400" :
+                      check.impact === "medium" ? "bg-amber-500/15 text-amber-400" :
+                      "bg-muted text-muted-foreground"
+                    }`}>{check.impact} impact</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{check.description}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-bold" style={{ color: checkColor }}>{check.score}</span>
+                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="px-4 pb-4 space-y-3 border-t border-border/30">
+                  {/* Score bar */}
+                  <div className="pt-3">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <span>Score</span>
+                      <span style={{ color: checkColor }}>{check.score}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${check.score}%`, backgroundColor: checkColor }} />
+                    </div>
+                  </div>
+
+                  {/* Recommendation */}
+                  <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-violet-400" />
+                      <span className="text-xs font-semibold text-violet-400">How to improve</span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{check.recommendation}</p>
+                  </div>
+
+                  {/* Examples */}
+                  {check.examples && check.examples.length > 0 && (
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Examples from your page</div>
+                      <div className="space-y-1">
+                        {check.examples.map((ex, i) => (
+                          <div key={i} className="text-xs text-foreground/70 p-2 rounded-lg bg-muted/30 border border-border/30 italic">"{ex}"</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* PLG: Sign-in nudge for non-authenticated users */}
+      {!isAuthenticated && (
+        <div className="mx-6 mb-6 p-4 rounded-xl bg-gradient-to-r from-violet-500/10 to-indigo-500/5 border border-violet-500/20">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold mb-0.5">Track content improvements over time</div>
+              <div className="text-xs text-muted-foreground">Sign in free to monitor your Content Intelligence score weekly</div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => (window.location.href = getLoginUrl())}
+              className="bg-violet-600 hover:bg-violet-500 text-white shrink-0 gap-1.5 text-xs"
+            >
+              <LogIn className="w-3 h-3" />
+              Sign In Free
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CATEGORY_META = [
   { key: "technical", label: "Technical", icon: Shield, weight: 25 },

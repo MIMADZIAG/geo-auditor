@@ -8,6 +8,7 @@ import { analyzeMetaTags } from "./metaTags";
 import { computeOverallScore, getScoreLabel, generateRecommendations } from "./scorer";
 import { generateLLMRecommendations, type LLMRecommendationsResult } from "./llmRecommendations";
 import { detectPageType, getPageTypeLabel, type PageType } from "./pageTypeDetector";
+import { analyzeContentIntelligence, type ContentIntelligenceResult } from "./contentIntelligence";
 import type { AuditFindings, Recommendation } from "./types";
 
 export interface AuditResult {
@@ -21,6 +22,7 @@ export interface AuditResult {
   findings: AuditFindings;
   recommendations: Recommendation[];
   llmResult?: LLMRecommendationsResult;
+  contentIntelligence?: ContentIntelligenceResult;
   responseTimeMs: number;
   error?: string;
 }
@@ -86,17 +88,36 @@ export async function runAudit(url: string): Promise<AuditResult> {
     // Non-fatal: audit still succeeds without LLM recommendations
   }
 
+  // Generate Content Intelligence analysis (best-effort, non-fatal)
+  let contentIntelligence: ContentIntelligenceResult | undefined;
+  try {
+    contentIntelligence = await analyzeContentIntelligence(page, pageType);
+    // Also store in findings for scoring
+    findings.contentIntelligence = contentIntelligence;
+  } catch (err) {
+    console.warn(
+      "[ContentIntelligence] Failed to generate analysis:",
+      err instanceof Error ? err.message : err
+    );
+    // Non-fatal: audit still succeeds without Content Intelligence
+  }
+
+  // Recompute overall score if Content Intelligence is available
+  const finalScore = computeOverallScore(findings);
+  const finalLabel = getScoreLabel(finalScore);
+
   return {
     url: page.url,
     finalUrl: page.finalUrl,
     pageTitle: page.title,
     pageType,
     pageTypeLabel,
-    overallScore,
-    scoreLabel,
+    overallScore: finalScore,
+    scoreLabel: finalLabel,
     findings,
     recommendations,
     llmResult,
+    contentIntelligence,
     responseTimeMs: page.responseTimeMs,
   };
 }

@@ -16,6 +16,27 @@ export interface CategoryResult {
   summary: string;
 }
 
+export interface ContentIntelligenceCheck {
+  id: string;
+  label: string;
+  score: number;
+  status: CheckStatus;
+  description: string;
+  recommendation: string;
+  impact: "high" | "medium" | "low";
+  examples?: string[];
+}
+
+export interface ContentIntelligenceResult {
+  overallScore: number;
+  citeabilityScore: number;
+  checks: ContentIntelligenceCheck[];
+  summary: string;
+  topOpportunity: string;
+  pageTopics: string[];
+  isLLMPowered: true;
+}
+
 export interface AuditFindings {
   technical: CategoryResult;
   structuredData: CategoryResult;
@@ -23,6 +44,7 @@ export interface AuditFindings {
   eeat: CategoryResult;
   aiCrawlers: CategoryResult;
   metaTags: CategoryResult;
+  contentIntelligence?: ContentIntelligenceResult;
 }
 
 export interface Recommendation {

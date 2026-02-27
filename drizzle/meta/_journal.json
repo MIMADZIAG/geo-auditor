@@ -29,6 +29,13 @@
       "when": 1772141516428,
       "tag": "0003_small_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1772188223844,
+      "tag": "0004_smart_rogue",
+      "breakpoints": true
     }
   ]
 }

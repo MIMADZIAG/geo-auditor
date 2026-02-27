@@ -52,8 +52,8 @@ describe("computeOverallScore", () => {
       aiCrawlers: { score: 0, maxScore: 100, checks: [], summary: "" },
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
     };
-    // technical weight = 15 (recalibrated), so score should be 15
-    expect(computeOverallScore(findings)).toBe(15);
+    // technical weight = 15 out of total 92 (base weights sum), normalized: round(15/92*100) = 16
+    expect(computeOverallScore(findings)).toBe(16);
   });
 
   it("returns a value between 0 and 100 for mixed scores", () => {
@@ -693,5 +693,72 @@ describe("Scraper retry logic", () => {
     };
     expect(errorPage.retryCount).toBe(0);
     expect(errorPage.error).toContain("Failed to fetch");
+  });
+});
+
+// ─── Content Intelligence Type Tests ─────────────────────────────────────────
+
+describe("ContentIntelligenceResult type contract", () => {
+  it("ContentIntelligenceResult has required fields", () => {
+    const mockCI = {
+      overallScore: 72,
+      citeabilityScore: 65,
+      checks: [
+        {
+          id: "answer_density",
+          label: "Answer Density",
+          score: 80,
+          status: "pass" as const,
+          description: "Page contains direct answers",
+          recommendation: "Add more Q&A pairs",
+          impact: "high" as const,
+          examples: ["What is X? X is..."],
+        },
+      ],
+      summary: "Good content quality with room for improvement.",
+      topOpportunity: "Add more specific statistics and data points.",
+      pageTopics: ["e-commerce", "fashion"],
+      isLLMPowered: true as const,
+    };
+    expect(mockCI.overallScore).toBeGreaterThanOrEqual(0);
+    expect(mockCI.overallScore).toBeLessThanOrEqual(100);
+    expect(mockCI.citeabilityScore).toBeGreaterThanOrEqual(0);
+    expect(mockCI.citeabilityScore).toBeLessThanOrEqual(100);
+    expect(mockCI.checks).toHaveLength(1);
+    expect(mockCI.checks[0]!.id).toBe("answer_density");
+    expect(mockCI.checks[0]!.impact).toBe("high");
+    expect(mockCI.isLLMPowered).toBe(true);
+    expect(mockCI.pageTopics).toContain("e-commerce");
+  });
+
+  it("computeOverallScore uses contentIntelligence weights when CI is present", () => {
+    const findings: AuditFindings & { contentIntelligence?: { overallScore: number } } = {
+      technical: { score: 100, maxScore: 100, checks: [], summary: "" },
+      structuredData: { score: 0, maxScore: 100, checks: [], summary: "" },
+      contentStructure: { score: 0, maxScore: 100, checks: [], summary: "" },
+      eeat: { score: 0, maxScore: 100, checks: [], summary: "" },
+      aiCrawlers: { score: 0, maxScore: 100, checks: [], summary: "" },
+      metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
+      contentIntelligence: { overallScore: 0 },
+    };
+    // With CI present: technical weight = 12 out of total 100 (CATEGORY_WEIGHTS_WITH_CI sums to 100)
+    // round(12/100 * 100) = 12
+    const score = computeOverallScore(findings as AuditFindings);
+    expect(score).toBe(12);
+  });
+
+  it("computeOverallScore includes CI score when CI is present", () => {
+    const findings: AuditFindings & { contentIntelligence?: { overallScore: number } } = {
+      technical: { score: 0, maxScore: 100, checks: [], summary: "" },
+      structuredData: { score: 0, maxScore: 100, checks: [], summary: "" },
+      contentStructure: { score: 0, maxScore: 100, checks: [], summary: "" },
+      eeat: { score: 0, maxScore: 100, checks: [], summary: "" },
+      aiCrawlers: { score: 0, maxScore: 100, checks: [], summary: "" },
+      metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
+      contentIntelligence: { overallScore: 100 },
+    };
+    // Only CI scores 100, weight 27 out of 100 total → 27
+    const score = computeOverallScore(findings as AuditFindings);
+    expect(score).toBe(27);
   });
 });

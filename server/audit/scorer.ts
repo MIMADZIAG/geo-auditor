@@ -1,24 +1,54 @@
 import type { AuditFindings, AuditResult, Recommendation } from "./types";
 
-// Category weights for overall score (must sum to 100)
-// Recalibrated: Content Structure and Structured Data are the primary GEO differentiators.
-// Technical is table stakes (most sites pass) so its weight is reduced.
-const CATEGORY_WEIGHTS = {
-  technical: 15,        // ← reduced from 25 (table stakes, most sites pass)
-  structuredData: 25,   // ← increased from 20 (primary GEO signal)
-  contentStructure: 30, // ← increased from 25 (FAQ, TL;DR, structure)
-  eeat: 15,             // unchanged
-  aiCrawlers: 8,        // ← reduced from 10 (most sites don't block)
-  metaTags: 7,          // ← increased from 5
+// Category weights for overall score
+// When contentIntelligence is available (LLM-powered), it takes 20% weight
+// and other categories are proportionally reduced.
+// Without contentIntelligence, weights sum to 100 across 6 categories.
+const CATEGORY_WEIGHTS_BASE = {
+  technical: 15,
+  structuredData: 22,
+  contentStructure: 25,
+  eeat: 15,
+  aiCrawlers: 8,
+  metaTags: 7,
+};
+
+// When Content Intelligence is available, it takes 20% — the most important signal
+const CATEGORY_WEIGHTS_WITH_CI = {
+  technical: 12,
+  structuredData: 18,
+  contentStructure: 20,
+  eeat: 12,
+  aiCrawlers: 6,
+  metaTags: 5,
+  contentIntelligence: 27, // ← highest weight: LLM-powered content quality
 };
 
 export function computeOverallScore(findings: AuditFindings): number {
+  // Use CI weights if Content Intelligence is available
+  const weights = findings.contentIntelligence
+    ? CATEGORY_WEIGHTS_WITH_CI
+    : CATEGORY_WEIGHTS_BASE;
+
   let total = 0;
-  for (const [key, weight] of Object.entries(CATEGORY_WEIGHTS)) {
-    const category = findings[key as keyof AuditFindings];
-    total += (category.score / 100) * weight;
+  let totalWeight = 0;
+
+  for (const [key, weight] of Object.entries(weights)) {
+    if (key === "contentIntelligence") {
+      if (findings.contentIntelligence) {
+        total += (findings.contentIntelligence.overallScore / 100) * weight;
+        totalWeight += weight;
+      }
+    } else {
+      const category = findings[key as keyof typeof CATEGORY_WEIGHTS_BASE];
+      if (!category) continue;
+      total += ((category as { score: number }).score / 100) * weight;
+      totalWeight += weight;
+    }
   }
-  return Math.round(total);
+
+  // Normalize in case weights don't sum to exactly 100
+  return Math.round(totalWeight > 0 ? (total / totalWeight) * 100 : 0);
 }
 
 export function getScoreLabel(
