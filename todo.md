@@ -199,3 +199,15 @@
 - [x] Nowy landing page: hero + How it works + preview wyników (Score card + CI card + Issues card)
 - [x] Zachować Pricing page, email capture, share mechanics
 - [x] 55 testów passing, 0 błędów TS
+
+## v5 — Polish, PLG & Retention
+
+- [x] Fix responsywność: tytuł audytowanej strony (line-clamp-2 + break-words + title tooltip)
+- [x] Fix responsywność: URL w headerze (max-width 200px + text-overflow ellipsis)
+- [x] Zmiana kolejności sekcji wyników: Critical Issues PRZED Content Intelligence
+- [x] PLG: MonitorCTA po Issues (contextual, kiedy user widzi problemy)
+- [x] PLG: CompetitorAnalysisTeaser (Pro feature, blurred preview)
+- [x] PLG: PLGUpgradeBanner z 3-kolumnową tabelą planów (Free/Starter/Pro)
+- [x] Landing page: usunięto "40+ checks" section
+- [x] Landing page: nowa sekcja "Why AI search skips most pages" (4 powody, wartościowe)
+- [x] 55 testów passing, 0 błędów TS

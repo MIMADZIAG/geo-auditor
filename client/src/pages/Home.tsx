@@ -239,27 +239,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── What we check ── */}
+      {/* ── Why AI search ignores pages — value-focused ── */}
       <section className="py-16 px-4 border-t border-border/30">
-        <div className="container max-w-5xl mx-auto">
+        <div className="container max-w-4xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">40+ checks across 6 areas</h2>
-            <p className="text-muted-foreground text-sm max-w-lg mx-auto">Every check is mapped to a specific AI search behavior — not just best practices.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Why AI search skips most pages</h2>
+            <p className="text-muted-foreground text-sm max-w-lg mx-auto">ChatGPT, Perplexity, and Google AI Overviews use dozens of signals to decide which pages to cite. Most websites fail on the basics.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {AUDIT_CATEGORIES.map((cat) => (
-              <div key={cat.title} className="rounded-xl bg-card border border-border/50 p-5 hover:border-primary/30 transition-colors">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <cat.icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <h3 className="font-semibold text-sm">{cat.title}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {WHY_AI_IGNORES.map((item) => (
+              <div key={item.title} className="rounded-xl bg-card border border-border/50 p-5 flex gap-4">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.bg}`}>
+                  <item.icon className={`w-4 h-4 ${item.color}`} />
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-3">{cat.description}</p>
-                <div className="flex flex-wrap gap-1">
-                  {cat.checks.map((c) => (
-                    <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground border border-border/40">{c}</span>
-                  ))}
+                <div>
+                  <h3 className="font-semibold text-sm mb-1">{item.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
                 </div>
               </div>
             ))}
@@ -409,41 +404,33 @@ const CONTENT_INTEL_DIMS = [
   "Duplicate Risk",
 ];
 
-const AUDIT_CATEGORIES = [
+const WHY_AI_IGNORES = [
   {
-    title: "AI Crawler Access",
+    title: "AI crawlers are blocked",
     icon: Bot,
-    description: "Verify GPTBot, PerplexityBot, ClaudeBot, and Google-Extended are not blocked in robots.txt.",
-    checks: ["GPTBot", "PerplexityBot", "ClaudeBot", "Google-Extended"],
+    bg: "bg-red-500/10",
+    color: "text-red-400",
+    description: "ChatGPT, Perplexity, and Google AI bots are often blocked in robots.txt — silently. Your content never gets indexed.",
   },
   {
-    title: "Structured Data",
+    title: "No structured data",
     icon: Code2,
-    description: "JSON-LD schema detection and validation — Article, Product, FAQ, Organization, BreadcrumbList.",
-    checks: ["JSON-LD", "FAQPage", "Article", "Organization", "dateModified"],
+    bg: "bg-amber-500/10",
+    color: "text-amber-400",
+    description: "Without JSON-LD schema, AI models can't understand what your page is about. They skip it in favor of pages that explain themselves clearly.",
   },
   {
-    title: "Content Structure",
-    icon: FileText,
-    description: "Heading hierarchy, TL;DR presence, FAQ sections, content length, lists, and citation-ready patterns.",
-    checks: ["H1/H2/H3", "TL;DR", "FAQ section", "Word count", "Lists"],
+    title: "Content doesn't answer questions",
+    icon: Brain,
+    bg: "bg-violet-500/10",
+    color: "text-violet-400",
+    description: "AI search looks for pages that directly answer user questions with facts, dates, and specifics. Generic content gets ignored.",
   },
   {
-    title: "E-E-A-T Signals",
-    icon: Zap,
-    description: "Author bylines, credentials, About page, contact info, external citations, and publication dates.",
-    checks: ["Author", "Citations", "About page", "Contact", "Dates"],
-  },
-  {
-    title: "Technical Crawlability",
+    title: "Missing trust signals",
     icon: Shield,
-    description: "HTTPS, HTTP status, canonical tags, noindex/nosnippet directives, response time, and mobile viewport.",
-    checks: ["HTTPS", "Canonical", "noindex", "nosnippet", "robots.txt"],
-  },
-  {
-    title: "Meta Tags",
-    icon: BarChart3,
-    description: "Title tag, meta description, Open Graph tags, Twitter Cards, language declaration, and charset.",
-    checks: ["Title", "Description", "OG tags", "Twitter Card", "lang"],
+    bg: "bg-blue-500/10",
+    color: "text-blue-400",
+    description: "No author, no publication date, no citations. AI models prefer content they can verify. Without trust signals, your page looks unreliable.",
   },
 ];

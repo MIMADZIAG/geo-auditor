@@ -167,7 +167,7 @@ export default function Results() {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 max-w-xs overflow-hidden">
               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:text-foreground transition-colors">
+              <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'200px',display:'block'}}>
                 {audit.url}
               </a>
             </div>
@@ -197,34 +197,32 @@ export default function Results() {
           findings={findings}
         />
 
-        {/* ── 2. Content Intelligence — the "Aha!" section ── */}
-        <ContentIntelligencePanel
-          contentIntelligence={contentIntelligence}
-          isAuthenticated={isAuthenticated}
-        />
-
-        {/* ── 3. Top Priority Fix ── */}
-        {llmResult?.topPriority && (
-          <TopPriorityBanner topPriority={llmResult.topPriority} aiInsight={llmResult.aiInsight} />
-        )}
-
-        {/* ── 4. Issues & Fixes ── */}
+           {/* ── 2. Issues & Fixes — Critical first ── */}
         <IssuesAndFixes
           findings={findings}
           llmRecs={llmResult?.recommendations ?? null}
           recommendations={recommendations}
         />
-
-        {/* ── 5. What's Working ── */}
+        {/* ── 3. Top Priority Fix ── */}
+        {llmResult?.topPriority && (
+          <TopPriorityBanner topPriority={llmResult.topPriority} aiInsight={llmResult.aiInsight} />
+        )}
+        {/* ── 4. Monitor CTA — contextual after seeing issues ── */}
+        <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />
+        {/* ── 5. Content Intelligence — the "Aha!" section ── */}
+        <ContentIntelligencePanel
+          contentIntelligence={contentIntelligence}
+          isAuthenticated={isAuthenticated}
+        />
+        {/* ── 6. Competitor Analysis Teaser (Pro) ── */}
+        <CompetitorAnalysisTeaser navigate={navigate} />
+        {/* ── 7. What's Working ── */}
         {findings && <PassingChecks findings={findings} />}
-
-        {/* ── 6. Share ── */}
+        {/* ── 8. Share ── */}
         <SharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
-
-        {/* ── 7. Score History Teaser ── */}
+        {/* ── 9. Score History Teaser ── */}
         {!isAuthenticated && <ScoreHistoryTeaser />}
-
-        {/* ── 8. PLG Upgrade CTA ── */}
+        {/* ── 10. PLG Upgrade Banner ── */}
         <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />
 
       </main>
@@ -295,8 +293,8 @@ function ScoreHero({
               {scoreLabel} AI Visibility
             </span>
           </div>
-          <h1 className="text-2xl font-bold mb-1 truncate">{pageTitle || url}</h1>
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center lg:justify-start gap-1 truncate mb-3">
+          <h1 className="text-xl sm:text-2xl font-bold mb-1 break-words line-clamp-2 leading-tight" title={pageTitle || url}>{pageTitle || url}</h1>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center lg:justify-start gap-1 mb-3 min-w-0" style={{wordBreak:'break-all'}}>
             <ExternalLink className="w-3 h-3 shrink-0" />{url}
           </a>
           <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{scoreSublabel}</p>
@@ -537,6 +535,79 @@ function ContentIntelligencePanel({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Inline PLG: Monitor CTA
+function MonitorCTA({ isAuthenticated, navigate }: { isAuthenticated: boolean; navigate: (path: string) => void }) {
+  if (isAuthenticated) {
+    return (
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+          <TrendingUp className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold">Monitor this page automatically</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Get weekly re-audits and score-change alerts — upgrade to Starter to enable.</div>
+        </div>
+        <Button size="sm" onClick={() => navigate("/pricing")} variant="outline" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 shrink-0">
+          <Sparkles className="w-3 h-3" /> See plans
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+        <TrendingUp className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold">Want to track your fixes over time?</div>
+        <div className="text-xs text-muted-foreground mt-0.5">Free account: 1 monitored page, weekly re-audits, score history.</div>
+      </div>
+      <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs shrink-0">
+        <LogIn className="w-3 h-3" /> Sign In Free
+      </Button>
+    </div>
+  );
+}
+
+// ─── Competitor Analysis Teaser
+function CompetitorAnalysisTeaser({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+          <BarChart3 className="w-4 h-4 text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="text-sm font-semibold">Competitor AI Visibility Analysis</div>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-bold uppercase">Pro</span>
+          </div>
+          <div className="text-xs text-muted-foreground">See how your page compares to 3 competitors across every AI visibility dimension. Find the gaps they're exploiting.</div>
+        </div>
+        <Button size="sm" onClick={() => navigate("/pricing")} variant="outline" className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 shrink-0">
+          <Sparkles className="w-3 h-3" /> Unlock Pro
+        </Button>
+      </div>
+      <div className="relative mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden h-20">
+        <div className="absolute inset-0 flex items-center gap-3 px-4 opacity-20 pointer-events-none">
+          {["competitor-a.com", "competitor-b.com", "competitor-c.com"].map((c, i) => (
+            <div key={i} className="flex-1 space-y-1.5">
+              <div className="text-[9px] text-muted-foreground truncate">{c}</div>
+              <div className="h-2 bg-primary/40 rounded-full" style={{ width: `${[78, 65, 82][i]}%` }} />
+              <div className="text-[9px] font-bold text-primary">{[78, 65, 82][i]}</div>
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-0 backdrop-blur-sm bg-background/50 flex items-center justify-center">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Lock className="w-3.5 h-3.5" /> Available on Pro plan
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -877,43 +948,48 @@ function ScoreHistoryTeaser() {
 // ─── 8. PLG Upgrade Banner ────────────────────────────────────────────────────
 
 function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: boolean; navigate: (path: string) => void }) {
+  const plans = [
+    { name: "Free", price: "$0", features: ["5 audits/month", "1 monitored page", "Full report & CI"], cta: null, highlight: false },
+    { name: "Starter", price: "$39", features: ["50 audits/month", "10 monitored pages", "Weekly alerts", "PDF export"], cta: "Start Starter", highlight: false },
+    { name: "Pro", price: "$99", features: ["200 audits/month", "50 monitored pages", "Competitor analysis", "Advanced CI"], cta: "Go Pro", highlight: true },
+  ];
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-violet-500/5 to-indigo-500/5 border border-primary/20 p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-          <Sparkles className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          {isAuthenticated ? (
-            <>
-              <h3 className="font-semibold mb-1">Monitor this page automatically</h3>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Weekly re-audits</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Score change alerts</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Track improvements over time</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <h3 className="font-semibold mb-1">Want to track your improvements over time?</h3>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Free account — 1 monitored page</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Score history & weekly alerts</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />5 audits/month</span>
-              </div>
-            </>
-          )}
-        </div>
-        {isAuthenticated ? (
-          <Button onClick={() => navigate("/dashboard")} className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2">
-            <LayoutDashboard className="w-3.5 h-3.5" /> Go to Dashboard
-          </Button>
-        ) : (
-          <Button onClick={() => (window.location.href = getLoginUrl())} className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2">
-            <LogIn className="w-3.5 h-3.5" /> Sign In — Free
-          </Button>
-        )}
+    <div className="rounded-2xl bg-gradient-to-br from-primary/8 via-violet-500/4 to-background border border-primary/20 p-6">
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-bold mb-1">Ready to fix these issues — and stay fixed?</h3>
+        <p className="text-sm text-muted-foreground">One-time audits find problems. Monitoring keeps you ahead of AI search changes.</p>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        {plans.map((plan) => (
+          <div key={plan.name} className={`rounded-xl p-4 border ${plan.highlight ? "border-primary/40 bg-primary/8" : "border-border/50 bg-card"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold">{plan.name}</span>
+              <span className="text-sm font-black text-primary">{plan.price}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></span>
+            </div>
+            <div className="space-y-1 mb-3">
+              {plan.features.map((f) => (
+                <div key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />{f}
+                </div>
+              ))}
+            </div>
+            {plan.cta ? (
+              <Button size="sm" onClick={() => navigate("/pricing")} className="w-full text-xs" variant={plan.highlight ? "default" : "outline"}>
+                {plan.cta}
+              </Button>
+            ) : (
+              <div className="text-[10px] text-center text-muted-foreground py-1">{isAuthenticated ? "Your current plan" : "Current plan"}</div>
+            )}
+          </div>
+        ))}
+      </div>
+      {!isAuthenticated && (
+        <div className="text-center">
+          <Button onClick={() => (window.location.href = getLoginUrl())} variant="ghost" size="sm" className="text-xs gap-1.5 text-muted-foreground">
+            <LogIn className="w-3 h-3" /> Sign in first — it's free
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
