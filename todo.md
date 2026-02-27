@@ -189,3 +189,13 @@
   - [x] Specific improvement suggestions per check with examples
 - [x] Write unit tests for contentIntelligence module (55 tests passing)
 - [x] Verify end-to-end with real URLs
+
+## v4 — Finalny redesign: "Asystent Audytora"
+
+- [x] Przywrócić scoring hero 0-100 z animowanym SVG gauge — claim "AI Visibility Score"
+- [x] Content Intelligence jako główna sekcja (Citeability Score + 5 wymiarów + Page Topics + Top Opportunity)
+- [x] Trzy filary wyników: AI Visibility Score → Content Intelligence → Issues & Fixes
+- [x] Issues uproszczone językowo — ludzki opis, zero technicznego żargonu
+- [x] Nowy landing page: hero + How it works + preview wyników (Score card + CI card + Issues card)
+- [x] Zachować Pricing page, email capture, share mechanics
+- [x] 55 testów passing, 0 błędów TS
