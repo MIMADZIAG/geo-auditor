@@ -119,6 +119,14 @@
 - [x] Update LLM system prompt: NEVER suggest adding already-present schema types
 - [x] Update unit tests for nested schema detection (3 new tests, 43 total passing)
 
+## Bug Fix: Multiple JSON-LD Blocks & Schema Subtype Mapping
+
+- [ ] Fix structuredData.ts: parse ALL `<script type="application/ld+json">` blocks per page (not just first)
+- [ ] Fix structuredData.ts: map NewsArticle → Article, BlogPosting → Article, etc. (schema.org subtype hierarchy)
+- [ ] Fix structuredData.ts: handle multiple separate @context blocks (not inside @graph)
+- [ ] Update LLM prompt: explicitly list all detected schema types including subtypes, never suggest adding already-present subtypes
+- [ ] Update unit tests for multiple JSON-LD blocks and subtype mapping
+
 ## Scoring Recalibration & Page Type Detection
 
 ### Page Type Detector

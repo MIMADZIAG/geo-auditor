@@ -76,7 +76,8 @@ export async function runAudit(url: string): Promise<AuditResult> {
   // Generate LLM-powered personalized recommendations (best-effort, non-fatal)
   let llmResult: LLMRecommendationsResult | undefined;
   try {
-    llmResult = await generateLLMRecommendations(page, findings, pageType);
+    // Pass detected schemas separately so LLM knows what's already present
+    llmResult = await generateLLMRecommendations(page, findings, pageType, structuredDataResult.schemas);
   } catch (err) {
     console.warn(
       "[LLM] Failed to generate LLM recommendations:",

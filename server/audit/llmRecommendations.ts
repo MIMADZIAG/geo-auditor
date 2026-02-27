@@ -31,7 +31,8 @@ export interface LLMRecommendationsResult {
 function buildPageContext(
   page: ScrapedPage,
   findings: AuditFindings,
-  pageType?: string
+  pageType?: string,
+  detectedSchemas?: Array<{ type: string }>
 ): string {
   const $ = page.$;
 
@@ -61,11 +62,25 @@ function buildPageContext(
     if (content) jsonldBlocks.push(content.slice(0, 500));
   });
 
-  // Extract all detected schema types from the structured data analysis
+  // Extract all detected schema types — use the explicitly passed schemas if available,
+  // otherwise fall back to findings (which may not have schemas after stripping)
   const structuredDataFindings = findings.structuredData as { checks: AuditCheck[]; schemas?: Array<{ type: string }> };
-  const detectedSchemaTypes: string[] = structuredDataFindings.schemas
-    ? Array.from(new Set(structuredDataFindings.schemas.map((s) => s.type)))
-    : [];
+  const rawSchemas = detectedSchemas ?? structuredDataFindings.schemas ?? [];
+  const detectedSchemaTypes: string[] = Array.from(new Set(rawSchemas.map((s) => s.type)));
+
+  // Build a subtype-aware display: NewsArticle → Article (NewsArticle), etc.
+  const SUBTYPE_MAP: Record<string, string> = {
+    NewsArticle: "Article (NewsArticle)",
+    BlogPosting: "Article (BlogPosting)",
+    TechArticle: "Article (TechArticle)",
+    MedicalWebPage: "WebPage (MedicalWebPage)",
+    AboutPage: "WebPage (AboutPage)",
+    ContactPage: "WebPage (ContactPage)",
+    ItemPage: "WebPage (ItemPage)",
+    CollectionPage: "WebPage (CollectionPage)",
+    SearchResultsPage: "WebPage (SearchResultsPage)",
+  };
+  const displaySchemaTypes = detectedSchemaTypes.map((t) => SUBTYPE_MAP[t] ?? t);
 
   // Extract meta description
   const metaDesc =
@@ -93,8 +108,9 @@ Response Time: ${page.responseTimeMs}ms
 --- HEADING STRUCTURE ---
 ${headings.slice(0, 15).join("\n") || "(no headings found)"}
 
---- DETECTED SCHEMA TYPES (already present on page) ---
-${detectedSchemaTypes.length > 0 ? detectedSchemaTypes.join(", ") : "(none found)"}
+--- DETECTED SCHEMA TYPES (already present on page — DO NOT suggest adding these) ---
+${displaySchemaTypes.length > 0 ? displaySchemaTypes.join(", ") : "(none found)"}
+Raw types: ${detectedSchemaTypes.length > 0 ? detectedSchemaTypes.join(", ") : "(none found)"}
 
 --- EXISTING JSON-LD RAW (first 500 chars per block) ---
 ${jsonldBlocks.length > 0 ? jsonldBlocks.join("\n---\n") : "(none found)"}
@@ -198,9 +214,10 @@ const LLM_RESPONSE_SCHEMA = {
 export async function generateLLMRecommendations(
   page: ScrapedPage,
   findings: AuditFindings,
-  pageType?: string
+  pageType?: string,
+  detectedSchemas?: Array<{ type: string }>
 ): Promise<LLMRecommendationsResult> {
-  const pageContext = buildPageContext(page, findings, pageType);
+  const pageContext = buildPageContext(page, findings, pageType, detectedSchemas);
 
   const systemPrompt = `You are an expert in GEO (Generative Engine Optimization) and AEO (Answer Engine Optimization). 
 Your task is to analyze a web page's audit results and generate highly personalized, actionable recommendations 
@@ -214,9 +231,11 @@ CRITICAL RULES:
 5. Write in plain language that a non-technical website owner can understand.
 6. Always explain WHY each fix matters for AI visibility specifically.
 7. NEVER suggest adding a schema type that is already listed under "DETECTED SCHEMA TYPES". If Product is already present, do NOT recommend adding Product schema.
-8. If the page already has JSON-LD, improve or EXTEND it rather than replacing it. Focus on what is MISSING.
-9. Focus on gaps that will have the highest impact on AI citation rates.
-10. If a schema type is already present, acknowledge it and suggest improvements (e.g., missing properties) rather than re-adding it.`;
+8. CRITICAL: Schema subtypes count as their parent type. If NewsArticle is detected, do NOT suggest adding Article — NewsArticle IS an Article. If BlogPosting is detected, do NOT suggest adding Article. If LocalBusiness is detected, do NOT suggest adding Organization — LocalBusiness IS an Organization.
+9. If the page already has JSON-LD, improve or EXTEND it rather than replacing it. Focus on what is MISSING.
+10. Focus on gaps that will have the highest impact on AI citation rates.
+11. If a schema type is already present, acknowledge it and suggest improvements (e.g., missing properties, adding FAQPage, adding sameAs) rather than re-adding it.
+12. If Organization schema is already present (directly or via publisher property in Article/NewsArticle), do NOT recommend adding Organization again.`;
 
   const userPrompt = `Analyze this web page audit and generate personalized GEO recommendations:
 

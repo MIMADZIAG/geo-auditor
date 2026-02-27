@@ -271,6 +271,72 @@ describe("analyzeStructuredData", () => {
     // Type should be joined string
     expect(result.schemas[0].type).toBe("LocalBusiness, Restaurant");
   });
+
+  it("treats NewsArticle as Article subtype (article_product_schema passes)", () => {
+    const schema = {
+      "@context": "http://schema.org",
+      "@type": "NewsArticle",
+      "headline": "Test article",
+      "author": { "@type": "Person", "name": "Jan Kowalski" },
+      "publisher": { "@type": "Organization", "name": "Totalmoney.pl" },
+      "datePublished": "2026-02-09"
+    };
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify(schema)}</script>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeStructuredData(page);
+    const articleCheck = result.checks.find((c) => c.id === "article_product_schema");
+    expect(articleCheck?.status).toBe("pass");
+    expect(articleCheck?.description).toContain("NewsArticle");
+  });
+
+  it("detects Organization embedded in publisher property of NewsArticle", () => {
+    const schema = {
+      "@context": "http://schema.org",
+      "@type": "NewsArticle",
+      "headline": "Test",
+      "publisher": { "@type": "Organization", "name": "Totalmoney.pl" }
+    };
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify(schema)}</script>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeStructuredData(page);
+    const orgCheck = result.checks.find((c) => c.id === "organization_schema");
+    expect(orgCheck?.status).toBe("pass");
+  });
+
+  it("detects multiple separate JSON-LD blocks on same page (totalmoney.pl-style)", () => {
+    const block1 = JSON.stringify({
+      "@context": "http://schema.org",
+      "@type": "NewsArticle",
+      "headline": "Aktualne promocje kredytow",
+      "publisher": { "@type": "Organization", "name": "Totalmoney.pl" }
+    });
+    const block2 = JSON.stringify({
+      "@context": "http://schema.org",
+      "@graph": [
+        { "@type": "Organization", "name": "Totalmoney.pl", "legalName": "Totalmoney.pl Sp. z o.o." },
+        { "@type": "BreadcrumbList", "itemListElement": [] }
+      ]
+    });
+    const html = `<html><head>
+      <script type="application/ld+json">${block1}</script>
+      <script type="application/ld+json">${block2}</script>
+    </head><body></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeStructuredData(page);
+    const types = result.schemas.map((s) => s.type);
+    expect(types).toContain("NewsArticle");
+    expect(types).toContain("Organization");
+    expect(types).toContain("BreadcrumbList");
+    // Both article and org checks should pass
+    const articleCheck = result.checks.find((c) => c.id === "article_product_schema");
+    const orgCheck = result.checks.find((c) => c.id === "organization_schema");
+    expect(articleCheck?.status).toBe("pass");
+    expect(orgCheck?.status).toBe("pass");
+  });
 });
 
 // ─── Content Structure Tests ──────────────────────────────────────────────────

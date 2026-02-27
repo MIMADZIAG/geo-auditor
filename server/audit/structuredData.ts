@@ -157,8 +157,50 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
     value: schemas.length,
   });
 
+  // Subtype normalisation map: child → parent
+  const PARENT_MAP: Record<string, string> = {
+    NewsArticle: "Article",
+    BlogPosting: "Article",
+    TechArticle: "Article",
+    SatiricalArticle: "Article",
+    ScholarlyArticle: "Article",
+    LocalBusiness: "Organization",
+    Corporation: "Organization",
+    NGO: "Organization",
+    GovernmentOrganization: "Organization",
+    MedicalOrganization: "Organization",
+    SportsOrganization: "Organization",
+    EducationalOrganization: "Organization",
+    ItemPage: "WebPage",
+    AboutPage: "WebPage",
+    ContactPage: "WebPage",
+    CollectionPage: "WebPage",
+    MedicalWebPage: "WebPage",
+    SearchResultsPage: "WebPage",
+  };
+
+  // Expand detectedTypes to include parent types
+  const expandedTypes = new Set<string>(detectedTypes);
+  for (const t of detectedTypes) {
+    const parent = PARENT_MAP[t];
+    if (parent) expandedTypes.add(parent);
+  }
+
+  // Also detect Organization embedded in publisher/author properties
+  for (const schema of schemas) {
+    const raw = schema.raw as Record<string, unknown>;
+    const publisher = raw["publisher"] as Record<string, unknown> | undefined;
+    if (publisher && (publisher["@type"] === "Organization" || publisher["@type"] === "LocalBusiness")) {
+      expandedTypes.add("Organization");
+    }
+    const author = raw["author"] as Record<string, unknown> | undefined;
+    if (author && author["@type"] === "Organization") {
+      expandedTypes.add("Organization");
+    }
+  }
+
   // 2. High-value schema types
-  const foundHighValue = detectedTypes.filter((t) => HIGH_VALUE_TYPES.includes(t));
+  const foundHighValue = Array.from(expandedTypes).filter((t) => HIGH_VALUE_TYPES.includes(t));
   checks.push({
     id: "high_value_schema",
     label: "High-Value Schema Types",
@@ -170,7 +212,7 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
         : "fail",
     description:
       foundHighValue.length > 0
-        ? `Detected: ${foundHighValue.join(", ")}`
+        ? `Detected: ${Array.from(new Set([...detectedTypes, ...foundHighValue])).join(", ")}`
         : "No high-value schema types (Article, Product, FAQ, Organization) detected.",
     impact: "high",
     value: foundHighValue.join(", ") || null,
@@ -189,25 +231,26 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
     value: hasFaq,
   });
 
-  // 4. Article / Product schema
-  const hasArticleOrProduct = detectedTypes.some((t) =>
-    ["Article", "NewsArticle", "BlogPosting", "Product"].includes(t)
+  // 4. Article / Product schema (use expandedTypes to catch subtypes like NewsArticle, BlogPosting)
+  const hasArticleOrProduct = expandedTypes.has("Article") || expandedTypes.has("Product");
+  const articleSubtype = detectedTypes.find((t) =>
+    ["NewsArticle", "BlogPosting", "TechArticle", "ScholarlyArticle", "SatiricalArticle"].includes(t)
   );
   checks.push({
     id: "article_product_schema",
     label: "Article or Product Schema",
     status: hasArticleOrProduct ? "pass" : "warning",
     description: hasArticleOrProduct
-      ? "Article or Product schema detected — helps AI engines categorize your content."
+      ? articleSubtype
+        ? `${articleSubtype} schema detected (a subtype of Article) — helps AI engines categorize your content.`
+        : "Article or Product schema detected — helps AI engines categorize your content."
       : "No Article or Product schema. Add appropriate schema for your page type.",
     impact: "medium",
     value: hasArticleOrProduct,
   });
 
-  // 5. Organization schema
-  const hasOrg = detectedTypes.some((t) =>
-    ["Organization", "LocalBusiness", "WebSite"].includes(t)
-  );
+  // 5. Organization schema (use expandedTypes: catches LocalBusiness subtypes + publisher-embedded Org)
+  const hasOrg = expandedTypes.has("Organization") || detectedTypes.includes("WebSite");
   checks.push({
     id: "organization_schema",
     label: "Organization / WebSite Schema",
