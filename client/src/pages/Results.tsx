@@ -20,14 +20,16 @@ import {
   BarChart3,
   AlertCircle,
   Sparkles,
-  Lightbulb,
-  Target,
   Share2,
   Lock,
   TrendingUp,
   LayoutDashboard,
   ArrowRight,
   LogIn,
+  Wrench,
+  ChevronRight,
+  Target,
+  Lightbulb,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -45,6 +47,8 @@ import type {
   ContentIntelligenceResult,
   ContentIntelligenceCheck,
 } from "../../../shared/auditTypes";
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Results() {
   const params = useParams<{ id: string }>();
@@ -76,19 +80,25 @@ export default function Results() {
   const llmAiInsight = audit.llmAiInsight as string | null;
   const llmTopPriority = audit.llmTopPriority as string | null;
   const overallScore = audit.overallScore ?? 0;
-  const scoreLabel = getScoreLabel(overallScore);
+  const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
+  const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
 
   const llmResult: LLMRecommendationsResult | null =
     llmRecs && llmAiInsight
       ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "" }
       : null;
 
-  const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
+  // Collect ALL issues (fail + warning) across all categories, sorted by impact
+  const allIssues = collectIssues(findings);
+  const criticalCount = allIssues.filter((i) => i.status === "fail" && i.impact === "high").length;
+  const warningCount = allIssues.filter((i) => i.status === "warning" || (i.status === "fail" && i.impact !== "high")).length;
+  const passCount = countPasses(findings);
 
-  const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
-
-  const handleShare = (platform: "linkedin" | "twitter" | "facebook" | "copy") => {
-    const text = `I checked my website's AI-Readiness with GEO-Auditor and scored ${Math.round(overallScore)}/100! See the full report:`;
+  const handleShare = (platform: "linkedin" | "twitter" | "copy") => {
+    const issueText = criticalCount > 0
+      ? `Found ${criticalCount} critical issue${criticalCount > 1 ? "s" : ""} blocking AI visibility.`
+      : "No critical issues found — well optimized for AI search.";
+    const text = `${issueText} Full diagnostic by GEO-Auditor:`;
     const encodedText = encodeURIComponent(text);
     const encodedUrl = encodeURIComponent(reportUrl);
     if (platform === "copy") {
@@ -98,7 +108,6 @@ export default function Results() {
     }
     if (platform === "linkedin") window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, "_blank");
     else if (platform === "twitter") window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, "_blank");
-    else if (platform === "facebook") window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, "_blank");
   };
 
   return (
@@ -144,22 +153,12 @@ export default function Results() {
               Share
             </Button>
             {isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/dashboard")}
-                className="gap-1.5 text-xs"
-              >
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs">
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 Dashboard
               </Button>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => (window.location.href = getLoginUrl())}
-                className="gap-1.5 text-xs text-primary"
-              >
+              <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs text-primary">
                 <LogIn className="w-3.5 h-3.5" />
                 Sign In
               </Button>
@@ -169,634 +168,403 @@ export default function Results() {
       </header>
 
       <main className="container max-w-5xl mx-auto py-10 space-y-8">
-        {/* Score Hero */}
-        <ScoreHero
-          score={overallScore}
-          scoreLabel={scoreLabel}
-          pageTitle={audit.pageTitle ?? audit.url}
+
+        {/* ── Diagnostic Summary ── */}
+        <DiagnosticSummary
           url={audit.url}
+          pageTitle={audit.pageTitle ?? audit.url}
+          criticalCount={criticalCount}
+          warningCount={warningCount}
+          passCount={passCount}
+          overallScore={overallScore}
           findings={findings}
         />
 
-        {/* AI Insight Banner — shown when LLM result is available */}
-        {llmResult && (
-          <AIInsightBanner
-            aiInsight={llmResult.aiInsight}
-            topPriority={llmResult.topPriority}
+        {/* ── Top Priority Fix (LLM) ── */}
+        {llmResult?.topPriority && (
+          <TopPriorityBanner topPriority={llmResult.topPriority} aiInsight={llmResult.aiInsight} />
+        )}
+
+        {/* ── Issues List (PageSpeed style) ── */}
+        <IssuesList
+          allIssues={allIssues}
+          llmRecs={llmResult?.recommendations ?? null}
+          recommendations={recommendations}
+        />
+
+        {/* ── Content Intelligence ── */}
+        {contentIntelligence && (
+          <ContentIntelligencePanel
+            contentIntelligence={contentIntelligence}
+            isAuthenticated={isAuthenticated}
           />
         )}
 
-        {/* Content Intelligence Panel — LLM-powered content quality analysis */}
-        <ContentIntelligencePanel
-          contentIntelligence={contentIntelligence}
-          isAuthenticated={isAuthenticated}
-        />
+        {/* ── What's Working ── */}
+        {findings && <PassingChecks findings={findings} />}
 
-        {/* LLM Personalized Recommendations */}
-        {llmResult && llmResult.recommendations.length > 0 && (
-          <LLMRecommendationsPanel recommendations={llmResult.recommendations} />
-        )}
+        {/* ── Share ── */}
+        <SharePanel criticalCount={criticalCount} onShare={handleShare} reportUrl={reportUrl} />
 
-        {/* Category Breakdown */}
-        {findings && <CategoryBreakdown findings={findings} />}
-
-        {/* Standard Recommendations */}
-        {recommendations && recommendations.length > 0 && (
-          <RecommendationsPanel recommendations={recommendations} />
-        )}
-
-        {/* Detailed Checks */}
-        {findings && <DetailedChecks findings={findings} />}
-
-        {/* Share Panel */}
-        <ResultsSharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
-
-        {/* PLG: Score History Teaser (locked for non-auth) */}
+        {/* ── PLG: Score History Teaser ── */}
         {!isAuthenticated && <ScoreHistoryTeaser />}
 
-        {/* PLG: Upgrade CTA */}
+        {/* ── PLG: Upgrade CTA ── */}
         <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />
+
       </main>
     </div>
   );
 }
 
-// ─── AI Insight Banner ────────────────────────────────────────────────────────
+// ─── Diagnostic Summary ───────────────────────────────────────────────────────
 
-function AIInsightBanner({
-  aiInsight,
-  topPriority,
-}: {
-  aiInsight: string;
-  topPriority: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 to-violet-500/5 p-6">
-      <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-          <Sparkles className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold text-primary uppercase tracking-wide">
-              AI Analysis
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-              Personalized
-            </span>
-          </div>
-          <p className="text-sm leading-relaxed text-foreground/90 mb-4">{aiInsight}</p>
-          {topPriority && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-background/50 border border-border/40">
-              <Target className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
-                  Top Priority
-                </span>
-                <p className="text-xs text-foreground/80 mt-0.5 leading-relaxed">{topPriority}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── LLM Recommendations Panel ───────────────────────────────────────────────
-
-function LLMRecommendationsPanel({ recommendations }: { recommendations: LLMRecommendation[] }) {
-  const [expanded, setExpanded] = useState<string | null>(recommendations[0]?.id ?? null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const copyCode = (id: string, code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedId(id);
-    toast.success("Code copied to clipboard!");
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const copyFix = (rec: LLMRecommendation) => {
-    const text = `${rec.title}\n\n${rec.howToFix}${rec.codeSnippet ? `\n\n${rec.codeSnippet.code}` : ""}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
-
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">AI-Powered Recommendations</h2>
-        </div>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary font-medium border border-primary/20">
-          Personalized for this page
-        </span>
-      </div>
-
-      <div className="space-y-3">
-        {recommendations.map((rec) => (
-          <div
-            key={rec.id}
-            className="rounded-2xl bg-card border border-primary/20 overflow-hidden hover:border-primary/40 transition-colors"
-          >
-            <button
-              className="w-full flex items-center gap-4 p-5 text-left hover:bg-accent/20 transition-colors"
-              onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}
-            >
-              <PriorityBadge priority={rec.priority} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs text-muted-foreground">{rec.category}</span>
-                  {rec.codeSnippet && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 font-medium">
-                      {rec.codeSnippet.language.toUpperCase()} snippet
-                    </span>
-                  )}
-                </div>
-                <div className="font-semibold text-sm">{rec.title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                  {rec.description}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Lightbulb className="w-3.5 h-3.5 text-primary/60" />
-                {expanded === rec.id ? (
-                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                )}
-              </div>
-            </button>
-
-            {expanded === rec.id && (
-              <div className="border-t border-border/40 px-5 pb-5 pt-4 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    What to Do
-                  </div>
-                  <p className="text-sm leading-relaxed">{rec.howToFix}</p>
-                </div>
-
-                {rec.codeSnippet && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        {rec.codeSnippet.label}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyCode(rec.id, rec.codeSnippet!.code)}
-                        className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        <Copy className="w-3 h-3" />
-                        {copiedId === rec.id ? "Copied!" : "Copy"}
-                      </Button>
-                    </div>
-                    <div className="rounded-xl overflow-hidden border border-border/50 text-xs">
-                      <SyntaxHighlighter
-                        language={rec.codeSnippet.language === "json" ? "json" : rec.codeSnippet.language === "html" ? "html" : "plaintext"}
-                        style={atomOneDark}
-                        customStyle={{
-                          margin: 0,
-                          padding: "1rem",
-                          background: "oklch(0.10 0.012 250)",
-                          fontSize: "0.75rem",
-                          lineHeight: "1.5",
-                          maxHeight: "400px",
-                          overflowY: "auto",
-                        }}
-                        wrapLongLines={true}
-                      >
-                        {rec.codeSnippet.code}
-                      </SyntaxHighlighter>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    Expected Impact
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{rec.impact}</p>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyFix(rec)}
-                  className="gap-2 text-xs"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy Full Instructions
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Score Hero ───────────────────────────────────────────────────────────────
-
-function ScoreHero({
-  score,
-  scoreLabel,
-  pageTitle,
+function DiagnosticSummary({
   url,
+  pageTitle,
+  criticalCount,
+  warningCount,
+  passCount,
+  overallScore,
   findings,
 }: {
-  score: number;
-  scoreLabel: string;
-  pageTitle: string;
   url: string;
+  pageTitle: string;
+  criticalCount: number;
+  warningCount: number;
+  passCount: number;
+  overallScore: number;
   findings: AuditResult["findings"] | null;
 }) {
-  const scoreColor = getScoreColor(score);
-  const circumference = 2 * Math.PI * 54;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  // Determine overall health status
+  const status = criticalCount > 0 ? "issues" : warningCount > 2 ? "warnings" : "good";
+
+  const statusConfig = {
+    issues: {
+      label: "Issues found",
+      sublabel: `${criticalCount} critical issue${criticalCount !== 1 ? "s" : ""} need${criticalCount === 1 ? "s" : ""} your attention`,
+      barColor: "bg-red-500",
+      dotColor: "bg-red-500",
+      textColor: "text-red-400",
+    },
+    warnings: {
+      label: "Improvements available",
+      sublabel: `${warningCount} areas can be improved for better AI visibility`,
+      barColor: "bg-amber-500",
+      dotColor: "bg-amber-500",
+      textColor: "text-amber-400",
+    },
+    good: {
+      label: "Well optimized",
+      sublabel: "No critical issues found — keep it up",
+      barColor: "bg-emerald-500",
+      dotColor: "bg-emerald-500",
+      textColor: "text-emerald-400",
+    },
+  };
+
+  const cfg = statusConfig[status];
 
   return (
-    <div className="rounded-2xl bg-card border border-border/50 p-8">
-      <div className="flex flex-col lg:flex-row items-center gap-8">
-        {/* Score Ring */}
-        <div className="shrink-0 relative">
-          <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-            <circle
-              cx="70"
-              cy="70"
-              r="54"
-              fill="none"
-              stroke="oklch(0.22 0.015 250)"
-              strokeWidth="10"
-            />
-            <circle
-              cx="70"
-              cy="70"
-              r="54"
-              fill="none"
-              stroke={scoreColor}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              style={{ transition: "stroke-dashoffset 1s ease-out" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold" style={{ color: scoreColor }}>
-              {score}
-            </span>
-            <span className="text-xs text-muted-foreground mt-0.5">/ 100</span>
+    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+      {/* Top bar */}
+      <div className="h-1 w-full bg-muted">
+        <div
+          className={`h-full ${cfg.barColor} transition-all duration-700`}
+          style={{ width: `${overallScore}%` }}
+        />
+      </div>
+
+      <div className="p-6 sm:p-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left: page info + status */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`w-2 h-2 rounded-full ${cfg.dotColor}`} />
+              <span className={`text-sm font-semibold ${cfg.textColor}`}>{cfg.label}</span>
+            </div>
+            <h1 className="text-xl font-bold truncate mb-1">{pageTitle || url}</h1>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 truncate"
+            >
+              <ExternalLink className="w-3 h-3 shrink-0" />
+              {url}
+            </a>
+            <p className="text-sm text-muted-foreground mt-3">{cfg.sublabel}</p>
+          </div>
+
+          {/* Right: issue counts */}
+          <div className="flex items-center gap-4 lg:gap-6 shrink-0">
+            <div className="text-center">
+              <div className="text-3xl font-black text-red-400">{criticalCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Critical</div>
+            </div>
+            <div className="w-px h-10 bg-border" />
+            <div className="text-center">
+              <div className="text-3xl font-black text-amber-400">{warningCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Warnings</div>
+            </div>
+            <div className="w-px h-10 bg-border" />
+            <div className="text-center">
+              <div className="text-3xl font-black text-emerald-400">{passCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Passed</div>
+            </div>
           </div>
         </div>
 
-        {/* Info */}
-        <div className="flex-1 text-center lg:text-left">
-          <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
-            <span
-              className="text-sm font-semibold px-3 py-1 rounded-full"
-              style={{ color: scoreColor, background: `${scoreColor}20` }}
-            >
-              {scoreLabel} AI-Readiness
-            </span>
-          </div>
-          <h1 className="text-xl font-bold mb-1 truncate">{pageTitle || url}</h1>
-          <p className="text-sm text-muted-foreground mb-6 truncate">{url}</p>
-
-          {/* Mini category scores */}
-          {findings && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {CATEGORY_META.map((cat) => {
-                const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-                return (
-                  <div key={cat.key} className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40">
-                    <cat.icon className="w-4 h-4 text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-[10px] text-muted-foreground truncate">{cat.label}</div>
-                      <div
-                        className="text-sm font-semibold"
-                        style={{ color: getScoreColor(catData?.score ?? 0) }}
-                      >
-                        {catData?.score ?? 0}
-                      </div>
+        {/* Category health bars — compact, like Core Web Vitals */}
+        {findings && (
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {CATEGORY_META.map((cat) => {
+              const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
+              const score = catData?.score ?? 0;
+              const catStatus = score >= 70 ? "good" : score >= 40 ? "warn" : "fail";
+              const barColor = catStatus === "good" ? "bg-emerald-500" : catStatus === "warn" ? "bg-amber-500" : "bg-red-500";
+              const textColor = catStatus === "good" ? "text-emerald-400" : catStatus === "warn" ? "text-amber-400" : "text-red-400";
+              return (
+                <div key={cat.key} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <cat.icon className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground truncate">{cat.label}</span>
                     </div>
+                    <span className={`text-[10px] font-bold ${textColor}`}>{score}</span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${barColor} transition-all duration-700`} style={{ width: `${score}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Category Breakdown ───────────────────────────────────────────────────────
+// ─── Top Priority Banner ──────────────────────────────────────────────────────
 
-function CategoryBreakdown({ findings }: { findings: AuditResult["findings"] }) {
+function TopPriorityBanner({ topPriority, aiInsight }: { topPriority: string; aiInsight: string }) {
+  const [showInsight, setShowInsight] = useState(false);
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Score Breakdown</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {CATEGORY_META.map((cat) => {
-          const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-          const score = catData?.score ?? 0;
-          const color = getScoreColor(score);
-          return (
-            <div key={cat.key} className="p-5 rounded-2xl bg-card border border-border/50">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <cat.icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">{cat.label}</div>
-                    <div className="text-xs text-muted-foreground">{cat.weight}% of total score</div>
-                  </div>
-                </div>
-                <span className="text-2xl font-bold" style={{ color }}>
-                  {score}
-                </span>
-              </div>
-              {/* Progress bar */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${score}%`, backgroundColor: color }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{catData?.summary}</p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Standard Recommendations Panel ──────────────────────────────────────────
-
-function RecommendationsPanel({ recommendations }: { recommendations: Recommendation[] }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  const copyFix = (rec: Recommendation) => {
-    navigator.clipboard.writeText(`${rec.title}\n\n${rec.howToFix}`);
-    toast.success("Copied to clipboard!");
-  };
-
-  const priorityCounts = {
-    critical: recommendations.filter((r) => r.priority === "critical").length,
-    high: recommendations.filter((r) => r.priority === "high").length,
-    medium: recommendations.filter((r) => r.priority === "medium").length,
-    low: recommendations.filter((r) => r.priority === "low").length,
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Technical Recommendations</h2>
-        <div className="flex items-center gap-2 text-xs">
-          {priorityCounts.critical > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-status-fail text-status-fail font-medium">
-              {priorityCounts.critical} critical
-            </span>
-          )}
-          {priorityCounts.high > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-status-warning text-status-warning font-medium">
-              {priorityCounts.high} high
-            </span>
-          )}
+    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+      <div className="flex items-start gap-4">
+        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+          <Target className="w-4 h-4 text-primary" />
         </div>
-      </div>
-
-      <div className="space-y-3">
-        {recommendations.map((rec) => (
-          <div
-            key={rec.id}
-            className="rounded-2xl bg-card border border-border/50 overflow-hidden"
-          >
-            <button
-              className="w-full flex items-center gap-4 p-5 text-left hover:bg-accent/20 transition-colors"
-              onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}
-            >
-              <PriorityBadge priority={rec.priority} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs text-muted-foreground">{rec.category}</span>
-                </div>
-                <div className="font-semibold text-sm">{rec.title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5 truncate">{rec.description}</div>
-              </div>
-              {expanded === rec.id ? (
-                <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Top Priority Fix</div>
+          <p className="text-sm font-medium leading-relaxed">{topPriority}</p>
+          {aiInsight && (
+            <>
+              <button
+                onClick={() => setShowInsight(!showInsight)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+              >
+                <Lightbulb className="w-3 h-3" />
+                {showInsight ? "Hide" : "Show"} AI analysis
+                {showInsight ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {showInsight && (
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed border-t border-border/40 pt-2">{aiInsight}</p>
               )}
-            </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {expanded === rec.id && (
-              <div className="px-5 pb-5 border-t border-border/40 pt-4 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    How to Fix
-                  </div>
-                  <p className="text-sm leading-relaxed">{rec.howToFix}</p>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    Expected Impact
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{rec.impact}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyFix(rec)}
-                  className="gap-2 text-xs"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy Fix Instructions
-                </Button>
-              </div>
+// ─── Issues List ──────────────────────────────────────────────────────────────
+
+interface FlatIssue {
+  id: string;
+  label: string;
+  status: "fail" | "warning";
+  impact: "high" | "medium" | "low";
+  description: string;
+  category: string;
+  llmFix?: string;
+  llmCodeSnippet?: LLMRecommendation["codeSnippet"];
+  standardFix?: string;
+}
+
+function IssuesList({
+  allIssues,
+  llmRecs,
+  recommendations,
+}: {
+  allIssues: FlatIssue[];
+  llmRecs: LLMRecommendation[] | null;
+  recommendations: Recommendation[];
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  if (allIssues.length === 0) {
+    return (
+      <div className="rounded-2xl bg-card border border-border/50 p-8 text-center">
+        <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
+        <h3 className="font-semibold mb-1">No issues found</h3>
+        <p className="text-sm text-muted-foreground">This page passes all AI visibility checks. Well done!</p>
+      </div>
+    );
+  }
+
+  // Enrich issues with LLM fixes
+  const enriched = allIssues.map((issue) => {
+    const llmRec = llmRecs?.find((r) =>
+      r.title.toLowerCase().includes(issue.label.toLowerCase().slice(0, 20)) ||
+      issue.label.toLowerCase().includes(r.title.toLowerCase().slice(0, 20))
+    );
+    const stdRec = recommendations.find((r) =>
+      r.title.toLowerCase().includes(issue.label.toLowerCase().slice(0, 20)) ||
+      issue.label.toLowerCase().includes(r.title.toLowerCase().slice(0, 20))
+    );
+    return {
+      ...issue,
+      llmFix: llmRec?.howToFix ?? stdRec?.howToFix,
+      llmCodeSnippet: llmRec?.codeSnippet,
+      llmImpact: llmRec?.impact ?? stdRec?.impact,
+    };
+  });
+
+  const critical = enriched.filter((i) => i.status === "fail" && i.impact === "high");
+  const others = enriched.filter((i) => !(i.status === "fail" && i.impact === "high"));
+  const visibleOthers = showAll ? others : others.slice(0, 3);
+
+  const copyFix = (issue: typeof enriched[0]) => {
+    const text = issue.llmFix ?? issue.description;
+    navigator.clipboard.writeText(text);
+    toast.success("Fix instructions copied!");
+  };
+
+  const renderIssue = (issue: typeof enriched[0]) => {
+    const isOpen = expanded === issue.id;
+    const isCritical = issue.status === "fail" && issue.impact === "high";
+    const isWarning = issue.status === "warning" || (issue.status === "fail" && issue.impact !== "high");
+
+    return (
+      <div key={issue.id} className={`rounded-xl border overflow-hidden transition-colors ${isCritical ? "border-red-500/30 bg-red-500/3" : "border-amber-500/20 bg-amber-500/3"}`}>
+        <button
+          className="w-full flex items-start gap-4 p-4 text-left hover:bg-white/3 transition-colors"
+          onClick={() => setExpanded(isOpen ? null : issue.id)}
+        >
+          <div className="mt-0.5 shrink-0">
+            {isCritical ? (
+              <XCircle className="w-4 h-4 text-red-400" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
             )}
           </div>
-        ))}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <span className="text-sm font-medium">{issue.label}</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isCritical ? "bg-red-500/15 text-red-400" : "bg-amber-500/15 text-amber-400"}`}>
+                {isCritical ? "Critical" : issue.impact === "medium" ? "High" : "Medium"}
+              </span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{issue.category}</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">{issue.description}</p>
+            {!isOpen && issue.llmFix && (
+              <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                <ChevronRight className="w-3 h-3" />
+                {issue.llmFix.slice(0, 80)}{issue.llmFix.length > 80 ? "…" : ""}
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 mt-0.5">
+            {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </button>
+
+        {isOpen && (
+          <div className="border-t border-border/30 px-4 pb-4 pt-3 space-y-3">
+            {issue.llmFix && (
+              <div>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                  <Wrench className="w-3 h-3" /> How to fix
+                </div>
+                <p className="text-sm leading-relaxed">{issue.llmFix}</p>
+              </div>
+            )}
+            {issue.llmCodeSnippet && (
+              <div>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{issue.llmCodeSnippet.label}</div>
+                <div className="rounded-lg overflow-hidden text-xs">
+                  <SyntaxHighlighter
+                    language={issue.llmCodeSnippet.language}
+                    style={atomOneDark}
+                    customStyle={{ margin: 0, padding: "12px", fontSize: "11px", borderRadius: "8px" }}
+                  >
+                    {issue.llmCodeSnippet.code}
+                  </SyntaxHighlighter>
+                </div>
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => copyFix(issue)}
+              className="gap-2 text-xs h-7"
+            >
+              <Copy className="w-3 h-3" />
+              Copy fix instructions
+            </Button>
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
-
-// ─── Detailed Checks ──────────────────────────────────────────────────────────
-
-function DetailedChecks({ findings }: { findings: AuditResult["findings"] }) {
-  const [openCategory, setOpenCategory] = useState<string | null>(null);
+    );
+  };
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-4">Detailed Checks</h2>
-      <div className="space-y-3">
-        {CATEGORY_META.map((cat) => {
-          const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-          const checks = catData?.checks ?? [];
-          const passCount = checks.filter((c) => c.status === "pass").length;
-          const isOpen = openCategory === cat.key;
+      {/* Critical issues */}
+      {critical.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <XCircle className="w-4 h-4 text-red-400" />
+            <h2 className="text-base font-semibold">Critical issues</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-medium">{critical.length}</span>
+          </div>
+          <div className="space-y-2">
+            {critical.map(renderIssue)}
+          </div>
+        </div>
+      )}
 
-          return (
-            <div
-              key={cat.key}
-              className="rounded-2xl bg-card border border-border/50 overflow-hidden"
+      {/* Warnings & improvements */}
+      {others.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <h2 className="text-base font-semibold">Improvements</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium">{others.length}</span>
+          </div>
+          <div className="space-y-2">
+            {visibleOthers.map(renderIssue)}
+          </div>
+          {others.length > 3 && !showAll && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="mt-3 w-full py-2.5 rounded-xl border border-border/50 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors flex items-center justify-center gap-1.5"
             >
-              <button
-                className="w-full flex items-center gap-4 p-5 text-left hover:bg-accent/20 transition-colors"
-                onClick={() => setOpenCategory(isOpen ? null : cat.key)}
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <cat.icon className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-sm">{cat.label}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {passCount} / {checks.length} checks passed
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className="text-xl font-bold"
-                    style={{ color: getScoreColor(catData?.score ?? 0) }}
-                  >
-                    {catData?.score ?? 0}
-                  </span>
-                  {isOpen ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </div>
-              </button>
-
-              {isOpen && (
-                <div className="border-t border-border/40">
-                  {checks.map((check) => (
-                    <CheckRow key={check.id} check={check} />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              <ChevronDown className="w-3.5 h-3.5" />
+              Show {others.length - 3} more improvements
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function CheckRow({ check }: { check: AuditCheck }) {
-  const { icon: StatusIcon, colorClass } = STATUS_CONFIG[check.status];
-  return (
-    <div className="flex items-start gap-4 px-5 py-3.5 border-b border-border/20 last:border-0 hover:bg-accent/10 transition-colors">
-      <StatusIcon className={`w-4 h-4 mt-0.5 shrink-0 ${colorClass}`} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-sm font-medium">{check.label}</span>
-          <ImpactBadge impact={check.impact} />
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">{check.description}</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Helpers & Sub-components ─────────────────────────────────────────────────
-
-function PriorityBadge({ priority }: { priority: Recommendation["priority"] }) {
-  const config = {
-    critical: { label: "Critical", classes: "bg-status-fail text-status-fail" },
-    high: { label: "High", classes: "bg-status-warning text-status-warning" },
-    medium: { label: "Medium", classes: "bg-blue-500/15 text-blue-400" },
-    low: { label: "Low", classes: "bg-muted text-muted-foreground" },
-  };
-  const c = config[priority];
-  return (
-    <span
-      className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${c.classes}`}
-    >
-      {c.label}
-    </span>
-  );
-}
-
-function ImpactBadge({ impact }: { impact: AuditCheck["impact"] }) {
-  if (impact === "low") return null;
-  const config = {
-    high: "text-[9px] text-status-fail bg-status-fail px-1.5 py-0.5 rounded uppercase font-bold",
-    medium:
-      "text-[9px] text-status-warning bg-status-warning px-1.5 py-0.5 rounded uppercase font-bold",
-    low: "",
-  };
-  return <span className={config[impact]}>{impact}</span>;
-}
-
-function LoadingState() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-          <Brain className="w-8 h-8 text-primary animate-pulse" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Analyzing your page...</h2>
-          <p className="text-muted-foreground text-sm">Running 40+ AI-readiness checks</p>
-        </div>
-        <div className="flex justify-center gap-3 pt-2">
-          {["Technical", "Schema", "Content", "E-E-A-T", "AI Insight"].map((step, i) => (
-            <div key={step} className="flex flex-col items-center gap-1">
-              <div
-                className="w-2 h-2 rounded-full bg-primary"
-                style={{ animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite` }}
-              />
-              <span className="text-[10px] text-muted-foreground">{step}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  const [, navigate] = useLocation();
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4 max-w-md px-4">
-        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-8 h-8 text-destructive" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Audit Failed</h2>
-          <p className="text-muted-foreground text-sm">{message}</p>
-        </div>
-        <Button onClick={() => navigate("/")} className="gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Try Another URL
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG = {
-  pass: { icon: CheckCircle2, colorClass: "text-status-pass" },
-  fail: { icon: XCircle, colorClass: "text-status-fail" },
-  warning: { icon: AlertTriangle, colorClass: "text-status-warning" },
-  info: { icon: Info, colorClass: "text-status-info" },
-};
-
-// ─── Content Intelligence Panel ─────────────────────────────────────────────
+// ─── Content Intelligence Panel ───────────────────────────────────────────────
 
 function ContentIntelligencePanel({
   contentIntelligence,
@@ -805,185 +573,88 @@ function ContentIntelligencePanel({
   contentIntelligence: ContentIntelligenceResult | null;
   isAuthenticated: boolean;
 }) {
-  const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  if (!contentIntelligence) {
-    return (
-      <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-violet-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">Content Intelligence</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Deep content quality analysis for AI discoverability</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border/40">
-          <div className="w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin shrink-0" />
-          <p className="text-sm text-muted-foreground">Analyzing content quality, answer density, and citeability...</p>
-        </div>
-      </div>
-    );
-  }
+  if (!contentIntelligence) return null;
 
-  const citeColor = getScoreColor(contentIntelligence.citeabilityScore);
-  const ciColor = getScoreColor(contentIntelligence.overallScore);
-  const circumference = 2 * Math.PI * 36;
-  const citeOffset = circumference - (contentIntelligence.citeabilityScore / 100) * circumference;
+  const { checks, citeabilityScore, summary, topOpportunity, pageTopics } = contentIntelligence;
 
-  const impactOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  const sortedChecks = [...contentIntelligence.checks].sort(
-    (a, b) => impactOrder[a.impact] - impactOrder[b.impact]
-  );
+  const scoreColor =
+    citeabilityScore >= 70 ? "text-emerald-400" : citeabilityScore >= 45 ? "text-amber-400" : "text-red-400";
+  const barColor =
+    citeabilityScore >= 70 ? "bg-emerald-500" : citeabilityScore >= 45 ? "bg-amber-500" : "bg-red-500";
 
   return (
-    <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background overflow-hidden">
-      {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between gap-4 mb-5">
+    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+      <div className="p-5 border-b border-border/40">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-violet-400" />
+            <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
+              <Brain className="w-4 h-4 text-violet-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold">Content Intelligence</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+                <h2 className="text-sm font-semibold">Content Intelligence</h2>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 font-bold uppercase">AI-Powered</span>
               </div>
-              <p className="text-xs text-muted-foreground">How well your content will be cited by AI search engines</p>
+              <p className="text-xs text-muted-foreground">How likely AI models are to cite your content</p>
             </div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className={`text-2xl font-black ${scoreColor}`}>{citeabilityScore}</div>
+            <div className="text-[10px] text-muted-foreground">Citeability</div>
           </div>
         </div>
-
-        {/* Two-column: Scores + Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-          {/* Citeability Score Gauge */}
-          <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-background/60 border border-border/40">
-            <div className="relative mb-2">
-              <svg width="90" height="90" viewBox="0 0 90 90" className="-rotate-90">
-                <circle cx="45" cy="45" r="36" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="7" />
-                <circle
-                  cx="45" cy="45" r="36" fill="none"
-                  stroke={citeColor} strokeWidth="7" strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={citeOffset}
-                  style={{ transition: "stroke-dashoffset 1s ease-out" }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold" style={{ color: citeColor }}>{Math.round(contentIntelligence.citeabilityScore)}</span>
-                <span className="text-[9px] text-muted-foreground">/100</span>
-              </div>
-            </div>
-            <div className="text-xs font-semibold text-center">Citeability Score</div>
-            <div className="text-[10px] text-muted-foreground text-center mt-0.5">Likelihood of AI citation</div>
-          </div>
-
-          {/* CI Overall Score */}
-          <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-background/60 border border-border/40">
-            <div className="text-4xl font-bold mb-1" style={{ color: ciColor }}>{Math.round(contentIntelligence.overallScore)}</div>
-            <div className="text-xs font-semibold text-center">Content Quality</div>
-            <div className="text-[10px] text-muted-foreground text-center mt-0.5">Overall content score</div>
-            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${contentIntelligence.overallScore}%`, backgroundColor: ciColor }} />
-            </div>
-          </div>
-
-          {/* Summary + Top Opportunity */}
-          <div className="flex flex-col gap-2 p-4 rounded-xl bg-background/60 border border-border/40">
-            <p className="text-xs text-foreground/80 leading-relaxed">{contentIntelligence.summary}</p>
-            {contentIntelligence.topOpportunity && (
-              <div className="flex items-start gap-1.5 mt-auto pt-2 border-t border-border/30">
-                <TrendingUp className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-amber-400/90 leading-relaxed">{contentIntelligence.topOpportunity}</p>
-              </div>
-            )}
-          </div>
+        <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${barColor} transition-all duration-700`} style={{ width: `${citeabilityScore}%` }} />
         </div>
-
-        {/* Page Topics */}
-        {contentIntelligence.pageTopics.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-5">
-            <span className="text-[10px] text-muted-foreground mr-1 self-center">Topics detected:</span>
-            {contentIntelligence.pageTopics.map((topic) => (
-              <span key={topic} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                {topic}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
+      {/* Top opportunity */}
+      {topOpportunity && (
+        <div className="px-5 py-3 bg-violet-500/5 border-b border-border/30 flex items-start gap-2">
+          <Target className="w-3.5 h-3.5 text-violet-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed"><span className="text-foreground font-medium">Top opportunity: </span>{topOpportunity}</p>
+        </div>
+      )}
+
       {/* Checks */}
-      <div className="px-6 pb-6 space-y-2">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">5 Content Quality Dimensions</div>
-        {sortedChecks.map((check) => {
-          const isExpanded = expandedCheck === check.id;
-          const checkColor = check.score >= 70 ? "oklch(0.72 0.18 145)" : check.score >= 40 ? "oklch(0.78 0.18 75)" : "oklch(0.65 0.22 25)";
-          const statusIcon =
-            check.status === "pass" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> :
-            check.status === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-400" /> :
-            <XCircle className="w-4 h-4 text-red-400" />;
-
+      <div className="divide-y divide-border/20">
+        {checks.map((check) => {
+          const isOpen = expanded === check.id;
+          const checkColor = check.score >= 70 ? "text-emerald-400" : check.score >= 45 ? "text-amber-400" : "text-red-400";
+          const checkBarColor = check.score >= 70 ? "bg-emerald-500" : check.score >= 45 ? "bg-amber-500" : "bg-red-500";
           return (
-            <div key={check.id} className="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
+            <div key={check.id}>
               <button
-                onClick={() => setExpandedCheck(isExpanded ? null : check.id)}
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/20 transition-colors"
+                className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-muted/10 transition-colors"
+                onClick={() => setExpanded(isOpen ? null : check.id)}
               >
-                {statusIcon}
+                <div className="w-8 h-8 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
+                  <span className={`text-xs font-bold ${checkColor}`}>{check.score}</span>
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{check.label}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                      check.impact === "high" ? "bg-red-500/15 text-red-400" :
-                      check.impact === "medium" ? "bg-amber-500/15 text-amber-400" :
-                      "bg-muted text-muted-foreground"
-                    }`}>{check.impact} impact</span>
+                  <div className="text-sm font-medium mb-1">{check.label}</div>
+                  <div className="h-1 bg-muted rounded-full overflow-hidden w-full max-w-xs">
+                    <div className={`h-full rounded-full ${checkBarColor}`} style={{ width: `${check.score}%` }} />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{check.description}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-bold" style={{ color: checkColor }}>{check.score}</span>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </div>
+                {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
               </button>
-
-              {isExpanded && (
-                <div className="px-4 pb-4 space-y-3 border-t border-border/30">
-                  {/* Score bar */}
-                  <div className="pt-3">
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Score</span>
-                      <span style={{ color: checkColor }}>{check.score}/100</span>
+              {isOpen && (
+                <div className="px-5 pb-4 pt-1 space-y-2 bg-muted/5">
+                  <p className="text-xs text-muted-foreground leading-relaxed">{check.description}</p>
+                  {check.recommendation && (
+                    <div className="flex items-start gap-2">
+                      <ChevronRight className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                      <p className="text-xs text-primary leading-relaxed">{check.recommendation}</p>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${check.score}%`, backgroundColor: checkColor }} />
-                    </div>
-                  </div>
-
-                  {/* Recommendation */}
-                  <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Lightbulb className="w-3.5 h-3.5 text-violet-400" />
-                      <span className="text-xs font-semibold text-violet-400">How to improve</span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">{check.recommendation}</p>
-                  </div>
-
-                  {/* Examples */}
+                  )}
                   {check.examples && check.examples.length > 0 && (
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Examples from your page</div>
-                      <div className="space-y-1">
-                        {check.examples.map((ex, i) => (
-                          <div key={i} className="text-xs text-foreground/70 p-2 rounded-lg bg-muted/30 border border-border/30 italic">"{ex}"</div>
-                        ))}
-                      </div>
+                    <div className="space-y-1 pt-1">
+                      {check.examples.map((ex, i) => (
+                        <div key={i} className="text-[10px] text-muted-foreground bg-muted/30 rounded px-2.5 py-1.5 font-mono">{ex}</div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -993,71 +664,100 @@ function ContentIntelligencePanel({
         })}
       </div>
 
-      {/* PLG: Sign-in nudge for non-authenticated users */}
+      {/* Topics */}
+      {pageTopics && pageTopics.length > 0 && (
+        <div className="px-5 py-3 border-t border-border/30 flex flex-wrap gap-1.5">
+          <span className="text-[10px] text-muted-foreground mr-1">Topics:</span>
+          {pageTopics.map((t) => (
+            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{t}</span>
+          ))}
+        </div>
+      )}
+
+      {/* PLG nudge for non-auth */}
       {!isAuthenticated && (
-        <div className="mx-6 mb-6 p-4 rounded-xl bg-gradient-to-r from-violet-500/10 to-indigo-500/5 border border-violet-500/20">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-semibold mb-0.5">Track content improvements over time</div>
-              <div className="text-xs text-muted-foreground">Sign in free to monitor your Content Intelligence score weekly</div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => (window.location.href = getLoginUrl())}
-              className="bg-violet-600 hover:bg-violet-500 text-white shrink-0 gap-1.5 text-xs"
-            >
-              <LogIn className="w-3 h-3" />
-              Sign In Free
-            </Button>
-          </div>
+        <div className="px-5 py-3 border-t border-border/30 bg-primary/3 flex items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
+            <span className="text-foreground font-medium">Sign in free</span> to track your Citeability Score over time and get alerts when it drops.
+          </p>
+          <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs shrink-0">
+            <LogIn className="w-3 h-3" />
+            Sign In
+          </Button>
         </div>
       )}
     </div>
   );
 }
 
-const CATEGORY_META = [
-  { key: "technical", label: "Technical", icon: Shield, weight: 25 },
-  { key: "structuredData", label: "Structured Data", icon: Code2, weight: 20 },
-  { key: "contentStructure", label: "Content Structure", icon: FileText, weight: 25 },
-  { key: "eeat", label: "E-E-A-T Signals", icon: Zap, weight: 15 },
-  { key: "aiCrawlers", label: "AI Crawler Access", icon: Bot, weight: 10 },
-  { key: "metaTags", label: "Meta Tags", icon: BarChart3, weight: 5 },
-];
+// ─── Passing Checks ───────────────────────────────────────────────────────────
 
-function getScoreLabel(score: number): string {
-  if (score >= 80) return "Excellent";
-  if (score >= 60) return "Good";
-  if (score >= 40) return "Fair";
-  return "Poor";
+function PassingChecks({ findings }: { findings: AuditResult["findings"] }) {
+  const [open, setOpen] = useState(false);
+
+  const passes: { label: string; category: string }[] = [];
+  for (const [catKey, catData] of Object.entries(findings)) {
+    const cat = CATEGORY_META.find((c) => c.key === catKey);
+    if (!cat) continue;
+    const checks = (catData as CategoryResult).checks ?? [];
+    for (const check of checks) {
+      if (check.status === "pass") {
+        passes.push({ label: check.label, category: cat.label });
+      }
+    }
+  }
+
+  if (passes.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between p-5 hover:bg-muted/10 transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-left">
+            <div className="text-sm font-semibold">What's working</div>
+            <div className="text-xs text-muted-foreground">{passes.length} checks passed</div>
+          </div>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="border-t border-border/30 divide-y divide-border/20">
+          {passes.map((p, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="text-sm flex-1">{p.label}</span>
+              <span className="text-[10px] text-muted-foreground">{p.category}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 80) return "oklch(0.72 0.18 145)";
-  if (score >= 60) return "oklch(0.72 0.18 160)";
-  if (score >= 40) return "oklch(0.78 0.18 75)";
-  return "oklch(0.65 0.22 25)";
-}
+// ─── Share Panel ──────────────────────────────────────────────────────────────
 
-// ─── PLG: Results Share Panel ─────────────────────────────────────────────────
-
-function ResultsSharePanel({
-  score,
+function SharePanel({
+  criticalCount,
   onShare,
   reportUrl,
 }: {
-  score: number;
-  onShare: (platform: "linkedin" | "twitter" | "facebook" | "copy") => void;
+  criticalCount: number;
+  onShare: (platform: "linkedin" | "twitter" | "copy") => void;
   reportUrl: string;
 }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = () => {
     onShare("copy");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
   return (
     <div className="rounded-2xl bg-card border border-border/50 p-5">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -1066,8 +766,12 @@ function ResultsSharePanel({
             <Share2 className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-semibold">Share your AI-Readiness score</div>
-            <div className="text-xs text-muted-foreground">Let others know how AI-ready your site is</div>
+            <div className="text-sm font-semibold">Share this diagnostic</div>
+            <div className="text-xs text-muted-foreground">
+              {criticalCount > 0
+                ? `Show your team the ${criticalCount} issue${criticalCount > 1 ? "s" : ""} that need fixing`
+                : "Share your clean diagnostic report"}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -1102,7 +806,7 @@ function ResultsSharePanel({
   );
 }
 
-// ─── PLG: Score History Teaser ────────────────────────────────────────────────
+// ─── Score History Teaser ─────────────────────────────────────────────────────
 
 function ScoreHistoryTeaser() {
   return (
@@ -1113,8 +817,8 @@ function ScoreHistoryTeaser() {
             <TrendingUp className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-semibold">Score History</div>
-            <div className="text-xs text-muted-foreground">Track how your AI-Readiness improves over time</div>
+            <div className="text-sm font-semibold">Track your progress</div>
+            <div className="text-xs text-muted-foreground">See how your fixes improve AI visibility over time</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -1122,20 +826,14 @@ function ScoreHistoryTeaser() {
           <span className="text-xs text-muted-foreground">Free account required</span>
         </div>
       </div>
-      {/* Blurred fake chart */}
-      <div className="relative h-28 mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden">
+      <div className="relative h-24 mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden">
         <div className="absolute inset-0 flex items-end px-4 pb-3 gap-2 opacity-30">
           {[45, 52, 48, 61, 58, 67, 72, 75].map((v, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-primary"
-              style={{ height: `${v}%` }}
-            />
+            <div key={i} className="flex-1 rounded-t bg-primary" style={{ height: `${v}%` }} />
           ))}
         </div>
         <div className="absolute inset-0 backdrop-blur-sm bg-background/40 flex flex-col items-center justify-center gap-2">
-          <Lock className="w-5 h-5 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">Sign in to unlock score history</p>
+          <p className="text-xs text-muted-foreground">Sign in to track improvements</p>
           <button
             onClick={() => (window.location.href = getLoginUrl())}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -1149,7 +847,7 @@ function ScoreHistoryTeaser() {
   );
 }
 
-// ─── PLG: Upgrade Banner ──────────────────────────────────────────────────────
+// ─── PLG Upgrade Banner ───────────────────────────────────────────────────────
 
 function PLGUpgradeBanner({
   isAuthenticated,
@@ -1169,53 +867,29 @@ function PLGUpgradeBanner({
             <>
               <h3 className="font-semibold mb-1">Monitor this page automatically</h3>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Weekly re-audits
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Score change alerts
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Track improvements over time
-                </span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Weekly re-audits</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Score change alerts</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Track improvements over time</span>
               </div>
             </>
           ) : (
             <>
               <h3 className="font-semibold mb-1">Want to track improvements over time?</h3>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Free account — 1 monitored page
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Score history & weekly alerts
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  5 audits/month
-                </span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Free account — 1 monitored page</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Score history & weekly alerts</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />5 audits/month</span>
               </div>
             </>
           )}
         </div>
         {isAuthenticated ? (
-          <Button
-            onClick={() => navigate("/dashboard")}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
-          >
+          <Button onClick={() => navigate("/dashboard")} className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2">
             <LayoutDashboard className="w-3.5 h-3.5" />
             Go to Dashboard
           </Button>
         ) : (
-          <Button
-            onClick={() => (window.location.href = getLoginUrl())}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
-          >
+          <Button onClick={() => (window.location.href = getLoginUrl())} className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2">
             <LogIn className="w-3.5 h-3.5" />
             Sign In — Free
           </Button>
@@ -1223,4 +897,108 @@ function PLGUpgradeBanner({
       </div>
     </div>
   );
+}
+
+// ─── Loading / Error ──────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+          <Brain className="w-8 h-8 text-primary animate-pulse" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-2">Scanning your page...</h2>
+          <p className="text-muted-foreground text-sm">Running 40+ AI visibility checks</p>
+        </div>
+        <div className="flex justify-center gap-3 pt-2">
+          {["Crawlers", "Schema", "Content", "E-E-A-T", "AI Analysis"].map((step, i) => (
+            <div key={step} className="flex flex-col items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-primary" style={{ animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite` }} />
+              <span className="text-[10px] text-muted-foreground">{step}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  const [, navigate] = useLocation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center space-y-4 max-w-md px-4">
+        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-8 h-8 text-destructive" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-2">Diagnostic Failed</h2>
+          <p className="text-muted-foreground text-sm">{message}</p>
+        </div>
+        <Button onClick={() => navigate("/")} className="gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Try Another URL
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const CATEGORY_META = [
+  { key: "technical", label: "Technical", icon: Shield },
+  { key: "structuredData", label: "Schema", icon: Code2 },
+  { key: "contentStructure", label: "Content", icon: FileText },
+  { key: "eeat", label: "E-E-A-T", icon: Zap },
+  { key: "aiCrawlers", label: "AI Crawlers", icon: Bot },
+  { key: "metaTags", label: "Meta Tags", icon: BarChart3 },
+];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  technical: "Technical",
+  structuredData: "Structured Data",
+  contentStructure: "Content Structure",
+  eeat: "E-E-A-T",
+  aiCrawlers: "AI Crawlers",
+  metaTags: "Meta Tags",
+};
+
+function collectIssues(findings: AuditResult["findings"] | null): FlatIssue[] {
+  if (!findings) return [];
+  const issues: FlatIssue[] = [];
+  for (const [catKey, catData] of Object.entries(findings)) {
+    const checks = (catData as CategoryResult).checks ?? [];
+    for (const check of checks) {
+      if (check.status === "fail" || check.status === "warning") {
+        issues.push({
+          id: `${catKey}-${check.id}`,
+          label: check.label,
+          status: check.status as "fail" | "warning",
+          impact: check.impact,
+          description: check.description,
+          category: CATEGORY_LABELS[catKey] ?? catKey,
+        });
+      }
+    }
+  }
+  // Sort: critical (fail+high) first, then by impact
+  const impactOrder = { high: 0, medium: 1, low: 2 };
+  return issues.sort((a, b) => {
+    const aScore = (a.status === "fail" ? 0 : 10) + impactOrder[a.impact];
+    const bScore = (b.status === "fail" ? 0 : 10) + impactOrder[b.impact];
+    return aScore - bScore;
+  });
+}
+
+function countPasses(findings: AuditResult["findings"] | null): number {
+  if (!findings) return 0;
+  let count = 0;
+  for (const catData of Object.values(findings)) {
+    const checks = (catData as CategoryResult).checks ?? [];
+    count += checks.filter((c) => c.status === "pass").length;
+  }
+  return count;
 }

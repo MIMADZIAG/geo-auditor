@@ -89,3 +89,14 @@ export const scoreSnapshots = mysqlTable("score_snapshots", {
 
 export type ScoreSnapshot = typeof scoreSnapshots.$inferSelect;
 export type InsertScoreSnapshot = typeof scoreSnapshots.$inferInsert;
+
+// Email leads — captured from diagnostic results page (pre-registration)
+export const emailLeads = mysqlTable("email_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  auditId: int("auditId"),
+  source: varchar("source", { length: 100 }).default("results_page"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EmailLead = typeof emailLeads.$inferSelect;
+export type InsertEmailLead = typeof emailLeads.$inferInsert;

@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users, audits, auditRateLimits, InsertAudit,
   monitoredPages, InsertMonitoredPage, scoreSnapshots, InsertScoreSnapshot,
+  emailLeads,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -249,4 +250,15 @@ export async function getScoreSnapshots(monitoredPageId: number, limit = 10) {
     .where(eq(scoreSnapshots.monitoredPageId, monitoredPageId))
     .orderBy(desc(scoreSnapshots.recordedAt))
     .limit(limit);
+}
+
+export async function captureEmailLead(email: string, auditId?: number, source = "results_page") {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    await db.insert(emailLeads).values({ email, auditId, source });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -19,6 +19,7 @@ import {
   addScoreSnapshot,
   getScoreSnapshots,
   MAX_MONITORING_SLOTS_FREE,
+  captureEmailLead,
 } from "./db";
 
 export const appRouter = router({
@@ -200,7 +201,14 @@ export const appRouter = router({
         const snapshots = await getScoreSnapshots(input.monitoredPageId, input.limit);
         return snapshots;
       }),
+   }),
+  leads: router({
+    captureEmail: publicProcedure
+      .input(z.object({ email: z.string().email(), auditId: z.number().optional(), source: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const result = await captureEmailLead(input.email, input.auditId, input.source);
+        return { success: !!result };
+      }),
   }),
 });
-
 export type AppRouter = typeof appRouter;
