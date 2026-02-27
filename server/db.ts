@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users, audits, auditRateLimits, InsertAudit,
   monitoredPages, InsertMonitoredPage, scoreSnapshots, InsertScoreSnapshot,
+  emailLeads,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -249,4 +250,17 @@ export async function getScoreSnapshots(monitoredPageId: number, limit = 10) {
     .where(eq(scoreSnapshots.monitoredPageId, monitoredPageId))
     .orderBy(desc(scoreSnapshots.recordedAt))
     .limit(limit);
+}
+
+// ─── Email Leads ──────────────────────────────────────────────────────────────
+
+export async function captureEmailLead(email: string, auditId?: number, source?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Upsert — don't duplicate same email
+  const existing = await db.select().from(emailLeads).where(eq(emailLeads.email, email)).limit(1);
+  if (existing.length > 0) return existing[0];
+  const result = await db.insert(emailLeads).values({ email, auditId: auditId ?? null, source: source ?? "results_gate" });
+  const insertId = Number((result as unknown as [{ insertId: number }, unknown])[0]?.insertId);
+  return { id: insertId, email, auditId: auditId ?? null, source: source ?? "results_gate" };
 }

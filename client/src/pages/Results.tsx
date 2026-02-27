@@ -1,1225 +1,737 @@
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft,
-  ExternalLink,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Brain,
-  Shield,
-  Code2,
-  FileText,
-  Zap,
-  Bot,
-  BarChart3,
-  AlertCircle,
-  Sparkles,
-  Lightbulb,
-  Target,
-  Share2,
-  Lock,
-  TrendingUp,
-  LayoutDashboard,
-  ArrowRight,
-  LogIn,
+  ArrowLeft, ArrowRight, Share2, RefreshCw, ChevronDown, ChevronUp,
+  Search, Shield, Brain, CheckCircle2, XCircle, AlertTriangle, Info,
+  Zap, Bot, Globe, Lock, Sparkles, Copy, Twitter, Linkedin, ExternalLink,
+  TrendingUp, LayoutDashboard, LogIn, Mail, Star,
 } from "lucide-react";
-import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import type {
-  AuditResult,
-  CategoryResult,
-  AuditCheck,
-  Recommendation,
-  LLMRecommendation,
-  LLMRecommendationsResult,
-  ContentIntelligenceResult,
-  ContentIntelligenceCheck,
-} from "../../../shared/auditTypes";
+import type { AuditFindings, AuditCheck, ContentIntelligenceResult, LLMRecommendationsResult } from "@shared/auditTypes";
 
-export default function Results() {
-  const params = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
-  const auditId = parseInt(params.id ?? "0");
-  const { isAuthenticated } = useAuth();
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-  const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
-    { id: auditId },
-    {
-      enabled: !!auditId,
-      refetchInterval: (query) => {
-        const status = (query.state.data as { status?: string } | null)?.status;
-        return status === "running" || status === "pending" ? 2000 : false;
-      },
-    }
-  );
+interface AuditData {
+  id: number;
+  url: string;
+  status: string;
+  overallScore: number | null;
+  technicalScore: number | null;
+  structuredDataScore: number | null;
+  contentStructureScore: number | null;
+  eeatScore: number | null;
+  aiCrawlerScore: number | null;
+  metaTagsScore: number | null;
+  findings: AuditFindings | null;
+  llmRecommendations: LLMRecommendationsResult["recommendations"] | null;
+  llmAiInsight: string | null;
+  llmTopPriority: string | null;
+  contentIntelligence: ContentIntelligenceResult | null;
+  contentIntelligenceScore: number | null;
+  citeabilityScore: number | null;
+  pageTitle: string | null;
+  errorMessage: string | null;
+  createdAt: Date;
+}
 
-  if (isLoading) return <LoadingState />;
-  if (error || !audit) return <ErrorState message={error?.message ?? "Audit not found."} />;
-  if (audit.status === "running" || audit.status === "pending") return <LoadingState />;
-  if (audit.status === "failed") {
-    return <ErrorState message={audit.errorMessage ?? "Audit failed. Please try again."} />;
-  }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  const findings = audit.findings as unknown as AuditResult["findings"];
-  const recommendations = audit.recommendations as unknown as Recommendation[];
-  const llmRecs = audit.llmRecommendations as unknown as LLMRecommendation[] | null;
-  const llmAiInsight = audit.llmAiInsight as string | null;
-  const llmTopPriority = audit.llmTopPriority as string | null;
-  const overallScore = audit.overallScore ?? 0;
-  const scoreLabel = getScoreLabel(overallScore);
+function getGrade(score: number): { letter: string; color: string; bg: string; label: string } {
+  if (score >= 85) return { letter: "A", color: "oklch(0.72 0.18 145)", bg: "oklch(0.72 0.18 145 / 0.12)", label: "Excellent" };
+  if (score >= 70) return { letter: "B", color: "oklch(0.72 0.18 200)", bg: "oklch(0.72 0.18 200 / 0.12)", label: "Good" };
+  if (score >= 50) return { letter: "C", color: "oklch(0.78 0.18 75)", bg: "oklch(0.78 0.18 75 / 0.12)", label: "Fair" };
+  if (score >= 30) return { letter: "D", color: "oklch(0.72 0.18 30)", bg: "oklch(0.72 0.18 30 / 0.12)", label: "Poor" };
+  return { letter: "F", color: "oklch(0.65 0.22 25)", bg: "oklch(0.65 0.22 25 / 0.12)", label: "Critical" };
+}
 
-  const llmResult: LLMRecommendationsResult | null =
-    llmRecs && llmAiInsight
-      ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "" }
-      : null;
+function getPillarScore(audit: AuditData): { findability: number; trust: number; answerability: number } {
+  const t = audit.technicalScore ?? 0;
+  const ac = audit.aiCrawlerScore ?? 0;
+  const mt = audit.metaTagsScore ?? 0;
+  const ee = audit.eeatScore ?? 0;
+  const sd = audit.structuredDataScore ?? 0;
+  const cs = audit.contentStructureScore ?? 0;
+  const ci = audit.contentIntelligenceScore ?? cs;
+  return {
+    findability: Math.round(t * 0.4 + ac * 0.35 + mt * 0.25),
+    trust: Math.round(ee * 0.55 + sd * 0.45),
+    answerability: Math.round(cs * 0.45 + ci * 0.55),
+  };
+}
 
-  const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
+function getTopIssues(audit: AuditData): Array<{ label: string; fix: string; pillar: string; color: string }> {
+  const issues: Array<{ label: string; fix: string; pillar: string; color: string; priority: number }> = [];
+  const findings = audit.findings;
+  if (!findings) return [];
 
-  const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
-
-  const handleShare = (platform: "linkedin" | "twitter" | "facebook" | "copy") => {
-    const text = `I checked my website's AI-Readiness with GEO-Auditor and scored ${Math.round(overallScore)}/100! See the full report:`;
-    const encodedText = encodeURIComponent(text);
-    const encodedUrl = encodeURIComponent(reportUrl);
-    if (platform === "copy") {
-      navigator.clipboard.writeText(reportUrl);
-      toast.success("Report link copied!");
-      return;
-    }
-    if (platform === "linkedin") window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, "_blank");
-    else if (platform === "twitter") window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, "_blank");
-    else if (platform === "facebook") window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, "_blank");
+  const addIssues = (checks: AuditCheck[], pillar: string, color: string) => {
+    checks.filter((c) => c.status === "fail" && c.impact === "high").slice(0, 2)
+      .forEach((c) => issues.push({ label: humanLabel(c.id, c.label), fix: c.description, pillar, color, priority: 3 }));
+    checks.filter((c) => c.status === "fail" && c.impact === "medium").slice(0, 1)
+      .forEach((c) => issues.push({ label: humanLabel(c.id, c.label), fix: c.description, pillar, color, priority: 2 }));
   };
 
+  addIssues(findings.aiCrawlers?.checks ?? [], "Findability", "oklch(0.72 0.18 200)");
+  addIssues(findings.technical?.checks ?? [], "Findability", "oklch(0.72 0.18 200)");
+  addIssues(findings.eeat?.checks ?? [], "Trustworthiness", "oklch(0.72 0.18 145)");
+  addIssues(findings.structuredData?.checks ?? [], "Trustworthiness", "oklch(0.72 0.18 145)");
+  addIssues(findings.contentStructure?.checks ?? [], "Answerability", "oklch(0.72 0.18 280)");
+
+  return issues.sort((a, b) => b.priority - a.priority).slice(0, 3).map(({ priority: _p, ...rest }) => rest);
+}
+
+function humanLabel(id: string, label: string): string {
+  const map: Record<string, string> = {
+    robots_txt: "Robots.txt blocks AI crawlers",
+    noindex: "Page is set to noindex",
+    https: "Not using HTTPS",
+    canonical: "Missing canonical URL",
+    gptbot_allowed: "ChatGPT can't crawl your page",
+    perplexitybot_allowed: "Perplexity can't crawl your page",
+    claudebot_allowed: "Claude can't crawl your page",
+    google_extended_allowed: "Google AI can't crawl your page",
+    author_present: "No author information found",
+    about_page: "No About page detected",
+    contact_page: "No Contact page detected",
+    faq_section: "No FAQ section found",
+    tldr_section: "No summary / TL;DR section",
+    heading_structure: "Poor heading structure",
+    faq_schema: "Missing FAQ schema markup",
+    product_schema: "Missing Product schema markup",
+    article_schema: "Missing Article schema markup",
+    organization_schema: "Missing Organization schema",
+    meta_title: "Missing page title",
+    meta_description: "Missing meta description",
+    og_tags: "Missing social sharing tags",
+  };
+  return map[id] ?? label;
+}
+
+// ─── Animated Score Ring ──────────────────────────────────────────────────────
+
+function AnimatedScoreRing({ score, size = 140, animate = true }: { score: number; size?: number; animate?: boolean }) {
+  const [displayScore, setDisplayScore] = useState(animate ? 0 : score);
+  const [progress, setProgress] = useState(animate ? 0 : score / 100);
+  const grade = getGrade(displayScore);
+  const r = size / 2 - 10;
+  const circumference = 2 * Math.PI * r;
+
+  useEffect(() => {
+    if (!animate) return;
+    const duration = 1800;
+    const start = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplayScore(Math.round(eased * score));
+      setProgress((eased * score) / 100);
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    const timeout = setTimeout(() => requestAnimationFrame(tick), 400);
+    return () => clearTimeout(timeout);
+  }, [score, animate]);
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/90 backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/")}
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">New Audit</span>
-            </Button>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium hidden sm:inline">GEO-Auditor</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 max-w-xs overflow-hidden">
-              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <a
-                href={audit.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-muted-foreground truncate hover:text-foreground transition-colors"
-              >
-                {audit.url}
-              </a>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleShare("copy")}
-              className="gap-1.5 text-xs"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              Share
-            </Button>
-            {isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/dashboard")}
-                className="gap-1.5 text-xs"
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                Dashboard
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => (window.location.href = getLoginUrl())}
-                className="gap-1.5 text-xs text-primary"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                Sign In
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main className="container max-w-5xl mx-auto py-10 space-y-8">
-        {/* Score Hero */}
-        <ScoreHero
-          score={overallScore}
-          scoreLabel={scoreLabel}
-          pageTitle={audit.pageTitle ?? audit.url}
-          url={audit.url}
-          findings={findings}
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="oklch(0.18 0.015 250)" strokeWidth="8" />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={grade.color} strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
         />
-
-        {/* AI Insight Banner — shown when LLM result is available */}
-        {llmResult && (
-          <AIInsightBanner
-            aiInsight={llmResult.aiInsight}
-            topPriority={llmResult.topPriority}
-          />
-        )}
-
-        {/* Content Intelligence Panel — LLM-powered content quality analysis */}
-        <ContentIntelligencePanel
-          contentIntelligence={contentIntelligence}
-          isAuthenticated={isAuthenticated}
-        />
-
-        {/* LLM Personalized Recommendations */}
-        {llmResult && llmResult.recommendations.length > 0 && (
-          <LLMRecommendationsPanel recommendations={llmResult.recommendations} />
-        )}
-
-        {/* Category Breakdown */}
-        {findings && <CategoryBreakdown findings={findings} />}
-
-        {/* Standard Recommendations */}
-        {recommendations && recommendations.length > 0 && (
-          <RecommendationsPanel recommendations={recommendations} />
-        )}
-
-        {/* Detailed Checks */}
-        {findings && <DetailedChecks findings={findings} />}
-
-        {/* Share Panel */}
-        <ResultsSharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
-
-        {/* PLG: Score History Teaser (locked for non-auth) */}
-        {!isAuthenticated && <ScoreHistoryTeaser />}
-
-        {/* PLG: Upgrade CTA */}
-        <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />
-      </main>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-black text-white leading-none">{displayScore}</span>
+        <span className="text-xs text-slate-400 mt-0.5">/ 100</span>
+      </div>
     </div>
   );
 }
 
-// ─── AI Insight Banner ────────────────────────────────────────────────────────
+// ─── Pillar Card ──────────────────────────────────────────────────────────────
 
-function AIInsightBanner({
-  aiInsight,
-  topPriority,
+function PillarCard({
+  icon: Icon, label, score, desc, color, checks, expanded, onToggle,
 }: {
-  aiInsight: string;
-  topPriority: string;
+  icon: React.ElementType; label: string; score: number; desc: string; color: string;
+  checks: AuditCheck[]; expanded: boolean; onToggle: () => void;
 }) {
+  const fails = checks.filter((c) => c.status === "fail").length;
+  const passes = checks.filter((c) => c.status === "pass").length;
+  const grade = getGrade(score);
+
   return (
-    <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 to-violet-500/5 p-6">
-      <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-          <Sparkles className="w-5 h-5 text-primary" />
+    <div className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden">
+      <button onClick={onToggle} className="w-full p-5 flex items-center gap-4 hover:bg-white/3 transition-colors text-left">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}20` }}>
+          <Icon className="w-5 h-5" style={{ color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold text-primary uppercase tracking-wide">
-              AI Analysis
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-              Personalized
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-semibold text-white">{label}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: grade.bg, color: grade.color }}>
+              {grade.letter}
             </span>
           </div>
-          <p className="text-sm leading-relaxed text-foreground/90 mb-4">{aiInsight}</p>
-          {topPriority && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-background/50 border border-border/40">
-              <Target className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
-                  Top Priority
-                </span>
-                <p className="text-xs text-foreground/80 mt-0.5 leading-relaxed">{topPriority}</p>
-              </div>
-            </div>
-          )}
+          <div className="text-xs text-slate-400">{desc}</div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── LLM Recommendations Panel ───────────────────────────────────────────────
-
-function LLMRecommendationsPanel({ recommendations }: { recommendations: LLMRecommendation[] }) {
-  const [expanded, setExpanded] = useState<string | null>(recommendations[0]?.id ?? null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const copyCode = (id: string, code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedId(id);
-    toast.success("Code copied to clipboard!");
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const copyFix = (rec: LLMRecommendation) => {
-    const text = `${rec.title}\n\n${rec.howToFix}${rec.codeSnippet ? `\n\n${rec.codeSnippet.code}` : ""}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
-
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">AI-Powered Recommendations</h2>
+        <div className="text-right shrink-0">
+          <div className="text-xl font-black" style={{ color }}>{score}</div>
+          <div className="text-xs text-slate-500">{passes}✓ {fails}✗</div>
         </div>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary font-medium border border-primary/20">
-          Personalized for this page
-        </span>
-      </div>
+        {expanded ? <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />}
+      </button>
 
-      <div className="space-y-3">
-        {recommendations.map((rec) => (
-          <div
-            key={rec.id}
-            className="rounded-2xl bg-card border border-primary/20 overflow-hidden hover:border-primary/40 transition-colors"
-          >
-            <button
-              className="w-full flex items-center gap-4 p-5 text-left hover:bg-accent/20 transition-colors"
-              onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}
-            >
-              <PriorityBadge priority={rec.priority} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs text-muted-foreground">{rec.category}</span>
-                  {rec.codeSnippet && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 font-medium">
-                      {rec.codeSnippet.language.toUpperCase()} snippet
-                    </span>
-                  )}
-                </div>
-                <div className="font-semibold text-sm">{rec.title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                  {rec.description}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Lightbulb className="w-3.5 h-3.5 text-primary/60" />
-                {expanded === rec.id ? (
-                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                )}
-              </div>
-            </button>
-
-            {expanded === rec.id && (
-              <div className="border-t border-border/40 px-5 pb-5 pt-4 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    What to Do
-                  </div>
-                  <p className="text-sm leading-relaxed">{rec.howToFix}</p>
-                </div>
-
-                {rec.codeSnippet && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        {rec.codeSnippet.label}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyCode(rec.id, rec.codeSnippet!.code)}
-                        className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        <Copy className="w-3 h-3" />
-                        {copiedId === rec.id ? "Copied!" : "Copy"}
-                      </Button>
-                    </div>
-                    <div className="rounded-xl overflow-hidden border border-border/50 text-xs">
-                      <SyntaxHighlighter
-                        language={rec.codeSnippet.language === "json" ? "json" : rec.codeSnippet.language === "html" ? "html" : "plaintext"}
-                        style={atomOneDark}
-                        customStyle={{
-                          margin: 0,
-                          padding: "1rem",
-                          background: "oklch(0.10 0.012 250)",
-                          fontSize: "0.75rem",
-                          lineHeight: "1.5",
-                          maxHeight: "400px",
-                          overflowY: "auto",
-                        }}
-                        wrapLongLines={true}
-                      >
-                        {rec.codeSnippet.code}
-                      </SyntaxHighlighter>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    Expected Impact
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{rec.impact}</p>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyFix(rec)}
-                  className="gap-2 text-xs"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy Full Instructions
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Score Hero ───────────────────────────────────────────────────────────────
-
-function ScoreHero({
-  score,
-  scoreLabel,
-  pageTitle,
-  url,
-  findings,
-}: {
-  score: number;
-  scoreLabel: string;
-  pageTitle: string;
-  url: string;
-  findings: AuditResult["findings"] | null;
-}) {
-  const scoreColor = getScoreColor(score);
-  const circumference = 2 * Math.PI * 54;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
-
-  return (
-    <div className="rounded-2xl bg-card border border-border/50 p-8">
-      <div className="flex flex-col lg:flex-row items-center gap-8">
-        {/* Score Ring */}
-        <div className="shrink-0 relative">
-          <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-            <circle
-              cx="70"
-              cy="70"
-              r="54"
-              fill="none"
-              stroke="oklch(0.22 0.015 250)"
-              strokeWidth="10"
-            />
-            <circle
-              cx="70"
-              cy="70"
-              r="54"
-              fill="none"
-              stroke={scoreColor}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              style={{ transition: "stroke-dashoffset 1s ease-out" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold" style={{ color: scoreColor }}>
-              {score}
-            </span>
-            <span className="text-xs text-muted-foreground mt-0.5">/ 100</span>
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 text-center lg:text-left">
-          <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
-            <span
-              className="text-sm font-semibold px-3 py-1 rounded-full"
-              style={{ color: scoreColor, background: `${scoreColor}20` }}
-            >
-              {scoreLabel} AI-Readiness
-            </span>
-          </div>
-          <h1 className="text-xl font-bold mb-1 truncate">{pageTitle || url}</h1>
-          <p className="text-sm text-muted-foreground mb-6 truncate">{url}</p>
-
-          {/* Mini category scores */}
-          {findings && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {CATEGORY_META.map((cat) => {
-                const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-                return (
-                  <div key={cat.key} className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40">
-                    <cat.icon className="w-4 h-4 text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-[10px] text-muted-foreground truncate">{cat.label}</div>
-                      <div
-                        className="text-sm font-semibold"
-                        style={{ color: getScoreColor(catData?.score ?? 0) }}
-                      >
-                        {catData?.score ?? 0}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Category Breakdown ───────────────────────────────────────────────────────
-
-function CategoryBreakdown({ findings }: { findings: AuditResult["findings"] }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Score Breakdown</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {CATEGORY_META.map((cat) => {
-          const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-          const score = catData?.score ?? 0;
-          const color = getScoreColor(score);
-          return (
-            <div key={cat.key} className="p-5 rounded-2xl bg-card border border-border/50">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <cat.icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">{cat.label}</div>
-                    <div className="text-xs text-muted-foreground">{cat.weight}% of total score</div>
-                  </div>
-                </div>
-                <span className="text-2xl font-bold" style={{ color }}>
-                  {score}
-                </span>
-              </div>
-              {/* Progress bar */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${score}%`, backgroundColor: color }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{catData?.summary}</p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Standard Recommendations Panel ──────────────────────────────────────────
-
-function RecommendationsPanel({ recommendations }: { recommendations: Recommendation[] }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  const copyFix = (rec: Recommendation) => {
-    navigator.clipboard.writeText(`${rec.title}\n\n${rec.howToFix}`);
-    toast.success("Copied to clipboard!");
-  };
-
-  const priorityCounts = {
-    critical: recommendations.filter((r) => r.priority === "critical").length,
-    high: recommendations.filter((r) => r.priority === "high").length,
-    medium: recommendations.filter((r) => r.priority === "medium").length,
-    low: recommendations.filter((r) => r.priority === "low").length,
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Technical Recommendations</h2>
-        <div className="flex items-center gap-2 text-xs">
-          {priorityCounts.critical > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-status-fail text-status-fail font-medium">
-              {priorityCounts.critical} critical
-            </span>
-          )}
-          {priorityCounts.high > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-status-warning text-status-warning font-medium">
-              {priorityCounts.high} high
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {recommendations.map((rec) => (
-          <div
-            key={rec.id}
-            className="rounded-2xl bg-card border border-border/50 overflow-hidden"
-          >
-            <button
-              className="w-full flex items-center gap-4 p-5 text-left hover:bg-accent/20 transition-colors"
-              onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}
-            >
-              <PriorityBadge priority={rec.priority} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs text-muted-foreground">{rec.category}</span>
-                </div>
-                <div className="font-semibold text-sm">{rec.title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5 truncate">{rec.description}</div>
-              </div>
-              {expanded === rec.id ? (
-                <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-              )}
-            </button>
-
-            {expanded === rec.id && (
-              <div className="px-5 pb-5 border-t border-border/40 pt-4 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    How to Fix
-                  </div>
-                  <p className="text-sm leading-relaxed">{rec.howToFix}</p>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    Expected Impact
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{rec.impact}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyFix(rec)}
-                  className="gap-2 text-xs"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy Fix Instructions
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Detailed Checks ──────────────────────────────────────────────────────────
-
-function DetailedChecks({ findings }: { findings: AuditResult["findings"] }) {
-  const [openCategory, setOpenCategory] = useState<string | null>(null);
-
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Detailed Checks</h2>
-      <div className="space-y-3">
-        {CATEGORY_META.map((cat) => {
-          const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-          const checks = catData?.checks ?? [];
-          const passCount = checks.filter((c) => c.status === "pass").length;
-          const isOpen = openCategory === cat.key;
-
-          return (
-            <div
-              key={cat.key}
-              className="rounded-2xl bg-card border border-border/50 overflow-hidden"
-            >
-              <button
-                className="w-full flex items-center gap-4 p-5 text-left hover:bg-accent/20 transition-colors"
-                onClick={() => setOpenCategory(isOpen ? null : cat.key)}
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <cat.icon className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-sm">{cat.label}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {passCount} / {checks.length} checks passed
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className="text-xl font-bold"
-                    style={{ color: getScoreColor(catData?.score ?? 0) }}
-                  >
-                    {catData?.score ?? 0}
-                  </span>
-                  {isOpen ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </div>
-              </button>
-
-              {isOpen && (
-                <div className="border-t border-border/40">
-                  {checks.map((check) => (
-                    <CheckRow key={check.id} check={check} />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function CheckRow({ check }: { check: AuditCheck }) {
-  const { icon: StatusIcon, colorClass } = STATUS_CONFIG[check.status];
-  return (
-    <div className="flex items-start gap-4 px-5 py-3.5 border-b border-border/20 last:border-0 hover:bg-accent/10 transition-colors">
-      <StatusIcon className={`w-4 h-4 mt-0.5 shrink-0 ${colorClass}`} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-sm font-medium">{check.label}</span>
-          <ImpactBadge impact={check.impact} />
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">{check.description}</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Helpers & Sub-components ─────────────────────────────────────────────────
-
-function PriorityBadge({ priority }: { priority: Recommendation["priority"] }) {
-  const config = {
-    critical: { label: "Critical", classes: "bg-status-fail text-status-fail" },
-    high: { label: "High", classes: "bg-status-warning text-status-warning" },
-    medium: { label: "Medium", classes: "bg-blue-500/15 text-blue-400" },
-    low: { label: "Low", classes: "bg-muted text-muted-foreground" },
-  };
-  const c = config[priority];
-  return (
-    <span
-      className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${c.classes}`}
-    >
-      {c.label}
-    </span>
-  );
-}
-
-function ImpactBadge({ impact }: { impact: AuditCheck["impact"] }) {
-  if (impact === "low") return null;
-  const config = {
-    high: "text-[9px] text-status-fail bg-status-fail px-1.5 py-0.5 rounded uppercase font-bold",
-    medium:
-      "text-[9px] text-status-warning bg-status-warning px-1.5 py-0.5 rounded uppercase font-bold",
-    low: "",
-  };
-  return <span className={config[impact]}>{impact}</span>;
-}
-
-function LoadingState() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-          <Brain className="w-8 h-8 text-primary animate-pulse" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Analyzing your page...</h2>
-          <p className="text-muted-foreground text-sm">Running 40+ AI-readiness checks</p>
-        </div>
-        <div className="flex justify-center gap-3 pt-2">
-          {["Technical", "Schema", "Content", "E-E-A-T", "AI Insight"].map((step, i) => (
-            <div key={step} className="flex flex-col items-center gap-1">
-              <div
-                className="w-2 h-2 rounded-full bg-primary"
-                style={{ animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite` }}
-              />
-              <span className="text-[10px] text-muted-foreground">{step}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  const [, navigate] = useLocation();
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4 max-w-md px-4">
-        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-8 h-8 text-destructive" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Audit Failed</h2>
-          <p className="text-muted-foreground text-sm">{message}</p>
-        </div>
-        <Button onClick={() => navigate("/")} className="gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Try Another URL
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG = {
-  pass: { icon: CheckCircle2, colorClass: "text-status-pass" },
-  fail: { icon: XCircle, colorClass: "text-status-fail" },
-  warning: { icon: AlertTriangle, colorClass: "text-status-warning" },
-  info: { icon: Info, colorClass: "text-status-info" },
-};
-
-// ─── Content Intelligence Panel ─────────────────────────────────────────────
-
-function ContentIntelligencePanel({
-  contentIntelligence,
-  isAuthenticated,
-}: {
-  contentIntelligence: ContentIntelligenceResult | null;
-  isAuthenticated: boolean;
-}) {
-  const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
-
-  if (!contentIntelligence) {
-    return (
-      <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-violet-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">Content Intelligence</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Deep content quality analysis for AI discoverability</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border/40">
-          <div className="w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin shrink-0" />
-          <p className="text-sm text-muted-foreground">Analyzing content quality, answer density, and citeability...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const citeColor = getScoreColor(contentIntelligence.citeabilityScore);
-  const ciColor = getScoreColor(contentIntelligence.overallScore);
-  const circumference = 2 * Math.PI * 36;
-  const citeOffset = circumference - (contentIntelligence.citeabilityScore / 100) * circumference;
-
-  const impactOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  const sortedChecks = [...contentIntelligence.checks].sort(
-    (a, b) => impactOrder[a.impact] - impactOrder[b.impact]
-  );
-
-  return (
-    <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background overflow-hidden">
-      {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-violet-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold">Content Intelligence</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
-              </div>
-              <p className="text-xs text-muted-foreground">How well your content will be cited by AI search engines</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Two-column: Scores + Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-          {/* Citeability Score Gauge */}
-          <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-background/60 border border-border/40">
-            <div className="relative mb-2">
-              <svg width="90" height="90" viewBox="0 0 90 90" className="-rotate-90">
-                <circle cx="45" cy="45" r="36" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="7" />
-                <circle
-                  cx="45" cy="45" r="36" fill="none"
-                  stroke={citeColor} strokeWidth="7" strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={citeOffset}
-                  style={{ transition: "stroke-dashoffset 1s ease-out" }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold" style={{ color: citeColor }}>{Math.round(contentIntelligence.citeabilityScore)}</span>
-                <span className="text-[9px] text-muted-foreground">/100</span>
-              </div>
-            </div>
-            <div className="text-xs font-semibold text-center">Citeability Score</div>
-            <div className="text-[10px] text-muted-foreground text-center mt-0.5">Likelihood of AI citation</div>
-          </div>
-
-          {/* CI Overall Score */}
-          <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-background/60 border border-border/40">
-            <div className="text-4xl font-bold mb-1" style={{ color: ciColor }}>{Math.round(contentIntelligence.overallScore)}</div>
-            <div className="text-xs font-semibold text-center">Content Quality</div>
-            <div className="text-[10px] text-muted-foreground text-center mt-0.5">Overall content score</div>
-            <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${contentIntelligence.overallScore}%`, backgroundColor: ciColor }} />
-            </div>
-          </div>
-
-          {/* Summary + Top Opportunity */}
-          <div className="flex flex-col gap-2 p-4 rounded-xl bg-background/60 border border-border/40">
-            <p className="text-xs text-foreground/80 leading-relaxed">{contentIntelligence.summary}</p>
-            {contentIntelligence.topOpportunity && (
-              <div className="flex items-start gap-1.5 mt-auto pt-2 border-t border-border/30">
-                <TrendingUp className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-amber-400/90 leading-relaxed">{contentIntelligence.topOpportunity}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Page Topics */}
-        {contentIntelligence.pageTopics.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-5">
-            <span className="text-[10px] text-muted-foreground mr-1 self-center">Topics detected:</span>
-            {contentIntelligence.pageTopics.map((topic) => (
-              <span key={topic} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                {topic}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Checks */}
-      <div className="px-6 pb-6 space-y-2">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">5 Content Quality Dimensions</div>
-        {sortedChecks.map((check) => {
-          const isExpanded = expandedCheck === check.id;
-          const checkColor = check.score >= 70 ? "oklch(0.72 0.18 145)" : check.score >= 40 ? "oklch(0.78 0.18 75)" : "oklch(0.65 0.22 25)";
-          const statusIcon =
-            check.status === "pass" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> :
-            check.status === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-400" /> :
-            <XCircle className="w-4 h-4 text-red-400" />;
-
-          return (
-            <div key={check.id} className="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-              <button
-                onClick={() => setExpandedCheck(isExpanded ? null : check.id)}
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/20 transition-colors"
-              >
+      {expanded && (
+        <div className="border-t border-white/8 p-5 space-y-2">
+          {checks.map((check) => {
+            const statusIcon =
+              check.status === "pass" ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> :
+              check.status === "fail" ? <XCircle className="w-4 h-4 text-red-400 shrink-0" /> :
+              check.status === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" /> :
+              <Info className="w-4 h-4 text-blue-400 shrink-0" />;
+            return (
+              <div key={check.id} className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
                 {statusIcon}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{check.label}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                      check.impact === "high" ? "bg-red-500/15 text-red-400" :
-                      check.impact === "medium" ? "bg-amber-500/15 text-amber-400" :
-                      "bg-muted text-muted-foreground"
-                    }`}>{check.impact} impact</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{check.description}</p>
+                  <div className="text-xs font-medium text-white">{humanLabel(check.id, check.label)}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{check.description}</div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-bold" style={{ color: checkColor }}>{check.score}</span>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </div>
-              </button>
-
-              {isExpanded && (
-                <div className="px-4 pb-4 space-y-3 border-t border-border/30">
-                  {/* Score bar */}
-                  <div className="pt-3">
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Score</span>
-                      <span style={{ color: checkColor }}>{check.score}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${check.score}%`, backgroundColor: checkColor }} />
-                    </div>
-                  </div>
-
-                  {/* Recommendation */}
-                  <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Lightbulb className="w-3.5 h-3.5 text-violet-400" />
-                      <span className="text-xs font-semibold text-violet-400">How to improve</span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">{check.recommendation}</p>
-                  </div>
-
-                  {/* Examples */}
-                  {check.examples && check.examples.length > 0 && (
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Examples from your page</div>
-                      <div className="space-y-1">
-                        {check.examples.map((ex, i) => (
-                          <div key={i} className="text-xs text-foreground/70 p-2 rounded-lg bg-muted/30 border border-border/30 italic">"{ex}"</div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* PLG: Sign-in nudge for non-authenticated users */}
-      {!isAuthenticated && (
-        <div className="mx-6 mb-6 p-4 rounded-xl bg-gradient-to-r from-violet-500/10 to-indigo-500/5 border border-violet-500/20">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-semibold mb-0.5">Track content improvements over time</div>
-              <div className="text-xs text-muted-foreground">Sign in free to monitor your Content Intelligence score weekly</div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => (window.location.href = getLoginUrl())}
-              className="bg-violet-600 hover:bg-violet-500 text-white shrink-0 gap-1.5 text-xs"
-            >
-              <LogIn className="w-3 h-3" />
-              Sign In Free
-            </Button>
-          </div>
+                <Badge variant="outline" className="text-[10px] shrink-0 border-white/10"
+                  style={{ color: check.impact === "high" ? "oklch(0.65 0.22 25)" : check.impact === "medium" ? "oklch(0.78 0.18 75)" : "oklch(0.72 0.18 200)" }}>
+                  {check.impact}
+                </Badge>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-const CATEGORY_META = [
-  { key: "technical", label: "Technical", icon: Shield, weight: 25 },
-  { key: "structuredData", label: "Structured Data", icon: Code2, weight: 20 },
-  { key: "contentStructure", label: "Content Structure", icon: FileText, weight: 25 },
-  { key: "eeat", label: "E-E-A-T Signals", icon: Zap, weight: 15 },
-  { key: "aiCrawlers", label: "AI Crawler Access", icon: Bot, weight: 10 },
-  { key: "metaTags", label: "Meta Tags", icon: BarChart3, weight: 5 },
-];
+// ─── Email Gate ───────────────────────────────────────────────────────────────
 
-function getScoreLabel(score: number): string {
-  if (score >= 80) return "Excellent";
-  if (score >= 60) return "Good";
-  if (score >= 40) return "Fair";
-  return "Poor";
+function EmailGate({ auditId, onUnlock }: { auditId: number; onUnlock: () => void }) {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const captureEmail = trpc.audit.captureEmail.useMutation({
+    onSuccess: () => { setSubmitted(true); setTimeout(onUnlock, 800); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8">
+        <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+          <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+        </div>
+        <div className="text-sm font-semibold text-white">Unlocking your full report...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-b from-violet-500/8 to-transparent p-6 text-center">
+      <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center mx-auto mb-4">
+        <Mail className="w-5 h-5 text-violet-400" />
+      </div>
+      <h3 className="text-base font-bold text-white mb-2">Get your full AI improvement plan</h3>
+      <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+        Enter your email to unlock the complete 40-check report, AI-powered recommendations, and your personalized action plan. Free, no spam.
+      </p>
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (!email.trim()) return; captureEmail.mutate({ email: email.trim(), auditId, source: "results_gate" }); }}
+        className="flex gap-2 max-w-sm mx-auto"
+      >
+        <Input
+          type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@company.com"
+          className="bg-white/8 border-white/15 text-white placeholder:text-slate-500 text-sm"
+          required
+        />
+        <Button type="submit" disabled={captureEmail.isPending} className="bg-violet-600 hover:bg-violet-500 text-white shrink-0 gap-1.5">
+          {captureEmail.isPending
+            ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+            : <><span>Unlock</span><ArrowRight className="w-3.5 h-3.5" /></>}
+        </Button>
+      </form>
+      <p className="text-[10px] text-slate-600 mt-3">No spam. Unsubscribe anytime.</p>
+    </div>
+  );
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 80) return "oklch(0.72 0.18 145)";
-  if (score >= 60) return "oklch(0.72 0.18 160)";
-  if (score >= 40) return "oklch(0.78 0.18 75)";
-  return "oklch(0.65 0.22 25)";
+// ─── Share Section ────────────────────────────────────────────────────────────
+
+function ShareSection({ audit, domain }: { audit: AuditData; domain: string }) {
+  const score = audit.overallScore ?? 0;
+  const grade = getGrade(score);
+  const reportUrl = `${window.location.origin}/report/${audit.id}`;
+  const shareText = `My page "${domain}" scored ${score}/100 (Grade ${grade.letter}) for AI Search visibility. Is your page invisible to ChatGPT & Perplexity? Check for free →`;
+
+  const copyLink = () => { navigator.clipboard.writeText(reportUrl); toast.success("Report link copied!"); };
+  const shareLinkedIn = () => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(reportUrl)}`, "_blank");
+  const shareTwitter = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(reportUrl)}`, "_blank");
+
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Share2 className="w-4 h-4 text-violet-400" />
+        <span className="text-sm font-semibold text-white">Share your score</span>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-800 p-4 mb-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ backgroundColor: `${grade.color}25` }} />
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-slate-500 mb-0.5">AI Search Report Card</div>
+            <div className="text-xs font-semibold text-white truncate max-w-[160px]">{domain}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-black" style={{ color: grade.color }}>{score}</div>
+            <div className="text-xs font-bold" style={{ color: grade.color }}>Grade {grade.letter}</div>
+          </div>
+        </div>
+        <div className="mt-2 text-[9px] text-slate-600">GEO-Auditor.com</div>
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={shareLinkedIn} size="sm" variant="ghost" className="flex-1 bg-[#0A66C2]/15 hover:bg-[#0A66C2]/25 text-[#0A66C2] border border-[#0A66C2]/30 gap-1.5 text-xs">
+          <Linkedin className="w-3.5 h-3.5" /> LinkedIn
+        </Button>
+        <Button onClick={shareTwitter} size="sm" variant="ghost" className="flex-1 bg-white/5 hover:bg-white/10 text-white border border-white/10 gap-1.5 text-xs">
+          <Twitter className="w-3.5 h-3.5" /> X / Twitter
+        </Button>
+        <Button onClick={copyLink} size="sm" variant="ghost" className="bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10">
+          <Copy className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
-// ─── PLG: Results Share Panel ─────────────────────────────────────────────────
+// ─── LLM Recommendations ─────────────────────────────────────────────────────
 
-function ResultsSharePanel({
-  score,
-  onShare,
-  reportUrl,
-}: {
-  score: number;
-  onShare: (platform: "linkedin" | "twitter" | "facebook" | "copy") => void;
-  reportUrl: string;
+function LLMRecommendationsSection({ recommendations, topPriority }: {
+  recommendations: LLMRecommendationsResult["recommendations"];
+  topPriority?: string | null;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    onShare("copy");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const priorityColors: Record<string, string> = {
+    critical: "oklch(0.65 0.22 25)",
+    high: "oklch(0.72 0.18 30)",
+    medium: "oklch(0.78 0.18 75)",
+    low: "oklch(0.72 0.18 200)",
   };
 
   return (
-    <div className="rounded-2xl bg-card border border-border/50 p-5">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Share2 className="w-4 h-4 text-primary" />
-          </div>
+    <div className="space-y-3">
+      {topPriority && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 p-4 flex items-start gap-3">
+          <Star className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <div className="text-sm font-semibold">Share your AI-Readiness score</div>
-            <div className="text-xs text-muted-foreground">Let others know how AI-ready your site is</div>
+            <div className="text-xs font-semibold text-amber-300 mb-0.5">Top Priority</div>
+            <div className="text-xs text-slate-300">{topPriority}</div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
+      )}
+      {recommendations.slice(0, 5).map((rec) => (
+        <div key={rec.id} className="rounded-xl border border-white/8 bg-white/3 overflow-hidden">
           <button
-            onClick={() => onShare("linkedin")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors border border-blue-500/20"
+            onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}
+            className="w-full p-4 flex items-start gap-3 hover:bg-white/3 transition-colors text-left"
           >
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-            </svg>
-            LinkedIn
+            <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: priorityColors[rec.priority] ?? "oklch(0.72 0.18 200)" }} />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-white">{rec.title}</div>
+              <div className="text-xs text-slate-400 mt-0.5 line-clamp-2">{rec.description}</div>
+            </div>
+            <Badge variant="outline" className="text-[10px] shrink-0 border-white/10" style={{ color: priorityColors[rec.priority] }}>
+              {rec.priority}
+            </Badge>
+            {expanded === rec.id ? <ChevronUp className="w-3.5 h-3.5 text-slate-500 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
           </button>
-          <button
-            onClick={() => onShare("twitter")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 transition-colors border border-sky-500/20"
-          >
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-            X
-          </button>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/50 text-muted-foreground hover:bg-muted transition-colors border border-border/50"
-          >
-            <Copy className="w-3.5 h-3.5" />
-            {copied ? "Copied!" : "Copy Link"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── PLG: Score History Teaser ────────────────────────────────────────────────
-
-function ScoreHistoryTeaser() {
-  return (
-    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
-      <div className="p-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold">Score History</div>
-            <div className="text-xs text-muted-foreground">Track how your AI-Readiness improves over time</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Free account required</span>
-        </div>
-      </div>
-      {/* Blurred fake chart */}
-      <div className="relative h-28 mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden">
-        <div className="absolute inset-0 flex items-end px-4 pb-3 gap-2 opacity-30">
-          {[45, 52, 48, 61, 58, 67, 72, 75].map((v, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-primary"
-              style={{ height: `${v}%` }}
-            />
-          ))}
-        </div>
-        <div className="absolute inset-0 backdrop-blur-sm bg-background/40 flex flex-col items-center justify-center gap-2">
-          <Lock className="w-5 h-5 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">Sign in to unlock score history</p>
-          <button
-            onClick={() => (window.location.href = getLoginUrl())}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <LogIn className="w-3 h-3" />
-            Sign In — Free
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── PLG: Upgrade Banner ──────────────────────────────────────────────────────
-
-function PLGUpgradeBanner({
-  isAuthenticated,
-  navigate,
-}: {
-  isAuthenticated: boolean;
-  navigate: (path: string) => void;
-}) {
-  return (
-    <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-violet-500/5 to-indigo-500/5 border border-primary/20 p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-          <Sparkles className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          {isAuthenticated ? (
-            <>
-              <h3 className="font-semibold mb-1">Monitor this page automatically</h3>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Weekly re-audits
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Score change alerts
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Track improvements over time
-                </span>
+          {expanded === rec.id && (
+            <div className="border-t border-white/8 p-4 space-y-3">
+              <div>
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">How to fix</div>
+                <div className="text-xs text-slate-300 leading-relaxed">{rec.howToFix}</div>
               </div>
-            </>
-          ) : (
-            <>
-              <h3 className="font-semibold mb-1">Want to track improvements over time?</h3>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Free account — 1 monitored page
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Score history & weekly alerts
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  5 audits/month
-                </span>
+              {rec.codeSnippet && (
+                <div>
+                  <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">{rec.codeSnippet.label}</div>
+                  <pre className="text-[10px] bg-black/40 rounded-lg p-3 overflow-x-auto text-emerald-300 leading-relaxed whitespace-pre-wrap">
+                    {rec.codeSnippet.code}
+                  </pre>
+                </div>
+              )}
+              <div>
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Expected impact</div>
+                <div className="text-xs text-slate-400">{rec.impact}</div>
               </div>
-            </>
+            </div>
           )}
         </div>
-        {isAuthenticated ? (
-          <Button
-            onClick={() => navigate("/dashboard")}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            Go to Dashboard
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Results Page ────────────────────────────────────────────────────────
+
+export default function Results() {
+  const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
+  const [fullReportUnlocked, setFullReportUnlocked] = useState(false);
+  const [expandedPillar, setExpandedPillar] = useState<string | null>(null);
+  const [scoreAnimated, setScoreAnimated] = useState(false);
+
+  const auditId = parseInt(id ?? "0", 10);
+
+  const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
+    { id: auditId },
+    {
+      enabled: !!auditId,
+      refetchInterval: (query) => {
+        const data = query.state.data as AuditData | undefined;
+        if (!data) return 2000;
+        return data.status === "pending" || data.status === "running" ? 2000 : false;
+      },
+    }
+  );
+
+  useEffect(() => {
+    if ((audit as unknown as AuditData)?.status === "completed" && !scoreAnimated) {
+      setScoreAnimated(true);
+    }
+  }, [(audit as unknown as AuditData)?.status, scoreAnimated]);
+
+  useEffect(() => {
+    if (isAuthenticated) setFullReportUnlocked(true);
+  }, [isAuthenticated]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[oklch(0.08_0.015_250)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin mx-auto mb-4" />
+          <div className="text-sm text-slate-400">Loading audit...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !audit) {
+    return (
+      <div className="min-h-screen bg-[oklch(0.08_0.015_250)] flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <XCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-white mb-2">Audit not found</h2>
+          <p className="text-sm text-slate-400 mb-6">This audit may have expired or doesn't exist.</p>
+          <Button onClick={() => navigate("/")} className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
+            <ArrowLeft className="w-4 h-4" /> Run New Audit
           </Button>
-        ) : (
-          <Button
-            onClick={() => (window.location.href = getLoginUrl())}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            Sign In — Free
+        </div>
+      </div>
+    );
+  }
+
+  const typedAudit = audit as unknown as AuditData;
+
+  if (typedAudit.status === "pending" || typedAudit.status === "running") {
+    const runningSteps = [
+      { label: "Fetching page content", done: true },
+      { label: "Checking AI crawler access", done: typedAudit.status === "running" },
+      { label: "Analyzing content structure", done: false },
+      { label: "Evaluating trust signals", done: false },
+      { label: "Running AI content analysis", done: false },
+      { label: "Generating recommendations", done: false },
+    ];
+    const doneCount = runningSteps.filter((s) => s.done).length;
+    return (
+      <div className="min-h-screen bg-[oklch(0.08_0.015_250)] flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center mx-auto mb-6">
+            <Bot className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-xl font-black text-white mb-2">Analyzing your page...</h2>
+          <p className="text-sm text-slate-400 mb-8">Running 40+ AI visibility checks. This takes about 30 seconds.</p>
+          <div className="space-y-3 text-left">
+            {runningSteps.map((step, i) => (
+              <div key={i} className="flex items-center gap-3">
+                {step.done ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                ) : i === doneCount ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-white/15 shrink-0" />
+                )}
+                <span className={`text-sm ${step.done ? "text-white" : i === doneCount ? "text-violet-300" : "text-slate-600"}`}>
+                  {step.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (typedAudit.status === "failed") {
+    return (
+      <div className="min-h-screen bg-[oklch(0.08_0.015_250)] flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <XCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-white mb-2">Audit failed</h2>
+          <p className="text-sm text-slate-400 mb-2">{typedAudit.errorMessage ?? "Unable to analyze this page."}</p>
+          <p className="text-xs text-slate-500 mb-6">The page may be blocking crawlers or be temporarily unavailable.</p>
+          <Button onClick={() => navigate("/")} className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
+            <ArrowLeft className="w-4 h-4" /> Try Another URL
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const score = typedAudit.overallScore ?? 0;
+  const grade = getGrade(score);
+  const pillars = getPillarScore(typedAudit);
+  const topIssues = getTopIssues(typedAudit);
+  const domain = (() => { try { return new URL(typedAudit.url).hostname; } catch { return typedAudit.url; } })();
+
+  const pillarDefs = [
+    {
+      key: "findability", icon: Search, label: "Findability", score: pillars.findability,
+      color: "oklch(0.72 0.18 200)",
+      desc: "Can AI search engines find and crawl your page?",
+      checks: [
+        ...(typedAudit.findings?.aiCrawlers?.checks ?? []),
+        ...(typedAudit.findings?.technical?.checks ?? []),
+        ...(typedAudit.findings?.metaTags?.checks ?? []),
+      ],
+    },
+    {
+      key: "trust", icon: Shield, label: "Trustworthiness", score: pillars.trust,
+      color: "oklch(0.72 0.18 145)",
+      desc: "Does AI trust your page as a credible source?",
+      checks: [
+        ...(typedAudit.findings?.eeat?.checks ?? []),
+        ...(typedAudit.findings?.structuredData?.checks ?? []),
+      ],
+    },
+    {
+      key: "answerability", icon: Brain, label: "Answerability", score: pillars.answerability,
+      color: "oklch(0.72 0.18 280)",
+      desc: "Can AI use your content to answer user questions?",
+      checks: typedAudit.findings?.contentStructure?.checks ?? [],
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[oklch(0.08_0.015_250)] text-white">
+      {/* Nav */}
+      <nav className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[oklch(0.08_0.015_250)]/90 backdrop-blur-xl">
+        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">New audit</span>
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
+            <Bot className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-sm font-bold text-white hidden sm:block">GEO-Auditor</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {isAuthenticated ? (
+            <Button size="sm" onClick={() => navigate("/dashboard")} variant="ghost" className="bg-white/8 hover:bg-white/15 text-white border border-white/10 gap-1.5 text-xs">
+              <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+            </Button>
+          ) : (
+            <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} variant="ghost" className="bg-white/8 hover:bg-white/15 text-white border border-white/10 gap-1.5 text-xs">
+              <LogIn className="w-3.5 h-3.5" /> Sign In Free
+            </Button>
+          )}
+        </div>
+      </nav>
+
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        {/* Score Hero */}
+        <div className="rounded-2xl border border-white/8 bg-gradient-to-br from-slate-900 via-slate-800/50 to-slate-900 p-6 relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${grade.color}10` }} />
+          <div className="flex items-center gap-2 mb-5">
+            <Globe className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span className="text-xs text-slate-400 truncate">{typedAudit.url}</span>
+            <a href={typedAudit.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <ExternalLink className="w-3 h-3 text-slate-600 hover:text-slate-400" />
+            </a>
+          </div>
+          <div className="flex items-center gap-6 mb-4">
+            <AnimatedScoreRing score={score} animate={scoreAnimated} />
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-4xl font-black" style={{ color: grade.color }}>Grade {grade.letter}</span>
+              </div>
+              <div className="text-sm text-slate-300 mb-2">{grade.label} AI Search Visibility</div>
+              <div className="text-xs text-slate-500 leading-relaxed max-w-xs">
+                {score >= 85 && "Your page is well-optimized for AI search. Keep monitoring for changes."}
+                {score >= 70 && score < 85 && "Your page is mostly visible to AI. A few targeted fixes will push you to excellent."}
+                {score >= 50 && score < 70 && "Your page has moderate AI visibility. Several important issues need attention."}
+                {score >= 30 && score < 50 && "Your page is hard to find in AI answers. Multiple critical issues detected."}
+                {score < 30 && "Your page is nearly invisible to AI search engines. Urgent action required."}
+              </div>
+            </div>
+          </div>
+          {typedAudit.pageTitle && (
+            <div className="text-xs text-slate-500 border-t border-white/8 pt-3">
+              <span className="text-slate-600">Page: </span>{typedAudit.pageTitle}
+            </div>
+          )}
+        </div>
+
+        {/* Top 3 Issues */}
+        {topIssues.length > 0 && (
+          <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-semibold text-white">Top 3 things to fix</span>
+            </div>
+            <div className="space-y-3">
+              {topIssues.map((issue, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/3 border border-white/5">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 mt-0.5" style={{ backgroundColor: issue.color }}>
+                    {i + 1}
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-white">{issue.label}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{issue.fix}</div>
+                    <div className="text-[10px] mt-1" style={{ color: issue.color }}>{issue.pillar}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
+
+        {/* 3 Pillars */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold text-white">Score breakdown</span>
+          </div>
+          <div className="space-y-3">
+            {pillarDefs.map((p) => (
+              <PillarCard
+                key={p.key} icon={p.icon} label={p.label} score={p.score}
+                desc={p.desc} color={p.color} checks={p.checks}
+                expanded={expandedPillar === p.key}
+                onToggle={() => setExpandedPillar(expandedPillar === p.key ? null : p.key)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Share */}
+        <ShareSection audit={typedAudit} domain={domain} />
+
+        {/* Full Report Gate */}
+        {!fullReportUnlocked ? (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Lock className="w-4 h-4 text-violet-400" />
+              <span className="text-sm font-semibold text-white">Full AI Improvement Plan</span>
+            </div>
+            <EmailGate auditId={auditId} onUnlock={() => setFullReportUnlocked(true)} />
+            <div className="mt-3 text-center">
+              <span className="text-xs text-slate-500">Already have an account? </span>
+              <button onClick={() => (window.location.href = getLoginUrl())} className="text-xs text-violet-400 hover:text-violet-300 underline">
+                Sign in to unlock
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* AI Recommendations */}
+            {typedAudit.llmRecommendations && typedAudit.llmRecommendations.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <span className="text-sm font-semibold text-white">AI-Powered Recommendations</span>
+                  <Badge className="text-[10px] bg-violet-500/20 text-violet-300 border-violet-500/30">AI</Badge>
+                </div>
+                <LLMRecommendationsSection
+                  recommendations={typedAudit.llmRecommendations}
+                  topPriority={typedAudit.llmTopPriority}
+                />
+              </div>
+            )}
+
+            {/* Content Intelligence */}
+            {typedAudit.contentIntelligence && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Brain className="w-4 h-4 text-violet-400" />
+                  <span className="text-sm font-semibold text-white">Content Intelligence</span>
+                  <Badge className="text-[10px] bg-violet-500/20 text-violet-300 border-violet-500/30">AI</Badge>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-black" style={{ color: getGrade(typedAudit.contentIntelligence.citeabilityScore).color }}>
+                        {typedAudit.contentIntelligence.citeabilityScore}
+                      </div>
+                      <div className="text-[10px] text-slate-500">Citeability</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-semibold text-white mb-1">AI Citeability Score</div>
+                      <div className="text-xs text-slate-400">{typedAudit.contentIntelligence.summary}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {typedAudit.contentIntelligence.checks.map((check) => (
+                      <div key={check.id} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${getGrade(check.score).color}15` }}>
+                          <span className="text-xs font-bold" style={{ color: getGrade(check.score).color }}>{check.score}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-white">{check.label}</div>
+                          <div className="text-xs text-slate-500 truncate">{check.recommendation}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PLG Upsell */}
+            {!isAuthenticated && (
+              <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-b from-violet-500/8 to-transparent p-5 text-center">
+                <TrendingUp className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-white mb-2">Track your progress over time</h3>
+                <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                  Create a free account to monitor this page, track score improvements, and get notified when your AI visibility changes.
+                </p>
+                <Button onClick={() => (window.location.href = getLoginUrl())} className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-sm">
+                  <LogIn className="w-4 h-4" /> Create Free Account
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Run Another */}
+        <div className="text-center pt-4 pb-8">
+          <Button onClick={() => navigate("/")} variant="ghost" className="text-slate-400 hover:text-white gap-2 text-sm">
+            <RefreshCw className="w-4 h-4" /> Audit another page
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import {
   addScoreSnapshot,
   getScoreSnapshots,
   MAX_MONITORING_SLOTS_FREE,
+  captureEmailLead,
 } from "./db";
 
 export const appRouter = router({
@@ -141,9 +142,18 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return getAuditsByUser(ctx.user.id, input.limit);
       }),
+    captureEmail: publicProcedure
+      .input(z.object({
+        email: z.string().email("Please enter a valid email address"),
+        auditId: z.number().optional(),
+        source: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await captureEmailLead(input.email, input.auditId, input.source);
+        return { success: true };
+      }),
   }),
-
-  // ─── Monitoring procedures ────────────────────────────────────────────────────
+  // ─── Monitoring proceduress ────────────────────────────────────────────────────
 
   monitoring: router({
     list: protectedProcedure.query(async ({ ctx }) => {
