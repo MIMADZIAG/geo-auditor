@@ -36,13 +36,6 @@
       "when": 1772188223844,
       "tag": "0004_smart_rogue",
       "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1772211585948,
-      "tag": "0005_faulty_black_knight",
-      "breakpoints": true
     }
   ]
 }

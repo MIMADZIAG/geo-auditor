@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Results from "./pages/Results";
 import Dashboard from "./pages/Dashboard";
 import PublicReport from "./pages/PublicReport";
-import Pricing from "./pages/Pricing";
+
 function Router() {
   return (
     <Switch>
@@ -16,7 +16,6 @@ function Router() {
       <Route path="/results/:id" component={Results} />
       <Route path="/report/:id" component={PublicReport} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/pricing" component={Pricing} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
