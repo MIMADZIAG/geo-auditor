@@ -157,3 +157,11 @@
 - [ ] Verify: typical e-commerce listing scores 45–65/100
 - [ ] Verify: well-optimized article scores 70–85/100
 - [ ] Verify: fully optimized page can reach 90+/100
+
+## Bug Fix: Transient HTTP Errors (Retry Logic)
+
+- [x] Fix scraper.ts: implement retry with exponential backoff (up to 3 attempts) for 449, 429, 5xx, network errors
+- [x] Fix scraper.ts: randomize User-Agent per request (pool of 5 real browser agents) to reduce bot detection
+- [x] Fix scraper.ts: add jitter to retry delays to avoid thundering herd
+- [x] Fix error messaging: transient errors are retried silently, transparent to user
+- [x] Update tests for retry logic (5 new tests, 52 total passing)
