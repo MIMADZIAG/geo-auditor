@@ -214,7 +214,9 @@ export default function Results() {
           contentIntelligence={contentIntelligence}
           isAuthenticated={isAuthenticated}
         />
-        {/* ── 6. Competitor Analysis Teaser (Pro) ── */}
+        {/* ── 6. AI Sandbox CTA — simulate how AI engines rank this page ── */}
+        <AISandboxCTA url={audit.url} navigate={navigate} />
+        {/* ── 7. Competitor Analysis Teaser (Pro) ── */}
         <CompetitorAnalysisTeaser navigate={navigate} />
         {/* ── 7. What's Working ── */}
         {findings && <PassingChecks findings={findings} />}
@@ -994,8 +996,54 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
   );
 }
 
-// ─── Loading / Error ──────────────────────────────────────────────────────────
+// ─── AI Sandbox CTA ──────────────────────────────────────────────────────────
+function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string) => void }) {
+  return (
+    <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-indigo-500/5 to-transparent p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-lg bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-violet-400" />
+            </div>
+            <span className="text-xs font-semibold text-violet-400 uppercase tracking-wider">AI Sandbox Simulator</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400">BETA</span>
+          </div>
+          <h3 className="text-base font-bold text-foreground mb-1">
+            Predict your citation probability in ChatGPT, Perplexity &amp; Google AIO
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Our engine simulates how AI search algorithms rank your page using reverse-engineered models (RRF, L3 XGBoost, Query Fan-Out). Test content changes before publishing with the What-If Editor.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 shrink-0">
+          <Button
+            onClick={() => navigate(`/sandbox?url=${encodeURIComponent(url)}`)}
+            className="gap-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold"
+          >
+            <Sparkles className="w-4 h-4" />
+            Run AI Simulation
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">Free for all users</p>
+        </div>
+      </div>
+      <div className="mt-4 pt-4 border-t border-violet-500/10 grid grid-cols-3 gap-3">
+        {[
+          { label: "ChatGPT", sublabel: "RRF k=60 model", color: "text-blue-400" },
+          { label: "Perplexity", sublabel: "L3 XGBoost", color: "text-green-400" },
+          { label: "Google AIO", sublabel: "Query Fan-Out", color: "text-orange-400" },
+        ].map(({ label, sublabel, color }) => (
+          <div key={label} className="text-center p-2 rounded-lg bg-white/3 border border-white/5">
+            <div className={`text-xs font-bold ${color}`}>{label}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{sublabel}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
+// ─── Loading / Error ──────────────────────────────────────────────────────────────────────────────────
 function LoadingState() {
   const steps = ["Checking crawler access", "Analyzing structured data", "Scanning content quality", "Evaluating trust signals", "Running AI analysis"];
   const [activeStep, setActiveStep] = useState(0);

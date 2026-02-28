@@ -211,3 +211,16 @@
 - [x] Landing page: usunięto "40+ checks" section
 - [x] Landing page: nowa sekcja "Why AI search skips most pages" (4 powody, wartościowe)
 - [x] 55 testów passing, 0 błędów TS
+
+## AI Sandbox Simulator (moduł z czatu a0jlR4RI3zkml89F0datTJ)
+
+- [x] Pobrać archiwum ZIP z Google Drive i rozpakować moduł geo-sandbox
+- [x] Skopiować silnik (engine/simulator.ts, engine/contentAnalyzer.ts, engine/algorithmProfiles.ts) do client/src/geo-sandbox/
+- [x] Skopiować komponenty UI (ScoreGauge, EngineBreakdown, IssuesList, WhatIfEditor, RRFVisualizer, CitationProbabilityChart) do client/src/geo-sandbox/components/
+- [x] Naprawić błąd TS: Set spread → Array.from(new Set(...)) w contentAnalyzer.ts
+- [x] Dodać tRPC procedure sandbox.fetchPage (pobiera HTML + robots.txt z URL dla silnika)
+- [x] Zbudować stronę /sandbox z SandboxWithTRPC wrapper (podłączony do tRPC zamiast mock)
+- [x] Zarejestrować trasę /sandbox w App.tsx
+- [x] Dodać AISandboxCTA banner w Results.tsx (po Content Intelligence, przed Competitor Teaser)
+- [x] Naprawić uszkodzony PLGUpgradeBanner (błąd edycji — brakujące zamknięcia JSX)
+- [x] 55 testów passing, 0 błędów TS

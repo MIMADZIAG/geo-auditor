@@ -210,5 +210,36 @@ export const appRouter = router({
         return { success: !!result };
       }),
   }),
+  sandbox: router({
+    // Fetch raw HTML + robots.txt for a given URL so the client-side simulation engine can run
+    fetchPage: publicProcedure
+      .input(z.object({ url: z.string().url() }))
+      .mutation(async ({ input }) => {
+        const { default: axios } = await import("axios");
+        try {
+          const pageResponse = await axios.get(input.url, {
+            headers: { "User-Agent": "GEO-Auditor/1.0 (+https://geoauditor.com/bot)" },
+            timeout: 12000,
+            maxContentLength: 2 * 1024 * 1024, // 2MB max
+          });
+          const urlObj = new URL(input.url);
+          const robotsUrl = `${urlObj.protocol}//${urlObj.hostname}/robots.txt`;
+          let robotsTxt = "";
+          try {
+            const robotsResponse = await axios.get(robotsUrl, { timeout: 5000 });
+            robotsTxt = typeof robotsResponse.data === "string" ? robotsResponse.data : "";
+          } catch {
+            robotsTxt = ""; // no robots.txt = allow all
+          }
+          return {
+            html: typeof pageResponse.data === "string" ? pageResponse.data.slice(0, 500_000) : String(pageResponse.data).slice(0, 500_000),
+            robotsTxt,
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Failed to fetch URL: ${msg}` });
+        }
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;
