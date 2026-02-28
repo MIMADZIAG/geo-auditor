@@ -46,69 +46,7 @@ const WhatIfEditor: React.FC<WhatIfEditorProps> = ({
   onUpgradeClick,
 }) => {
   
-  if (!isPremium) {
-    return (
-      <div style={{
-        background: '#0f0f0f',
-        border: '1px solid #2a2a2a',
-        borderRadius: '12px',
-        padding: '40px',
-        textAlign: 'center',
-      }}>
-        {/* Lock icon */}
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
-        <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#e5e5e5', margin: '0 0 8px' }}>
-          What-If Simulator — Pro Feature
-        </h3>
-        <p style={{ fontSize: '14px', color: '#6b7280', maxWidth: '400px', margin: '0 auto 24px', lineHeight: 1.6 }}>
-          Edit your content directly in the sandbox and simulate the exact impact on your ChatGPT, Perplexity, and Google AIO scores — before touching your live site.
-        </p>
-        
-        {/* Feature list */}
-        <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #1f1f1f',
-          borderRadius: '10px',
-          padding: '20px',
-          maxWidth: '400px',
-          margin: '0 auto 24px',
-          textAlign: 'left',
-        }}>
-          {[
-            'Edit content in real-time sandbox',
-            'See score changes before going live',
-            'Compare baseline vs. revised version',
-            'Get AI-suggested improvements',
-            'Test multiple variants',
-          ].map((feature, i) => (
-            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '13px', color: '#9ca3af' }}>
-              <span style={{ color: '#22c55e' }}>✓</span>
-              {feature}
-            </div>
-          ))}
-        </div>
-        
-        <button
-          onClick={onUpgradeClick}
-          style={{
-            background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '12px 32px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Upgrade to Pro — $49/month
-        </button>
-        <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '8px' }}>
-          50 audits/month · What-If Simulator · PDF Export · History
-        </div>
-      </div>
-    );
-  }
+  // WhatIfEditor is available to all users in this version
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

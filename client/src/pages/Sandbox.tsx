@@ -25,7 +25,8 @@ export default function SandboxPage() {
   const searchParams = new URLSearchParams(window.location.search);
   const initialUrl = searchParams.get("url") || "";
 
-  const isPremium = !!(user && (user as { plan?: string }).plan && (user as { plan?: string }).plan !== "free");
+  // WhatIfEditor is unlocked for all users in this version
+  const isPremium = true;
 
   return (
     <div className="min-h-screen bg-[#050505]">
@@ -52,16 +53,13 @@ export default function SandboxPage() {
           </div>
           {!user && (
             <div className="ml-auto flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs text-muted-foreground">
-                <a
-                  href={getLoginUrl()}
-                  className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
-                >
-                  Sign in
-                </a>{" "}
-                to unlock What-If Editor
-              </span>
+              <a
+                href={getLoginUrl()}
+                className="text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2"
+              >
+                Sign in
+              </a>
+              <span className="text-xs text-muted-foreground">to save simulation history</span>
             </div>
           )}
         </div>
@@ -82,8 +80,8 @@ export default function SandboxPage() {
                 <strong className="text-foreground">Google AI Overviews</strong> rank and cite your
                 page — based on reverse-engineered algorithms (RRF, L3 XGBoost, Query Fan-Out).
                 Use the{" "}
-                <span className={isPremium ? "text-violet-400" : "text-amber-400"}>
-                  {isPremium ? "⚡ What-If Editor" : "🔒 What-If Editor"}
+                <span className="text-violet-400">
+                  ⚡ What-If Editor
                 </span>{" "}
                 to test content changes before publishing.
               </p>

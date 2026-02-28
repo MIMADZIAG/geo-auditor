@@ -224,3 +224,11 @@
 - [x] Dodać AISandboxCTA banner w Results.tsx (po Content Intelligence, przed Competitor Teaser)
 - [x] Naprawić uszkodzony PLGUpgradeBanner (błąd edycji — brakujące zamknięcia JSX)
 - [x] 55 testów passing, 0 błędów TS
+
+## Bug Fix: H1/nagłówki, CI kolejność, WhatIfEditor
+
+- [x] Fix contentStructure.ts: H1 i nagłówki liczone PRZED usunięciem elementu <header> (był strip H1 razem z <header>)
+- [x] Fix CI panel: Query Coverage questions (top_questions) pokazane PRZED Citeability Score gauge — user widzi zapytania najpierw
+- [x] Odblokować WhatIfEditor w Sandbox dla wszystkich użytkowników — usunięto isPremium gate
+- [x] Sandbox.tsx: header message zmieniony z "Sign in to unlock" na "Sign in to save history"
+- [x] 55 testów passing, 0 błędów TS

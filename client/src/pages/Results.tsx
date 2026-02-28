@@ -27,6 +27,7 @@ import {
   LogIn,
   Lightbulb,
   Target,
+  Search,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -394,6 +395,25 @@ function ContentIntelligencePanel({
           </div>
         </div>
 
+        {/* Query Coverage — shown FIRST so user sees what queries the page can rank for */}
+        {(() => {
+          const qc = contentIntelligence.checks.find(c => c.id === "query_coverage");
+          const questions = qc?.examples?.filter(Boolean) ?? [];
+          if (questions.length === 0) return null;
+          return (
+            <div className="mb-5 p-4 rounded-xl bg-background/50 border border-border/40">
+              <div className="flex items-center gap-2 mb-3">
+                <Search className="w-3.5 h-3.5 text-violet-400" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Queries this page can rank for in AI search</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {questions.map((q, i) => (
+                  <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300">{q}</span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         {/* Three-column metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           {/* Citeability Score Gauge */}
