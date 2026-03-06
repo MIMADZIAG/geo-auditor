@@ -5,23 +5,25 @@ import type { AuditFindings, AuditResult, Recommendation } from "./types";
 // and other categories are proportionally reduced.
 // Without contentIntelligence, weights sum to 100 across 6 categories.
 const CATEGORY_WEIGHTS_BASE = {
-  technical: 15,
-  structuredData: 22,
-  contentStructure: 25,
-  eeat: 15,
-  aiCrawlers: 8,
-  metaTags: 7,
-};
-
-// When Content Intelligence is available, it takes 20% — the most important signal
-const CATEGORY_WEIGHTS_WITH_CI = {
-  technical: 12,
-  structuredData: 18,
+  technical: 13,
+  structuredData: 20,
   contentStructure: 20,
   eeat: 12,
-  aiCrawlers: 6,
-  metaTags: 5,
-  contentIntelligence: 27, // ← highest weight: LLM-powered content quality
+  aiCrawlers: 7,
+  metaTags: 6,
+  brandAuthority: 22, // Brand Presence Score — new high-weight dimension
+};
+
+// When Content Intelligence is available, it takes 24% — the most important signal
+const CATEGORY_WEIGHTS_WITH_CI = {
+  technical: 10,
+  structuredData: 15,
+  contentStructure: 15,
+  eeat: 9,
+  aiCrawlers: 5,
+  metaTags: 4,
+  brandAuthority: 18, // Brand Presence Score
+  contentIntelligence: 24, // ← highest weight: LLM-powered content quality
 };
 
 export function computeOverallScore(findings: AuditFindings): number {

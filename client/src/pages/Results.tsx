@@ -75,6 +75,7 @@ const CATEGORY_META = [
   { key: "eeat", label: "Trust & Authority", icon: Zap },
   { key: "aiCrawlers", label: "AI Crawler Access", icon: Bot },
   { key: "metaTags", label: "Meta Tags", icon: BarChart3 },
+  { key: "brandAuthority", label: "Brand Presence", icon: TrendingUp },
 ];
 
 const CATEGORY_HUMAN_LABELS: Record<string, string> = {
@@ -84,6 +85,7 @@ const CATEGORY_HUMAN_LABELS: Record<string, string> = {
   eeat: "Trust & Authority",
   aiCrawlers: "AI Crawler Access",
   metaTags: "Meta Tags",
+  brandAuthority: "Brand Presence",
 };
 
 // Human-readable descriptions for non-technical users
@@ -94,6 +96,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   eeat: "Signals that tell AI your content is trustworthy and written by an expert.",
   aiCrawlers: "Whether specific AI bots (ChatGPT, Perplexity, Gemini) are allowed to index your page.",
   metaTags: "Page title and description that AI uses to understand your content at a glance.",
+  brandAuthority: "How strongly your brand is recognized as an authority in its field by AI search engines.",
 };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────

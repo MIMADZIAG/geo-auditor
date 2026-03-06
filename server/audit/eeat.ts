@@ -53,15 +53,34 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
   checks.push({ id: "author_byline", value: hasAuthor, ...authorAdaptive });
 
   // ── 2. About page link ────────────────────────────────────────────────────
+  // Broad multi-language detection: Polish, English, German, French, Spanish, Czech
+  // Also checks footer specifically (most sites put About in footer nav)
+  const aboutHrefPatterns = [
+    'a[href*="about"]', 'a[href*="o-nas"]', 'a[href*="o-firmie"]',
+    'a[href*="about-us"]', 'a[href*="kim-jestesmy"]', 'a[href*="our-story"]',
+    'a[href*="company"]', 'a[href*="wspolpraca"]', 'a[href*="uber-uns"]',
+    'a[href*="a-propos"]', 'a[href*="sobre-nosotros"]', 'a[href*="o-spolecnosti"]',
+    'a[href*="firma"]', 'a[href*="zespol"]', 'a[href*="team"]',
+    'a[href*="who-we-are"]', 'a[href*="our-company"]', 'a[href*="historia"]',
+  ];
+  const aboutTextPhrases = [
+    "o nas", "o firmie", "kim jesteśmy", "nasza historia", "o spółce", "o sklepie",
+    "nasz zespół", "poznaj nas", "o marce",
+    "about us", "about", "our story", "who we are", "our team", "company",
+    "über uns", "à propos", "sobre nosotros",
+  ];
   const hasAboutLink =
-    $([
-      'a[href*="about"]', 'a[href*="o-nas"]', 'a[href*="o-firmie"]',
-      'a[href*="about-us"]', 'a[href*="kim-jestesmy"]', 'a[href*="our-story"]',
-      'a[href*="company"]', 'a[href*="wspolpraca"]',
-    ].join(", ")).length > 0 ||
+    $(aboutHrefPatterns.join(", ")).length > 0 ||
     $("a").toArray().some((el) => {
       const text = $(el).text().toLowerCase().trim();
-      return ["o nas", "o firmie", "about us", "about", "kim jesteśmy", "nasza historia"].includes(text);
+      return aboutTextPhrases.some(phrase => text.includes(phrase));
+    }) ||
+    // Footer-specific check (most sites put About in footer)
+    $("footer a, [class*='footer'] a, [id*='footer'] a, [class*='Footer'] a").toArray().some((el) => {
+      const text = $(el).text().toLowerCase().trim();
+      const href = ($(el).attr("href") ?? "").toLowerCase();
+      return aboutTextPhrases.some(p => text.includes(p))
+        || href.includes("o-nas") || href.includes("about") || href.includes("firma");
     });
 
   checks.push({
@@ -74,16 +93,31 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
     impact: "medium",
     value: hasAboutLink,
   });
-
-  // ── 3. Contact information ────────────────────────────────────────────────
+  // ── 3. Contact information ────────────────────────────────────────────────────
+  const contactHrefPatterns = [
+    'a[href*="contact"]', 'a[href*="kontakt"]', 'a[href*="napisz"]',
+    'a[href^="mailto:"]', 'a[href^="tel:"]',
+    'a[href*="contact-us"]', 'a[href*="get-in-touch"]', 'a[href*="reach-us"]',
+    'a[href*="contacto"]', 'a[href*="kontakte"]', 'a[href*="nous-contacter"]',
+  ];
+  const contactTextPhrases = [
+    "kontakt", "contact", "contact us", "skontaktuj się", "napisz do nas",
+    "napisz do nas", "wyślij wiadomość", "formularz kontaktowy", "zadzwoń",
+    "get in touch", "reach us", "write to us", "email us",
+    "kontaktieren", "contacto", "nous contacter",
+  ];
   const hasContactInfo =
-    $([
-      'a[href*="contact"]', 'a[href*="kontakt"]', 'a[href*="napisz"]',
-      'a[href^="mailto:"]', 'a[href^="tel:"]',
-    ].join(", ")).length > 0 ||
+    $(contactHrefPatterns.join(", ")).length > 0 ||
     $("a").toArray().some((el) => {
       const text = $(el).text().toLowerCase().trim();
-      return ["kontakt", "contact", "contact us", "skontaktuj się", "napisz do nas"].includes(text);
+      return contactTextPhrases.some(phrase => text.includes(phrase));
+    }) ||
+    // Footer-specific check
+    $("footer a, [class*='footer'] a, [id*='footer'] a, [class*='Footer'] a").toArray().some((el) => {
+      const text = $(el).text().toLowerCase().trim();
+      const href = ($(el).attr("href") ?? "").toLowerCase();
+      return contactTextPhrases.some(p => text.includes(p))
+        || href.includes("kontakt") || href.includes("contact") || href.startsWith("mailto:") || href.startsWith("tel:");
     }) ||
     /(\+\d[\d\s\-()]{7,}|\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b)/.test(fullText);
 
@@ -98,25 +132,57 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
     value: hasContactInfo,
   });
 
-  // ── 4. Legal pages (Privacy Policy + Terms) ───────────────────────────────
+  // ── 4. Legal pages (Privacy Policy + Terms) ────────────────────────────────────────────────────
+  // Privacy: Polish (polityka prywatności, prywatność, RODO), English, German, French, Spanish
+  const privacyHrefPatterns = [
+    'a[href*="privacy"]', 'a[href*="polityka"]', 'a[href*="rodo"]',
+    'a[href*="gdpr"]', 'a[href*="prywatnosci"]', 'a[href*="prywatnosc"]',
+    'a[href*="datenschutz"]', 'a[href*="confidentialite"]', 'a[href*="privacidad"]',
+    'a[href*="privacy-policy"]', 'a[href*="legal"]', 'a[href*="ochrona-danych"]',
+  ];
+  const privacyTextPhrases = [
+    "polityka prywatności", "privacy policy", "prywatność", "rodo", "ochrona danych",
+    "polityka cookies", "datenschutz", "confidentialité", "privacidad", "privacy",
+    "polityka",
+  ];
   const hasPrivacy =
-    $([
-      'a[href*="privacy"]', 'a[href*="polityka"]', 'a[href*="rodo"]',
-      'a[href*="gdpr"]', 'a[href*="prywatnosci"]',
-    ].join(", ")).length > 0 ||
+    $(privacyHrefPatterns.join(", ")).length > 0 ||
     $("a").toArray().some((el) => {
       const text = $(el).text().toLowerCase().trim();
-      return ["polityka prywatności", "privacy policy", "prywatność", "rodo"].includes(text);
+      return privacyTextPhrases.some(phrase => text.includes(phrase));
+    }) ||
+    // Footer-specific check (Privacy Policy is almost always in footer)
+    $("footer a, [class*='footer'] a, [id*='footer'] a, [class*='Footer'] a").toArray().some((el) => {
+      const text = $(el).text().toLowerCase().trim();
+      const href = ($(el).attr("href") ?? "").toLowerCase();
+      return privacyTextPhrases.some(p => text.includes(p))
+        || href.includes("privacy") || href.includes("polityka") || href.includes("rodo") || href.includes("gdpr");
     });
 
+  // Terms: Polish (regulamin, warunki), English, German, French, Spanish
+  const termsHrefPatterns = [
+    'a[href*="terms"]', 'a[href*="regulamin"]', 'a[href*="warunki"]',
+    'a[href*="tos"]', 'a[href*="legal"]', 'a[href*="agb"]',
+    'a[href*="cgv"]', 'a[href*="condiciones"]', 'a[href*="terms-of-service"]',
+    'a[href*="terms-of-use"]',
+  ];
+  const termsTextPhrases = [
+    "regulamin", "terms", "terms of service", "terms & conditions", "warunki",
+    "warunki korzystania", "warunki użytkowania", "agb", "cgv", "condiciones",
+    "terms of use", "user agreement",
+  ];
   const hasTerms =
-    $([
-      'a[href*="terms"]', 'a[href*="regulamin"]', 'a[href*="warunki"]',
-      'a[href*="tos"]', 'a[href*="legal"]',
-    ].join(", ")).length > 0 ||
+    $(termsHrefPatterns.join(", ")).length > 0 ||
     $("a").toArray().some((el) => {
       const text = $(el).text().toLowerCase().trim();
-      return ["regulamin", "terms", "terms of service", "terms & conditions", "warunki"].includes(text);
+      return termsTextPhrases.some(phrase => text.includes(phrase));
+    }) ||
+    // Footer-specific check
+    $("footer a, [class*='footer'] a, [id*='footer'] a, [class*='Footer'] a").toArray().some((el) => {
+      const text = $(el).text().toLowerCase().trim();
+      const href = ($(el).attr("href") ?? "").toLowerCase();
+      return termsTextPhrases.some(p => text.includes(p))
+        || href.includes("regulamin") || href.includes("terms") || href.includes("legal");
     });
 
   checks.push({

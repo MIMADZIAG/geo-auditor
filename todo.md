@@ -232,3 +232,15 @@
 - [x] Odblokować WhatIfEditor w Sandbox dla wszystkich użytkowników — usunięto isPremium gate
 - [x] Sandbox.tsx: header message zmieniony z "Sign in to unlock" na "Sign in to save history"
 - [x] 55 testów passing, 0 błędów TS
+
+## v6 — Bug Fixes & Enhancements
+
+- [x] Fix #1: blokada wyników gdy non-200 po 3 retry (audit/index.ts) + Puppeteer fallback gdy cheerio zwraca <500 znaków
+- [x] Fix #2: JS-rendered scraper — Puppeteer (systemowy Chromium) jako fallback dla JS-heavy stron
+- [x] Fix #3: 5 nowych trudnych checks w technical.ts, kalibracja progów scoringowych (Excellent ≥85, Good ≥65)
+- [x] Fix #4: detekcja Privacy Policy/O nas/Kontakt w PL, EN, DE, FR, ES — wzorce href + text + footer
+- [x] Fix #5: nowy moduł brandAuthority.ts — Brand Presence Score (domena, social, Wikipedia, branża)
+- [x] Integracja brandAuthority w audit/index.ts i scorer.ts (waga 22% BASE, 18% WITH_CI)
+- [x] Dodanie "Brand Presence" do CATEGORY_META i opisów w Results.tsx
+- [x] Naprawa testów po zmianie wag scorera (55 testów passing)
+- [x] 0 błędów TS

@@ -1,4 +1,83 @@
 import * as cheerio from "cheerio";
+import puppeteer from "puppeteer-core";
+
+const CHROMIUM_PATH = process.env.CHROMIUM_PATH ?? "/usr/bin/chromium-browser";
+const JS_FALLBACK_THRESHOLD = 500; // chars of visible text below which we try JS rendering
+
+/**
+ * Detect if a page is likely JS-rendered (SPA/React/Next.js) by checking
+ * how much visible text is in the static HTML. If very little text is found,
+ * the page probably relies on client-side JavaScript to render its content.
+ */
+function isLikelyJSRendered(html: string): boolean {
+  const $ = cheerio.load(html);
+  $("script, style, noscript, head").remove();
+  const visibleText = $.text().replace(/\s+/g, " ").trim();
+  return visibleText.length < JS_FALLBACK_THRESHOLD;
+}
+
+/**
+ * Fetch a page using headless Chromium (Puppeteer) to handle JS-rendered content.
+ * Used as a fallback when static HTML scraping yields insufficient content.
+ * Waits for network to be idle (networkidle2) to ensure JS has executed.
+ */
+async function fetchWithPuppeteer(url: string): Promise<{ html: string; statusCode: number; finalUrl: string }> {
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      executablePath: CHROMIUM_PATH,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--disable-sync",
+        "--no-first-run",
+        "--mute-audio",
+      ],
+      headless: true,
+      timeout: 20000,
+    });
+    const page = await browser.newPage();
+    // Set realistic browser headers
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7",
+    });
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    );
+    // Block images/fonts/media to speed up loading
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      const type = req.resourceType();
+      if (["image", "media", "font", "stylesheet"].includes(type)) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+    let statusCode = 200;
+    page.on("response", (response) => {
+      if (response.url() === url || response.url() === url + "/") {
+        statusCode = response.status();
+      }
+    });
+    const response = await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 20000,
+    });
+    if (response) statusCode = response.status();
+    // Wait a bit more for any lazy-loaded content
+    await new Promise((r) => setTimeout(r, 1000));
+    const html = await page.content();
+    const finalUrl = page.url();
+    return { html, statusCode, finalUrl };
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+}
 
 export interface ScrapedPage {
   url: string;
@@ -188,8 +267,34 @@ export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
     };
   }
 
+  // JS-rendered fallback: if static HTML has very little visible text, try Puppeteer.
+  // This handles SPA/React/Next.js pages where content is rendered client-side.
+  let jsRendered = false;
+  if (isLikelyJSRendered(html)) {
+    try {
+      console.log(`[Scraper] JS-rendered page detected for ${url} — using Puppeteer fallback`);
+      const puppeteerResult = await fetchWithPuppeteer(url);
+      if (puppeteerResult.html && !isLikelyJSRendered(puppeteerResult.html)) {
+        html = puppeteerResult.html;
+        statusCode = puppeteerResult.statusCode || statusCode;
+        finalUrl = puppeteerResult.finalUrl || finalUrl;
+        jsRendered = true;
+        console.log(`[Scraper] Puppeteer fallback succeeded for ${url}`);
+      }
+    } catch (puppeteerErr) {
+      console.warn(
+        `[Scraper] Puppeteer fallback failed for ${url}:`,
+        puppeteerErr instanceof Error ? puppeteerErr.message : puppeteerErr
+      );
+      // Non-fatal: continue with static HTML
+    }
+  }
+
   const $ = cheerio.load(html);
   title = $("title").first().text().trim();
+  if (jsRendered) {
+    console.log(`[Scraper] Using JS-rendered HTML for ${url} (title: ${title})`);
+  }
 
   // Fetch robots.txt (best-effort, don't fail if unavailable)
   let robotsTxt: string | null = null;

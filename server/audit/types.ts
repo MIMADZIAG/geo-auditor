@@ -45,6 +45,7 @@ export interface AuditFindings {
   aiCrawlers: CategoryResult;
   metaTags: CategoryResult;
   contentIntelligence?: ContentIntelligenceResult;
+  brandAuthority?: CategoryResult;
 }
 
 export interface Recommendation {

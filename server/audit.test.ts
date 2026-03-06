@@ -52,8 +52,8 @@ describe("computeOverallScore", () => {
       aiCrawlers: { score: 0, maxScore: 100, checks: [], summary: "" },
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
     };
-    // technical weight = 15 out of total 92 (base weights sum), normalized: round(15/92*100) = 16
-    expect(computeOverallScore(findings)).toBe(16);
+    // technical weight = 13 out of 78 (base weights sum without brandAuthority, absent from test data), normalized: round(13/78*100) = 17
+    expect(computeOverallScore(findings)).toBe(17);
   });
 
   it("returns a value between 0 and 100 for mixed scores", () => {
@@ -757,8 +757,8 @@ describe("ContentIntelligenceResult type contract", () => {
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
       contentIntelligence: { overallScore: 100 },
     };
-    // Only CI scores 100, weight 27 out of 100 total → 27
+    // Only CI scores 100, weight 24 out of 82 (WITH_CI sum without brandAuthority, absent from test data) → 29
     const score = computeOverallScore(findings as AuditFindings);
-    expect(score).toBe(27);
+    expect(score).toBe(29);
   });
 });

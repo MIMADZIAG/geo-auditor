@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, openId, name, email, role, createdAt FROM users ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, openId, name, email, role, createdAt FROM users ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "540003",
+      "openId": "XXhUwnyjMiY32ewQKwL3ik",
+      "name": "mikolaj.madziag",
+      "email": "mikolaj.madziag@iberion.pl",
+      "role": "user",
+      "createdAt": "2026-02-28 00:50:01"
+    },
+    {
+      "id": "420069",
+      "openId": "FcnzYDF6YReWs2EDjdrTwR",
+      "name": "mikolaj.madziag",
+      "email": "mikolaj.madziag@totalmoney.pl",
+      "role": "user",
+      "createdAt": "2026-02-27 18:12:03"
+    },
+    {
+      "id": "1",
+      "openId": "38Lf8F9V5JtUHZWrDR4zWe",
+      "name": "Mikołaj Madziąg",
+      "email": "mikolajmadziag@gmail.com",
+      "role": "admin",
+      "createdAt": "2026-02-26 16:50:50"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tcreatedAt\n540003\tXXhUwnyjMiY32ewQKwL3ik\tmikolaj.madziag\tmikolaj.madziag@iberion.pl\tuser\t2026-02-28 00:50:01\n420069\tFcnzYDF6YReWs2EDjdrTwR\tmikolaj.madziag\tmikolaj.madziag@totalmoney.pl\tuser\t2026-02-27 18:12:03\n1\t38Lf8F9V5JtUHZWrDR4zWe\tMikołaj Madziąg\tmikolajmadziag@gmail.com\tadmin\t2026-02-26 16:50:50\n",
+  "stderr": "",
+  "execution_time_ms": 225
+}
