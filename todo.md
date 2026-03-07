@@ -311,3 +311,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: pageTypeDetector.ts now uses cheerio.load(page.html) fresh instance for content-length check — never mutates page.$
 - [x] Pipeline simulation test confirms fix: OLD=0 H1, NEW=1 H1 for totalmoney.pl
 - [x] 55 tests passing, 0 TS errors
+
+## Regression Test & page.$ Mutation Audit
+
+- [x] Add regression test: 4 tests covering H1-in-header pipeline isolation (detectPageType → contentStructure → eeat cross-module DOM integrity)
+- [x] Audit all audit modules for page.$ mutations — contentStructure.ts now uses cheerio.load(page.html) local copy; pageTypeDetector.ts already fixed; llmRecommendations.ts and contentIntelligence.ts already safe
+- [x] Add JSDoc immutability contract to ScrapedPage interface with ✅/❌ examples
+- [x] 59 tests passing, 0 TS errors

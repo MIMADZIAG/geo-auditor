@@ -767,3 +767,121 @@ describe("ContentIntelligenceResult type contract", () => {
     expect(score).toBe(30);
   });
 });
+
+// ─── Regression: H1-in-<header> Pipeline Isolation ───────────────────────────
+//
+// Root cause (fixed): pageTypeDetector.ts was calling $("header").remove() on the
+// shared page.$ object. Since detectPageType() runs before analyzeContentStructure()
+// in index.ts, the <header> element was destroyed before contentStructure could
+// count H1 elements inside it.
+//
+// Fix: pageTypeDetector.ts now uses cheerio.load(page.html) — a fresh isolated
+// instance — for its content-length calculation, leaving page.$ untouched.
+// contentStructure.ts also uses cheerio.load(page.html) for its mutable operations.
+//
+// These tests guard against regressions where any module mutates page.$ in a way
+// that causes false negatives in subsequent modules.
+
+import { detectPageType } from "./audit/pageTypeDetector";
+
+describe("Regression: H1 inside <header> must survive full pipeline", () => {
+  it("detects H1 inside <header> when analyzeContentStructure runs alone", () => {
+    // Simulates: Vue SSR / WordPress / totalmoney.pl-style layout
+    const html = `<html><body>
+      <header class="site-header">
+        <nav><a href="/">Home</a></nav>
+        <h1 class="page-title" data-v-abc123>Kredyt gotówkowy marzec 2026</h1>
+      </header>
+      <main><p>Content about loans and financial products available in Poland.</p></main>
+    </body></html>`;
+    const page = mockPage(html);
+    const result = analyzeContentStructure(page);
+    const h1Check = result.checks.find((c) => c.id === "h1_present");
+    expect(h1Check?.status).toBe("pass");
+    expect(String(h1Check?.value)).toBe("1");
+  });
+
+  it("detects H1 inside <header> even after detectPageType runs first (pipeline order)", () => {
+    // This is the exact regression: detectPageType runs before analyzeContentStructure in index.ts
+    // If detectPageType mutates page.$, H1 inside <header> would be lost
+    const html = `<html><body>
+      <header>
+        <h1>💸 Kredyt gotówkowy marzec 2026 - sprawdź ranking najtańszych kredytów gotówkowych</h1>
+        <nav><a href="/">Home</a><a href="/kredyty">Kredyty</a></nav>
+      </header>
+      <main>
+        <p>Porównaj oferty kredytów gotówkowych na dowolny cel.</p>
+        <p>Sprawdź wysokość raty i całkowity koszt pożyczki gotówkowej.</p>
+      </main>
+      <footer>
+        <a href="/o-nas">O nas</a>
+        <a href="/polityka-prywatnosci">Polityka Prywatności</a>
+      </footer>
+    </body></html>`;
+
+    const page = mockPage(html);
+
+    // Step 1: detectPageType runs first (as it does in index.ts line 82)
+    detectPageType(page);
+
+    // Step 2: analyzeContentStructure runs after (index.ts line 88)
+    const result = analyzeContentStructure(page);
+    const h1Check = result.checks.find((c) => c.id === "h1_present");
+
+    // H1 MUST still be detected — detectPageType must NOT have mutated page.$
+    expect(h1Check?.status).toBe("pass");
+    expect(String(h1Check?.value)).toBe("1");
+  });
+
+  it("page.$ is not mutated by detectPageType (H1 still readable after detection)", () => {
+    const html = `<html><body>
+      <header><h1>Test H1 in Header</h1></header>
+      <footer><a href="/about">About</a></footer>
+    </body></html>`;
+
+    const page = mockPage(html);
+
+    // Before detectPageType: H1 should be in page.$
+    expect(page.$("h1").length).toBe(1);
+    expect(page.$("h1").text()).toBe("Test H1 in Header");
+
+    // Run detectPageType (the previously buggy function)
+    detectPageType(page);
+
+    // After detectPageType: page.$ must be UNCHANGED — H1 still present
+    expect(page.$("h1").length).toBe(1);
+    expect(page.$("h1").text()).toBe("Test H1 in Header");
+
+    // Footer links must also still be present (eeat.ts depends on these)
+    expect(page.$("footer a").length).toBe(1);
+    expect(page.$("footer a").text()).toBe("About");
+  });
+
+  it("eeat footer links are intact after contentStructure runs (no cross-module DOM corruption)", () => {
+    // eeat.ts runs AFTER contentStructure in index.ts (lines 88 vs 89)
+    // contentStructure must NOT remove <footer> from page.$ — it uses its own local copy
+    const html = `<html><body>
+      <header><h1>Page Title</h1></header>
+      <main><p>Main content paragraph with enough words to be meaningful.</p></main>
+      <footer>
+        <a href="/o-nas">O nas</a>
+        <a href="/polityka-prywatnosci">Polityka Prywatności</a>
+        <a href="/regulamin">Regulamin</a>
+      </footer>
+    </body></html>`;
+
+    const page = mockPage(html);
+
+    // Run contentStructure first (as in index.ts)
+    analyzeContentStructure(page);
+
+    // Now run eeat — footer links must still be present in page.$
+    const eeatResult = analyzeEEAT(page);
+    const aboutCheck = eeatResult.checks.find((c) => c.id === "about_page");
+    const legalCheck = eeatResult.checks.find((c) => c.id === "legal_pages");
+
+    // If contentStructure had mutated page.$, footer would be gone and these would fail
+    expect(aboutCheck?.status).toBe("pass");
+    expect(legalCheck?.status).toBe("pass");
+  });
+});

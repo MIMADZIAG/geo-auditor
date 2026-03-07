@@ -12,24 +12,29 @@
  *  - Passage optimization: query-answering headings
  */
 
+import * as cheerio from "cheerio";
 import type { ScrapedPage } from "./scraper";
 import type { PageType } from "./pageTypeDetector";
 import type { AuditCheck, CategoryResult } from "./types";
 
 export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = "generic"): CategoryResult {
   const checks: AuditCheck[] = [];
-  const $ = page.$;
 
-  // ── 1. H1 present — MUST count H1 BEFORE removing <header> ─────────────
-  // Many CMS/e-commerce sites place H1 inside <header> element.
-  // Removing <header> first would cause false "no H1" negatives.
-  const h1Count = $("h1").length;
-  const h2Count = $("h2").length;
-  const h3Count = $("h3").length;
+  // IMPORTANT: Use a fresh cheerio instance — NEVER mutate page.$.
+  // Other modules (eeat, brandAuthority, llmRecommendations) run after this one
+  // and depend on page.$ being intact (e.g. eeat reads $('footer a') for About/Privacy links).
+  const $raw = page.$; // read-only: for heading counts that need <header> intact
+  const $ = cheerio.load(page.html); // mutable local copy for text extraction
 
-  // Remove script/style/nav/footer noise AFTER heading counts
+  // ── 1. H1 present — read from $raw BEFORE any removal ───────────────────────────
+  // Many CMS/e-commerce sites (Vue, React SSR, WordPress) place H1 inside <header>.
+  const h1Count = $raw("h1").length;
+  const h2Count = $raw("h2").length;
+  const h3Count = $raw("h3").length;
+
+  // Remove noise from the LOCAL copy only
   $("script, style, nav, footer, header, aside, noscript").remove();
-  const bodyText = $('body').text().replace(/\s+/g, " ").trim();
+  const bodyText = $("body").text().replace(/\s+/g, " ").trim();
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
   const fullHtml = $.html() ?? "";
   checks.push({

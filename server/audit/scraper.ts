@@ -79,6 +79,28 @@ async function fetchWithPuppeteer(url: string): Promise<{ html: string; statusCo
   }
 }
 
+/**
+ * Represents a fully scraped page ready for audit analysis.
+ *
+ * ⚠️  IMMUTABILITY CONTRACT for `page.$`:
+ * The `$` property is a shared Cheerio instance used by ALL audit modules.
+ * You MUST NOT call destructive operations (e.g. `.remove()`, `.empty()`, `.replaceWith()`)
+ * directly on `page.$` — doing so will corrupt the DOM for every module that runs after yours.
+ *
+ * ✅ Safe pattern — create a fresh local copy:
+ *   const $local = cheerio.load(page.html);
+ *   $local("script, style, nav, footer, header").remove();
+ *   // ... use $local safely
+ *
+ * ✅ Also safe — clone a subtree:
+ *   const $body = page.$("body").clone();
+ *   $body.find("script, style").remove();
+ *   // ... use $body safely
+ *
+ * ❌ Never do this:
+ *   const $ = page.$;
+ *   $("header").remove(); // ← destroys header for ALL subsequent modules!
+ */
 export interface ScrapedPage {
   url: string;
   finalUrl: string;
