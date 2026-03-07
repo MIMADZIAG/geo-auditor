@@ -44,6 +44,7 @@ import type {
   LLMRecommendationsResult,
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
+import { AICitationPanel } from "@/components/AICitationPanel";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -218,7 +219,15 @@ export default function Results() {
           contentIntelligence={contentIntelligence}
           isAuthenticated={isAuthenticated}
         />
-        {/* ── 6. AI Sandbox CTA — simulate how AI engines rank this page ── */}
+        {/* ── 6. AI Citation Check (Pro) ── */}
+        <AICitationPanel
+          auditId={auditId}
+          url={audit.url}
+          pageTitle={audit.pageTitle ?? audit.url}
+          pageTopics={(contentIntelligence as any)?.semanticGaps ?? []}
+          pageType={(findings as any)?.pageType ?? "generic"}
+        />
+        {/* ── 7. AI Sandbox CTA — simulate how AI engines rank this page ── */}
         <AISandboxCTA url={audit.url} navigate={navigate} />
         {/* ── 7. Competitor Analysis Teaser (Pro) ── */}
         <CompetitorAnalysisTeaser navigate={navigate} />

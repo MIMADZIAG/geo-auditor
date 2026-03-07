@@ -318,3 +318,19 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Audit all audit modules for page.$ mutations — contentStructure.ts now uses cheerio.load(page.html) local copy; pageTypeDetector.ts already fixed; llmRecommendations.ts and contentIntelligence.ts already safe
 - [x] Add JSDoc immutability contract to ScrapedPage interface with ✅/❌ examples
 - [x] 59 tests passing, 0 TS errors
+
+## Feature: AI Citation MVP (Pro)
+
+- [x] DB schema: citation_checks, citation_jobs tables (migration 0008 applied)
+- [x] tRPC: citation.startCheck (protectedProcedure), citation.getResults (publicProcedure)
+- [x] Citation engine: prompt generation via internal LLM (zero cost)
+- [x] Citation engine: OpenAI Responses API web search (gpt-4o-mini-search-preview, BYOK key)
+- [x] Citation engine: Perplexity via built-in Manus LLM (zero cost) + optional direct Perplexity API
+- [x] Citation engine: Puppeteer scraper for Google AI Overviews (zero cost)
+- [x] Cache layer: 24h deduplication by query+engine hash (in DB)
+- [x] UI: AICitationPanel in Results.tsx (after ContentIntelligencePanel)
+- [x] UI: per-engine cards (ChatGPT / Perplexity / Google) with citation score + query list
+- [x] UI: "queries with no citations" section (content gap signal)
+- [x] UI: unauthenticated blur/lock state with login CTA
+- [x] OPENAI_API_KEY configured and validated ✅
+- [ ] Tests: citation worker unit tests (pending)

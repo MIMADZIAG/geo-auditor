@@ -100,3 +100,41 @@ export const emailLeads = mysqlTable("email_leads", {
 });
 export type EmailLead = typeof emailLeads.$inferSelect;
 export type InsertEmailLead = typeof emailLeads.$inferInsert;
+
+// Citation jobs — one job per audit (async, runs after audit completes)
+export const citationJobs = mysqlTable("citation_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  auditId: int("auditId").notNull(),
+  userId: int("userId"),
+  url: varchar("url", { length: 2048 }).notNull(),
+  status: mysqlEnum("status", ["pending", "running", "completed", "failed"]).default("pending").notNull(),
+  prompts: json("prompts"), // generated query list
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type CitationJob = typeof citationJobs.$inferSelect;
+export type InsertCitationJob = typeof citationJobs.$inferInsert;
+
+// Citation checks — one row per (query, engine) combination
+export const citationChecks = mysqlTable("citation_checks", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: int("jobId").notNull(),
+  auditId: int("auditId").notNull(),
+  query: text("query").notNull(),
+  engine: mysqlEnum("engine", ["chatgpt", "perplexity", "google"]).notNull(),
+  isCited: mysqlEnum("isCited", ["yes", "no", "partial"]).default("no").notNull(),
+  // URL that was found in citations (may differ from audited URL — e.g. different path)
+  citedUrl: text("citedUrl"),
+  // Snippet from the AI response where the domain/URL appears
+  snippet: text("snippet"),
+  // Full AI response (truncated to 2000 chars)
+  responseText: text("responseText"),
+  // Cache key: hash(query + engine) for 24h deduplication
+  cacheKey: varchar("cacheKey", { length: 64 }),
+  checkedAt: timestamp("checkedAt").defaultNow().notNull(),
+});
+
+export type CitationCheck = typeof citationChecks.$inferSelect;
+export type InsertCitationCheck = typeof citationChecks.$inferInsert;

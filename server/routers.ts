@@ -5,6 +5,8 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { runAudit } from "./audit/index";
+import { createCitationJob, getCitationResultsForAudit } from "./citation/db";
+import { generateCitationQueries, runCitationJob } from "./citation/worker";
 import {
   createAudit,
   updateAudit,
@@ -210,6 +212,58 @@ export const appRouter = router({
         return { success: !!result };
       }),
   }),
+  citation: router({
+    /**
+     * Start a citation check for an audit (Pro feature).
+     * Runs asynchronously — returns jobId immediately, results appear after ~2-5 min.
+     */
+    startCheck: protectedProcedure
+      .input(z.object({
+        auditId: z.number(),
+        url: z.string().url(),
+        pageTitle: z.string().optional(),
+        pageTopics: z.array(z.string()).optional(),
+        pageType: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Generate queries using internal LLM (zero extra cost)
+        const queries = await generateCitationQueries({
+          url: input.url,
+          pageTitle: input.pageTitle ?? input.url,
+          pageTopics: input.pageTopics ?? [],
+          pageType: input.pageType ?? "generic",
+        });
+
+        const jobId = await createCitationJob({
+          auditId: input.auditId,
+          userId: ctx.user.id,
+          url: input.url,
+          prompts: queries,
+        });
+
+        if (!jobId) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create citation job" });
+        }
+
+        // Run asynchronously — don't await, return jobId immediately
+        runCitationJob(jobId).catch((err) => {
+          console.error(`[Citation] Job ${jobId} failed:`, err);
+        });
+
+        return { jobId, queries };
+      }),
+
+    /**
+     * Get citation results for an audit.
+     * Poll this after startCheck until job.status === 'completed'.
+     */
+    getResults: publicProcedure
+      .input(z.object({ auditId: z.number() }))
+      .query(async ({ input }) => {
+        return getCitationResultsForAudit(input.auditId);
+      }),
+  }),
+
   sandbox: router({
     // Fetch raw HTML + robots.txt for a given URL so the client-side simulation engine can run
     fetchPage: publicProcedure
