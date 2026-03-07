@@ -298,3 +298,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ### Tests
 - [x] Update weight-based tests to match new values (55 tests passing, 0 TS errors)
 - [x] Update organization_schema tests to reflect sameAs requirement
+
+## Bug Fix: H1 Detection & Heading Order
+
+- [x] Fix contentStructure.ts: H1 detection false negative — H1 counted BEFORE removing <header> element (many CMS/e-commerce sites place H1 inside <header>)
+- [x] Fix contentStructure.ts: heading order check downgraded from "fail/ranking factor" to "info/hint" — status always 'info', weight 0 in scorer, shown as advisory only
+- [x] 55 tests passing, 0 TS errors

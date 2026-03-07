@@ -20,14 +20,18 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
   const checks: AuditCheck[] = [];
   const $ = page.$;
 
-  // Remove script/style/nav/footer noise
+  // ── 1. H1 present — MUST count H1 BEFORE removing <header> ─────────────
+  // Many CMS/e-commerce sites place H1 inside <header> element.
+  // Removing <header> first would cause false "no H1" negatives.
+  const h1Count = $("h1").length;
+  const h2Count = $("h2").length;
+  const h3Count = $("h3").length;
+
+  // Remove script/style/nav/footer noise AFTER heading counts
   $("script, style, nav, footer, header, aside, noscript").remove();
-  const bodyText = $("body").text().replace(/\s+/g, " ").trim();
+  const bodyText = $('body').text().replace(/\s+/g, " ").trim();
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
   const fullHtml = $.html() ?? "";
-
-  // ── 1. H1 present ─────────────────────────────────────────────────────────
-  const h1Count = $("h1").length;
   checks.push({
     id: "h1_present",
     label: "H1 Heading Present",
@@ -42,21 +46,21 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
     value: h1Count,
   });
 
-  // ── 2. Heading hierarchy ──────────────────────────────────────────────────
-  const h2Count = $("h2").length;
-  const h3Count = $("h3").length;
-  const hasGoodHierarchy = h1Count >= 1 && h2Count >= 2;
+  // ── 2. Heading hierarchy — informational hint only, does NOT affect score ──
+  // Heading order is a nice-to-have UX/accessibility signal, not a ranking factor.
+  // Status is always 'info' regardless of structure — shown as advisory only.
+  const headingStructure = `H1:${h1Count}, H2:${h2Count}, H3:${h3Count}`;
   checks.push({
     id: "heading_hierarchy",
-    label: "Heading Hierarchy (H1→H2→H3)",
-    status: hasGoodHierarchy ? "pass" : h2Count > 0 ? "warning" : "fail",
-    description: hasGoodHierarchy
-      ? `Good structure: ${h1Count} H1, ${h2Count} H2, ${h3Count} H3 headings.`
+    label: "Heading Structure (Advisory)",
+    status: "info",
+    description: h1Count >= 1 && h2Count >= 2
+      ? `Heading structure: ${headingStructure} — well organised for both users and AI scanners.`
       : h2Count === 0
-      ? "No H2 headings found. Use H2 subheadings to structure content for AI scanning."
-      : `Only ${h2Count} H2 heading${h2Count > 1 ? "s" : ""}. Add at least 2 H2 sections to improve scannability.`,
-    impact: "high",
-    value: `H1:${h1Count}, H2:${h2Count}, H3:${h3Count}`,
+      ? `Heading structure: ${headingStructure}. Consider adding H2 subheadings to help users and AI engines navigate the page. (Advisory — not a ranking factor.)`
+      : `Heading structure: ${headingStructure}. Adding more H2/H3 headings can improve scannability. (Advisory — not a ranking factor.)`,
+    impact: "low",
+    value: headingStructure,
   });
 
   // ── 3. Query-answering headings (Passage Optimization — iPullRank Ch.10) ──
@@ -423,7 +427,7 @@ function computeScore(checks: AuditCheck[]): number {
   // Updated weights based on iPullRank research priority
   const weights: Record<string, number> = {
     h1_present: 8,
-    heading_hierarchy: 8,
+    heading_hierarchy: 0,  // Advisory only — not a ranking factor (iPullRank: heading order is UX, not GEO signal)
     passage_optimization: 10,  // NEW — iPullRank Ch.10 core concept
     tldr_summary: 12,
     faq_section: 12,
