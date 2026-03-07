@@ -1,4 +1,5 @@
 import type { ScrapedPage } from "./scraper";
+import * as cheerio from "cheerio";
 
 export type PageType =
   | "article"         // Blog posts, news, guides, how-tos
@@ -176,9 +177,14 @@ export function detectPageType(page: ScrapedPage): PageTypeResult {
     signals.push("HTML: form with minimal navigation (landing page)");
   }
 
-  // ── 4. Content length signal ──────────────────────────────────────────────
-  $("script, style, nav, footer, header, aside").remove();
-  const wordCount = $("body").text().replace(/\s+/g, " ").trim().split(/\s+/).length;
+  // ── 4. Content length signal ──────────────────────────────────────────────────
+  // IMPORTANT: Use a fresh cheerio instance to avoid mutating the shared page.$ object.
+  // Other audit modules (contentStructure, eeat, etc.) rely on page.$ being intact.
+  // Calling .remove() on page.$ here would destroy elements (e.g. H1 inside <header>)
+  // before those modules get a chance to read them.
+  const $clean = cheerio.load(page.html);
+  $clean("script, style, nav, footer, header, aside").remove();
+  const wordCount = $clean("body").text().replace(/\s+/g, " ").trim().split(/\s+/).length;
 
   if (wordCount > 600 && scores.article > 0) {
     scores.article += 10;
