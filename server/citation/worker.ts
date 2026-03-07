@@ -91,13 +91,10 @@ export function prepareCitationQueries(params: {
 }): string[] {
   const { pageTitle, url, topQuestions, pageTopics, language = "en" } = params;
 
-  // Use Content Intelligence top_questions as primary source
-  if (topQuestions && topQuestions.length >= 3) {
-    // Take up to 6 questions, prefer shorter/more natural ones
-    const sorted = [...topQuestions]
-      .filter((q) => q.length > 5 && q.length < 120)
-      .sort((a, b) => a.length - b.length);
-    return sorted.slice(0, 6);
+  // Use Content Intelligence top_questions VERBATIM — same order as shown in UI
+  // These are the exact "QUERIES THIS PAGE CAN RANK FOR IN AI SEARCH" from the report
+  if (topQuestions && topQuestions.length >= 1) {
+    return topQuestions.filter((q) => q && q.trim().length > 0).slice(0, 6);
   }
 
   // Fallback: generate from title + topics in detected language

@@ -227,9 +227,11 @@ export default function Results() {
           pageTopics={(contentIntelligence as any)?.semanticGaps ?? []}
           pageType={(findings as any)?.pageType ?? "generic"}
           topQuestions={
+            // query_coverage.examples = top_questions (mapped in contentIntelligence.ts line 530)
+            // These are the EXACT same queries shown in "QUERIES THIS PAGE CAN RANK FOR IN AI SEARCH"
             (contentIntelligence as any)?.checks
               ?.find((c: any) => c.id === "query_coverage")
-              ?.details?.top_questions ?? []
+              ?.examples ?? []
           }
           language={
             (findings as any)?.technical?.checks
