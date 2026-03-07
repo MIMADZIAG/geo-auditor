@@ -1,0 +1,1 @@
+ALTER TABLE `citation_jobs` ADD `language` varchar(10) DEFAULT 'en';

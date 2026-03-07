@@ -6,14 +6,15 @@
  *   2. Perplexity Sonar (via Manus built-in LLM proxy — zero extra cost)
  *   3. Google AI Overviews (Puppeteer headless scrape — zero cost)
  *
- * Designed to be called asynchronously after an audit completes.
- * Results are stored in citation_checks table.
- * Cache key (hash of query+engine) prevents duplicate API calls within 24h.
+ * Queries come directly from Content Intelligence top_questions (zero LLM cost,
+ * already in the correct page language, topically precise).
+ *
+ * Citation detection is STRICT — only exact domain matches in annotations/citations
+ * count as "yes". Text mentions without URL citations = "no".
  */
 
 import * as crypto from "crypto";
 import puppeteer from "puppeteer-core";
-import { ENV } from "../_core/env";
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
 import { citationChecks, citationJobs } from "../../drizzle/schema";
@@ -46,70 +47,129 @@ export interface CitationJobResult {
   };
 }
 
-// ─── Prompt Generation ────────────────────────────────────────────────────────
+// ─── Language Detection ───────────────────────────────────────────────────────
 
 /**
- * Generate 6 search queries a user would type into an AI engine
- * to find content like the audited page. Uses internal LLM (zero extra cost).
+ * Detect page language from HTML lang attribute or content heuristics.
+ * Returns ISO 639-1 code (e.g. "pl", "en", "de").
  */
+export function detectPageLanguage(html: string, pageTitle: string): string {
+  // 1. HTML lang attribute
+  const langMatch = html.match(/<html[^>]+lang=["']([a-zA-Z-]+)["']/i);
+  if (langMatch) {
+    return langMatch[1].toLowerCase().split("-")[0]; // "pl-PL" → "pl"
+  }
+
+  // 2. Meta content-language
+  const metaLang = html.match(/<meta[^>]+http-equiv=["']content-language["'][^>]+content=["']([a-zA-Z-]+)["']/i);
+  if (metaLang) {
+    return metaLang[1].toLowerCase().split("-")[0];
+  }
+
+  // 3. Heuristic: Polish-specific characters in title
+  if (/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(pageTitle)) return "pl";
+
+  // 4. Default to English
+  return "en";
+}
+
+// ─── Query Preparation ────────────────────────────────────────────────────────
+
+/**
+ * Prepare citation queries from Content Intelligence top_questions.
+ * These are already in the correct language and topically precise.
+ * Falls back to title-based queries only if CI data is unavailable.
+ *
+ * NO LLM call here — zero extra cost.
+ */
+export function prepareCitationQueries(params: {
+  pageTitle: string;
+  url: string;
+  topQuestions?: string[];   // from Content Intelligence query_coverage check
+  pageTopics?: string[];     // from Content Intelligence page topics
+  language?: string;         // detected page language
+}): string[] {
+  const { pageTitle, url, topQuestions, pageTopics, language = "en" } = params;
+
+  // Use Content Intelligence top_questions as primary source
+  if (topQuestions && topQuestions.length >= 3) {
+    // Take up to 6 questions, prefer shorter/more natural ones
+    const sorted = [...topQuestions]
+      .filter((q) => q.length > 5 && q.length < 120)
+      .sort((a, b) => a.length - b.length);
+    return sorted.slice(0, 6);
+  }
+
+  // Fallback: generate from title + topics in detected language
+  return buildFallbackQueries(pageTitle, url, pageTopics ?? [], language);
+}
+
+function buildFallbackQueries(
+  pageTitle: string,
+  url: string,
+  topics: string[],
+  language: string
+): string[] {
+  const domain = new URL(url).hostname.replace("www.", "");
+  const title = pageTitle.replace(/[|–—-].*$/, "").trim().slice(0, 60);
+  const mainTopic = topics[0] ?? title.split(" ").slice(0, 4).join(" ");
+
+  // Language-specific query templates
+  const templates: Record<string, string[]> = {
+    pl: [
+      title,
+      `${mainTopic} ranking`,
+      `najlepszy ${mainTopic}`,
+      `${mainTopic} porównanie`,
+      `${mainTopic} 2025`,
+      `${domain}`,
+    ],
+    en: [
+      title,
+      `best ${mainTopic}`,
+      `${mainTopic} comparison`,
+      `${mainTopic} review`,
+      `${mainTopic} 2025`,
+      `${domain}`,
+    ],
+    de: [
+      title,
+      `bestes ${mainTopic}`,
+      `${mainTopic} Vergleich`,
+      `${mainTopic} Bewertung`,
+      `${mainTopic} 2025`,
+      `${domain}`,
+    ],
+    fr: [
+      title,
+      `meilleur ${mainTopic}`,
+      `${mainTopic} comparaison`,
+      `${mainTopic} avis`,
+      `${mainTopic} 2025`,
+      `${domain}`,
+    ],
+  };
+
+  return (templates[language] ?? templates.en).slice(0, 6);
+}
+
+// ─── Legacy export for backward compatibility ─────────────────────────────────
+// (tRPC router still calls generateCitationQueries — keep it but delegate to prepareCitationQueries)
 export async function generateCitationQueries(params: {
   url: string;
   pageTitle: string;
   pageTopics: string[];
   pageType: string;
+  topQuestions?: string[];
+  language?: string;
 }): Promise<string[]> {
-  const { url, pageTitle, pageTopics, pageType } = params;
-
-  try {
-    const result = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: `You generate realistic search queries that users type into ChatGPT, Perplexity, or Google to find information.
-Output ONLY a JSON array of 6 strings. No explanation, no markdown, just the JSON array.
-Mix query types: 1 branded (includes domain/brand name), 2 informational, 2 comparison/best-of, 1 transactional.
-Keep queries natural, 4-10 words each. Use the same language as the page title.`,
-        },
-        {
-          role: "user",
-          content: `Page URL: ${url}
-Page title: ${pageTitle}
-Page type: ${pageType}
-Main topics: ${pageTopics.slice(0, 5).join(", ")}
-
-Generate 6 search queries.`,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const content = result.choices[0]?.message?.content;
-    if (!content) return getFallbackQueries(pageTitle, url);
-
-    const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
-    // Handle both {"queries": [...]} and direct array
-    const arr = Array.isArray(parsed) ? parsed : (parsed.queries ?? parsed.items ?? Object.values(parsed)[0]);
-    if (Array.isArray(arr) && arr.length > 0) {
-      return arr.slice(0, 6).map(String);
-    }
-  } catch (e) {
-    console.warn("[Citation] Query generation failed, using fallback:", e);
-  }
-
-  return getFallbackQueries(pageTitle, url);
-}
-
-function getFallbackQueries(pageTitle: string, url: string): string[] {
-  const domain = new URL(url).hostname.replace("www.", "");
-  const title = pageTitle.replace(/[|–—-].*$/, "").trim().slice(0, 60);
-  return [
-    title,
-    `${title} ranking`,
-    `${title} porównanie`,
-    `najlepszy ${title.split(" ").slice(0, 3).join(" ")}`,
-    `${title} 2025`,
-    `${domain} ${title.split(" ")[0]}`,
-  ];
+  return prepareCitationQueries({
+    pageTitle: params.pageTitle,
+    url: params.url,
+    topQuestions: params.topQuestions,
+    pageTopics: params.pageTopics,
+    language: params.language,
+  });
 }
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
@@ -171,9 +231,10 @@ async function saveResult(
 // ─── Engine 1: ChatGPT (OpenAI Responses API with web_search_preview) ─────────
 
 /**
- * Uses the user's OpenAI API key (OPENAI_API_KEY env var from BYOK connector).
- * Model: gpt-4o-mini-search-preview — cheapest web search model ($0.010/query).
- * Returns annotations[] with cited URLs.
+ * STRICT citation detection:
+ * - "yes"     = target domain found in annotations[].url (actual citation link)
+ * - "no"      = domain not in annotations, regardless of text mentions
+ * - "partial" = REMOVED — text mentions without URL citations are unreliable
  */
 async function checkChatGPT(query: string, targetUrl: string): Promise<CitationResult> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -189,7 +250,6 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
 
   try {
-    // Use the Responses API with web_search_preview built-in tool
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -211,7 +271,7 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
 
     const data = await response.json();
 
-    // Extract text output and annotations from Responses API format
+    // Extract text output and URL annotations from Responses API format
     const outputItems: any[] = data.output ?? [];
     let responseText = "";
     const citedUrls: string[] = [];
@@ -221,7 +281,6 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
         for (const content of item.content ?? []) {
           if (content.type === "output_text") {
             responseText += content.text ?? "";
-            // Annotations are inside output_text content
             for (const ann of content.annotations ?? []) {
               if (ann.type === "url_citation" && ann.url) {
                 citedUrls.push(ann.url);
@@ -232,22 +291,35 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
       }
     }
 
-    // Check if target domain appears in cited URLs or response text
+    // STRICT: only count exact domain match in annotation URLs
     const exactCitation = citedUrls.find((u) => {
-      try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; }
+      try {
+        const parsed = new URL(u);
+        return parsed.hostname.replace("www.", "") === targetDomain;
+      } catch {
+        return false;
+      }
     });
-
-    const domainMentioned = responseText.toLowerCase().includes(targetDomain.toLowerCase());
 
     if (exactCitation) {
       const snippet = extractSnippet(responseText, targetDomain);
-      return { query, engine: "chatgpt", isCited: "yes", citedUrl: exactCitation, snippet, responseText };
-    } else if (domainMentioned) {
-      const snippet = extractSnippet(responseText, targetDomain);
-      return { query, engine: "chatgpt", isCited: "partial", snippet, responseText };
-    } else {
-      return { query, engine: "chatgpt", isCited: "no", responseText: responseText.slice(0, 500) };
+      return {
+        query,
+        engine: "chatgpt",
+        isCited: "yes",
+        citedUrl: exactCitation,
+        snippet,
+        responseText: responseText.slice(0, 1000),
+      };
     }
+
+    // Not cited — save response for debugging
+    return {
+      query,
+      engine: "chatgpt",
+      isCited: "no",
+      responseText: responseText.slice(0, 500),
+    };
   } catch (e) {
     console.warn("[Citation/ChatGPT] Error:", e);
     return { query, engine: "chatgpt", isCited: "no" };
@@ -257,14 +329,17 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
 // ─── Engine 2: Perplexity (via Manus built-in LLM — zero extra cost) ──────────
 
 /**
- * Uses the Manus built-in LLM proxy which routes to Perplexity Sonar.
- * We use a special system prompt that forces the model to behave like Perplexity
- * and return citations in a structured format.
+ * STRICT citation detection — no hallucination hints.
+ * The LLM answers naturally without being told to include the target domain.
+ * Only counts as "yes" if target domain appears in structured citations block.
  *
- * If PERPLEXITY_API_KEY is set (user's own key), uses direct Perplexity API
- * for more accurate results (actual Sonar model with real citations[]).
+ * If PERPLEXITY_API_KEY is set, uses direct Sonar API for real citations[].
  */
-async function checkPerplexity(query: string, targetUrl: string): Promise<CitationResult> {
+async function checkPerplexity(
+  query: string,
+  targetUrl: string,
+  language: string = "en"
+): Promise<CitationResult> {
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
   const perplexityKey = process.env.PERPLEXITY_API_KEY;
 
@@ -290,18 +365,31 @@ async function checkPerplexity(query: string, targetUrl: string): Promise<Citati
         const responseText = data.choices?.[0]?.message?.content ?? "";
         const citations: string[] = data.citations ?? [];
 
+        // STRICT: only exact domain in citations[]
         const exactCitation = citations.find((u: string) => {
-          try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; }
+          try {
+            return new URL(u).hostname.replace("www.", "") === targetDomain;
+          } catch {
+            return false;
+          }
         });
-        const domainMentioned = responseText.toLowerCase().includes(targetDomain.toLowerCase());
 
         if (exactCitation) {
-          return { query, engine: "perplexity", isCited: "yes", citedUrl: exactCitation, snippet: extractSnippet(responseText, targetDomain), responseText };
-        } else if (domainMentioned) {
-          return { query, engine: "perplexity", isCited: "partial", snippet: extractSnippet(responseText, targetDomain), responseText };
-        } else {
-          return { query, engine: "perplexity", isCited: "no", responseText: responseText.slice(0, 500) };
+          return {
+            query,
+            engine: "perplexity",
+            isCited: "yes",
+            citedUrl: exactCitation,
+            snippet: extractSnippet(responseText, targetDomain),
+            responseText: responseText.slice(0, 1000),
+          };
         }
+        return {
+          query,
+          engine: "perplexity",
+          isCited: "no",
+          responseText: responseText.slice(0, 500),
+        };
       }
     } catch (e) {
       console.warn("[Citation/Perplexity] Direct API error, falling back to Manus LLM:", e);
@@ -309,25 +397,29 @@ async function checkPerplexity(query: string, targetUrl: string): Promise<Citati
   }
 
   // ── Option B: Manus built-in LLM (zero cost fallback) ──
-  // We ask the LLM to simulate a Perplexity-style answer and explicitly
-  // tell us if it would cite the target domain based on its training data.
+  // Ask naturally in the page language — NO hint to include the target domain.
+  const langInstructions: Record<string, string> = {
+    pl: "Odpowiadaj po polsku. Podaj konkretne źródła internetowe.",
+    en: "Answer in English. Cite specific web sources.",
+    de: "Antworte auf Deutsch. Nenne konkrete Webquellen.",
+    fr: "Réponds en français. Cite des sources web spécifiques.",
+  };
+  const langInstruction = langInstructions[language] ?? langInstructions.en;
+
   try {
     const result = await invokeLLM({
       messages: [
         {
           role: "system",
           content: `You are a research assistant that answers questions by citing web sources.
-When answering, always mention specific websites and domains that contain relevant information.
-After your answer, list the URLs you would cite in a JSON block like this:
-<citations>{"urls": ["https://example.com/page1", "https://other.com/page2"]}</citations>`,
+${langInstruction}
+After your answer, list the URLs you would cite in a JSON block:
+<citations>{"urls": ["https://example.com/page1", "https://other.com/page2"]}</citations>
+Only include URLs you are confident exist and contain relevant information. Do NOT invent URLs.`,
         },
         {
           role: "user",
-          content: `Answer this question concisely (max 200 words), citing relevant web sources:
-
-${query}
-
-Important: If you know that ${targetUrl} or ${targetDomain} contains relevant information about this topic, include it in your citations.`,
+          content: query,
         },
       ],
     });
@@ -347,18 +439,32 @@ Important: If you know that ${targetUrl} or ${targetDomain} contains relevant in
       } catch {}
     }
 
+    // STRICT: only exact domain match in structured citations
     const exactCitation = citedUrls.find((u: string) => {
-      try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; }
+      try {
+        return new URL(u).hostname.replace("www.", "") === targetDomain;
+      } catch {
+        return false;
+      }
     });
-    const domainMentioned = responseText.toLowerCase().includes(targetDomain.toLowerCase());
 
     if (exactCitation) {
-      return { query, engine: "perplexity", isCited: "yes", citedUrl: exactCitation, snippet: extractSnippet(responseText, targetDomain), responseText };
-    } else if (domainMentioned) {
-      return { query, engine: "perplexity", isCited: "partial", snippet: extractSnippet(responseText, targetDomain), responseText };
-    } else {
-      return { query, engine: "perplexity", isCited: "no", responseText: responseText.slice(0, 500) };
+      return {
+        query,
+        engine: "perplexity",
+        isCited: "yes",
+        citedUrl: exactCitation,
+        snippet: extractSnippet(responseText, targetDomain),
+        responseText: responseText.slice(0, 1000),
+      };
     }
+
+    return {
+      query,
+      engine: "perplexity",
+      isCited: "no",
+      responseText: responseText.slice(0, 500),
+    };
   } catch (e) {
     console.warn("[Citation/Perplexity] LLM error:", e);
     return { query, engine: "perplexity", isCited: "no" };
@@ -368,17 +474,29 @@ Important: If you know that ${targetUrl} or ${targetDomain} contains relevant in
 // ─── Engine 3: Google AI Overviews (Puppeteer scraper — zero cost) ─────────────
 
 /**
- * Uses Puppeteer (already installed for JS rendering fallback) to:
- * 1. Navigate to google.com/search?q=...
- * 2. Wait for AI Overview block to appear (if any)
- * 3. Extract cited URLs from the AI Overview
- * 4. Check if target domain appears
- *
- * Zero API cost — uses existing Puppeteer infrastructure.
- * Note: Google may not always show AI Overviews (depends on query, region, account).
+ * Uses Puppeteer to scrape Google AI Overviews.
+ * Updated selectors for 2025 Google DOM structure.
+ * STRICT: only counts domain in actual citation links, not text mentions.
  */
-async function checkGoogleAIOverview(query: string, targetUrl: string): Promise<CitationResult> {
+async function checkGoogleAIOverview(
+  query: string,
+  targetUrl: string,
+  language: string = "en"
+): Promise<CitationResult> {
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
+
+  // Map language to Google locale params
+  const localeMap: Record<string, { hl: string; gl: string }> = {
+    pl: { hl: "pl", gl: "pl" },
+    en: { hl: "en", gl: "us" },
+    de: { hl: "de", gl: "de" },
+    fr: { hl: "fr", gl: "fr" },
+    es: { hl: "es", gl: "es" },
+  };
+  const locale = localeMap[language] ?? localeMap.en;
+  const langArgs = language === "pl"
+    ? ["--lang=pl-PL,pl", "--accept-lang=pl-PL,pl"]
+    : ["--lang=en-US,en", "--accept-lang=en-US,en"];
 
   let browser;
   try {
@@ -389,8 +507,7 @@ async function checkGoogleAIOverview(query: string, targetUrl: string): Promise<
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--lang=pl-PL,pl",
-        "--accept-lang=pl-PL,pl",
+        ...langArgs,
       ],
       headless: true,
     });
@@ -399,62 +516,87 @@ async function checkGoogleAIOverview(query: string, targetUrl: string): Promise<
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     );
-    await page.setExtraHTTPHeaders({ "Accept-Language": "pl-PL,pl;q=0.9" });
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": language === "pl" ? "pl-PL,pl;q=0.9" : "en-US,en;q=0.9",
+    });
 
-    // Navigate to Google Search
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=pl&gl=pl`;
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+    // Navigate to Google Search with correct locale
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${locale.hl}&gl=${locale.gl}`;
+    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
 
-    // Wait a moment for dynamic content
-    await new Promise((r) => setTimeout(r, 3000));
+    // Wait for dynamic content (AI Overview loads after initial render)
+    await new Promise((r) => setTimeout(r, 4000));
 
     // Extract AI Overview content and cited URLs
     const result = await page.evaluate((domain: string) => {
-      // AI Overview selectors (Google uses various class names)
+      // Updated 2025 Google AI Overview selectors
       const aiOverviewSelectors = [
+        // 2025 selectors (most likely)
         "[data-attrid='SGE']",
-        ".YzVZnd",           // AI Overview container
-        "[jsname='yEVEwb']", // AI Overview block
-        ".IVvPP",            // AI Overview text
+        "div[jsname='yEVEwb']",
+        "div[jsname='BiSLff']",
+        ".M8OgIe",              // AI Overview wrapper 2025
+        ".YzVZnd",              // AI Overview container
+        ".IVvPP",               // AI Overview text block
         "[data-sgrd='true']",
-        ".wDYxhc",           // AI Overview card
-        "div[class*='ai-overview']",
-        "#rso .kp-wholepage", // Knowledge panel (sometimes has AI content)
+        ".wDYxhc",              // AI Overview card
+        // Fallback: any element with "AI Overview" aria label
+        "[aria-label*='AI Overview']",
+        "[aria-label*='AI overview']",
+        // Knowledge panel
+        ".kp-wholepage",
       ];
 
       let aiOverviewEl: Element | null = null;
       for (const sel of aiOverviewSelectors) {
-        aiOverviewEl = document.querySelector(sel);
-        if (aiOverviewEl) break;
+        try {
+          aiOverviewEl = document.querySelector(sel);
+          if (aiOverviewEl && aiOverviewEl.textContent && aiOverviewEl.textContent.length > 50) break;
+        } catch {}
       }
 
+      // Last resort: scan for AI Overview heading text
       if (!aiOverviewEl) {
-        // Try to find any element containing "AI Overview" text
-        const allDivs = Array.from(document.querySelectorAll("div"));
-        for (const div of allDivs) {
-          if (div.textContent?.includes("AI Overview") || div.getAttribute("data-attrid")?.includes("SGE")) {
-            aiOverviewEl = div;
-            break;
+        const headings = Array.from(document.querySelectorAll("h1, h2, h3, [role='heading']"));
+        for (const h of headings) {
+          if (h.textContent?.toLowerCase().includes("ai overview")) {
+            // Get parent container
+            aiOverviewEl = h.closest("div[data-attrid], div[jsname], .g") ?? h.parentElement;
+            if (aiOverviewEl) break;
           }
         }
       }
 
       if (!aiOverviewEl) {
-        return { hasAIOverview: false, citedUrls: [], text: "", domainMentioned: false };
+        return {
+          hasAIOverview: false,
+          citedUrls: [] as string[],
+          text: "",
+        };
       }
 
       const text = aiOverviewEl.textContent ?? "";
+      // Get all external links (not google.com) from the AI Overview block
       const links = Array.from(aiOverviewEl.querySelectorAll("a[href]"));
       const citedUrls = links
-        .map((a) => (a as HTMLAnchorElement).href)
+        .map((a) => {
+          const href = (a as HTMLAnchorElement).href;
+          // Unwrap Google redirect URLs (/url?q=...)
+          if (href.includes("google.com/url?")) {
+            try {
+              const u = new URL(href);
+              return u.searchParams.get("q") ?? href;
+            } catch {}
+          }
+          return href;
+        })
         .filter((href) => href.startsWith("http") && !href.includes("google.com"));
 
-      const domainMentioned = text.toLowerCase().includes(domain.toLowerCase()) ||
-        citedUrls.some((u) => {
-          try { return new URL(u).hostname.replace("www.", "") === domain; } catch { return false; }
-        });
-
-      return { hasAIOverview: true, citedUrls, text: text.slice(0, 1000), domainMentioned };
+      return {
+        hasAIOverview: true,
+        citedUrls,
+        text: text.slice(0, 1500),
+      };
     }, targetDomain);
 
     if (!result.hasAIOverview) {
@@ -466,8 +608,13 @@ async function checkGoogleAIOverview(query: string, targetUrl: string): Promise<
       };
     }
 
+    // STRICT: only exact domain match in citation links
     const exactCitation = result.citedUrls.find((u: string) => {
-      try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; }
+      try {
+        return new URL(u).hostname.replace("www.", "") === targetDomain;
+      } catch {
+        return false;
+      }
     });
 
     if (exactCitation) {
@@ -477,24 +624,17 @@ async function checkGoogleAIOverview(query: string, targetUrl: string): Promise<
         isCited: "yes",
         citedUrl: exactCitation,
         snippet: extractSnippet(result.text, targetDomain),
-        responseText: result.text,
-      };
-    } else if (result.domainMentioned) {
-      return {
-        query,
-        engine: "google",
-        isCited: "partial",
-        snippet: extractSnippet(result.text, targetDomain),
-        responseText: result.text,
-      };
-    } else {
-      return {
-        query,
-        engine: "google",
-        isCited: "no",
-        responseText: `AI Overview present but ${targetDomain} not cited. Topics: ${result.text.slice(0, 200)}`,
+        responseText: result.text.slice(0, 1000),
       };
     }
+
+    // AI Overview exists but target not cited
+    return {
+      query,
+      engine: "google",
+      isCited: "no",
+      responseText: `AI Overview present (${result.citedUrls.length} sources cited), ${targetDomain} not among them.`,
+    };
   } catch (e) {
     console.warn("[Citation/Google] Puppeteer error:", e);
     return { query, engine: "google", isCited: "no", snippet: "Google scraping failed" };
@@ -519,20 +659,20 @@ function extractSnippet(text: string, domain: string): string {
 /**
  * Run a full citation check job for a given audit.
  * Called asynchronously after audit completion.
+ * Language is stored in the job record and passed to all engines.
  */
 export async function runCitationJob(jobId: number): Promise<CitationJobResult | null> {
   const db = await getDb();
   if (!db) return null;
 
-  // Load job
   const jobs = await db.select().from(citationJobs).where(eq(citationJobs.id, jobId)).limit(1);
   const job = jobs[0];
   if (!job) return null;
 
-  // Mark as running
   await db.update(citationJobs).set({ status: "running" }).where(eq(citationJobs.id, jobId));
 
   const queries = (job.prompts as string[]) ?? [];
+  const language = (job as any).language ?? "en";
   const results: CitationResult[] = [];
 
   const engines: CitationEngine[] = ["chatgpt", "perplexity", "google"];
@@ -541,29 +681,26 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
     for (const engine of engines) {
       const cacheKey = makeCacheKey(query, engine);
 
-      // Check cache first
       const cached = await getCachedResult(cacheKey, job.auditId);
       if (cached) {
         results.push(cached);
         continue;
       }
 
-      // Run check
       let result: CitationResult;
       if (engine === "chatgpt") {
         result = await checkChatGPT(query, job.url);
       } else if (engine === "perplexity") {
-        result = await checkPerplexity(query, job.url);
+        result = await checkPerplexity(query, job.url, language);
       } else {
-        result = await checkGoogleAIOverview(query, job.url);
+        result = await checkGoogleAIOverview(query, job.url, language);
       }
 
-      // Save to DB
       await saveResult(jobId, job.auditId, result, cacheKey);
       results.push(result);
 
-      // Small delay to avoid rate limits
-      await new Promise((r) => setTimeout(r, 500));
+      // Small delay between API calls
+      await new Promise((r) => setTimeout(r, 800));
     }
   }
 
@@ -575,13 +712,15 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
   };
   for (const r of results) {
     summary[r.engine].total++;
-    if (r.isCited === "yes" || r.isCited === "partial") {
+    if (r.isCited === "yes") {
       summary[r.engine].cited++;
     }
   }
 
-  // Mark job as completed
-  await db.update(citationJobs).set({ status: "completed", completedAt: new Date() }).where(eq(citationJobs.id, jobId));
+  await db
+    .update(citationJobs)
+    .set({ status: "completed", completedAt: new Date() })
+    .where(eq(citationJobs.id, jobId));
 
   return { jobId, auditId: job.auditId, url: job.url, queries, results, summary };
 }

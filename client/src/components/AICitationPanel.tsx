@@ -39,6 +39,10 @@ interface Props {
   pageTitle?: string;
   pageTopics?: string[];
   pageType?: string;
+  // Content Intelligence top_questions — used as citation queries (zero LLM cost, correct language)
+  topQuestions?: string[];
+  // Detected page language (e.g. "pl", "en", "de")
+  language?: string;
 }
 
 // ─── Engine Config ─────────────────────────────────────────────────────────────
@@ -183,7 +187,7 @@ function EngineCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function AICitationPanel({ auditId, url, pageTitle, pageTopics, pageType }: Props) {
+export function AICitationPanel({ auditId, url, pageTitle, pageTopics, pageType, topQuestions, language }: Props) {
   const { user } = useAuth();
   const [jobId, setJobId] = useState<number | null>(null);
   const [jobStarted, setJobStarted] = useState(false);
@@ -230,8 +234,11 @@ export function AICitationPanel({ auditId, url, pageTitle, pageTopics, pageType 
       pageTitle: pageTitle ?? url,
       pageTopics: pageTopics ?? [],
       pageType: pageType ?? "generic",
+      // Pass Content Intelligence top_questions as citation queries (zero LLM cost, correct language)
+      topQuestions: topQuestions ?? [],
+      language: language ?? "en",
     });
-  }, [user, jobStarted, auditId, url, pageTitle, pageTopics, pageType]);
+  }, [user, jobStarted, auditId, url, pageTitle, pageTopics, pageType, topQuestions, language]);
 
   const job = citationData?.job;
   const checks = (citationData?.checks ?? []) as CitationCheck[];

@@ -224,14 +224,21 @@ export const appRouter = router({
         pageTitle: z.string().optional(),
         pageTopics: z.array(z.string()).optional(),
         pageType: z.string().optional(),
+        // Content Intelligence top_questions — preferred query source (zero LLM cost, correct language)
+        topQuestions: z.array(z.string()).optional(),
+        // Detected page language (e.g. "pl", "en", "de")
+        language: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Generate queries using internal LLM (zero extra cost)
+        // Use Content Intelligence top_questions as queries (zero LLM cost, correct language)
+        // Falls back to title-based queries only if CI data unavailable
         const queries = await generateCitationQueries({
           url: input.url,
           pageTitle: input.pageTitle ?? input.url,
           pageTopics: input.pageTopics ?? [],
           pageType: input.pageType ?? "generic",
+          topQuestions: input.topQuestions,
+          language: input.language ?? "en",
         });
 
         const jobId = await createCitationJob({
@@ -239,6 +246,7 @@ export const appRouter = router({
           userId: ctx.user.id,
           url: input.url,
           prompts: queries,
+          language: input.language ?? "en",
         });
 
         if (!jobId) {

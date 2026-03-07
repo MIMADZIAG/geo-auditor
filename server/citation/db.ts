@@ -11,6 +11,7 @@ export async function createCitationJob(params: {
   userId?: number | null;
   url: string;
   prompts: string[];
+  language?: string;
 }): Promise<number | null> {
   const db = await getDb();
   if (!db) return null;
@@ -21,6 +22,7 @@ export async function createCitationJob(params: {
     url: params.url,
     status: "pending",
     prompts: params.prompts,
+    language: params.language ?? "en",
   });
 
   // MySQL insertId

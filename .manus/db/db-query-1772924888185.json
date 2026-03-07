@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, openId, name, email, role, createdAt FROM users WHERE email = 'mikolajmadziag@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, openId, name, email, role, createdAt FROM users WHERE email = 'mikolajmadziag@gmail.com';",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "38Lf8F9V5JtUHZWrDR4zWe",
+      "name": "Mikołaj Madziąg",
+      "email": "mikolajmadziag@gmail.com",
+      "role": "admin",
+      "createdAt": "2026-02-26 16:50:50"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tcreatedAt\n1\t38Lf8F9V5JtUHZWrDR4zWe\tMikołaj Madziąg\tmikolajmadziag@gmail.com\tadmin\t2026-02-26 16:50:50\n",
+  "stderr": "",
+  "execution_time_ms": 679
+}

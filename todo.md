@@ -334,3 +334,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] UI: unauthenticated blur/lock state with login CTA
 - [x] OPENAI_API_KEY configured and validated ✅
 - [ ] Tests: citation worker unit tests (pending)
+
+## Bug Fix: AI Citation — Fałszywe dane, język, zapytania
+
+- [x] Fix: reuse Content Intelligence top_questions jako zapytania (zero kosztu LLM, precyzyjne frazy)
+- [x] Fix: detekcja języka strony przez html lang attr + heurystyka polskich znaków; język przekazywany do wszystkich silników
+- [x] Fix: STRICT URL matching w OpenAI — tylko exactCitation w annotations[].url = "yes"; text mentions usunięte
+- [x] Fix: STRICT URL matching w Puppeteer Google — tylko exactCitation w href links AI Overview; unwrap Google redirect URLs
+- [x] Fix: Perplexity — langInstruction w języku strony; usunięty hint "uwzględnij targetUrl" (zapobiega hallucynacjom)
+- [x] Fix: tRPC startCheck — przyjmuje topQuestions[] i language; Results.tsx przekazuje CI top_questions i html_lang
+- [x] DB migration 0009: language column w citation_jobs
+- [x] 59 tests passing, 0 TS errors

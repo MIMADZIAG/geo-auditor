@@ -109,6 +109,7 @@ export const citationJobs = mysqlTable("citation_jobs", {
   url: varchar("url", { length: 2048 }).notNull(),
   status: mysqlEnum("status", ["pending", "running", "completed", "failed"]).default("pending").notNull(),
   prompts: json("prompts"), // generated query list
+  language: varchar("language", { length: 10 }).default("en"), // page language for query generation
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),
