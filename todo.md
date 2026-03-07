@@ -244,3 +244,57 @@
 - [x] Dodanie "Brand Presence" do CATEGORY_META i opisów w Results.tsx
 - [x] Naprawa testów po zmianie wag scorera (55 testów passing)
 - [x] 0 błędów TS
+
+## v7 — iPullRank AI Search Manual Algorithm Upgrades
+
+Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
+
+### technical.ts (Ch.7 — How AI Crawlers Work)
+- [x] Add max-snippet meta tag check (max-snippet:0 = fail, -1 = pass, limited = warning)
+- [x] Add noai/noimageai directive detection (explicit AI opt-out = fail)
+- [x] Add JavaScript rendering detection (thin body text + heavy JS = warning)
+- [x] Update scoring weights: new checks weighted 8pts each
+
+### structuredData.ts (Ch.9 — Knowledge Graph & Entities)
+- [x] Add HowTo schema as high-value type (explicitly recommended by iPullRank)
+- [x] Add sameAs property check for Organization (Knowledge Graph readiness)
+- [x] Add schema completeness scoring (0-100, "be comprehensive not just compliant")
+- [x] Add Person schema type to HIGH_VALUE_TYPES
+- [x] Add SpeakableSpecification schema type (voice/AI assistant optimization)
+- [x] Add datePublished check alongside dateModified (freshness signals)
+- [x] Organization schema: require sameAs for "pass" status (without = "warning")
+
+### contentStructure.ts (Ch.9 — Semantic Chunking & Entity Richness)
+- [x] Add semantic_chunking check (paragraph length 40-80 words = pass)
+- [x] Add entity_richness check (named entities density per 1000 words)
+- [x] Add information_gain check (unique data, original research, statistics with dates)
+- [x] Add co_reference_clarity check (pronoun-to-noun ratio)
+- [x] Add readability_score check (Flesch-Kincaid proxy via sentence/word length)
+
+### contentIntelligence.ts (Ch.9, 11 — LLM Content Quality)
+- [x] Add embedding_language dimension (weight 15%) — vector embedding quality
+- [x] Add topic_authority dimension (weight 15%) — topical coverage and depth
+- [x] Add freshness_signals dimension (weight 10%) — temporal relevance
+- [x] Add semantic_gaps field to result (missing subtopics)
+- [x] Update weights: 8 dimensions, iPullRank-aligned priorities
+
+### eeat.ts (Ch.9 — Experience in E-E-A-T)
+- [x] Add experience_signals check (first-person language, case studies, test results)
+- [x] Add expertise_signals check (credentials, qualifications, professional background)
+- [x] Update scoring weights for new checks per page type
+
+### aiCrawlers.ts (Ch.7 — AI Crawler Landscape)
+- [x] Add OAI-SearchBot (ChatGPT Search — different from GPTBot)
+- [x] Add YouBot (You.com AI search)
+- [x] Add Bytespider (ByteDance/TikTok AI)
+- [x] Improve robots.txt sitemap directive check
+
+### scorer.ts — Category Weights (iPullRank aligned)
+- [x] contentStructure: 20% → 22% (semantic chunking is core GEO signal)
+- [x] eeat: 12% → 15% (Experience is increasingly important)
+- [x] contentIntelligence: 24% → 25% (content quality = #1 predictor)
+- [x] Add 8 new recommendation types for new checks
+
+### Tests
+- [x] Update weight-based tests to match new values (55 tests passing, 0 TS errors)
+- [x] Update organization_schema tests to reflect sameAs requirement

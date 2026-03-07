@@ -300,6 +300,65 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
     });
   }
 
+  // ── 8. First-person experience signals (iPullRank Ch.9 — Experience in E-E-A-T) ────
+  // "Experience" is the first E in E-E-A-T — personal experience with the topic
+  // Proxy: first-person language, personal anecdotes, "I tested", "in my experience"
+  const firstPersonPatterns = [
+    /\b(i\s+(tested|tried|used|reviewed|found|discovered|measured|analyzed|built|created|wrote|spent|worked|learned|noticed|experienced|recommend)|in\s+my\s+(experience|opinion|testing|review)|from\s+my\s+(experience|testing)|i've\s+(been|used|tried|tested|worked|found)|we\s+(tested|tried|found|measured|analyzed|built|created|discovered|recommend)|our\s+(experience|testing|research|data|analysis|team)\b)\b/i,
+    // Polish
+    /\b(przetestowałem|przetestowałam|sprawdziłem|sprawdziłam|używam|używałem|w\s+moim\s+doświadczeniu|z\s+mojego\s+doświadczenia|polecam|nie\s+polecam|moim\s+zdaniem|według\s+mnie|osobiście|testowałem|testowałam)\b/i,
+  ];
+
+  const hasFirstPersonExperience = firstPersonPatterns.some(p => p.test(fullText));
+
+  // Also check for case studies, before/after, real examples
+  const hasCaseStudySignals =
+    /\b(case\s+study|before\s+and\s+after|real\s+example|actual\s+result|our\s+client|our\s+customer|studium\s+przypadku|przykład|wyniki|rezultaty)\b/i.test(fullText);
+
+  const hasExperienceSignals = hasFirstPersonExperience || hasCaseStudySignals;
+
+  const experienceRelevant = ["article", "service", "homepage"].includes(pageType);
+  checks.push({
+    id: "experience_signals",
+    label: "First-Person Experience Signals",
+    status: hasExperienceSignals
+      ? "pass"
+      : experienceRelevant
+      ? "warning"
+      : "info",
+    description: hasExperienceSignals
+      ? "First-person experience or case study signals detected — the 'Experience' component of E-E-A-T. AI engines use this to distinguish expert content from generic aggregated content."
+      : experienceRelevant
+      ? "No first-person experience signals found. The first 'E' in E-E-A-T stands for Experience — add personal insights, test results, case studies, or 'I tested this' language to demonstrate direct experience with the topic."
+      : "No first-person experience signals. Consider adding real-world examples or results.",
+    impact: experienceRelevant ? "high" : "low",
+    value: hasExperienceSignals,
+  });
+
+  // ── 9. Expertise signals (iPullRank Ch.9 — Expertise in E-E-A-T) ─────────────
+  // Credentials, qualifications, professional background
+  const expertisePatterns = [
+    /\b(ph\.?d|m\.?d|mba|certified|licensed|accredited|registered|qualified|specialist|expert|consultant|professor|dr\.|engineer|architect|attorney|lawyer|cpa|cfa|years?\s+of\s+experience|years?\s+in\s+the\s+industry)\b/i,
+    // Polish
+    /\b(certyfikowany|licencjonowany|akredytowany|specjalista|ekspert|konsultant|profesor|inżynier|prawnik|lata\s+doświadczenia|lat\s+w\s+branży|dyplom|wykształcenie|absolwent)\b/i,
+  ];
+
+  const hasExpertiseSignals = expertisePatterns.some(p => p.test(fullText)) ||
+    $('[class*="credentials"], [class*="expertise"], [class*="qualifications"], [itemprop="knowsAbout"]').length > 0;
+
+  checks.push({
+    id: "expertise_signals",
+    label: "Expertise & Credentials",
+    status: hasExpertiseSignals ? "pass" : ["article", "service"].includes(pageType) ? "warning" : "info",
+    description: hasExpertiseSignals
+      ? "Expertise signals detected (credentials, qualifications, or professional background) — strong E-E-A-T signal for AI engines."
+      : ["article", "service"].includes(pageType)
+      ? "No expertise signals found. Add author credentials, professional qualifications, or industry experience to strengthen the 'Expertise' component of E-E-A-T. AI engines use expertise signals to assess content trustworthiness."
+      : "No explicit expertise signals. Consider adding credentials where relevant.",
+    impact: ["article", "service"].includes(pageType) ? "medium" : "low",
+    value: hasExpertiseSignals,
+  });
+
   const score = computeScore(checks, pageType);
 
   return {
@@ -312,28 +371,36 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
 function computeScore(checks: AuditCheck[], pageType: PageType): number {
   const weights: Record<string, number> = {
-    author_byline: 0,        // set dynamically
-    about_page: 15,
-    contact_info: 20,
-    legal_pages: 15,
-    external_citations: 0,   // set dynamically
-    review_signals: 20,      // e-commerce only
-    trust_signals: 10,       // e-commerce only
-    company_identity: 20,    // homepage only
-    publication_date: 10,    // article only
+    author_byline: 0,          // set dynamically
+    about_page: 12,
+    contact_info: 15,
+    legal_pages: 12,
+    external_citations: 0,     // set dynamically
+    review_signals: 15,        // e-commerce only
+    trust_signals: 8,          // e-commerce only
+    company_identity: 15,      // homepage only
+    publication_date: 8,       // article only
+    experience_signals: 0,     // NEW — set dynamically (iPullRank Ch.9)
+    expertise_signals: 0,      // NEW — set dynamically (iPullRank Ch.9)
   };
 
   if (["article", "service"].includes(pageType)) {
-    weights.author_byline = 25;
-    weights.external_citations = 25;
-  } else if (["homepage", "landing"].includes(pageType)) {
-    weights.author_byline = 10;
+    weights.author_byline = 20;
     weights.external_citations = 15;
-    weights.about_page = 20;
+    weights.experience_signals = 15;  // NEW — high weight for articles
+    weights.expertise_signals = 10;   // NEW
+  } else if (["homepage", "landing"].includes(pageType)) {
+    weights.author_byline = 8;
+    weights.external_citations = 12;
+    weights.about_page = 18;
+    weights.experience_signals = 8;   // NEW
+    weights.expertise_signals = 5;    // NEW
   } else {
     // product, product-listing, generic
     weights.author_byline = 5;
     weights.external_citations = 10;
+    weights.experience_signals = 5;   // NEW
+    weights.expertise_signals = 3;    // NEW
   }
 
   let earned = 0;

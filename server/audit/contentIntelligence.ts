@@ -34,12 +34,32 @@ export interface ContentIntelligenceResult {
   summary: string;             // 1–2 sentence overall assessment
   topOpportunity: string;      // Single most impactful improvement
   pageTopics: string[];        // Detected main topics (for virality/sharing)
+  semanticGaps: string[];      // NEW — missing subtopics/questions (iPullRank Ch.11)
   isLLMPowered: true;
 }
 
 // ─── LLM Schema ──────────────────────────────────────────────────────────────
 
 interface LLMContentAnalysis {
+  embedding_language: {
+    score: number;
+    status: "pass" | "warning" | "fail";
+    description: string;
+    recommendation: string;
+  };
+  topic_authority: {
+    score: number;
+    status: "pass" | "warning" | "fail";
+    description: string;
+    recommendation: string;
+    missing_subtopics: string[];
+  };
+  freshness_signals: {
+    score: number;
+    status: "pass" | "warning" | "fail";
+    description: string;
+    recommendation: string;
+  };
   answer_density: {
     score: number;
     status: "pass" | "warning" | "fail";
@@ -78,6 +98,7 @@ interface LLMContentAnalysis {
   top_opportunity: string;
   citeability_score: number;
   page_topics: string[];
+  semantic_gaps: string[];
 }
 
 // ─── Content Extraction ───────────────────────────────────────────────────────
@@ -143,7 +164,7 @@ export async function analyzeContentIntelligence(
 
   const systemPrompt = `You are an expert in Generative Engine Optimization (GEO) — the practice of optimizing web content to be cited, quoted, and surfaced by AI search engines like ChatGPT, Perplexity, Google AI Overviews, and Claude.
 
-Your task is to analyze a web page's content and evaluate it across 5 dimensions that determine whether AI engines will cite it. Be HONEST and CRITICAL — most pages have significant room for improvement. Do NOT give inflated scores.
+Your task is to analyze a web page's content and evaluate it across 8 dimensions that determine whether AI engines will cite it. Be HONEST and CRITICAL — most pages have significant room for improvement. Do NOT give inflated scores.
 
 SCORING GUIDELINES (be strict):
 - 80–100: Excellent — this content is genuinely citation-worthy for AI engines
@@ -152,33 +173,59 @@ SCORING GUIDELINES (be strict):
 - 20–39: Poor — major issues that prevent AI citation
 - 0–19: Critical — content is unlikely to ever be cited by AI engines
 
-THE 5 DIMENSIONS TO EVALUATE:
+KEY INSIGHT FROM AI SEARCH RESEARCH (iPullRank AI Search Manual):
+AI engines like ChatGPT, Perplexity, and Google AI Overviews use dense vector embeddings to retrieve content. They do NOT just keyword-match — they match semantic meaning. Content must be:
+1. Written in clear, embedding-friendly language (short sentences, direct statements, no ambiguous pronouns)
+2. Semantically rich (named entities, subject-predicate-object triples, specific facts)
+3. Topically authoritative (covers the full topic cluster, not just surface-level)
+4. Fresh and temporally anchored (dates, "as of 2025", recent data)
+5. Passage-optimized (each paragraph = one self-contained idea that can be extracted independently)
 
-1. ANSWER DENSITY (weight: 25%)
+THE 8 DIMENSIONS TO EVALUATE:
+
+1. EMBEDDING-FRIENDLY LANGUAGE (weight: 15%)
+Does the content use clear, direct language that produces high-quality vector embeddings?
+- Pass (70+): Short sentences (avg <20 words), specific nouns instead of pronouns, direct subject-predicate-object statements, no ambiguous references
+- Warning (40-69): Some clear language but mixed with vague phrases, long sentences, or ambiguous pronouns ("it", "this", "they" without clear referents)
+- Fail (<40): Dense prose, long complex sentences, heavy use of pronouns without clear referents — this produces poor vector embeddings that don't match user queries
+
+2. TOPIC AUTHORITY (weight: 15%)
+Does the content cover the full topic cluster, not just the surface-level keyword?
+- Pass (70+): Covers main topic + related subtopics + edge cases + common misconceptions + follow-up questions
+- Warning (40-69): Covers main topic but misses important related subtopics that users frequently ask about
+- Fail (<40): Covers only the most obvious aspect of the topic — AI engines prefer comprehensive topical coverage
+
+3. FRESHNESS SIGNALS (weight: 10%)
+Does the content signal when it was written/updated and contain current information?
+- Pass (70+): Contains explicit date references ("as of Q1 2025", "updated March 2025"), current statistics, recent developments
+- Warning (40-69): Some temporal context but could be more specific
+- Fail (<40): No date context, potentially outdated information, no temporal anchoring — AI engines deprioritize content that may be stale
+
+4. ANSWER DENSITY (weight: 20%)
 Does the page directly answer specific questions users would ask an AI? 
 - Pass (70+): Contains clear, direct answers to 3+ specific questions about the topic
 - Warning (40-69): Has some answers but they're buried or vague
 - Fail (<40): Content doesn't answer questions directly; requires users to "figure it out"
 
-2. FACTUAL DENSITY (weight: 20%)
+5. FACTUAL DENSITY (weight: 15%)
 Does the content contain specific facts, numbers, dates, named entities, and verifiable claims?
 - Pass (70+): Rich with specific data points, statistics, named entities, dates, prices
 - Warning (40-69): Some facts but mostly general statements
 - Fail (<40): Vague, generic content without specific verifiable information
 
-3. DUPLICATE RISK (weight: 20%)
+6. DUPLICATE RISK (weight: 15%)
 How unique and original is this content vs. what already exists on thousands of other pages?
 - Pass (70+): Unique perspective, original research, proprietary data, or specialized expertise
 - Warning (40-69): Standard information presented competently but not uniquely
 - Fail (<40): Generic, templated, or easily replaceable content
 
-4. CITATION READINESS (weight: 20%)
+7. CITATION READINESS (weight: 15%)
 Is the content structured so that an AI can extract and cite specific claims?
 - Pass (70+): Clear, quotable statements with context; well-structured for extraction
 - Warning (40-69): Some citable content but mixed with filler
 - Fail (<40): Dense prose, no clear claims, or content that doesn't stand alone when quoted
 
-5. QUERY COVERAGE (weight: 15%)
+8. QUERY COVERAGE (weight: 15%)
 Does the content address the full range of questions users ask AI about this topic?
 - Pass (70+): Covers the main question AND related follow-up questions comprehensively
 - Warning (40-69): Covers the main topic but misses important related questions
@@ -190,14 +237,35 @@ IMPORTANT RULES:
 - Examples should be actual text from the page (good examples of what works, or bad examples of what doesn't)
 - top_questions in query_coverage should be the actual questions users would ask AI about this topic
 - citeability_score is your overall assessment of "how likely is an AI engine to cite this page" (0-100)
-- page_topics should be 3-5 main topics/keywords this page covers (used for social sharing)`;
+- page_topics should be 3-5 main topics/keywords this page covers (used for social sharing)
+- semantic_gaps should be 2-4 specific subtopics or questions that are missing from this page but users frequently ask AI about this topic
+- missing_subtopics in topic_authority should list 3-5 specific subtopics not covered`;
 
   const userPrompt = `Analyze this web page content and return a JSON evaluation:
 
 ${contentContext}
 
-Return ONLY valid JSON matching this exact schema:
+Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
 {
+  "embedding_language": {
+    "score": <0-100>,
+    "status": <"pass"|"warning"|"fail">,
+    "description": "<assessment of sentence clarity, pronoun usage, and directness>",
+    "recommendation": "<specific language improvements for better vector embeddings>"
+  },
+  "topic_authority": {
+    "score": <0-100>,
+    "status": <"pass"|"warning"|"fail">,
+    "description": "<how comprehensively the topic cluster is covered>",
+    "recommendation": "<specific subtopics to add for full topical authority>",
+    "missing_subtopics": ["<subtopic 1>", "<subtopic 2>", "<subtopic 3>"]
+  },
+  "freshness_signals": {
+    "score": <0-100>,
+    "status": <"pass"|"warning"|"fail">,
+    "description": "<temporal context and currency of information>",
+    "recommendation": "<how to add date context and fresh data>"
+  },
   "answer_density": {
     "score": <0-100>,
     "status": <"pass"|"warning"|"fail">,
@@ -235,13 +303,28 @@ Return ONLY valid JSON matching this exact schema:
   "overall_summary": "<1-2 sentences: honest overall assessment of AI-citation potential>",
   "top_opportunity": "<single most impactful improvement that would most increase AI citation likelihood>",
   "citeability_score": <0-100>,
-  "page_topics": ["<topic 1>", "<topic 2>", "<topic 3>"]
+  "page_topics": ["<topic 1>", "<topic 2>", "<topic 3>"],
+  "semantic_gaps": ["<missing subtopic/question 1>", "<missing subtopic/question 2>"]
 }`;
+
+  // Add extracted schema signals to context for better LLM analysis
+  const schemaSignals = (() => {
+    const scripts = page.$("script[type='application/ld+json']").toArray();
+    const types: string[] = [];
+    for (const s of scripts) {
+      try {
+        const json = JSON.parse(page.$(s).html() ?? "{}");
+        const t = json["@type"] ?? json["@graph"]?.[0]?.["@type"];
+        if (t) types.push(Array.isArray(t) ? t.join(", ") : String(t));
+      } catch { /* ignore */ }
+    }
+    return types.length > 0 ? `SCHEMA TYPES FOUND: ${types.join(", ")}` : "SCHEMA TYPES: none";
+  })();
 
   const response = await invokeLLM({
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      { role: "user", content: `${userPrompt}\n\n${schemaSignals}` },
     ],
     response_format: {
       type: "json_schema",
@@ -251,6 +334,40 @@ Return ONLY valid JSON matching this exact schema:
         schema: {
           type: "object",
           properties: {
+            embedding_language: {
+              type: "object",
+              properties: {
+                score: { type: "number" },
+                status: { type: "string", enum: ["pass", "warning", "fail"] },
+                description: { type: "string" },
+                recommendation: { type: "string" },
+              },
+              required: ["score", "status", "description", "recommendation"],
+              additionalProperties: false,
+            },
+            topic_authority: {
+              type: "object",
+              properties: {
+                score: { type: "number" },
+                status: { type: "string", enum: ["pass", "warning", "fail"] },
+                description: { type: "string" },
+                recommendation: { type: "string" },
+                missing_subtopics: { type: "array", items: { type: "string" } },
+              },
+              required: ["score", "status", "description", "recommendation", "missing_subtopics"],
+              additionalProperties: false,
+            },
+            freshness_signals: {
+              type: "object",
+              properties: {
+                score: { type: "number" },
+                status: { type: "string", enum: ["pass", "warning", "fail"] },
+                description: { type: "string" },
+                recommendation: { type: "string" },
+              },
+              required: ["score", "status", "description", "recommendation"],
+              additionalProperties: false,
+            },
             answer_density: {
               type: "object",
               properties: {
@@ -314,11 +431,13 @@ Return ONLY valid JSON matching this exact schema:
             top_opportunity: { type: "string" },
             citeability_score: { type: "number" },
             page_topics: { type: "array", items: { type: "string" } },
+            semantic_gaps: { type: "array", items: { type: "string" } },
           },
           required: [
+            "embedding_language", "topic_authority", "freshness_signals",
             "answer_density", "factual_density", "duplicate_risk",
             "citation_readiness", "query_coverage",
-            "overall_summary", "top_opportunity", "citeability_score", "page_topics"
+            "overall_summary", "top_opportunity", "citeability_score", "page_topics", "semantic_gaps"
           ],
           additionalProperties: false,
         },
@@ -333,6 +452,34 @@ Return ONLY valid JSON matching this exact schema:
 
   // Build structured checks
   const checks: ContentIntelligenceCheck[] = [
+    {
+      id: "embedding_language",
+      label: "Embedding-Friendly Language",
+      score: Math.round(analysis.embedding_language.score),
+      status: analysis.embedding_language.status,
+      description: analysis.embedding_language.description,
+      recommendation: analysis.embedding_language.recommendation,
+      impact: "high",
+    },
+    {
+      id: "topic_authority",
+      label: "Topic Authority & Coverage",
+      score: Math.round(analysis.topic_authority.score),
+      status: analysis.topic_authority.status,
+      description: analysis.topic_authority.description,
+      recommendation: analysis.topic_authority.recommendation,
+      impact: "high",
+      examples: analysis.topic_authority.missing_subtopics,
+    },
+    {
+      id: "freshness_signals",
+      label: "Freshness & Temporal Signals",
+      score: Math.round(analysis.freshness_signals.score),
+      status: analysis.freshness_signals.status,
+      description: analysis.freshness_signals.description,
+      recommendation: analysis.freshness_signals.recommendation,
+      impact: "medium",
+    },
     {
       id: "answer_density",
       label: "Answer Density",
@@ -384,17 +531,20 @@ Return ONLY valid JSON matching this exact schema:
     },
   ];
 
-  // Weighted overall score (matching the weights in the system prompt)
-  const weights = {
-    answer_density: 0.25,
-    factual_density: 0.20,
-    duplicate_risk: 0.20,
-    citation_readiness: 0.20,
-    query_coverage: 0.15,
+  // Weighted overall score — updated for 8 dimensions (iPullRank aligned)
+  const weights: Record<string, number> = {
+    embedding_language: 0.15,  // NEW — iPullRank Ch.9 vector embedding quality
+    topic_authority: 0.15,     // NEW — iPullRank Ch.11 topical authority
+    freshness_signals: 0.10,   // NEW — iPullRank Ch.9 temporal relevance
+    answer_density: 0.20,
+    factual_density: 0.15,
+    duplicate_risk: 0.10,
+    citation_readiness: 0.10,
+    query_coverage: 0.05,
   };
 
   const overallScore = Math.round(
-    checks.reduce((sum, check) => sum + check.score * weights[check.id as keyof typeof weights], 0)
+    checks.reduce((sum, check) => sum + check.score * (weights[check.id] ?? 0), 0)
   );
 
   return {
@@ -404,6 +554,7 @@ Return ONLY valid JSON matching this exact schema:
     summary: analysis.overall_summary,
     topOpportunity: analysis.top_opportunity,
     pageTopics: analysis.page_topics,
+    semanticGaps: analysis.semantic_gaps ?? [],  // NEW — missing subtopics
     isLLMPowered: true,
   };
 }

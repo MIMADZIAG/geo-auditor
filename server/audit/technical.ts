@@ -211,7 +211,7 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   });
 
   // 15. Render-blocking resources (inline scripts in <head>)
-  const headScripts = $("head script:not([async]):not([defer]):not([type='application/ld+json'])").length;
+  const headScripts = $('head script:not([async]):not([defer]):not([type="application/ld+json"])').length;
   checks.push({
     id: "render_blocking",
     label: "No Render-Blocking Scripts",
@@ -223,6 +223,72 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
       : `${headScripts} render-blocking scripts in <head>. This significantly slows page rendering for AI crawlers.`,
     impact: "medium",
     value: headScripts,
+  });
+
+  // 16. max-snippet meta tag (iPullRank Ch.7 — controls how much AI engines can quote)
+  // -1 = unlimited (best for GEO), 0 = no snippet (worst), positive = limited
+  const maxSnippetMeta = $('meta[name="robots"]').attr("content") ?? "";
+  const maxSnippetMatch = maxSnippetMeta.match(/max-snippet:\s*(-?\d+)/i);
+  const maxSnippetValue = maxSnippetMatch ? parseInt(maxSnippetMatch[1]) : null;
+  const hasMaxSnippetRestriction = maxSnippetValue !== null && maxSnippetValue >= 0 && maxSnippetValue < 200;
+
+  checks.push({
+    id: "max_snippet",
+    label: "max-snippet Not Restricted",
+    status: maxSnippetValue === null
+      ? "pass"  // No restriction = unlimited by default
+      : maxSnippetValue === -1
+      ? "pass"  // Explicitly unlimited
+      : maxSnippetValue === 0
+      ? "fail"  // No snippets at all
+      : maxSnippetValue < 200
+      ? "warning"  // Limited
+      : "pass",
+    description: maxSnippetValue === null
+      ? "No max-snippet restriction detected — AI engines can quote your full content (default unlimited)."
+      : maxSnippetValue === -1
+      ? "max-snippet:-1 detected — explicitly unlimited, AI engines can quote any length of your content."
+      : maxSnippetValue === 0
+      ? "max-snippet:0 detected — this blocks all AI snippet generation. Remove this directive to allow AI Overviews and Perplexity to quote your content."
+      : `max-snippet:${maxSnippetValue} detected — AI engines can only quote up to ${maxSnippetValue} characters. For GEO, set max-snippet:-1 (unlimited) to allow full content extraction.`,
+    impact: "high",
+    value: maxSnippetValue,
+  });
+
+  // 17. noai / noimageai directives (iPullRank Ch.7 — AI-specific opt-out directives)
+  const hasNoAI =
+    robotsMeta.toLowerCase().includes("noai") ||
+    xRobotsTag.toLowerCase().includes("noai") ||
+    $('meta[name="robots"]').toArray().some(el => $(el).attr("content")?.toLowerCase().includes("noai"));
+
+  checks.push({
+    id: "noai_directive",
+    label: "No noai Directive",
+    status: hasNoAI ? "fail" : "pass",
+    description: hasNoAI
+      ? "noai directive detected in robots meta tag — this explicitly blocks AI engines from using your content. Remove this directive to allow AI citation."
+      : "No noai directive detected — AI engines are allowed to use your content.",
+    impact: "high",
+    value: !hasNoAI,
+  });
+
+  // 18. JavaScript-heavy page detection (iPullRank Ch.7 — JS rendering issues)
+  // If most content is in JS bundles and body text is thin, AI crawlers may miss content
+  const bodyTextLength = $('body').text().replace(/\s+/g, ' ').trim().length;
+  const inlineScriptLength = $('script:not([src]):not([type="application/ld+json"])').toArray()
+    .reduce((sum, el) => sum + ($(el).html()?.length ?? 0), 0);
+  const jsRatio = bodyTextLength > 0 ? inlineScriptLength / bodyTextLength : 0;
+  const isJsHeavy = bodyTextLength < 500 && inlineScriptLength > 2000;
+
+  checks.push({
+    id: "js_rendering",
+    label: "Content Not JS-Dependent",
+    status: isJsHeavy ? "warning" : "pass",
+    description: isJsHeavy
+      ? `Low body text (${bodyTextLength} chars) with heavy inline JavaScript (${Math.round(inlineScriptLength / 1024)}KB). Content may require JavaScript rendering to be visible. Many AI crawlers do not execute JavaScript — ensure critical content is in the HTML source.`
+      : `Body text is present in HTML source (${bodyTextLength} chars) — AI crawlers can access content without JavaScript execution.`,
+    impact: "high",
+    value: !isJsHeavy,
   });
 
   const score = computeScore(checks);
@@ -237,21 +303,24 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
 
 function computeScore(checks: AuditCheck[]): number {
   const weights: Record<string, number> = {
-    https: 12,
-    http_status: 12,
-    noindex: 12,
-    nosnippet: 12,
-    canonical: 8,
+    https: 10,
+    http_status: 10,
+    noindex: 10,
+    nosnippet: 10,
+    noai_directive: 8,          // NEW — iPullRank Ch.7
+    max_snippet: 8,             // NEW — iPullRank Ch.7
+    js_rendering: 8,            // NEW — iPullRank Ch.7
+    canonical: 6,
     robots_txt_exists: 4,
-    response_time: 8,
-    content_type: 4,
-    viewport: 5,
-    security_headers: 3,
-    hreflang: 8,
+    response_time: 5,
+    content_type: 3,
+    viewport: 4,
+    security_headers: 2,
+    hreflang: 5,
     sitemap_reference: 5,
-    url_depth: 4,
-    page_size: 4,
-    render_blocking: 5,
+    url_depth: 3,
+    page_size: 3,
+    render_blocking: 4,
   };
 
   let earned = 0;

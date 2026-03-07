@@ -1,29 +1,37 @@
 import type { AuditFindings, AuditResult, Recommendation } from "./types";
 
-// Category weights for overall score
-// When contentIntelligence is available (LLM-powered), it takes 20% weight
-// and other categories are proportionally reduced.
-// Without contentIntelligence, weights sum to 100 across 6 categories.
+/**
+ * Category weights for overall GEO score
+ *
+ * Updated based on iPullRank AI Search Manual (Chapters 7, 9, 10, 11):
+ * - Content quality (semantic, entity-rich, passage-optimized) is the #1 signal
+ * - Structured data is critical for knowledge graph integration
+ * - E-E-A-T (especially Experience) is increasingly important
+ * - Technical access signals (crawlability, no JS blocking) are foundational
+ *
+ * Without contentIntelligence, weights sum to 100 across 7 categories.
+ */
 const CATEGORY_WEIGHTS_BASE = {
-  technical: 13,
-  structuredData: 20,
-  contentStructure: 20,
-  eeat: 12,
-  aiCrawlers: 7,
-  metaTags: 6,
-  brandAuthority: 22, // Brand Presence Score — new high-weight dimension
+  technical: 12,
+  structuredData: 18,
+  contentStructure: 22,  // Increased — semantic chunking, entity richness are core GEO signals
+  eeat: 15,              // Increased — E-E-A-T (especially Experience) is now more important
+  aiCrawlers: 8,
+  metaTags: 5,
+  brandAuthority: 20,
 };
 
-// When Content Intelligence is available, it takes 24% — the most important signal
+// When Content Intelligence is available, it takes 25% — the most important signal
+// Content quality is the single biggest predictor of AI citation probability
 const CATEGORY_WEIGHTS_WITH_CI = {
-  technical: 10,
-  structuredData: 15,
-  contentStructure: 15,
-  eeat: 9,
-  aiCrawlers: 5,
+  technical: 9,
+  structuredData: 13,
+  contentStructure: 16,  // Still high — structural signals complement LLM analysis
+  eeat: 11,
+  aiCrawlers: 6,
   metaTags: 4,
-  brandAuthority: 18, // Brand Presence Score
-  contentIntelligence: 24, // ← highest weight: LLM-powered content quality
+  brandAuthority: 16,
+  contentIntelligence: 25, // ← highest weight: LLM-powered content quality (iPullRank aligned)
 };
 
 export function computeOverallScore(findings: AuditFindings): number {
@@ -251,6 +259,138 @@ export function generateRecommendations(
     });
   }
 
+  // New: semantic chunking recommendation (iPullRank Ch.9)
+  if (csChecks.find((c) => c.id === "semantic_chunking" && c.status !== "pass")) {
+    recs.push({
+      id: "fix_semantic_chunking",
+      category: "Content Structure",
+      priority: "high",
+      title: "Improve Semantic Chunking",
+      description: "Paragraphs are too long for AI passage extraction.",
+      howToFix:
+        "Break long paragraphs into shorter blocks of 40–80 words, each expressing a single complete idea. AI engines like Gemini and ChatGPT segment pages by paragraph and select one at a time for summarization. Each paragraph should be self-contained and work independently when quoted.",
+      impact: "Better chunking directly improves the probability of individual paragraphs being selected for AI answers.",
+    });
+  }
+
+  // New: entity richness recommendation (iPullRank Ch.9)
+  if (csChecks.find((c) => c.id === "entity_richness" && c.status !== "pass")) {
+    recs.push({
+      id: "increase_entity_richness",
+      category: "Content Structure",
+      priority: "high",
+      title: "Increase Entity Richness",
+      description: "Content lacks named entities and specific facts.",
+      howToFix:
+        "Replace vague references with specific named entities: instead of 'this tool', say 'Google Search Console'. Instead of 'most users', say '73% of users'. Include brand names, product names, people, places, and specific statistics. AI models resolve meaning through named entities — vague content gets poor vector embeddings.",
+      impact: "Named entities are the building blocks of knowledge graph connections and improve embedding quality.",
+    });
+  }
+
+  // New: information gain recommendation (iPullRank Ch.11)
+  if (csChecks.find((c) => c.id === "information_gain" && c.status !== "pass")) {
+    recs.push({
+      id: "increase_information_gain",
+      category: "Content Structure",
+      priority: "high",
+      title: "Add Unique Data & Original Insights",
+      description: "Content lacks original data or unique insights.",
+      howToFix:
+        "Add content that only you can publish: original research, proprietary data, personal test results, or expert opinions. Include specific statistics with dates (e.g., 'as of Q1 2025, 73% of users...'). LLMs filter out generic content that mirrors thousands of other pages.",
+      impact: "Information gain is a key signal for LLM content selection — unique content is prioritized over generic aggregated content.",
+    });
+  }
+
+  // New: HowTo schema recommendation (iPullRank Ch.9)
+  if (sdChecks.find((c) => c.id === "howto_schema" && c.status === "info")) {
+    // Only recommend if page has step-by-step content signals
+    const hasStepContent = findings.contentStructure.checks.some(c =>
+      c.id === "lists_present" && c.status === "pass"
+    );
+    if (hasStepContent) {
+      recs.push({
+        id: "add_howto_schema",
+        category: "Structured Data",
+        priority: "medium",
+        title: "Add HowTo Schema",
+        description: "Page has step-by-step content but no HowTo schema.",
+        howToFix:
+          'Add HowTo JSON-LD schema with step-by-step instructions. Each step should have @type: "HowToStep" with name and text. Include totalTime and estimatedCost if applicable.',
+        impact: "HowTo schema is heavily cited by AI engines for instructional queries.",
+      });
+    }
+  }
+
+  // New: schema completeness recommendation (iPullRank Ch.9)
+  if (sdChecks.find((c) => c.id === "schema_completeness" && (c.status === "fail" || c.status === "warning"))) {
+    recs.push({
+      id: "improve_schema_completeness",
+      category: "Structured Data",
+      priority: "medium",
+      title: "Complete Schema Properties",
+      description: "Schema markup is present but missing many recommended properties.",
+      howToFix:
+        "Fill in all available schema properties — be comprehensive, not just compliant. For Article: add author, datePublished, dateModified, image, publisher. For Product: add brand, offers, aggregateRating, sku. For Organization: add sameAs, logo, contactPoint, foundingDate. More complete schemas give AI engines richer context.",
+      impact: "Schema completeness directly correlates with AI citation probability.",
+    });
+  }
+
+  // New: max-snippet recommendation (iPullRank Ch.7)
+  if (findings.technical.checks.find((c) => c.id === "max_snippet" && (c.status === "fail" || c.status === "warning"))) {
+    recs.push({
+      id: "fix_max_snippet",
+      category: "Technical",
+      priority: "critical",
+      title: "Remove max-snippet Restriction",
+      description: "max-snippet directive is limiting AI content extraction.",
+      howToFix:
+        "Change max-snippet:0 to max-snippet:-1 (unlimited) in your robots meta tag. This allows AI Overviews, Perplexity, and ChatGPT to quote your full content. If you need some restriction, use max-snippet:300 as a minimum.",
+      impact: "Removing snippet restrictions directly enables AI engines to quote your content in answers.",
+    });
+  }
+
+  // New: noai directive recommendation (iPullRank Ch.7)
+  if (findings.technical.checks.find((c) => c.id === "noai_directive" && c.status === "fail")) {
+    recs.push({
+      id: "remove_noai",
+      category: "Technical",
+      priority: "critical",
+      title: "Remove noai Directive",
+      description: "noai directive explicitly blocks AI engines from using your content.",
+      howToFix:
+        "Remove 'noai' from your robots meta tag. This directive explicitly tells AI systems not to use your content. If you want to allow AI citation but prevent training, use specific crawler-level robots.txt rules instead.",
+      impact: "Removing noai immediately allows AI engines to cite and reference your content.",
+    });
+  }
+
+  // New: JS rendering recommendation (iPullRank Ch.7)
+  if (findings.technical.checks.find((c) => c.id === "js_rendering" && c.status === "warning")) {
+    recs.push({
+      id: "fix_js_rendering",
+      category: "Technical",
+      priority: "high",
+      title: "Ensure Content is in HTML Source",
+      description: "Content may be hidden behind JavaScript rendering.",
+      howToFix:
+        "Ensure all critical content (headings, body text, FAQ, product descriptions) is present in the raw HTML source, not loaded dynamically via JavaScript. Use server-side rendering (SSR) or static generation. Many AI crawlers do not execute JavaScript.",
+      impact: "JS-rendered content is invisible to many AI crawlers, severely limiting indexation.",
+    });
+  }
+
+  // New: experience signals recommendation (iPullRank Ch.9)
+  if (findings.eeat.checks.find((c) => c.id === "experience_signals" && c.status === "warning")) {
+    recs.push({
+      id: "add_experience_signals",
+      category: "E-E-A-T",
+      priority: "medium",
+      title: "Add First-Person Experience Signals",
+      description: "Content lacks personal experience signals (the first E in E-E-A-T).",
+      howToFix:
+        "Add personal insights, test results, or case studies. Use first-person language: 'I tested this and found...', 'In our experience...', 'Our data shows...'. Include before/after examples, real client results, or original research. This differentiates your content from AI-generated generic content.",
+      impact: "Experience signals are the most differentiating E-E-A-T factor — AI engines cannot fake genuine first-person experience.",
+    });
+  }
+
   // AI Crawler recommendations
   const crawlerChecks = findings.aiCrawlers.checks;
   const blockedCrawlers = crawlerChecks.filter(
@@ -264,8 +404,22 @@ export function generateRecommendations(
       title: `Unblock AI Crawlers in robots.txt`,
       description: `${blockedCrawlers.map((c) => c.label).join(", ")} ${blockedCrawlers.length > 1 ? "are" : "is"} blocked.`,
       howToFix:
-        "Remove the Disallow: / rules for AI crawlers from your robots.txt. If you want to allow crawling but prevent training data use, you can allow crawling while using specific opt-out tokens like Google-Extended.",
+        "Remove the Disallow: / rules for AI crawlers from your robots.txt. Critical crawlers to unblock: GPTBot (ChatGPT), OAI-SearchBot (ChatGPT Search), PerplexityBot (Perplexity), Google-Extended (Google AI Overviews).",
       impact: "Blocked crawlers cannot index your content for AI-powered search results.",
+    });
+  }
+
+  // New: sitemap for crawlers recommendation
+  if (crawlerChecks.find((c) => c.id === "sitemap_for_crawlers" && c.status !== "pass")) {
+    recs.push({
+      id: "add_sitemap_directive",
+      category: "AI Crawler Access",
+      priority: "medium",
+      title: "Add Sitemap Directive to robots.txt",
+      description: "AI crawlers cannot discover your full content inventory without a sitemap reference.",
+      howToFix:
+        "Add 'Sitemap: https://yourdomain.com/sitemap.xml' to your robots.txt file. Ensure your XML sitemap is up to date and includes all important pages. This helps AI crawlers discover and index your full content.",
+      impact: "Sitemap discovery helps AI crawlers index all your pages, not just those linked from the homepage.",
     });
   }
 
