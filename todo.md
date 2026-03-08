@@ -416,3 +416,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ## Fix: AI Co-Pilot — Language Detection
 
 - [x] Updated trpc.sandbox.rewrite system prompt with CRITICAL LANGUAGE RULE — detects input language and responds in same language (PL/EN/DE/etc.)
+
+## Fix: H1/Hx Detection — page.$ Mutation Bug
+
+- [x] Audited all server/audit/*.ts modules — no active page.$ mutations found (pageTypeDetector, contentStructure, contentIntelligence all use isolated cheerio instances)
+- [x] ScrapedPage type already has full immutability contract comment in scraper.ts (lines 85-103)
+- [x] Existing regression tests: H1 in <header> + pipeline order (detectPageType → contentStructure → eeat) — all passing
+- [x] NEW: Added H1 inside <nav> regression test
+- [x] NEW: Added H1 inside <aside> regression test
+- [x] NEW: Added full 4-module pipeline test (detectPageType + contentStructure + eeat + brandAuthority) — H1 intact throughout
+- [x] 62 tests passing, 0 TS errors

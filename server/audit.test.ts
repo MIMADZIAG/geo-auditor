@@ -8,6 +8,7 @@ import { analyzeContentStructure } from "./audit/contentStructure";
 import { analyzeAICrawlers } from "./audit/aiCrawlers";
 import { analyzeEEAT } from "./audit/eeat";
 import { analyzeMetaTags } from "./audit/metaTags";
+import { analyzeBrandAuthority } from "./audit/brandAuthority";
 import type { ScrapedPage } from "./audit/scraper";
 
 // ─── Helper: create mock ScrapedPage ─────────────────────────────────────────
@@ -883,5 +884,86 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     // If contentStructure had mutated page.$, footer would be gone and these would fail
     expect(aboutCheck?.status).toBe("pass");
     expect(legalCheck?.status).toBe("pass");
+  });
+
+  it("detects H1 inside <nav> element", () => {
+    // Some CMS themes place H1 inside <nav> or breadcrumb containers
+    const html = `<html><body>
+      <nav class="breadcrumb-nav">
+        <h1 class="page-heading">Ranking kredytów gotówkowych 2026</h1>
+      </nav>
+      <main><p>Content about loans.</p></main>
+    </body></html>`;
+    const page = mockPage(html);
+    const result = analyzeContentStructure(page);
+    const h1Check = result.checks.find((c) => c.id === "h1_present");
+    // H1 is inside <nav> — contentStructure reads from $raw (page.$) before removing nav
+    // so H1 count must be 1 (pass)
+    expect(h1Check?.status).toBe("pass");
+    expect(String(h1Check?.value)).toBe("1");
+  });
+
+  it("detects H1 inside <aside> element", () => {
+    // Some page builders place H1 inside sidebar/aside containers
+    const html = `<html><body>
+      <aside class="sidebar">
+        <h1>Oferty kredytów — porównaj</h1>
+      </aside>
+      <main><p>Main content area.</p></main>
+    </body></html>`;
+    const page = mockPage(html);
+    const result = analyzeContentStructure(page);
+    const h1Check = result.checks.find((c) => c.id === "h1_present");
+    expect(h1Check?.status).toBe("pass");
+    expect(String(h1Check?.value)).toBe("1");
+  });
+
+  it("full pipeline: H1 in header survives detectPageType + analyzeContentStructure + analyzeEEAT + analyzeBrandAuthority", () => {
+    // This test simulates the exact execution order in index.ts:
+    // detectPageType → analyzeContentStructure → analyzeEEAT → analyzeBrandAuthority
+    // ALL modules must leave page.$ intact for subsequent modules
+    const html = `<html><body>
+      <header class="site-header">
+        <h1>Kredyt gotówkowy — ranking marzec 2026</h1>
+        <nav>
+          <a href="/">Strona główna</a>
+          <a href="/kredyty">Kredyty</a>
+        </nav>
+      </header>
+      <main>
+        <p>Porównaj oferty kredytów gotówkowych od najlepszych banków w Polsce.</p>
+        <p>Sprawdź oprocentowanie, RRSO i całkowity koszt kredytu.</p>
+      </main>
+      <footer>
+        <a href="/o-nas">O nas</a>
+        <a href="/polityka-prywatnosci">Polityka Prywatności</a>
+        <a href="/regulamin">Regulamin</a>
+      </footer>
+    </body></html>`;
+
+    const page = mockPage(html, { finalUrl: "https://totalmoney.pl/kredyty" });
+
+    // 1. detectPageType (runs first in index.ts)
+    detectPageType(page);
+    expect(page.$("h1").length).toBe(1); // page.$ must be intact
+
+    // 2. analyzeContentStructure (index.ts line 88)
+    const contentResult = analyzeContentStructure(page);
+    const h1Check = contentResult.checks.find((c) => c.id === "h1_present");
+    expect(h1Check?.status).toBe("pass"); // H1 must be detected
+    expect(page.$("footer a").length).toBe(3); // footer must still be intact
+
+    // 3. analyzeEEAT (index.ts line 89) — depends on footer links from page.$
+    const eeatResult = analyzeEEAT(page);
+    const aboutCheck = eeatResult.checks.find((c) => c.id === "about_page");
+    const legalCheck = eeatResult.checks.find((c) => c.id === "legal_pages");
+    expect(aboutCheck?.status).toBe("pass");
+    expect(legalCheck?.status).toBe("pass");
+
+    // 4. analyzeBrandAuthority (index.ts line 98) — reads H1 for brand consistency
+    const brandResult = analyzeBrandAuthority(page, "article");
+    expect(brandResult.checks.length).toBeGreaterThan(0);
+    // page.$ must still have H1 for brand consistency check
+    expect(page.$("h1").length).toBe(1);
   });
 });
