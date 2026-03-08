@@ -71,6 +71,13 @@
       "when": 1772926571620,
       "tag": "0009_overjoyed_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1772958332638,
+      "tag": "0010_secret_dagger",
+      "breakpoints": true
     }
   ]
 }

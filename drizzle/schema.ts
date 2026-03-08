@@ -125,9 +125,11 @@ export const citationChecks = mysqlTable("citation_checks", {
   auditId: int("auditId").notNull(),
   query: text("query").notNull(),
   engine: mysqlEnum("engine", ["chatgpt", "perplexity", "google"]).notNull(),
-  isCited: mysqlEnum("isCited", ["yes", "no", "partial"]).default("no").notNull(),
-  // URL that was found in citations (may differ from audited URL — e.g. different path)
+  isCited: mysqlEnum("isCited", ["yes", "no", "domain"]).default("no").notNull(),
+  // Exact URL that was found in citations
   citedUrl: text("citedUrl"),
+  // URL from same domain cited when isCited = "domain" (different page on same domain)
+  domainCitedUrl: text("domainCitedUrl"),
   // Snippet from the AI response where the domain/URL appears
   snippet: text("snippet"),
   // Full AI response (truncated to 2000 chars)

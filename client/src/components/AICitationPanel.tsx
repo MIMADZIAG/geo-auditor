@@ -3,6 +3,11 @@
  *
  * Shows whether the audited URL is cited by ChatGPT, Perplexity, and Google AI Overviews.
  * Starts a citation job on mount (if user is authenticated), then polls for results.
+ *
+ * 3-state citation status:
+ *   "yes"    = exact URL cited (same domain + same path)
+ *   "domain" = different page on same domain is cited
+ *   "no"     = domain not present in AI citations
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -10,7 +15,6 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getLoginUrl } from "@/const";
 
@@ -20,8 +24,9 @@ interface CitationCheck {
   id: number;
   query: string;
   engine: "chatgpt" | "perplexity" | "google";
-  isCited: "yes" | "no" | "partial";
+  isCited: "yes" | "no" | "domain";
   citedUrl?: string | null;
+  domainCitedUrl?: string | null;
   snippet?: string | null;
   responseText?: string | null;
 }
@@ -35,8 +40,6 @@ interface CitationJob {
 
 interface Props {
   auditId: number;
-  // v2: all query generation happens server-side via fan-out
-  // these props are kept for backward compat but not sent to backend
   url?: string;
   pageTitle?: string;
   pageTopics?: string[];
@@ -73,24 +76,24 @@ const ENGINE_CONFIG = {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function CitationBadge({ isCited }: { isCited: "yes" | "no" | "partial" }) {
+function CitationBadge({ isCited }: { isCited: "yes" | "no" | "domain" }) {
   if (isCited === "yes") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30 whitespace-nowrap">
         ✅ Cytowany
       </span>
     );
   }
-  if (isCited === "partial") {
+  if (isCited === "domain") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-        ⚠️ Wzmiankowany
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 whitespace-nowrap">
+        🔗 Inna podstrona
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-700/50 text-zinc-400 border border-zinc-600/30">
-      ❌ Brak cytowania
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-700/50 text-zinc-400 border border-zinc-600/30 whitespace-nowrap">
+      ❌ Brak
     </span>
   );
 }
@@ -104,12 +107,13 @@ function EngineCard({
 }) {
   const config = ENGINE_CONFIG[engine];
   const engineChecks = checks.filter((c) => c.engine === engine);
-  const cited = engineChecks.filter((c) => c.isCited === "yes").length;
-  const partial = engineChecks.filter((c) => c.isCited === "partial").length;
+  const exactCited = engineChecks.filter((c) => c.isCited === "yes").length;
+  const domainCited = engineChecks.filter((c) => c.isCited === "domain").length;
   const total = engineChecks.length;
   const [open, setOpen] = useState(false);
 
-  const score = total > 0 ? Math.round(((cited + partial * 0.5) / total) * 100) : 0;
+  // Score: exact = 1.0, domain = 0.5, no = 0
+  const score = total > 0 ? Math.round(((exactCited + domainCited * 0.5) / total) * 100) : 0;
 
   return (
     <div className={`rounded-xl border ${config.borderColor} bg-gradient-to-br ${config.color} p-4`}>
@@ -124,7 +128,7 @@ function EngineCard({
         <div className="text-right">
           <div className="text-2xl font-bold text-zinc-100">{score}%</div>
           <div className="text-xs text-zinc-400">
-            {cited + partial}/{total} zapytań
+            {exactCited + domainCited}/{total} zapytań
           </div>
         </div>
       </div>
@@ -158,20 +162,41 @@ function EngineCard({
                     <div className="text-xs text-zinc-300 truncate" title={check.query}>
                       "{check.query}"
                     </div>
-                    {check.snippet && check.isCited !== "no" && (
-                      <div className="text-xs text-zinc-500 mt-0.5 line-clamp-2 italic">
-                        {check.snippet}
-                      </div>
-                    )}
-                    {check.citedUrl && (
+
+                    {/* Exact citation URL */}
+                    {check.isCited === "yes" && check.citedUrl && (
                       <a
                         href={check.citedUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-400 hover:text-blue-300 truncate block"
+                        className="text-xs text-green-400 hover:text-green-300 truncate block mt-0.5"
+                        title={check.citedUrl}
                       >
-                        {check.citedUrl.slice(0, 60)}...
+                        ✅ {check.citedUrl.slice(0, 60)}{check.citedUrl.length > 60 ? "…" : ""}
                       </a>
+                    )}
+
+                    {/* Domain citation — different page */}
+                    {check.isCited === "domain" && check.domainCitedUrl && (
+                      <div className="mt-0.5">
+                        <span className="text-xs text-yellow-500">Cytowana inna podstrona: </span>
+                        <a
+                          href={check.domainCitedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-yellow-400 hover:text-yellow-300 truncate"
+                          title={check.domainCitedUrl}
+                        >
+                          {check.domainCitedUrl.slice(0, 55)}{check.domainCitedUrl.length > 55 ? "…" : ""}
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Snippet */}
+                    {check.snippet && check.isCited !== "no" && (
+                      <div className="text-xs text-zinc-500 mt-0.5 line-clamp-2 italic">
+                        {check.snippet}
+                      </div>
                     )}
                   </div>
                   <CitationBadge isCited={check.isCited} />
@@ -211,13 +236,12 @@ export function AICitationPanel({ auditId }: Props) {
         const job = query.state.data?.job;
         if (!job) return 5000;
         if (job.status === "completed" || job.status === "failed") return false;
-        return 5000; // poll every 5s while running
+        return 5000;
       },
       refetchIntervalInBackground: false,
     }
   );
 
-  // Check if there's already a job for this audit on mount
   useEffect(() => {
     if (citationData?.job) {
       setJobStarted(true);
@@ -228,7 +252,6 @@ export function AICitationPanel({ auditId }: Props) {
   const handleStartCheck = useCallback(() => {
     if (!user || jobStarted) return;
     setJobStarted(true);
-    // v2: only auditId needed — backend fetches URL and generates queries via fan-out
     startCheck.mutate({ auditId });
   }, [user, jobStarted, auditId]);
 
@@ -385,18 +408,26 @@ export function AICitationPanel({ auditId }: Props) {
   }
 
   // ── Completed ──
-  const citedByEngine = {
-    chatgpt: checks.filter((c) => c.engine === "chatgpt" && c.isCited !== "no").length,
-    perplexity: checks.filter((c) => c.engine === "perplexity" && c.isCited !== "no").length,
-    google: checks.filter((c) => c.engine === "google" && c.isCited !== "no").length,
-  };
-  const totalCitations = Object.values(citedByEngine).reduce((a, b) => a + b, 0);
-  const queriesPerEngine = checks.filter((c) => c.engine === "chatgpt").length;
+  const exactCitations = checks.filter((c) => c.isCited === "yes").length;
+  const domainCitations = checks.filter((c) => c.isCited === "domain").length;
+  const totalCitations = exactCitations + domainCitations;
+  const queriesPerEngine = checks.filter((c) => c.engine === "chatgpt").length || checks.filter((c) => c.engine === "google").length;
 
-  const uncitedQueries = (job?.prompts as string[] ?? []).filter((q) => {
+  // Queries where NO engine cited the domain at all
+  const allQueries = Array.from(new Set(checks.map((c) => c.query)));
+  const uncitedQueries = allQueries.filter((q) => {
     const forQuery = checks.filter((c) => c.query === q);
     return forQuery.every((c) => c.isCited === "no");
   });
+
+  // Domain-level citations (different pages) — show as insight
+  const domainCitedPages = Array.from(
+    new Set(
+      checks
+        .filter((c) => c.isCited === "domain" && c.domainCitedUrl)
+        .map((c) => c.domainCitedUrl!)
+    )
+  );
 
   return (
     <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/50 p-6">
@@ -408,20 +439,24 @@ export function AICitationPanel({ auditId }: Props) {
         <div>
           <h3 className="font-semibold text-zinc-100">AI Citation Check</h3>
           <p className="text-xs text-zinc-400">
-            {totalCitations > 0
-              ? `Cytowany w ${totalCitations} z ${queriesPerEngine * 3} sprawdzeń`
+            {exactCitations > 0
+              ? `Ta strona cytowana w ${exactCitations} sprawdzeniu${exactCitations > 1 ? "ach" : ""}`
+              : domainCitations > 0
+              ? `Inna podstrona domeny cytowana ${domainCitations} raz${domainCitations > 1 ? "y" : ""}`
               : "Brak cytowań w sprawdzonych zapytaniach"}
           </p>
         </div>
         <Badge
           variant="outline"
           className={`ml-auto text-xs ${
-            totalCitations > 0
+            exactCitations > 0
               ? "border-green-500/50 text-green-400"
+              : domainCitations > 0
+              ? "border-yellow-500/50 text-yellow-400"
               : "border-zinc-600 text-zinc-400"
           }`}
         >
-          {totalCitations > 0 ? "✅ Widoczny" : "❌ Niewidoczny"}
+          {exactCitations > 0 ? "✅ Cytowany" : domainCitations > 0 ? "🔗 Domena widoczna" : "❌ Niewidoczny"}
         </Badge>
       </div>
 
@@ -431,6 +466,37 @@ export function AICitationPanel({ auditId }: Props) {
           <EngineCard key={engine} engine={engine} checks={checks} />
         ))}
       </div>
+
+      {/* Domain-level citations insight */}
+      {domainCitations > 0 && exactCitations === 0 && domainCitedPages.length > 0 && (
+        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-yellow-400">🔗</span>
+            <span className="text-sm font-medium text-yellow-300">
+              Twoja domena jest widoczna — ale inna podstrona
+            </span>
+          </div>
+          <p className="text-xs text-zinc-400 mb-2">
+            AI cytuje inne podstrony Twojej domeny zamiast audytowanego URL. To dobry sygnał — domena
+            jest rozpoznawana. Rozważ optymalizację tej konkretnej strony.
+          </p>
+          <div className="space-y-1">
+            {domainCitedPages.slice(0, 5).map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 truncate"
+                title={url}
+              >
+                <span className="text-yellow-600">→</span>
+                {url.slice(0, 70)}{url.length > 70 ? "…" : ""}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Uncited queries — content gap signal */}
       {uncitedQueries.length > 0 && (

@@ -32,8 +32,10 @@ export type CitationEngine = "chatgpt" | "perplexity" | "google";
 export interface CitationResult {
   query: string;
   engine: CitationEngine;
-  isCited: "yes" | "no" | "partial";
-  citedUrl?: string;
+  /** "yes" = exact URL cited | "domain" = different page on same domain cited | "no" = not cited */
+  isCited: "yes" | "domain" | "no";
+  citedUrl?: string;        // exact URL that was cited
+  domainCitedUrl?: string;  // URL from same domain (when isCited = "domain")
   snippet?: string;
   responseText?: string;
   fromCache?: boolean;
@@ -285,8 +287,9 @@ async function getCachedResult(cacheKey: string): Promise<CitationResult | null>
   return {
     query: row.query,
     engine: row.engine as CitationEngine,
-    isCited: row.isCited as "yes" | "no" | "partial",
+    isCited: row.isCited as "yes" | "no" | "domain",
     citedUrl: row.citedUrl ?? undefined,
+    domainCitedUrl: (row as any).domainCitedUrl ?? undefined,
     snippet: row.snippet ?? undefined,
     responseText: row.responseText ?? undefined,
     fromCache: true,
@@ -303,12 +306,13 @@ async function saveResult(
   if (!db) return;
 
   await db.insert(citationChecks).values({
-    jobId,
     auditId,
+    jobId,
     query: result.query,
     engine: result.engine,
     isCited: result.isCited,
     citedUrl: result.citedUrl ?? null,
+    domainCitedUrl: result.domainCitedUrl ?? null,
     snippet: result.snippet ?? null,
     responseText: result.responseText?.slice(0, 2000) ?? null,
     cacheKey,
@@ -365,10 +369,14 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
       }
     }
 
-    // STRICT: only exact domain match in annotation URLs
+    const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
+
+    // Check 1: exact URL match (same domain + same path)
     const exactCitation = citedUrls.find((u) => {
       try {
-        return new URL(u).hostname.replace("www.", "") === targetDomain;
+        const cu = new URL(u);
+        return cu.hostname.replace("www.", "") === targetDomain &&
+               cu.pathname.replace(/\/$/, "") === targetPath;
       } catch { return false; }
     });
 
@@ -376,6 +384,21 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
       return {
         query, engine: "chatgpt", isCited: "yes",
         citedUrl: exactCitation,
+        snippet: extractSnippet(responseText, targetDomain),
+        responseText: responseText.slice(0, 1000),
+      };
+    }
+
+    // Check 2: same domain, different page
+    const domainCitation = citedUrls.find((u) => {
+      try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
+      catch { return false; }
+    });
+
+    if (domainCitation) {
+      return {
+        query, engine: "chatgpt", isCited: "domain",
+        domainCitedUrl: domainCitation,
         snippet: extractSnippet(responseText, targetDomain),
         responseText: responseText.slice(0, 1000),
       };
@@ -420,15 +443,34 @@ async function checkPerplexity(
         const responseText = data.choices?.[0]?.message?.content ?? "";
         const citations: string[] = data.citations ?? [];
 
+        const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
+
         const exactCitation = citations.find((u: string) => {
-          try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
-          catch { return false; }
+          try {
+            const cu = new URL(u);
+            return cu.hostname.replace("www.", "") === targetDomain &&
+                   cu.pathname.replace(/\/$/, "") === targetPath;
+          } catch { return false; }
         });
 
         if (exactCitation) {
           return {
             query, engine: "perplexity", isCited: "yes",
             citedUrl: exactCitation,
+            snippet: extractSnippet(responseText, targetDomain),
+            responseText: responseText.slice(0, 1000),
+          };
+        }
+
+        const domainCitation = citations.find((u: string) => {
+          try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
+          catch { return false; }
+        });
+
+        if (domainCitation) {
+          return {
+            query, engine: "perplexity", isCited: "domain",
+            domainCitedUrl: domainCitation,
             snippet: extractSnippet(responseText, targetDomain),
             responseText: responseText.slice(0, 1000),
           };
@@ -478,15 +520,34 @@ IMPORTANT: Only include URLs you are highly confident exist. Do NOT invent URLs.
       } catch {}
     }
 
-    const exactCitation = citedUrls.find((u: string) => {
+    const targetPathFallback = new URL(targetUrl).pathname.replace(/\/$/, "");
+
+    const exactCitationFallback = citedUrls.find((u: string) => {
+      try {
+        const cu = new URL(u);
+        return cu.hostname.replace("www.", "") === targetDomain &&
+               cu.pathname.replace(/\/$/, "") === targetPathFallback;
+      } catch { return false; }
+    });
+
+    if (exactCitationFallback) {
+      return {
+        query, engine: "perplexity", isCited: "yes",
+        citedUrl: exactCitationFallback,
+        snippet: extractSnippet(text, targetDomain),
+        responseText: text.slice(0, 1000),
+      };
+    }
+
+    const domainCitationFallback = citedUrls.find((u: string) => {
       try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
       catch { return false; }
     });
 
-    if (exactCitation) {
+    if (domainCitationFallback) {
       return {
-        query, engine: "perplexity", isCited: "yes",
-        citedUrl: exactCitation,
+        query, engine: "perplexity", isCited: "domain",
+        domainCitedUrl: domainCitationFallback,
         snippet: extractSnippet(text, targetDomain),
         responseText: text.slice(0, 1000),
       };
@@ -617,15 +678,36 @@ async function checkGoogleAIOverview(
       return { query, engine: "google", isCited: "no", snippet: "No AI Overview for this query" };
     }
 
+    const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
+
+    // Check 1: exact URL match (same domain + same path)
     const exactCitation = result.citedUrls.find((u: string) => {
-      try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
-      catch { return false; }
+      try {
+        const cu = new URL(u);
+        return cu.hostname.replace("www.", "") === targetDomain &&
+               cu.pathname.replace(/\/$/, "") === targetPath;
+      } catch { return false; }
     });
 
     if (exactCitation) {
       return {
         query, engine: "google", isCited: "yes",
         citedUrl: exactCitation,
+        snippet: extractSnippet(result.text, targetDomain),
+        responseText: result.text.slice(0, 1000),
+      };
+    }
+
+    // Check 2: same domain, different page
+    const domainCitation = result.citedUrls.find((u: string) => {
+      try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
+      catch { return false; }
+    });
+
+    if (domainCitation) {
+      return {
+        query, engine: "google", isCited: "domain",
+        domainCitedUrl: domainCitation,
         snippet: extractSnippet(result.text, targetDomain),
         responseText: result.text.slice(0, 1000),
       };

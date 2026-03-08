@@ -355,3 +355,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Język auto-wykrywany z html lang + heurystyka polskich znaków
 - [x] Fallback queries deterministyczne z tytułu strony (bez LLM)
 - [x] 59 testów passing, 0 błędów TS
+
+## Feature: AI Citation — Domain Match State (3-state)
+
+- [x] Citation worker: 3-state isCited — "yes" (exact URL), "domain" (other page same domain), "no" (not cited)
+- [x] Store domainCitedUrl separately from exactCitedUrl in citation_checks
+- [x] DB migration 0010: isCited enum updated (yes/no/domain), domainCitedUrl column added
+- [x] UI: amber/yellow state for domain match with message "Twoja domena jest cytowana, ale na innej stronie"
+- [x] UI: show cited URL as clickable link when domain match
+- [x] UI: color coding — green (exact), amber (domain), grey (no)
+- [x] UI: "Domain-level citations" insight panel when domain cited but exact URL not
+- [x] 59 tests passing, 0 TS errors
