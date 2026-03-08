@@ -397,3 +397,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
   - [x] Results: PLGUpsell — What-IF Simulator + AI Sandbox CTA with amber warning about technical factors
 - [x] Results.tsx: simplified AICitationPanel props (only auditId + url)
 - [x] 59 tests passing, 0 TS errors
+
+## Fix: What-IF Editor — Embed as Tab in Results Page
+
+- [x] Add "What-IF Editor" as a dedicated section directly in the Results page (like old app)
+- [x] Embed WhatIfEditor component inline in Results — no navigation to /sandbox required
+- [x] Fix mobile: removed hidden sm:flex from Sandbox CTA button in header
+- [x] Ensure What-IF works without login (isPremium=true for all)

@@ -46,6 +46,11 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
+import type { SimulationResult } from "@/geo-sandbox/types/simulator";
+import WhatIfEditor from "@/geo-sandbox/components/WhatIfEditor";
+import ScoreGauge from "@/geo-sandbox/components/ScoreGauge";
+import IssuesList from "@/geo-sandbox/components/IssuesList";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -177,7 +182,7 @@ export default function Results() {
                 {audit.url}
               </a>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate(`/sandbox?url=${encodeURIComponent(audit.url)}`)} className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 hidden sm:flex">
+            <Button variant="outline" size="sm" onClick={() => navigate(`/sandbox?url=${encodeURIComponent(audit.url)}`)} className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 flex">
               <Cpu className="w-3.5 h-3.5" /> AI Sandbox
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs">
@@ -228,8 +233,8 @@ export default function Results() {
           auditId={auditId}
           url={audit.url}
         />
-        {/* ── 7. AI Sandbox CTA — simulate how AI engines rank this page ── */}
-        <AISandboxCTA url={audit.url} navigate={navigate} />
+        {/* ── 7. What-IF Simulator — inline, no navigation needed ── */}
+        <WhatIfSection url={audit.url} />
         {/* ── 7. Competitor Analysis Teaser (Pro) ── */}
         <CompetitorAnalysisTeaser navigate={navigate} />
         {/* ── 7. What's Working ── */}
@@ -1029,7 +1034,168 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
   );
 }
 
-// ─── AI Sandbox CTA ──────────────────────────────────────────────────────────
+// ─── What-IF Simulator (inline, no navigation) ──────────────────────────────────────
+function WhatIfSection({ url }: { url: string }) {
+  const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [queries, setQueries] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [baselineResult, setBaselineResult] = useState<SimulationResult | null>(null);
+  const [currentResult, setCurrentResult] = useState<SimulationResult | null>(null);
+  const [whatIfContent, setWhatIfContent] = useState("");
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  async function handleAnalyze() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { html, robotsTxt } = await fetchPageMutation.mutateAsync({ url });
+      const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
+      const result = runSimulation({ url, targetQueries, mode: "analyze" }, html, robotsTxt);
+      setBaselineResult(result);
+      setCurrentResult(result);
+      setWhatIfContent(result.contentAnalysis.rawText.slice(0, 3000));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to fetch URL");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleWhatIfSimulate() {
+    if (!baselineResult || !whatIfContent.trim()) return;
+    setIsSimulating(true);
+    try {
+      const { html, robotsTxt } = await fetchPageMutation.mutateAsync({ url });
+      const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
+      const result = runSimulation({ url, targetQueries, contentOverride: whatIfContent, mode: "simulate" }, html, robotsTxt, baselineResult);
+      setCurrentResult(result);
+    } catch {
+      setError("Simulation failed. Please try again.");
+    } finally {
+      setIsSimulating(false);
+    }
+  }
+
+  function handleReset() {
+    setCurrentResult(baselineResult);
+    if (baselineResult) setWhatIfContent(baselineResult.contentAnalysis.rawText.slice(0, 3000));
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-violet-500/40 overflow-hidden">
+      {/* Header — always visible, click to expand */}
+      <button
+        className="w-full flex items-center justify-between gap-4 p-5 bg-gradient-to-r from-violet-950/60 via-indigo-950/40 to-zinc-900/80 hover:from-violet-950/80 transition-colors text-left"
+        onClick={() => { setIsExpanded(v => !v); if (!isExpanded && !baselineResult) handleAnalyze(); }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center flex-shrink-0">
+            <Cpu className="w-5 h-5 text-violet-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-white">⚡ What-IF Simulator</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">DARMOWY</span>
+            </div>
+            <p className="text-xs text-zinc-400 mt-0.5">Edytuj treść i sprawdź wpływ na AI Score — bez edytowania strony</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {baselineResult && (
+            <span className="text-xs text-violet-300 font-semibold hidden sm:block">
+              Score: {currentResult?.overallScore ?? baselineResult.overallScore}
+            </span>
+          )}
+          <ChevronDown className={`w-5 h-5 text-violet-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {/* Expanded content */}
+      {isExpanded && (
+        <div className="bg-zinc-950/80 border-t border-violet-500/20">
+          {isLoading && (
+            <div className="flex items-center justify-center gap-3 py-12">
+              <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-zinc-400">Pobieranie treści strony...</span>
+            </div>
+          )}
+          {error && (
+            <div className="m-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">{error}</div>
+          )}
+          {!isLoading && !baselineResult && !error && (
+            <div className="flex flex-col items-center gap-4 py-10">
+              <p className="text-sm text-zinc-400">Kliknij, aby pobrać treść strony i uruchomić symulację</p>
+              <Button onClick={handleAnalyze} className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
+                <Sparkles className="w-4 h-4" /> Uruchom analizę
+              </Button>
+            </div>
+          )}
+          {!isLoading && currentResult && (
+            <div className="p-4 space-y-4">
+              {/* Score row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Overall", score: currentResult.overallScore, baseline: baselineResult?.overallScore },
+                  { label: "ChatGPT", score: currentResult.chatgptScore, baseline: baselineResult?.chatgptScore },
+                  { label: "Perplexity", score: currentResult.perplexityScore, baseline: baselineResult?.perplexityScore },
+                  { label: "Google AIO", score: currentResult.googleAIOScore, baseline: baselineResult?.googleAIOScore },
+                ].map(({ label, score, baseline }) => {
+                  const delta = baseline !== undefined ? score - baseline : 0;
+                  return (
+                    <div key={label} className="bg-zinc-900 border border-white/8 rounded-xl p-3 text-center">
+                      <div className="text-xl font-bold text-white">{score}</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">{label}</div>
+                      {delta !== 0 && (
+                        <div className={`text-xs font-semibold mt-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {delta > 0 ? '+' : ''}{delta}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Optional queries */}
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Zapytania docelowe (opcjonalnie, jedno na linię)</label>
+                <textarea
+                  value={queries}
+                  onChange={e => setQueries(e.target.value)}
+                  placeholder="np. najlepszy kredyt gotówkowy&#10;porównywarka kredytów"
+                  rows={2}
+                  className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-300 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500/50"
+                />
+              </div>
+
+              {/* What-IF Editor */}
+              <WhatIfEditor
+                isPremium={true}
+                content={whatIfContent}
+                onContentChange={setWhatIfContent}
+                onSimulate={handleWhatIfSimulate}
+                onReset={handleReset}
+                isSimulating={isSimulating}
+                delta={currentResult.deltaFromBaseline}
+              />
+
+              {/* Issues */}
+              {currentResult.issues.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Wykryte problemy</p>
+                  <IssuesList issues={currentResult.issues} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Old AISandboxCTA (kept for reference, replaced by WhatIfSection) ────────────────────
 function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string) => void }) {
   return (
     <div
