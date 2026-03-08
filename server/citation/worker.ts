@@ -1,23 +1,28 @@
 /**
- * AI Citation Worker
+ * AI Citation Worker v2
  *
  * Checks if a given URL is cited by AI search engines:
- *   1. ChatGPT (OpenAI Responses API with web_search_preview tool — user BYOK key)
- *   2. Perplexity Sonar (via Manus built-in LLM proxy — zero extra cost)
- *   3. Google AI Overviews (Puppeteer headless scrape — zero cost)
+ *   1. ChatGPT  — OpenAI Responses API with web_search_preview (user BYOK key)
+ *   2. Perplexity — direct Sonar API (if PERPLEXITY_API_KEY set) or Manus LLM fallback
+ *   3. Google AI Overviews — Puppeteer headless scrape (zero cost)
  *
- * Queries come directly from Content Intelligence top_questions (zero LLM cost,
- * already in the correct page language, topically precise).
+ * QUERY FAN-OUT STRATEGY (v2):
+ *   - Backend fetches the URL directly and extracts: title, H1, H2s, meta description
+ *   - LLM generates 6 realistic, language-correct queries from that content
+ *   - Zero dependency on frontend data — startCheck only needs auditId
+ *   - Language auto-detected from HTML lang attribute
  *
- * Citation detection is STRICT — only exact domain matches in annotations/citations
- * count as "yes". Text mentions without URL citations = "no".
+ * CITATION DETECTION: STRICT
+ *   - "yes"  = target domain in annotations[].url (ChatGPT) or citations[] (Perplexity)
+ *   - "no"   = domain not in citation URLs (text mentions don't count)
  */
 
 import * as crypto from "crypto";
+import * as cheerio from "cheerio";
 import puppeteer from "puppeteer-core";
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
-import { citationChecks, citationJobs } from "../../drizzle/schema";
+import { audits, citationChecks, citationJobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,126 +52,214 @@ export interface CitationJobResult {
   };
 }
 
-// ─── Language Detection ───────────────────────────────────────────────────────
+// ─── Page Content Extraction ──────────────────────────────────────────────────
 
-/**
- * Detect page language from HTML lang attribute or content heuristics.
- * Returns ISO 639-1 code (e.g. "pl", "en", "de").
- */
-export function detectPageLanguage(html: string, pageTitle: string): string {
-  // 1. HTML lang attribute
-  const langMatch = html.match(/<html[^>]+lang=["']([a-zA-Z-]+)["']/i);
-  if (langMatch) {
-    return langMatch[1].toLowerCase().split("-")[0]; // "pl-PL" → "pl"
-  }
-
-  // 2. Meta content-language
-  const metaLang = html.match(/<meta[^>]+http-equiv=["']content-language["'][^>]+content=["']([a-zA-Z-]+)["']/i);
-  if (metaLang) {
-    return metaLang[1].toLowerCase().split("-")[0];
-  }
-
-  // 3. Heuristic: Polish-specific characters in title
-  if (/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(pageTitle)) return "pl";
-
-  // 4. Default to English
-  return "en";
+interface PageContent {
+  title: string;
+  h1: string;
+  h2s: string[];
+  metaDescription: string;
+  language: string;
 }
 
-// ─── Query Preparation ────────────────────────────────────────────────────────
+/**
+ * Fetch the URL and extract key content signals for query fan-out.
+ * Does NOT depend on the audit pipeline — fetches independently.
+ */
+export async function extractPageContent(url: string): Promise<PageContent> {
+  try {
+    const { default: axios } = await import("axios");
+    const response = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; GEOAuditor/2.0; +https://geoauditor.com)",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "pl,en;q=0.9",
+      },
+      maxRedirects: 5,
+    });
+
+    const html: string = typeof response.data === "string" ? response.data : String(response.data);
+    const $ = cheerio.load(html);
+
+    // Language detection
+    const htmlLang = $("html").attr("lang") ?? "";
+    let language = htmlLang.toLowerCase().split("-")[0] || "pl";
+    if (!["pl", "en", "de", "fr", "es", "it"].includes(language)) {
+      // Heuristic: Polish characters
+      const bodyText = $("body").text().slice(0, 500);
+      language = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(bodyText) ? "pl" : "en";
+    }
+
+    // Title
+    const title = ($("title").first().text() || $("h1").first().text() || url)
+      .replace(/\s*[|–—-].*$/, "").trim().slice(0, 120);
+
+    // H1
+    const h1 = $("h1").first().text().trim().slice(0, 120);
+
+    // H2s (first 5)
+    const h2s: string[] = [];
+    $("h2").each((_, el) => {
+      const text = $(el).text().trim();
+      if (text.length > 3 && text.length < 100) h2s.push(text);
+    });
+
+    // Meta description
+    const metaDescription = (
+      $("meta[name='description']").attr("content") ||
+      $("meta[property='og:description']").attr("content") ||
+      ""
+    ).trim().slice(0, 200);
+
+    return {
+      title,
+      h1,
+      h2s: h2s.slice(0, 5),
+      metaDescription,
+      language,
+    };
+  } catch (e) {
+    console.warn("[Citation/extractPageContent] Failed to fetch:", url, e);
+    // Minimal fallback from URL
+    const domain = new URL(url).hostname.replace("www.", "");
+    return { title: domain, h1: "", h2s: [], metaDescription: "", language: "pl" };
+  }
+}
+
+// ─── Query Fan-Out via LLM ────────────────────────────────────────────────────
 
 /**
- * Prepare citation queries from Content Intelligence top_questions.
- * These are already in the correct language and topically precise.
- * Falls back to title-based queries only if CI data is unavailable.
- *
- * NO LLM call here — zero extra cost.
+ * Generate 6 realistic, language-correct queries from page content.
+ * Uses LLM to produce natural-language questions a real user would ask.
+ * These are the exact queries sent to ChatGPT, Perplexity, and Google.
  */
-export function prepareCitationQueries(params: {
-  pageTitle: string;
-  url: string;
-  topQuestions?: string[];   // from Content Intelligence query_coverage check
-  pageTopics?: string[];     // from Content Intelligence page topics
-  language?: string;         // detected page language
-}): string[] {
-  const { pageTitle, url, topQuestions, pageTopics, language = "en" } = params;
+export async function fanOutQueries(content: PageContent, url: string): Promise<string[]> {
+  const { title, h1, h2s, metaDescription, language } = content;
 
-  // Use Content Intelligence top_questions VERBATIM — same order as shown in UI
-  // These are the exact "QUERIES THIS PAGE CAN RANK FOR IN AI SEARCH" from the report
-  if (topQuestions && topQuestions.length >= 1) {
-    return topQuestions.filter((q) => q && q.trim().length > 0).slice(0, 6);
+  const langInstructions: Record<string, string> = {
+    pl: "Generuj zapytania PO POLSKU. Zapytania muszą brzmieć naturalnie, jak pytania zadawane przez użytkownika w Google lub ChatGPT.",
+    en: "Generate queries IN ENGLISH. Queries must sound natural, like questions a real user would type into Google or ChatGPT.",
+    de: "Generiere Anfragen AUF DEUTSCH. Die Anfragen müssen natürlich klingen.",
+    fr: "Génère des requêtes EN FRANÇAIS. Les requêtes doivent sonner naturellement.",
+  };
+  const langInstruction = langInstructions[language] ?? langInstructions.en;
+
+  const pageContext = [
+    `URL: ${url}`,
+    `Tytuł strony: ${title}`,
+    h1 ? `H1: ${h1}` : "",
+    h2s.length > 0 ? `Nagłówki H2: ${h2s.join(" | ")}` : "",
+    metaDescription ? `Meta description: ${metaDescription}` : "",
+  ].filter(Boolean).join("\n");
+
+  try {
+    const result = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `Jesteś ekspertem SEO i GEO (Generative Engine Optimization). Twoim zadaniem jest wygenerowanie 6 zapytań, które użytkownicy mogliby wpisać do ChatGPT, Perplexity lub Google, i na które ta konkretna strona powinna się pojawić w odpowiedzi.
+
+${langInstruction}
+
+ZASADY:
+- Zapytania muszą być REALISTYCZNE — takie jakie naprawdę wpisują użytkownicy
+- Zapytania muszą być PRECYZYJNE — związane z konkretną tematyką strony
+- Zapytania muszą być w JĘZYKU STRONY (${language})
+- NIE używaj nazwy domeny jako zapytania
+- NIE generuj zapytań zbyt ogólnych (np. "kredyt" — za ogólne)
+- Mieszaj typy: pytania informacyjne ("jak...?", "co to...?"), porównawcze ("najlepszy...", "ranking..."), transakcyjne ("gdzie kupić...", "ile kosztuje...")
+- Zwróć TYLKO JSON array z 6 stringami, bez żadnego dodatkowego tekstu`,
+        },
+        {
+          role: "user",
+          content: `Wygeneruj 6 zapytań dla tej strony:\n\n${pageContext}`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "citation_queries",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              queries: {
+                type: "array",
+                items: { type: "string" },
+                description: "6 realistic search queries in the page language",
+              },
+            },
+            required: ["queries"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const content = result.choices[0]?.message?.content;
+    if (content && typeof content === "string") {
+      const parsed = JSON.parse(content);
+      const queries: string[] = (parsed.queries ?? [])
+        .filter((q: unknown) => typeof q === "string" && q.trim().length > 3)
+        .slice(0, 6);
+      if (queries.length >= 3) return queries;
+    }
+  } catch (e) {
+    console.warn("[Citation/fanOutQueries] LLM error, using fallback:", e);
   }
 
-  // Fallback: generate from title + topics in detected language
-  return buildFallbackQueries(pageTitle, url, pageTopics ?? [], language);
+  // Fallback: deterministic queries from title + H2s
+  return buildFallbackQueries(title, h1, h2s, language);
 }
 
 function buildFallbackQueries(
-  pageTitle: string,
-  url: string,
-  topics: string[],
+  title: string,
+  h1: string,
+  h2s: string[],
   language: string
 ): string[] {
-  const domain = new URL(url).hostname.replace("www.", "");
-  const title = pageTitle.replace(/[|–—-].*$/, "").trim().slice(0, 60);
-  const mainTopic = topics[0] ?? title.split(" ").slice(0, 4).join(" ");
+  const mainTopic = (h1 || title).replace(/[|–—-].*$/, "").trim().slice(0, 60);
+  const subtopic = h2s[0] ?? "";
 
-  // Language-specific query templates
   const templates: Record<string, string[]> = {
     pl: [
-      title,
+      mainTopic,
+      subtopic ? subtopic : `jak ${mainTopic.toLowerCase()}`,
       `${mainTopic} ranking`,
-      `najlepszy ${mainTopic}`,
+      `najlepszy ${mainTopic.toLowerCase()}`,
       `${mainTopic} porównanie`,
       `${mainTopic} 2025`,
-      `${domain}`,
     ],
     en: [
-      title,
-      `best ${mainTopic}`,
+      mainTopic,
+      subtopic ? subtopic : `how to ${mainTopic.toLowerCase()}`,
+      `best ${mainTopic.toLowerCase()}`,
       `${mainTopic} comparison`,
-      `${mainTopic} review`,
-      `${mainTopic} 2025`,
-      `${domain}`,
+      `${mainTopic} review 2025`,
+      `${mainTopic} guide`,
     ],
     de: [
-      title,
-      `bestes ${mainTopic}`,
+      mainTopic,
+      `bestes ${mainTopic.toLowerCase()}`,
       `${mainTopic} Vergleich`,
       `${mainTopic} Bewertung`,
       `${mainTopic} 2025`,
-      `${domain}`,
+      subtopic || `wie ${mainTopic.toLowerCase()}`,
     ],
     fr: [
-      title,
-      `meilleur ${mainTopic}`,
+      mainTopic,
+      `meilleur ${mainTopic.toLowerCase()}`,
       `${mainTopic} comparaison`,
       `${mainTopic} avis`,
       `${mainTopic} 2025`,
-      `${domain}`,
+      subtopic || `comment ${mainTopic.toLowerCase()}`,
     ],
   };
 
-  return (templates[language] ?? templates.en).slice(0, 6);
-}
-
-// ─── Legacy export for backward compatibility ─────────────────────────────────
-// (tRPC router still calls generateCitationQueries — keep it but delegate to prepareCitationQueries)
-export async function generateCitationQueries(params: {
-  url: string;
-  pageTitle: string;
-  pageTopics: string[];
-  pageType: string;
-  topQuestions?: string[];
-  language?: string;
-}): Promise<string[]> {
-  return prepareCitationQueries({
-    pageTitle: params.pageTitle,
-    url: params.url,
-    topQuestions: params.topQuestions,
-    pageTopics: params.pageTopics,
-    language: params.language,
-  });
+  return (templates[language] ?? templates.en)
+    .filter((q) => q && q.trim().length > 3)
+    .slice(0, 6);
 }
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
@@ -175,18 +268,15 @@ function makeCacheKey(query: string, engine: CitationEngine): string {
   return crypto.createHash("sha256").update(`${engine}:${query}`).digest("hex").slice(0, 64);
 }
 
-async function getCachedResult(
-  cacheKey: string,
-  auditId: number
-): Promise<CitationResult | null> {
+async function getCachedResult(cacheKey: string): Promise<CitationResult | null> {
   const db = await getDb();
   if (!db) return null;
 
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24h ago
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24h cache
   const rows = await db
     .select()
     .from(citationChecks)
-    .where(and(eq(citationChecks.cacheKey, cacheKey)))
+    .where(eq(citationChecks.cacheKey, cacheKey))
     .limit(1);
 
   const row = rows[0];
@@ -225,23 +315,12 @@ async function saveResult(
   });
 }
 
-// ─── Engine 1: ChatGPT (OpenAI Responses API with web_search_preview) ─────────
+// ─── Engine 1: ChatGPT (OpenAI Responses API) ─────────────────────────────────
 
-/**
- * STRICT citation detection:
- * - "yes"     = target domain found in annotations[].url (actual citation link)
- * - "no"      = domain not in annotations, regardless of text mentions
- * - "partial" = REMOVED — text mentions without URL citations are unreliable
- */
 async function checkChatGPT(query: string, targetUrl: string): Promise<CitationResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return {
-      query,
-      engine: "chatgpt",
-      isCited: "no",
-      snippet: "OpenAI API key not configured",
-    };
+    return { query, engine: "chatgpt", isCited: "no", snippet: "OpenAI API key not configured" };
   }
 
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
@@ -262,13 +341,11 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
 
     if (!response.ok) {
       const err = await response.text();
-      console.warn(`[Citation/ChatGPT] API error ${response.status}: ${err}`);
+      console.warn(`[Citation/ChatGPT] API error ${response.status}: ${err.slice(0, 200)}`);
       return { query, engine: "chatgpt", isCited: "no" };
     }
 
     const data = await response.json();
-
-    // Extract text output and URL annotations from Responses API format
     const outputItems: any[] = data.output ?? [];
     let responseText = "";
     const citedUrls: string[] = [];
@@ -288,50 +365,31 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
       }
     }
 
-    // STRICT: only count exact domain match in annotation URLs
+    // STRICT: only exact domain match in annotation URLs
     const exactCitation = citedUrls.find((u) => {
       try {
-        const parsed = new URL(u);
-        return parsed.hostname.replace("www.", "") === targetDomain;
-      } catch {
-        return false;
-      }
+        return new URL(u).hostname.replace("www.", "") === targetDomain;
+      } catch { return false; }
     });
 
     if (exactCitation) {
-      const snippet = extractSnippet(responseText, targetDomain);
       return {
-        query,
-        engine: "chatgpt",
-        isCited: "yes",
+        query, engine: "chatgpt", isCited: "yes",
         citedUrl: exactCitation,
-        snippet,
+        snippet: extractSnippet(responseText, targetDomain),
         responseText: responseText.slice(0, 1000),
       };
     }
 
-    // Not cited — save response for debugging
-    return {
-      query,
-      engine: "chatgpt",
-      isCited: "no",
-      responseText: responseText.slice(0, 500),
-    };
+    return { query, engine: "chatgpt", isCited: "no", responseText: responseText.slice(0, 500) };
   } catch (e) {
     console.warn("[Citation/ChatGPT] Error:", e);
     return { query, engine: "chatgpt", isCited: "no" };
   }
 }
 
-// ─── Engine 2: Perplexity (via Manus built-in LLM — zero extra cost) ──────────
+// ─── Engine 2: Perplexity ─────────────────────────────────────────────────────
 
-/**
- * STRICT citation detection — no hallucination hints.
- * The LLM answers naturally without being told to include the target domain.
- * Only counts as "yes" if target domain appears in structured citations block.
- *
- * If PERPLEXITY_API_KEY is set, uses direct Sonar API for real citations[].
- */
 async function checkPerplexity(
   query: string,
   targetUrl: string,
@@ -340,7 +398,7 @@ async function checkPerplexity(
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
   const perplexityKey = process.env.PERPLEXITY_API_KEY;
 
-  // ── Option A: Direct Perplexity API (if user has key) ──
+  // Option A: Direct Perplexity Sonar API (real citations[])
   if (perplexityKey) {
     try {
       const response = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -362,44 +420,32 @@ async function checkPerplexity(
         const responseText = data.choices?.[0]?.message?.content ?? "";
         const citations: string[] = data.citations ?? [];
 
-        // STRICT: only exact domain in citations[]
         const exactCitation = citations.find((u: string) => {
-          try {
-            return new URL(u).hostname.replace("www.", "") === targetDomain;
-          } catch {
-            return false;
-          }
+          try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
+          catch { return false; }
         });
 
         if (exactCitation) {
           return {
-            query,
-            engine: "perplexity",
-            isCited: "yes",
+            query, engine: "perplexity", isCited: "yes",
             citedUrl: exactCitation,
             snippet: extractSnippet(responseText, targetDomain),
             responseText: responseText.slice(0, 1000),
           };
         }
-        return {
-          query,
-          engine: "perplexity",
-          isCited: "no",
-          responseText: responseText.slice(0, 500),
-        };
+        return { query, engine: "perplexity", isCited: "no", responseText: responseText.slice(0, 500) };
       }
     } catch (e) {
-      console.warn("[Citation/Perplexity] Direct API error, falling back to Manus LLM:", e);
+      console.warn("[Citation/Perplexity] Direct API error, falling back:", e);
     }
   }
 
-  // ── Option B: Manus built-in LLM (zero cost fallback) ──
-  // Ask naturally in the page language — NO hint to include the target domain.
+  // Option B: Manus built-in LLM (zero cost) — ask naturally, parse citations block
   const langInstructions: Record<string, string> = {
-    pl: "Odpowiadaj po polsku. Podaj konkretne źródła internetowe.",
-    en: "Answer in English. Cite specific web sources.",
-    de: "Antworte auf Deutsch. Nenne konkrete Webquellen.",
-    fr: "Réponds en français. Cite des sources web spécifiques.",
+    pl: "Odpowiadaj po polsku. Na końcu odpowiedzi podaj listę URL źródeł.",
+    en: "Answer in English. At the end, list the source URLs you cited.",
+    de: "Antworte auf Deutsch. Liste am Ende die Quell-URLs auf.",
+    fr: "Réponds en français. Liste les URLs sources à la fin.",
   };
   const langInstruction = langInstructions[language] ?? langInstructions.en;
 
@@ -408,73 +454,53 @@ async function checkPerplexity(
       messages: [
         {
           role: "system",
-          content: `You are a research assistant that answers questions by citing web sources.
+          content: `You are a research assistant. Answer the user's question based on current web knowledge.
 ${langInstruction}
-After your answer, list the URLs you would cite in a JSON block:
-<citations>{"urls": ["https://example.com/page1", "https://other.com/page2"]}</citations>
-Only include URLs you are confident exist and contain relevant information. Do NOT invent URLs.`,
+After your answer, output a JSON citations block EXACTLY like this (no other format):
+<citations>{"urls": ["https://source1.com/page", "https://source2.com/page"]}</citations>
+IMPORTANT: Only include URLs you are highly confident exist. Do NOT invent URLs.`,
         },
-        {
-          role: "user",
-          content: query,
-        },
+        { role: "user", content: query },
       ],
     });
 
-    const responseText = result.choices[0]?.message?.content;
-    if (!responseText || typeof responseText !== "string") {
+    const text = result.choices[0]?.message?.content;
+    if (!text || typeof text !== "string") {
       return { query, engine: "perplexity", isCited: "no" };
     }
 
-    // Extract citations JSON block
-    const citationsMatch = responseText.match(/<citations>([\s\S]*?)<\/citations>/);
+    const citationsMatch = text.match(/<citations>([\s\S]*?)<\/citations>/);
     let citedUrls: string[] = [];
     if (citationsMatch) {
       try {
         const parsed = JSON.parse(citationsMatch[1]);
-        citedUrls = parsed.urls ?? [];
+        citedUrls = Array.isArray(parsed.urls) ? parsed.urls : [];
       } catch {}
     }
 
-    // STRICT: only exact domain match in structured citations
     const exactCitation = citedUrls.find((u: string) => {
-      try {
-        return new URL(u).hostname.replace("www.", "") === targetDomain;
-      } catch {
-        return false;
-      }
+      try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
+      catch { return false; }
     });
 
     if (exactCitation) {
       return {
-        query,
-        engine: "perplexity",
-        isCited: "yes",
+        query, engine: "perplexity", isCited: "yes",
         citedUrl: exactCitation,
-        snippet: extractSnippet(responseText, targetDomain),
-        responseText: responseText.slice(0, 1000),
+        snippet: extractSnippet(text, targetDomain),
+        responseText: text.slice(0, 1000),
       };
     }
 
-    return {
-      query,
-      engine: "perplexity",
-      isCited: "no",
-      responseText: responseText.slice(0, 500),
-    };
+    return { query, engine: "perplexity", isCited: "no", responseText: text.slice(0, 500) };
   } catch (e) {
     console.warn("[Citation/Perplexity] LLM error:", e);
     return { query, engine: "perplexity", isCited: "no" };
   }
 }
 
-// ─── Engine 3: Google AI Overviews (Puppeteer scraper — zero cost) ─────────────
+// ─── Engine 3: Google AI Overviews (Puppeteer) ────────────────────────────────
 
-/**
- * Uses Puppeteer to scrape Google AI Overviews.
- * Updated selectors for 2025 Google DOM structure.
- * STRICT: only counts domain in actual citation links, not text mentions.
- */
 async function checkGoogleAIOverview(
   query: string,
   targetUrl: string,
@@ -482,7 +508,6 @@ async function checkGoogleAIOverview(
 ): Promise<CitationResult> {
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
 
-  // Map language to Google locale params
   const localeMap: Record<string, { hl: string; gl: string }> = {
     pl: { hl: "pl", gl: "pl" },
     en: { hl: "en", gl: "us" },
@@ -491,20 +516,16 @@ async function checkGoogleAIOverview(
     es: { hl: "es", gl: "es" },
   };
   const locale = localeMap[language] ?? localeMap.en;
-  const langArgs = language === "pl"
-    ? ["--lang=pl-PL,pl", "--accept-lang=pl-PL,pl"]
-    : ["--lang=en-US,en", "--accept-lang=en-US,en"];
+  const acceptLang = language === "pl" ? "pl-PL,pl;q=0.9" : "en-US,en;q=0.9";
 
   let browser;
   try {
     browser = await puppeteer.launch({
       executablePath: "/usr/bin/chromium-browser",
       args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        ...langArgs,
+        "--no-sandbox", "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage", "--disable-gpu",
+        `--lang=${locale.hl}`,
       ],
       headless: true,
     });
@@ -513,130 +534,95 @@ async function checkGoogleAIOverview(
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     );
-    await page.setExtraHTTPHeaders({
-      "Accept-Language": language === "pl" ? "pl-PL,pl;q=0.9" : "en-US,en;q=0.9",
-    });
+    await page.setExtraHTTPHeaders({ "Accept-Language": acceptLang });
 
-    // Navigate to Google Search with correct locale
     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${locale.hl}&gl=${locale.gl}`;
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 25000 });
+    await new Promise((r) => setTimeout(r, 3000));
 
-    // Wait for dynamic content (AI Overview loads after initial render)
-    await new Promise((r) => setTimeout(r, 4000));
-
-    // Extract AI Overview content and cited URLs
     const result = await page.evaluate((domain: string) => {
-      // Updated 2025 Google AI Overview selectors
-      const aiOverviewSelectors = [
-        // 2025 selectors (most likely)
+      // 2025 Google AI Overview selectors (multiple fallbacks)
+      const selectors = [
         "[data-attrid='SGE']",
         "div[jsname='yEVEwb']",
         "div[jsname='BiSLff']",
-        ".M8OgIe",              // AI Overview wrapper 2025
-        ".YzVZnd",              // AI Overview container
-        ".IVvPP",               // AI Overview text block
+        ".M8OgIe",
+        ".YzVZnd",
+        ".IVvPP",
         "[data-sgrd='true']",
-        ".wDYxhc",              // AI Overview card
-        // Fallback: any element with "AI Overview" aria label
+        ".wDYxhc",
         "[aria-label*='AI Overview']",
         "[aria-label*='AI overview']",
-        // Knowledge panel
-        ".kp-wholepage",
+        "[aria-label*='Przegląd AI']",
+        // 2025 new structure
+        "div[data-ved][jscontroller]",
       ];
 
-      let aiOverviewEl: Element | null = null;
-      for (const sel of aiOverviewSelectors) {
+      let el: Element | null = null;
+      for (const sel of selectors) {
         try {
-          aiOverviewEl = document.querySelector(sel);
-          if (aiOverviewEl && aiOverviewEl.textContent && aiOverviewEl.textContent.length > 50) break;
+          const found = document.querySelector(sel);
+          if (found && (found.textContent?.length ?? 0) > 100) { el = found; break; }
         } catch {}
       }
 
-      // Last resort: scan for AI Overview heading text
-      if (!aiOverviewEl) {
-        const headings = Array.from(document.querySelectorAll("h1, h2, h3, [role='heading']"));
-        for (const h of headings) {
-          if (h.textContent?.toLowerCase().includes("ai overview")) {
-            // Get parent container
-            aiOverviewEl = h.closest("div[data-attrid], div[jsname], .g") ?? h.parentElement;
-            if (aiOverviewEl) break;
+      // Fallback: find by "AI Overview" / "Przegląd AI" heading text
+      if (!el) {
+        const allEls = Array.from(document.querySelectorAll("*"));
+        for (const e of allEls) {
+          const txt = e.textContent?.trim() ?? "";
+          if ((txt === "AI Overview" || txt === "Przegląd AI") && e.tagName !== "BODY") {
+            el = e.closest("div[data-attrid], div[jsname], section") ?? e.parentElement;
+            if (el && (el.textContent?.length ?? 0) > 100) break;
+            el = null;
           }
         }
       }
 
-      if (!aiOverviewEl) {
-        return {
-          hasAIOverview: false,
-          citedUrls: [] as string[],
-          text: "",
-        };
-      }
+      if (!el) return { hasAIOverview: false, citedUrls: [] as string[], text: "" };
 
-      const text = aiOverviewEl.textContent ?? "";
-      // Get all external links (not google.com) from the AI Overview block
-      const links = Array.from(aiOverviewEl.querySelectorAll("a[href]"));
+      const text = el.textContent ?? "";
+      const links = Array.from(el.querySelectorAll("a[href]"));
       const citedUrls = links
         .map((a) => {
           const href = (a as HTMLAnchorElement).href;
-          // Unwrap Google redirect URLs (/url?q=...)
           if (href.includes("google.com/url?")) {
-            try {
-              const u = new URL(href);
-              return u.searchParams.get("q") ?? href;
-            } catch {}
+            try { return new URL(href).searchParams.get("q") ?? href; } catch {}
           }
           return href;
         })
         .filter((href) => href.startsWith("http") && !href.includes("google.com"));
 
-      return {
-        hasAIOverview: true,
-        citedUrls,
-        text: text.slice(0, 1500),
-      };
+      return { hasAIOverview: true, citedUrls, text: text.slice(0, 1500) };
     }, targetDomain);
 
     if (!result.hasAIOverview) {
-      return {
-        query,
-        engine: "google",
-        isCited: "no",
-        snippet: "No AI Overview shown for this query",
-      };
+      return { query, engine: "google", isCited: "no", snippet: "No AI Overview for this query" };
     }
 
-    // STRICT: only exact domain match in citation links
     const exactCitation = result.citedUrls.find((u: string) => {
-      try {
-        return new URL(u).hostname.replace("www.", "") === targetDomain;
-      } catch {
-        return false;
-      }
+      try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
+      catch { return false; }
     });
 
     if (exactCitation) {
       return {
-        query,
-        engine: "google",
-        isCited: "yes",
+        query, engine: "google", isCited: "yes",
         citedUrl: exactCitation,
         snippet: extractSnippet(result.text, targetDomain),
         responseText: result.text.slice(0, 1000),
       };
     }
 
-    // AI Overview exists but target not cited
     return {
-      query,
-      engine: "google",
-      isCited: "no",
-      responseText: `AI Overview present (${result.citedUrls.length} sources cited), ${targetDomain} not among them.`,
+      query, engine: "google", isCited: "no",
+      responseText: `AI Overview found (${result.citedUrls.length} sources), ${targetDomain} not cited.`,
     };
   } catch (e) {
     console.warn("[Citation/Google] Puppeteer error:", e);
     return { query, engine: "google", isCited: "no", snippet: "Google scraping failed" };
   } finally {
-    if (browser) await browser.close();
+    if (browser) await browser.close().catch(() => {});
   }
 }
 
@@ -654,9 +640,9 @@ function extractSnippet(text: string, domain: string): string {
 // ─── Main Job Runner ──────────────────────────────────────────────────────────
 
 /**
- * Run a full citation check job for a given audit.
- * Called asynchronously after audit completion.
- * Language is stored in the job record and passed to all engines.
+ * Run a full citation check job.
+ * Fetches page content independently, generates queries via LLM fan-out,
+ * then checks all 3 engines with 24h caching.
  */
 export async function runCitationJob(jobId: number): Promise<CitationJobResult | null> {
   const db = await getDb();
@@ -668,56 +654,108 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
   await db.update(citationJobs).set({ status: "running" }).where(eq(citationJobs.id, jobId));
 
-  const queries = (job.prompts as string[]) ?? [];
-  const language = (job as any).language ?? "en";
-  const results: CitationResult[] = [];
+  try {
+    // Step 1: Extract page content for query fan-out
+    console.log(`[Citation] Job ${jobId}: extracting page content from ${job.url}`);
+    const pageContent = await extractPageContent(job.url);
 
-  const engines: CitationEngine[] = ["chatgpt", "perplexity", "google"];
+    // Step 2: Generate queries via LLM fan-out (or use stored prompts if already set)
+    let queries: string[] = (job.prompts as string[]) ?? [];
+    if (queries.length === 0) {
+      console.log(`[Citation] Job ${jobId}: generating queries via fan-out (lang: ${pageContent.language})`);
+      queries = await fanOutQueries(pageContent, job.url);
 
-  for (const query of queries) {
-    for (const engine of engines) {
-      const cacheKey = makeCacheKey(query, engine);
-
-      const cached = await getCachedResult(cacheKey, job.auditId);
-      if (cached) {
-        results.push(cached);
-        continue;
-      }
-
-      let result: CitationResult;
-      if (engine === "chatgpt") {
-        result = await checkChatGPT(query, job.url);
-      } else if (engine === "perplexity") {
-        result = await checkPerplexity(query, job.url, language);
-      } else {
-        result = await checkGoogleAIOverview(query, job.url, language);
-      }
-
-      await saveResult(jobId, job.auditId, result, cacheKey);
-      results.push(result);
-
-      // Small delay between API calls
-      await new Promise((r) => setTimeout(r, 800));
+      // Store generated queries back in the job
+      await db.update(citationJobs)
+        .set({ prompts: queries, language: pageContent.language })
+        .where(eq(citationJobs.id, jobId));
     }
-  }
 
-  // Build summary
-  const summary = {
-    chatgpt: { cited: 0, total: 0 },
-    perplexity: { cited: 0, total: 0 },
-    google: { cited: 0, total: 0 },
-  };
-  for (const r of results) {
-    summary[r.engine].total++;
-    if (r.isCited === "yes") {
-      summary[r.engine].cited++;
+    const language = (job as any).language || pageContent.language;
+    console.log(`[Citation] Job ${jobId}: checking ${queries.length} queries × 3 engines`);
+
+    const results: CitationResult[] = [];
+
+    for (const query of queries) {
+      for (const engine of ["chatgpt", "perplexity", "google"] as CitationEngine[]) {
+        const cacheKey = makeCacheKey(query, engine);
+        const cached = await getCachedResult(cacheKey);
+        if (cached) {
+          results.push(cached);
+          continue;
+        }
+
+        let result: CitationResult;
+        if (engine === "chatgpt") {
+          result = await checkChatGPT(query, job.url);
+        } else if (engine === "perplexity") {
+          result = await checkPerplexity(query, job.url, language);
+        } else {
+          result = await checkGoogleAIOverview(query, job.url, language);
+        }
+
+        await saveResult(jobId, job.auditId, result, cacheKey);
+        results.push(result);
+
+        // Delay between API calls to avoid rate limits
+        await new Promise((r) => setTimeout(r, 1000));
+      }
     }
+
+    // Build summary
+    const summary = {
+      chatgpt: { cited: 0, total: 0 },
+      perplexity: { cited: 0, total: 0 },
+      google: { cited: 0, total: 0 },
+    };
+    for (const r of results) {
+      summary[r.engine].total++;
+      if (r.isCited === "yes") summary[r.engine].cited++;
+    }
+
+    await db
+      .update(citationJobs)
+      .set({ status: "completed", completedAt: new Date() })
+      .where(eq(citationJobs.id, jobId));
+
+    console.log(`[Citation] Job ${jobId}: completed. Summary:`, JSON.stringify(summary));
+    return { jobId, auditId: job.auditId, url: job.url, queries, results, summary };
+  } catch (e) {
+    console.error(`[Citation] Job ${jobId} failed:`, e);
+    await db
+      .update(citationJobs)
+      .set({ status: "failed" })
+      .where(eq(citationJobs.id, jobId));
+    return null;
   }
+}
 
-  await db
-    .update(citationJobs)
-    .set({ status: "completed", completedAt: new Date() })
-    .where(eq(citationJobs.id, jobId));
+// ─── Legacy exports (backward compat) ────────────────────────────────────────
 
-  return { jobId, auditId: job.auditId, url: job.url, queries, results, summary };
+export function detectPageLanguage(html: string, pageTitle: string): string {
+  const langMatch = html.match(/<html[^>]+lang=["']([a-zA-Z-]+)["']/i);
+  if (langMatch) return langMatch[1].toLowerCase().split("-")[0];
+  if (/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(pageTitle)) return "pl";
+  return "en";
+}
+
+export function prepareCitationQueries(params: {
+  pageTitle: string; url: string;
+  topQuestions?: string[]; pageTopics?: string[]; language?: string;
+}): string[] {
+  if (params.topQuestions && params.topQuestions.length >= 1) {
+    return params.topQuestions.filter((q) => q?.trim().length > 0).slice(0, 6);
+  }
+  return buildFallbackQueries(params.pageTitle, "", [], params.language ?? "en");
+}
+
+export async function generateCitationQueries(params: {
+  url: string; pageTitle: string; pageTopics: string[];
+  pageType: string; topQuestions?: string[]; language?: string;
+}): Promise<string[]> {
+  return prepareCitationQueries({
+    pageTitle: params.pageTitle, url: params.url,
+    topQuestions: params.topQuestions, pageTopics: params.pageTopics,
+    language: params.language,
+  });
 }

@@ -6,7 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { runAudit } from "./audit/index";
 import { createCitationJob, getCitationResultsForAudit } from "./citation/db";
-import { generateCitationQueries, runCitationJob } from "./citation/worker";
+import { runCitationJob } from "./citation/worker";
 import {
   createAudit,
   updateAudit,
@@ -220,45 +220,35 @@ export const appRouter = router({
     startCheck: protectedProcedure
       .input(z.object({
         auditId: z.number(),
-        url: z.string().url(),
-        pageTitle: z.string().optional(),
-        pageTopics: z.array(z.string()).optional(),
-        pageType: z.string().optional(),
-        // Content Intelligence top_questions — preferred query source (zero LLM cost, correct language)
-        topQuestions: z.array(z.string()).optional(),
-        // Detected page language (e.g. "pl", "en", "de")
-        language: z.string().optional(),
+        // v2: backend fetches URL from DB and generates queries via fan-out
+        // frontend only needs to pass auditId
       }))
       .mutation(async ({ ctx, input }) => {
-        // Use Content Intelligence top_questions as queries (zero LLM cost, correct language)
-        // Falls back to title-based queries only if CI data unavailable
-        const queries = await generateCitationQueries({
-          url: input.url,
-          pageTitle: input.pageTitle ?? input.url,
-          pageTopics: input.pageTopics ?? [],
-          pageType: input.pageType ?? "generic",
-          topQuestions: input.topQuestions,
-          language: input.language ?? "en",
-        });
+        // Fetch audit from DB to get the URL
+        const audit = await getAuditById(input.auditId);
+        if (!audit) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
+        }
 
+        // Create job with empty prompts — worker generates queries via fanOutQueries()
         const jobId = await createCitationJob({
           auditId: input.auditId,
           userId: ctx.user.id,
-          url: input.url,
-          prompts: queries,
-          language: input.language ?? "en",
+          url: audit.url,
+          prompts: [],   // worker generates via fanOutQueries() from live page content
+          language: "auto", // worker auto-detects from page HTML
         });
 
         if (!jobId) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create citation job" });
         }
 
-        // Run asynchronously — don't await, return jobId immediately
+        // Run asynchronously — return jobId immediately, results appear after ~2-5 min
         runCitationJob(jobId).catch((err) => {
           console.error(`[Citation] Job ${jobId} failed:`, err);
         });
 
-        return { jobId, queries };
+        return { jobId };
       }),
 
     /**

@@ -35,13 +35,13 @@ interface CitationJob {
 
 interface Props {
   auditId: number;
-  url: string;
+  // v2: all query generation happens server-side via fan-out
+  // these props are kept for backward compat but not sent to backend
+  url?: string;
   pageTitle?: string;
   pageTopics?: string[];
   pageType?: string;
-  // Content Intelligence top_questions — used as citation queries (zero LLM cost, correct language)
   topQuestions?: string[];
-  // Detected page language (e.g. "pl", "en", "de")
   language?: string;
 }
 
@@ -187,7 +187,7 @@ function EngineCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function AICitationPanel({ auditId, url, pageTitle, pageTopics, pageType, topQuestions, language }: Props) {
+export function AICitationPanel({ auditId }: Props) {
   const { user } = useAuth();
   const [jobId, setJobId] = useState<number | null>(null);
   const [jobStarted, setJobStarted] = useState(false);
@@ -228,17 +228,9 @@ export function AICitationPanel({ auditId, url, pageTitle, pageTopics, pageType,
   const handleStartCheck = useCallback(() => {
     if (!user || jobStarted) return;
     setJobStarted(true);
-    startCheck.mutate({
-      auditId,
-      url,
-      pageTitle: pageTitle ?? url,
-      pageTopics: pageTopics ?? [],
-      pageType: pageType ?? "generic",
-      // Pass Content Intelligence top_questions as citation queries (zero LLM cost, correct language)
-      topQuestions: topQuestions ?? [],
-      language: language ?? "en",
-    });
-  }, [user, jobStarted, auditId, url, pageTitle, pageTopics, pageType, topQuestions, language]);
+    // v2: only auditId needed — backend fetches URL and generates queries via fan-out
+    startCheck.mutate({ auditId });
+  }, [user, jobStarted, auditId]);
 
   const job = citationData?.job;
   const checks = (citationData?.checks ?? []) as CitationCheck[];

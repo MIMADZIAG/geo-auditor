@@ -345,3 +345,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: tRPC startCheck — przyjmuje topQuestions[] i language; Results.tsx przekazuje CI top_questions i html_lang
 - [x] DB migration 0009: language column w citation_jobs
 - [x] 59 tests passing, 0 TS errors
+
+## Bug Fix: AI Citation — Query Fan-Out v2
+
+- [x] Przepisano worker.ts: extractPageContent() pobiera URL niezależnie od pipeline audytu
+- [x] fanOutQueries() generuje 6 zapytań przez LLM z tytułu + H1 + H2 + meta description
+- [x] startCheck przyjmuje tylko auditId — zero zależności od frontendu
+- [x] AICitationPanel uproszczony — przekazuje tylko auditId
+- [x] Język auto-wykrywany z html lang + heurystyka polskich znaków
+- [x] Fallback queries deterministyczne z tytułu strony (bez LLM)
+- [x] 59 testów passing, 0 błędów TS
