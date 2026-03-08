@@ -541,59 +541,76 @@ async function checkGoogleAIOverview(
     await new Promise((r) => setTimeout(r, 3000));
 
     const result = await page.evaluate((domain: string) => {
-      // 2025 Google AI Overview selectors (multiple fallbacks)
-      const selectors = [
-        "[data-attrid='SGE']",
-        "div[jsname='yEVEwb']",
-        "div[jsname='BiSLff']",
-        ".M8OgIe",
-        ".YzVZnd",
-        ".IVvPP",
-        "[data-sgrd='true']",
-        ".wDYxhc",
-        "[aria-label*='AI Overview']",
-        "[aria-label*='AI overview']",
-        "[aria-label*='Przegląd AI']",
-        // 2025 new structure
-        "div[data-ved][jscontroller]",
-      ];
-
+      // CONFIRMED WORKING: class YzCcne is the AI Overview container (tested March 2026)
+      // Strategy: find by exact class first, then by text content fallback
+      
       let el: Element | null = null;
-      for (const sel of selectors) {
-        try {
-          const found = document.querySelector(sel);
-          if (found && (found.textContent?.length ?? 0) > 100) { el = found; break; }
-        } catch {}
+
+      // Primary: exact class match (confirmed working)
+      const byClass = Array.from(document.querySelectorAll("div")).find(
+        (d) => d.className === "YzCcne" || d.className.includes("YzCcne")
+      );
+      if (byClass && (byClass.textContent?.length ?? 0) > 50) {
+        el = byClass;
       }
 
-      // Fallback: find by "AI Overview" / "Przegląd AI" heading text
+      // Secondary: find by "Przegląd od AI" or "AI Overview" text in heading
       if (!el) {
-        const allEls = Array.from(document.querySelectorAll("*"));
-        for (const e of allEls) {
-          const txt = e.textContent?.trim() ?? "";
-          if ((txt === "AI Overview" || txt === "Przegląd AI") && e.tagName !== "BODY") {
-            el = e.closest("div[data-attrid], div[jsname], section") ?? e.parentElement;
-            if (el && (el.textContent?.length ?? 0) > 100) break;
-            el = null;
+        const allDivs = Array.from(document.querySelectorAll("div"));
+        for (const d of allDivs) {
+          const txt = d.textContent?.trim() ?? "";
+          if (
+            (txt.startsWith("Przegląd od AI") || txt.startsWith("AI Overview")) &&
+            d.querySelectorAll("a[href]").length > 0
+          ) {
+            el = d;
+            break;
           }
         }
       }
 
-      if (!el) return { hasAIOverview: false, citedUrls: [] as string[], text: "" };
+      // Tertiary: known 2025 selectors
+      if (!el) {
+        const selectors = [".M8OgIe", ".YzVZnd", "[data-attrid='SGE']", "div[jsname='yEVEwb']"];
+        for (const sel of selectors) {
+          try {
+            const found = document.querySelector(sel);
+            if (found && (found.textContent?.length ?? 0) > 100) { el = found; break; }
+          } catch {}
+        }
+      }
+
+      if (!el) return { hasAIOverview: false, citedUrls: [] as string[], text: "", totalSources: 0 };
 
       const text = el.textContent ?? "";
       const links = Array.from(el.querySelectorAll("a[href]"));
       const citedUrls = links
         .map((a) => {
-          const href = (a as HTMLAnchorElement).href;
-          if (href.includes("google.com/url?")) {
-            try { return new URL(href).searchParams.get("q") ?? href; } catch {}
+          let href = (a as HTMLAnchorElement).href;
+          // Unwrap Google redirect URLs
+          if (href.includes("google.com/url?") || href.includes("/url?q=")) {
+            try { href = new URL(href).searchParams.get("q") ?? href; } catch {}
           }
+          // Remove fragment anchors (text= anchors)
+          href = href.split("#")[0];
           return href;
         })
-        .filter((href) => href.startsWith("http") && !href.includes("google.com"));
+        .filter((href) => {
+          if (!href.startsWith("http")) return false;
+          try {
+            const u = new URL(href);
+            // Exclude all google.com links (search, policies, support, etc.)
+            if (u.hostname.includes("google.com")) return false;
+            if (u.hostname.includes("googleapis.com")) return false;
+            if (u.hostname.includes("gstatic.com")) return false;
+            return true;
+          } catch { return false; }
+        });
 
-      return { hasAIOverview: true, citedUrls, text: text.slice(0, 1500) };
+      // Deduplicate
+      const uniqueUrls = Array.from(new Set(citedUrls));
+
+      return { hasAIOverview: true, citedUrls: uniqueUrls, text: text.slice(0, 1500), totalSources: uniqueUrls.length };
     }, targetDomain);
 
     if (!result.hasAIOverview) {
