@@ -28,6 +28,7 @@ import {
   Lightbulb,
   Target,
   Search,
+  Cpu,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -176,6 +177,9 @@ export default function Results() {
                 {audit.url}
               </a>
             </div>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/sandbox?url=${encodeURIComponent(audit.url)}`)} className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 hidden sm:flex">
+              <Cpu className="w-3.5 h-3.5" /> AI Sandbox
+            </Button>
             <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs">
               <Share2 className="w-3.5 h-3.5" /> Share
             </Button>

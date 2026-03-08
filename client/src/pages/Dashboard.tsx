@@ -640,6 +640,14 @@ function DashboardNav({ user }: { user?: { name?: string | null } | null }) {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => navigate("/sandbox")}
+            className="text-xs gap-1.5 text-violet-400 hover:text-violet-300 hidden sm:flex"
+          >
+            AI Sandbox
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => navigate("/")}
             className="text-xs gap-1.5"
           >

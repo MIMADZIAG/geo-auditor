@@ -61,6 +61,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-3">
             <a href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pricing</a>
+            <a href="/sandbox" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">AI Sandbox</a>
             {isAuthenticated ? (
               <Button size="sm" onClick={() => navigate("/dashboard")} variant="outline" className="gap-1.5">
                 <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard

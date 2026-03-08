@@ -373,6 +373,7 @@ function CompetitorSummary({ checks, targetDomain }: { checks: CitationCheck[]; 
 // ─── PLG Upsell Block ─────────────────────────────────────────────────────────
 
 function PLGUpsell({ url, hasIssues }: { url?: string; hasIssues: boolean }) {
+  const sandboxHref = url ? `/sandbox?url=${encodeURIComponent(url)}` : "/sandbox";
   return (
     <div className="relative overflow-hidden rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/60 via-purple-950/40 to-zinc-900/60 p-6">
       {/* Background glow */}
@@ -428,7 +429,7 @@ function PLGUpsell({ url, hasIssues }: { url?: string; hasIssues: boolean }) {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <Link href="/sandbox" className="flex-1">
+          <Link href={sandboxHref} className="flex-1">
             <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold py-2.5">
               Otwórz AI Sandbox →
             </Button>
