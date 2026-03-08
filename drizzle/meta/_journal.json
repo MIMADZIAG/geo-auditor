@@ -78,6 +78,13 @@
       "when": 1772958332638,
       "tag": "0010_secret_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1772974745639,
+      "tag": "0011_organic_penance",
+      "breakpoints": true
     }
   ]
 }

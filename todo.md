@@ -375,3 +375,25 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] New OPENAI_API_KEY configured and validated — gpt-4o-mini-search-preview returns real web citations
 - [x] End-to-end test confirmed: API returns cited URLs with `?utm_source=openai` suffix
 - [x] 59 tests passing, 0 TS errors
+
+## AI Citation Check v3 — Complete Rebuild
+
+- [x] Remove Perplexity engine entirely (only ChatGPT + Google AI Overview)
+- [x] DB schema: engine enum updated to ["chatgpt", "google"], added allCitedUrls JSON column, hasAIOverview boolean column
+- [x] DB migration applied (old citation data cleared, new schema in place)
+- [x] Worker v3: ChatGPT engine uses chat/completions + web_search_options (confirmed working)
+- [x] Worker v3: Google AI Overview uses Puppeteer with 3-strategy selector fallback
+- [x] Worker v3: allCitedUrls saved for every query (full competitor domain list)
+- [x] Worker v3: hasAIOverview flag saved for Google results
+- [x] Worker v3: fanOutQueries generates 4 realistic user queries via LLM
+- [x] UI v3: AICitationPanel rebuilt from scratch
+  - [x] Pre-check state: explains what will be checked, CTA to start
+  - [x] Running state: step-by-step progress indicator
+  - [x] Results: summary header (cited / domain / not cited)
+  - [x] Results: per-engine section (ChatGPT + Google) with score %
+  - [x] Results: per-query rows with collapsible details
+  - [x] Results: competitor domains listed per query ("Kto jest cytowany zamiast Ciebie")
+  - [x] Results: CompetitorSummary — ranked list of all competing domains with frequency bar
+  - [x] Results: PLGUpsell — What-IF Simulator + AI Sandbox CTA with amber warning about technical factors
+- [x] Results.tsx: simplified AICitationPanel props (only auditId + url)
+- [x] 59 tests passing, 0 TS errors

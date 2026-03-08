@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, float } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, float, boolean } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -124,7 +124,7 @@ export const citationChecks = mysqlTable("citation_checks", {
   jobId: int("jobId").notNull(),
   auditId: int("auditId").notNull(),
   query: text("query").notNull(),
-  engine: mysqlEnum("engine", ["chatgpt", "perplexity", "google"]).notNull(),
+  engine: mysqlEnum("engine", ["chatgpt", "google"]).notNull(),
   isCited: mysqlEnum("isCited", ["yes", "no", "domain"]).default("no").notNull(),
   // Exact URL that was found in citations
   citedUrl: text("citedUrl"),
@@ -134,6 +134,10 @@ export const citationChecks = mysqlTable("citation_checks", {
   snippet: text("snippet"),
   // Full AI response (truncated to 2000 chars)
   responseText: text("responseText"),
+  // All URLs cited by AI for this query (competitor domains included)
+  allCitedUrls: json("allCitedUrls"), // string[]
+  // Whether AI Overview was present at all (Google only)
+  hasAIOverview: boolean("hasAIOverview").default(false),
   // Cache key: hash(query + engine) for 24h deduplication
   cacheKey: varchar("cacheKey", { length: 64 }),
   checkedAt: timestamp("checkedAt").defaultNow().notNull(),

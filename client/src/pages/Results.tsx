@@ -223,22 +223,6 @@ export default function Results() {
         <AICitationPanel
           auditId={auditId}
           url={audit.url}
-          pageTitle={audit.pageTitle ?? audit.url}
-          pageTopics={(contentIntelligence as any)?.semanticGaps ?? []}
-          pageType={(findings as any)?.pageType ?? "generic"}
-          topQuestions={
-            // query_coverage.examples = top_questions (mapped in contentIntelligence.ts line 530)
-            // These are the EXACT same queries shown in "QUERIES THIS PAGE CAN RANK FOR IN AI SEARCH"
-            (contentIntelligence as any)?.checks
-              ?.find((c: any) => c.id === "query_coverage")
-              ?.examples ?? []
-          }
-          language={
-            (findings as any)?.technical?.checks
-              ?.find((c: any) => c.id === "html_lang")
-              ?.details?.lang
-              ?? "pl"
-          }
         />
         {/* ── 7. AI Sandbox CTA — simulate how AI engines rank this page ── */}
         <AISandboxCTA url={audit.url} navigate={navigate} />
