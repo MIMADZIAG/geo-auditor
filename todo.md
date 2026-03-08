@@ -366,3 +366,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] UI: color coding — green (exact), amber (domain), grey (no)
 - [x] UI: "Domain-level citations" insight panel when domain cited but exact URL not
 - [x] 59 tests passing, 0 TS errors
+
+## Bug Fix: ChatGPT Citation Engine — Wrong API Endpoint
+
+- [x] Fix worker.ts: switch from `/v1/responses` (Responses API) to `/v1/chat/completions` with `web_search_options: {}`
+- [x] Root cause: `/v1/responses` endpoint returns "Model not found" for gpt-4o-mini-search-preview; `/v1/chat/completions` works correctly
+- [x] Fix annotation parsing: `ann.url_citation.url` (chat/completions format) instead of `ann.url` (responses format)
+- [x] New OPENAI_API_KEY configured and validated — gpt-4o-mini-search-preview returns real web citations
+- [x] End-to-end test confirmed: API returns cited URLs with `?utm_source=openai` suffix
+- [x] 59 tests passing, 0 TS errors

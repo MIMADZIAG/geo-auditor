@@ -330,7 +330,8 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    // Use chat/completions endpoint with web_search_options (works with gpt-4o-mini-search-preview)
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -338,8 +339,8 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
       },
       body: JSON.stringify({
         model: "gpt-4o-mini-search-preview",
-        tools: [{ type: "web_search_preview" }],
-        input: query,
+        web_search_options: {},
+        messages: [{ role: "user", content: query }],
       }),
     });
 
@@ -350,22 +351,14 @@ async function checkChatGPT(query: string, targetUrl: string): Promise<CitationR
     }
 
     const data = await response.json();
-    const outputItems: any[] = data.output ?? [];
-    let responseText = "";
+    const message = data.choices?.[0]?.message;
+    const responseText: string = message?.content ?? "";
     const citedUrls: string[] = [];
 
-    for (const item of outputItems) {
-      if (item.type === "message") {
-        for (const content of item.content ?? []) {
-          if (content.type === "output_text") {
-            responseText += content.text ?? "";
-            for (const ann of content.annotations ?? []) {
-              if (ann.type === "url_citation" && ann.url) {
-                citedUrls.push(ann.url);
-              }
-            }
-          }
-        }
+    // Extract URLs from annotations (url_citation type)
+    for (const ann of message?.annotations ?? []) {
+      if (ann.type === "url_citation" && ann.url_citation?.url) {
+        citedUrls.push(ann.url_citation.url);
       }
     }
 
