@@ -412,3 +412,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Pass audit issues/findings as context to LLM so rewrites are informed by actual audit results
 - [x] Show loading state during AI rewrite (spinner + animated text)
 - [x] After rewrite: auto-run simulation and show score delta
+
+## Fix: AI Co-Pilot — Language Detection
+
+- [x] Updated trpc.sandbox.rewrite system prompt with CRITICAL LANGUAGE RULE — detects input language and responds in same language (PL/EN/DE/etc.)

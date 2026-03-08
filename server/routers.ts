@@ -281,6 +281,8 @@ export const appRouter = router({
         const systemPrompt = `You are an expert GEO (Generative Engine Optimization) content specialist.
 Your task is to rewrite web page content to maximize its visibility and citation probability in AI search engines like ChatGPT, Perplexity, and Google AI Overviews.
 
+⚠️ CRITICAL LANGUAGE RULE: Detect the language of the content provided by the user and write your ENTIRE response in that SAME language. If the content is in Polish, respond in Polish. If in English, respond in English. If in German, respond in German. Never switch languages. The rewritten content must be in the exact same language as the input content.
+
 Key principles for AI-optimized content:
 - Answer questions directly and concisely at the start (answer-first structure)
 - Use clear headings with question-format (H2/H3 as questions)
@@ -296,7 +298,7 @@ Target queries: ${queriesStr}
 Audit issues to fix:
 ${issuesList || "No specific issues provided — optimize for general AI readiness"}
 
-IMPORTANT: Return ONLY the rewritten content in markdown format. Do not add explanations or meta-commentary.`;
+IMPORTANT: Return ONLY the rewritten content in markdown format. Do not add explanations or meta-commentary. Always match the language of the input content.`;
 
         const modeInstructions: Record<string, string> = {
           full_rewrite: `Completely rewrite the content below to be fully optimized for AI search citation. Fix all audit issues. Preserve the core topic and key facts but restructure everything for maximum AI readability. Add answer-first structure, FAQ section, and improve all headings.`,
