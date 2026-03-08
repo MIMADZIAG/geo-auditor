@@ -1035,27 +1035,42 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
 }
 
 // ─── What-IF Simulator (inline, no navigation) ──────────────────────────────────────
+const AI_COPILOT_MODES = [
+  { id: "full_rewrite" as const, label: "Pełny rewrite AI", icon: "✨", desc: "Kompletne przepisanie treści" },
+  { id: "answer_first" as const, label: "Answer-First", icon: "🎯", desc: "Odpowiedź na początku" },
+  { id: "add_faq" as const, label: "Dodaj FAQ", icon: "❓", desc: "Sekcja pytań i odpowiedzi" },
+  { id: "add_statistics" as const, label: "Dodaj statystyki", icon: "📊", desc: "Dane i liczby" },
+  { id: "improve_structure" as const, label: "Popraw strukturę", icon: "📝", desc: "Nagłówki i listy" },
+] as const;
+
 function WhatIfSection({ url }: { url: string }) {
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
+  const rewriteMutation = trpc.sandbox.rewrite.useMutation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [queries, setQueries] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [rewritingMode, setRewritingMode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [baselineResult, setBaselineResult] = useState<SimulationResult | null>(null);
   const [currentResult, setCurrentResult] = useState<SimulationResult | null>(null);
   const [whatIfContent, setWhatIfContent] = useState("");
   const [isSimulating, setIsSimulating] = useState(false);
+  const [cachedHtml, setCachedHtml] = useState("");
+  const [cachedRobots, setCachedRobots] = useState("");
 
   async function handleAnalyze() {
     setIsLoading(true);
     setError(null);
     try {
       const { html, robotsTxt } = await fetchPageMutation.mutateAsync({ url });
+      setCachedHtml(html);
+      setCachedRobots(robotsTxt);
       const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
       const result = runSimulation({ url, targetQueries, mode: "analyze" }, html, robotsTxt);
       setBaselineResult(result);
       setCurrentResult(result);
-      setWhatIfContent(result.contentAnalysis.rawText.slice(0, 3000));
+      setWhatIfContent(result.contentAnalysis.rawText.slice(0, 8000));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -1067,9 +1082,9 @@ function WhatIfSection({ url }: { url: string }) {
     if (!baselineResult || !whatIfContent.trim()) return;
     setIsSimulating(true);
     try {
-      const { html, robotsTxt } = await fetchPageMutation.mutateAsync({ url });
+      const html = cachedHtml || (await fetchPageMutation.mutateAsync({ url })).html;
       const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-      const result = runSimulation({ url, targetQueries, contentOverride: whatIfContent, mode: "simulate" }, html, robotsTxt, baselineResult);
+      const result = runSimulation({ url, targetQueries, contentOverride: whatIfContent, mode: "simulate" }, html, cachedRobots, baselineResult);
       setCurrentResult(result);
     } catch {
       setError("Simulation failed. Please try again.");
@@ -1078,9 +1093,39 @@ function WhatIfSection({ url }: { url: string }) {
     }
   }
 
+  async function handleAIRewrite(mode: typeof AI_COPILOT_MODES[number]["id"]) {
+    if (!whatIfContent.trim()) return;
+    setIsRewriting(true);
+    setRewritingMode(mode);
+    setError(null);
+    try {
+      const issues = baselineResult?.issues.map(i => `[${i.severity}] ${i.title}: ${i.description}`) ?? [];
+      const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
+      const { rewrittenContent } = await rewriteMutation.mutateAsync({
+        content: whatIfContent,
+        mode,
+        issues,
+        url,
+        targetQueries,
+      });
+      const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
+      setWhatIfContent(rewrittenStr);
+      // Auto-simulate after rewrite
+      if (baselineResult && cachedHtml) {
+        const result = runSimulation({ url, targetQueries, contentOverride: rewrittenStr, mode: "simulate" }, cachedHtml, cachedRobots, baselineResult);
+        setCurrentResult(result);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "AI rewrite failed");
+    } finally {
+      setIsRewriting(false);
+      setRewritingMode(null);
+    }
+  }
+
   function handleReset() {
     setCurrentResult(baselineResult);
-    if (baselineResult) setWhatIfContent(baselineResult.contentAnalysis.rawText.slice(0, 3000));
+    if (baselineResult) setWhatIfContent(baselineResult.contentAnalysis.rawText.slice(0, 8000));
   }
 
   return (
@@ -1096,10 +1141,10 @@ function WhatIfSection({ url }: { url: string }) {
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-white">⚡ What-IF Simulator</span>
+              <span className="text-sm font-bold text-white">⚡ What-IF Simulator + AI Co-Pilot</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">DARMOWY</span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">Edytuj treść i sprawdź wpływ na AI Score — bez edytowania strony</p>
+            <p className="text-xs text-zinc-400 mt-0.5">AI przepisze Twoją treść i pokaże wpływ na AI Score — bez edytowania strony</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -1118,11 +1163,13 @@ function WhatIfSection({ url }: { url: string }) {
           {isLoading && (
             <div className="flex items-center justify-center gap-3 py-12">
               <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-zinc-400">Pobieranie treści strony...</span>
+              <span className="text-sm text-zinc-400">Pobieranie i analiza treści strony...</span>
             </div>
           )}
           {error && (
-            <div className="m-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">{error}</div>
+            <div className="m-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />{error}
+            </div>
           )}
           {!isLoading && !baselineResult && !error && (
             <div className="flex flex-col items-center gap-4 py-10">
@@ -1133,7 +1180,8 @@ function WhatIfSection({ url }: { url: string }) {
             </div>
           )}
           {!isLoading && currentResult && (
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-5">
+
               {/* Score row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
@@ -1157,6 +1205,42 @@ function WhatIfSection({ url }: { url: string }) {
                 })}
               </div>
 
+              {/* AI Co-Pilot section */}
+              <div className="rounded-xl border border-violet-500/20 bg-violet-950/20 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <span className="text-sm font-semibold text-violet-300">AI Content Co-Pilot</span>
+                  <span className="text-xs text-zinc-500">Wybierz tryb — AI przepisze treść i od razu pokaże nowy score</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {AI_COPILOT_MODES.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => handleAIRewrite(m.id)}
+                      disabled={isRewriting}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-all ${
+                        rewritingMode === m.id
+                          ? 'border-violet-400 bg-violet-500/20 text-violet-200'
+                          : 'border-white/10 bg-zinc-900 hover:border-violet-500/40 hover:bg-violet-950/40 text-zinc-300'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {rewritingMode === m.id ? (
+                        <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="text-base">{m.icon}</span>
+                      )}
+                      <span className="text-xs font-medium leading-tight">{m.label}</span>
+                      <span className="text-[10px] text-zinc-500 leading-tight">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                {isRewriting && (
+                  <p className="text-xs text-violet-400 animate-pulse">
+                    AI przepisuje treść na podstawie wyników audytu... (~15–30 sek)
+                  </p>
+                )}
+              </div>
+
               {/* Optional queries */}
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">Zapytania docelowe (opcjonalnie, jedno na linię)</label>
@@ -1169,16 +1253,68 @@ function WhatIfSection({ url }: { url: string }) {
                 />
               </div>
 
-              {/* What-IF Editor */}
-              <WhatIfEditor
-                isPremium={true}
-                content={whatIfContent}
-                onContentChange={setWhatIfContent}
-                onSimulate={handleWhatIfSimulate}
-                onReset={handleReset}
-                isSimulating={isSimulating}
-                delta={currentResult.deltaFromBaseline}
-              />
+              {/* Content editor */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Edytor treści</span>
+                  <span className="text-xs text-zinc-600">{whatIfContent.length} znaków</span>
+                </div>
+                <textarea
+                  value={whatIfContent}
+                  onChange={e => setWhatIfContent(e.target.value)}
+                  rows={14}
+                  className="w-full bg-zinc-900/80 border border-white/10 rounded-xl px-4 py-3 text-xs text-zinc-300 placeholder:text-zinc-600 resize-y focus:outline-none focus:border-violet-500/50 font-mono leading-relaxed"
+                  placeholder="Treść strony zostanie tu załadowana..."
+                />
+              </div>
+
+              {/* Simulate + Reset buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleWhatIfSimulate}
+                  disabled={isSimulating || isRewriting}
+                  className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                >
+                  {isSimulating ? (
+                    <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Symulowanie...</>
+                  ) : (
+                    <><Zap className="w-3.5 h-3.5" /> Uruchom symulację</>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleReset} disabled={isSimulating || isRewriting} className="gap-2 text-zinc-400">
+                  Reset
+                </Button>
+              </div>
+
+              {/* Delta results */}
+              {currentResult.deltaFromBaseline && (
+                <div className="rounded-xl bg-zinc-900 border border-white/8 p-4">
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Wynik symulacji — zmiana score</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {[
+                      { label: "Overall", v: currentResult.deltaFromBaseline.overallDelta },
+                      { label: "ChatGPT", v: currentResult.deltaFromBaseline.chatgptDelta },
+                      { label: "Perplexity", v: currentResult.deltaFromBaseline.perplexityDelta },
+                      { label: "Google AIO", v: currentResult.deltaFromBaseline.googleAIODelta },
+                      { label: "Cytowanie", v: currentResult.deltaFromBaseline.citationProbabilityDelta },
+                    ].map(({ label, v }) => (
+                      <div key={label} className={`rounded-lg p-2 text-center border ${
+                        v > 0 ? 'bg-emerald-500/10 border-emerald-500/30' : v < 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-zinc-800 border-white/8'
+                      }`}>
+                        <div className={`text-lg font-bold ${v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
+                          {v > 0 ? '+' : ''}{v}
+                        </div>
+                        <div className="text-[10px] text-zinc-500">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {currentResult.deltaFromBaseline.improvedIssues.length > 0 && (
+                    <div className="mt-3 text-xs text-emerald-400">
+                      ✅ Naprawione problemy: {currentResult.deltaFromBaseline.improvedIssues.join(", ")}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Issues */}
               {currentResult.issues.length > 0 && (

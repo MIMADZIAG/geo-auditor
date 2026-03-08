@@ -263,6 +263,71 @@ export const appRouter = router({
   }),
 
   sandbox: router({
+    // AI Content Co-Pilot — rewrites content using LLM with 5 optimization modes
+    rewrite: publicProcedure
+      .input(z.object({
+        content: z.string().max(20000),
+        mode: z.enum(["full_rewrite", "answer_first", "add_faq", "add_statistics", "improve_structure"]),
+        issues: z.array(z.string()).optional(),
+        url: z.string().optional(),
+        targetQueries: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import("./_core/llm");
+
+        const issuesList = (input.issues ?? []).slice(0, 10).join("\n");
+        const queriesStr = (input.targetQueries ?? []).join(", ") || "general AI search queries";
+
+        const systemPrompt = `You are an expert GEO (Generative Engine Optimization) content specialist.
+Your task is to rewrite web page content to maximize its visibility and citation probability in AI search engines like ChatGPT, Perplexity, and Google AI Overviews.
+
+Key principles for AI-optimized content:
+- Answer questions directly and concisely at the start (answer-first structure)
+- Use clear headings with question-format (H2/H3 as questions)
+- Include FAQ sections with direct Q&A pairs
+- Add specific statistics, numbers, and data points
+- Use structured lists and tables where appropriate
+- Include authoritative citations and sources
+- Ensure content is comprehensive but scannable
+- Use natural language that matches how people ask questions
+
+Target queries: ${queriesStr}
+
+Audit issues to fix:
+${issuesList || "No specific issues provided — optimize for general AI readiness"}
+
+IMPORTANT: Return ONLY the rewritten content in markdown format. Do not add explanations or meta-commentary.`;
+
+        const modeInstructions: Record<string, string> = {
+          full_rewrite: `Completely rewrite the content below to be fully optimized for AI search citation. Fix all audit issues. Preserve the core topic and key facts but restructure everything for maximum AI readability. Add answer-first structure, FAQ section, and improve all headings.`,
+          answer_first: `Restructure the content below using the "answer-first" pattern: start with a direct, comprehensive answer to the main question in 2-3 sentences, then provide supporting details. Move the most important information to the top. Keep all existing content but reorganize it.`,
+          add_faq: `Keep the existing content and ADD a comprehensive FAQ section at the end. Generate 5-8 relevant FAQ questions based on the content topic and target queries, with direct, concise answers (2-4 sentences each). Format as ## Frequently Asked Questions with ### Q: format.`,
+          add_statistics: `Keep the existing content structure but enhance it by adding specific statistics, numbers, percentages, and data points throughout. Where statistics are mentioned vaguely, make them specific. Add a "Key Statistics" section near the top. If exact numbers aren't in the original, use realistic industry-standard estimates and note them as approximate.`,
+          improve_structure: `Keep all the existing content but improve its structure: convert prose into scannable sections with clear H2/H3 headings (as questions where possible), add bullet points and numbered lists, create a clear introduction paragraph, and ensure logical flow. Add a TL;DR summary at the top.`,
+        };
+
+        const userPrompt = `${modeInstructions[input.mode]}
+
+--- CONTENT TO OPTIMIZE ---
+${input.content.slice(0, 15000)}
+--- END CONTENT ---`;
+
+        try {
+          const response = await invokeLLM({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+          });
+          const rewritten = response.choices?.[0]?.message?.content ?? "";
+          if (!rewritten) throw new Error("Empty response from AI");
+          return { rewrittenContent: rewritten };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "AI rewrite failed";
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+        }
+      }),
+
     // Fetch raw HTML + robots.txt for a given URL so the client-side simulation engine can run
     fetchPage: publicProcedure
       .input(z.object({ url: z.string().url() }))

@@ -404,3 +404,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Embed WhatIfEditor component inline in Results — no navigation to /sandbox required
 - [x] Fix mobile: removed hidden sm:flex from Sandbox CTA button in header
 - [x] Ensure What-IF works without login (isPremium=true for all)
+
+## Fix: AI Content Co-Pilot — Wire to inline WhatIfSection
+
+- [x] Built trpc.sandbox.rewrite procedure with 5 modes (full_rewrite, answer_first, add_faq, add_statistics, improve_structure)
+- [x] Wire Full AI Rewrite / Answer-First / Add FAQ / Add Statistics / Improve Structure buttons in WhatIfSection to LLM
+- [x] Pass audit issues/findings as context to LLM so rewrites are informed by actual audit results
+- [x] Show loading state during AI rewrite (spinner + animated text)
+- [x] After rewrite: auto-run simulation and show score delta
