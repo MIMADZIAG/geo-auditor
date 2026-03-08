@@ -1032,45 +1032,60 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
 // ─── AI Sandbox CTA ──────────────────────────────────────────────────────────
 function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string) => void }) {
   return (
-    <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-indigo-500/5 to-transparent p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-violet-400" />
+    <div
+      className="relative overflow-hidden rounded-2xl border-2 border-violet-500/50 cursor-pointer group"
+      style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(99,102,241,0.10) 50%, rgba(15,15,15,0.95) 100%)" }}
+      onClick={() => navigate(`/sandbox?url=${encodeURIComponent(url)}`)}
+    >
+      {/* Animated glow border */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-violet-500/20 via-indigo-500/10 to-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      <div className="relative p-6">
+        {/* Top row */}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center flex-shrink-0">
+              <Cpu className="w-5 h-5 text-violet-300" />
             </div>
-            <span className="text-xs font-semibold text-violet-400 uppercase tracking-wider">AI Sandbox Simulator</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400">BETA</span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold text-white">What-IF Simulator &amp; AI Sandbox</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">BETA — Darmowy</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">Symuluj zmiany treści i sprawdź, jak wpłyną na widoczność w AI — bez edytowania strony</p>
+            </div>
           </div>
-          <h3 className="text-base font-bold text-foreground mb-1">
-            Predict your citation probability in ChatGPT, Perplexity &amp; Google AIO
-          </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Our engine simulates how AI search algorithms rank your page using reverse-engineered models (RRF, L3 XGBoost, Query Fan-Out). Test content changes before publishing with the What-If Editor.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 shrink-0">
           <Button
-            onClick={() => navigate(`/sandbox?url=${encodeURIComponent(url)}`)}
-            className="gap-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold"
+            onClick={(e) => { e.stopPropagation(); navigate(`/sandbox?url=${encodeURIComponent(url)}`); }}
+            className="shrink-0 bg-violet-600 hover:bg-violet-500 text-white font-semibold gap-2 shadow-lg shadow-violet-500/20"
           >
             <Sparkles className="w-4 h-4" />
-            Run AI Simulation
+            Otwórz Sandbox →
           </Button>
-          <p className="text-xs text-center text-muted-foreground">Free for all users</p>
         </div>
-      </div>
-      <div className="mt-4 pt-4 border-t border-violet-500/10 grid grid-cols-3 gap-3">
-        {[
-          { label: "ChatGPT", sublabel: "RRF k=60 model", color: "text-blue-400" },
-          { label: "Perplexity", sublabel: "L3 XGBoost", color: "text-green-400" },
-          { label: "Google AIO", sublabel: "Query Fan-Out", color: "text-orange-400" },
-        ].map(({ label, sublabel, color }) => (
-          <div key={label} className="text-center p-2 rounded-lg bg-white/3 border border-white/5">
-            <div className={`text-xs font-bold ${color}`}>{label}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{sublabel}</div>
-          </div>
-        ))}
+
+        {/* Feature list */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { icon: "⚡", title: "What-IF Editor", desc: "Edytuj treść i natychmiast sprawdź zmianę score" },
+            { icon: "📊", title: "AI Score Breakdown", desc: "Szczegółowa analiza dla ChatGPT i Google AIO" },
+            { icon: "🎯", title: "Lista poprawek", desc: "Priorytety co poprawić, żeby AI Cię cytowało" },
+          ].map(({ icon, title, desc }) => (
+            <div key={title} className="flex items-start gap-2.5 bg-white/4 border border-white/8 rounded-xl p-3">
+              <span className="text-base flex-shrink-0">{icon}</span>
+              <div>
+                <p className="text-xs font-semibold text-white">{title}</p>
+                <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="mt-4 pt-4 border-t border-violet-500/15 flex items-center justify-between">
+          <p className="text-xs text-zinc-500">Strona zostanie automatycznie załadowana do Sandbox</p>
+          <span className="text-xs text-violet-400 font-semibold group-hover:text-violet-300 transition-colors">Kliknij, aby otworzyć →</span>
+        </div>
       </div>
     </div>
   );
