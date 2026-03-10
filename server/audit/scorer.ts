@@ -107,7 +107,7 @@ export function generateRecommendations(
         recs.push({
           id: "fix_nosnippet",
           category: "Technical",
-          priority: "critical",
+          priority: "high",
           title: "Remove nosnippet Directive",
           description: "nosnippet blocks AI Overviews and featured snippets from using your content.",
           howToFix:
@@ -335,6 +335,34 @@ export function generateRecommendations(
     });
   }
 
+  // nofollow recommendation
+  if (findings.technical.checks.find((c) => c.id === "nofollow" && c.status === "warning")) {
+    recs.push({
+      id: "fix_nofollow",
+      category: "Technical",
+      priority: "medium",
+      title: "Remove nofollow Directive",
+      description: "nofollow directive prevents crawlers from following links on this page, limiting internal link equity and crawl depth.",
+      howToFix:
+        "Remove 'nofollow' from the meta robots tag. If you want to prevent specific links from passing equity, use rel='nofollow' on individual anchor tags instead of blocking the entire page.",
+      impact: "Improves internal link equity distribution and ensures crawlers can discover linked pages.",
+    });
+  }
+
+  // robots.txt Disallow for this page
+  if (findings.technical.checks.find((c) => c.id === "robots_disallow_page" && c.status === "fail")) {
+    recs.push({
+      id: "fix_robots_disallow",
+      category: "Technical",
+      priority: "critical",
+      title: "Remove Disallow Rule for This Page in robots.txt",
+      description: "This page's path is blocked by a Disallow rule in robots.txt — AI crawlers and search engines cannot access it.",
+      howToFix:
+        "Edit your robots.txt file and remove the Disallow rule that matches this page's path. If you have 'Disallow: /' for all crawlers, you need to either remove it or add specific Allow rules for the pages you want indexed.",
+      impact: "Immediately allows all crawlers including AI engines to access and index this page.",
+    });
+  }
+
   // New: max-snippet recommendation (iPullRank Ch.7)
   if (findings.technical.checks.find((c) => c.id === "max_snippet" && (c.status === "fail" || c.status === "warning"))) {
     recs.push({
@@ -393,19 +421,42 @@ export function generateRecommendations(
 
   // AI Crawler recommendations
   const crawlerChecks = findings.aiCrawlers.checks;
-  const blockedCrawlers = crawlerChecks.filter(
-    (c) => c.status === "fail" && c.id !== "all_ai_crawlers"
+  // Only flag as critical if OAI-SearchBot or PerplexityBot are blocked (they affect live AI search citations)
+  // GPTBot and Google-Extended are training-only crawlers — blocking them is a valid choice
+  const criticalSearchCrawlers = ["oai_searchbot", "perplexitybot"];
+  const blockedSearchCrawlers = crawlerChecks.filter(
+    (c) => c.status === "fail" && criticalSearchCrawlers.includes(c.id)
   );
-  if (blockedCrawlers.length > 0) {
+  const blockedTrainingCrawlers = crawlerChecks.filter(
+    (c) => c.status === "fail" && ["gptbot", "google_extended"].includes(c.id)
+  );
+  const blockedOtherCrawlers = crawlerChecks.filter(
+    (c) => c.status === "fail" && !criticalSearchCrawlers.includes(c.id) && !["gptbot", "google_extended", "all_ai_crawlers"].includes(c.id)
+  );
+
+  if (blockedSearchCrawlers.length > 0) {
     recs.push({
       id: "unblock_ai_crawlers",
       category: "AI Crawler Access",
       priority: "critical",
-      title: `Unblock AI Crawlers in robots.txt`,
-      description: `${blockedCrawlers.map((c) => c.label).join(", ")} ${blockedCrawlers.length > 1 ? "are" : "is"} blocked.`,
+      title: `Unblock AI Search Crawlers in robots.txt`,
+      description: `${blockedSearchCrawlers.map((c) => c.label).join(", ")} ${blockedSearchCrawlers.length > 1 ? "are" : "is"} blocked — your content cannot appear in live AI search citations.`,
       howToFix:
-        "Remove the Disallow: / rules for AI crawlers from your robots.txt. Critical crawlers to unblock: GPTBot (ChatGPT), OAI-SearchBot (ChatGPT Search), PerplexityBot (Perplexity), Google-Extended (Google AI Overviews).",
-      impact: "Blocked crawlers cannot index your content for AI-powered search results.",
+        "Remove the Disallow: / rules for OAI-SearchBot and PerplexityBot from your robots.txt. These crawlers power real-time AI search citations in ChatGPT Search and Perplexity. Note: GPTBot and Google-Extended are training-only crawlers — blocking them is a valid choice if you don't want your content used for AI model training.",
+      impact: "Blocked search crawlers prevent your content from appearing in ChatGPT Search and Perplexity AI answers.",
+    });
+  }
+
+  if (blockedTrainingCrawlers.length > 0) {
+    recs.push({
+      id: "unblock_training_crawlers",
+      category: "AI Crawler Access",
+      priority: "medium",
+      title: `AI Training Crawlers Blocked (Optional)`,
+      description: `${blockedTrainingCrawlers.map((c) => c.label).join(", ")} ${blockedTrainingCrawlers.length > 1 ? "are" : "is"} blocked. These crawlers are used for AI model training only, not for live search citations.`,
+      howToFix:
+        "Blocking GPTBot and Google-Extended is a legitimate choice if you don't want your content used to train AI models. This does NOT affect your visibility in ChatGPT Search, Google AI Overviews, or Perplexity — those use separate crawlers (OAI-SearchBot, Googlebot, PerplexityBot).",
+      impact: "No direct impact on AI search visibility. This is a content licensing decision.",
     });
   }
 
@@ -429,7 +480,7 @@ export function generateRecommendations(
     recs.push({
       id: "add_title",
       category: "Meta Tags",
-      priority: "critical",
+      priority: "high",
       title: "Add Title Tag",
       description: "Missing title tag — critical for all search engines and AI crawlers.",
       howToFix:

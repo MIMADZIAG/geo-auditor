@@ -426,3 +426,22 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] NEW: Added H1 inside <aside> regression test
 - [x] NEW: Added full 4-module pipeline test (detectPageType + contentStructure + eeat + brandAuthority) — H1 intact throughout
 - [x] 62 tests passing, 0 TS errors
+
+## Improvements: Critical Checks + What-IF Rebuild
+
+### scorer.ts / technical.ts changes
+- [x] Demoted add_title (ID 8) from critical → high
+- [x] Demoted fix_nosnippet (ID 3) from critical → high
+- [x] Added nofollow check: detect meta robots nofollow (critical — blocks all link equity)
+- [x] Added disallow check: verify robots.txt Disallow for audited subpage path (critical)
+- [x] Fixed AI crawler check: GPTBot = training only (informational), OAI-SearchBot = ChatGPT Search (critical if blocked)
+- [x] Fixed Google-Extended: blocking = Gemini training only, NOT AI Overviews — demoted to warning/informational
+
+### What-IF Simulator rebuild
+- [x] fetchPage now returns cleanText (server-side HTML stripping via cheerio) and pageType
+- [x] Added pageType parameter to rewrite procedure with 6 page-type-specific prompt contexts
+- [x] Rewritten system prompt: no markdown symbols, no ALL CAPS, natural language, language-aware, beautiful ready-to-use text
+- [x] Replaced raw HTML textarea with clean Before/After text preview panels
+- [x] Added "Kopiuj tekst" button with clipboard API + toast confirmation
+- [x] After rewrite: shows green "Gotowa treść po optymalizacji AI" panel with detected page type badge
+- [x] 62 tests passing, 0 TS errors

@@ -270,49 +270,117 @@ export const appRouter = router({
         mode: z.enum(["full_rewrite", "answer_first", "add_faq", "add_statistics", "improve_structure"]),
         issues: z.array(z.string()).optional(),
         url: z.string().optional(),
+        pageType: z.string().optional(),
         targetQueries: z.array(z.string()).optional(),
       }))
       .mutation(async ({ input }) => {
         const { invokeLLM } = await import("./_core/llm");
 
         const issuesList = (input.issues ?? []).slice(0, 10).join("\n");
-        const queriesStr = (input.targetQueries ?? []).join(", ") || "general AI search queries";
+        const queriesStr = (input.targetQueries ?? []).join(", ") || "ogólne zapytania w wyszukiwarkach AI";
+        const pageType = input.pageType ?? "generic";
 
-        const systemPrompt = `You are an expert GEO (Generative Engine Optimization) content specialist.
-Your task is to rewrite web page content to maximize its visibility and citation probability in AI search engines like ChatGPT, Perplexity, and Google AI Overviews.
+        // Page-type-specific context for the AI
+        const pageTypeContext: Record<string, string> = {
+          product: `Ta strona to STRONA PRODUKTOWA (e-commerce). Zoptymalizuj ją pod kątem:
+- Jasnego opisu produktu z odpowiedzią na pytanie "Co to jest i komu służy?" w pierwszym akapicie
+- Specyfikacji technicznych w formie listy punktowanej
+- Sekcji "Dla kogo jest ten produkt?" (profil idealnego klienta)
+- FAQ z pytaniami zakupowymi (cena, dostawa, zwroty, gwarancja)
+- Porównania z alternatywami (jeśli dotyczy)
+- Konkretnych korzyści (nie cech) — co zyska klient?`,
 
-⚠️ CRITICAL LANGUAGE RULE: Detect the language of the content provided by the user and write your ENTIRE response in that SAME language. If the content is in Polish, respond in Polish. If in English, respond in English. If in German, respond in German. Never switch languages. The rewritten content must be in the exact same language as the input content.
+          "product-listing": `Ta strona to STRONA KATEGORII / LISTINGU PRODUKTÓW. Zoptymalizuj ją pod kątem:
+- Wprowadzenia kategorii z definicją i kontekstem (czym są te produkty, do czego służą)
+- Przewodnika wyboru ("Jak wybrać najlepszy X?") w formie listy kryteriów
+- Sekcji "Najpopularniejsze X" lub "Najlepsze X w [rok]"
+- FAQ z pytaniami nawigacyjnymi i zakupowymi
+- Informacji o zakresie cenowym i segmentach produktów`,
 
-Key principles for AI-optimized content:
-- Answer questions directly and concisely at the start (answer-first structure)
-- Use clear headings with question-format (H2/H3 as questions)
-- Include FAQ sections with direct Q&A pairs
-- Add specific statistics, numbers, and data points
-- Use structured lists and tables where appropriate
-- Include authoritative citations and sources
-- Ensure content is comprehensive but scannable
-- Use natural language that matches how people ask questions
+          article: `Ta strona to ARTYKUŁ / PORADNIK. Zoptymalizuj ją pod kątem:
+- Struktury "answer-first": bezpośrednia odpowiedź na główne pytanie w pierwszych 2-3 zdaniach
+- Jasnych nagłówków H2/H3 w formie pytań ("Jak...", "Co to jest...", "Dlaczego...")
+- Konkretnych danych, liczb i statystyk (z datami i źródłami)
+- Sekcji FAQ z 5-8 pytaniami, które użytkownicy wpisują w wyszukiwarki
+- Podsumowania TL;DR na początku lub końcu
+- Linków do powiązanych zasobów`,
 
-Target queries: ${queriesStr}
+          service: `Ta strona to STRONA USŁUGOWA (B2B/SaaS/agencja). Zoptymalizuj ją pod kątem:
+- Jasnej definicji usługi i problemu, który rozwiązuje (pierwsze zdanie)
+- Sekcji "Dla kogo jest ta usługa?" z profilami klientów
+- Konkretnych wyników i efektów (liczby, case studies, procenty)
+- Procesu realizacji (krok po kroku)
+- FAQ z pytaniami o cenę, czas realizacji, gwarancje
+- Elementów budujących zaufanie (certyfikaty, doświadczenie, liczba klientów)`,
 
-Audit issues to fix:
-${issuesList || "No specific issues provided — optimize for general AI readiness"}
+          homepage: `Ta strona to STRONA GŁÓWNA. Zoptymalizuj ją pod kątem:
+- Jasnego, jednozdaniowego opisu firmy/produktu (co robisz i dla kogo)
+- Głównej propozycji wartości (USP) w pierwszym akapicie
+- Sekcji z kluczowymi usługami/produktami z krótkimi opisami
+- Elementów budujących zaufanie (liczby, klienci, certyfikaty)
+- FAQ z najczęstszymi pytaniami o firmę`,
 
-IMPORTANT: Return ONLY the rewritten content in markdown format. Do not add explanations or meta-commentary. Always match the language of the input content.`;
+          generic: `Ta strona to ogólna strona internetowa. Zoptymalizuj ją pod kątem:
+- Jasnej odpowiedzi na główne pytanie użytkownika w pierwszym akapicie
+- Logicznej struktury nagłówków H2/H3
+- Konkretnych informacji zamiast ogólników
+- Sekcji FAQ z pytaniami powiązanymi z tematem strony`,
+        };
+
+        const pageTypeInstruction = pageTypeContext[pageType] ?? pageTypeContext.generic;
+
+        const systemPrompt = `Jesteś ekspertem GEO (Generative Engine Optimization) — specjalistą od optymalizacji treści pod kątem widoczności w wyszukiwarkach AI: ChatGPT Search, Google AI Overviews i Perplexity.
+
+Twoim zadaniem jest przepisanie treści strony internetowej tak, aby maksymalizować jej szansę na cytowanie w odpowiedziach AI.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌍 REGUŁA JĘZYKA (BEZWZGLĘDNA):
+Wykryj język treści dostarczonej przez użytkownika i pisz CAŁĄ odpowiedź w TYM SAMYM języku.
+- Treść po polsku → odpowiedź po polsku
+- Treść po angielsku → odpowiedź po angielsku
+- Treść po niemiecku → odpowiedź po niemiecku
+- NIE ZMIENIAJ języka pod żadnym pozorem
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 KONTEKST STRONY (typ: ${pageType}):
+${pageTypeInstruction}
+
+🎯 Zapytania docelowe (dla których strona ma być widoczna w AI):
+${queriesStr}
+
+🔧 Problemy wykryte w audycie do naprawienia:
+${issuesList || "Brak konkretnych problemów — zoptymalizuj ogólnie pod kątem AI readiness"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✍️ ZASADY FORMATOWANIA WYJŚCIOWEGO (BEZWZGLĘDNE):
+1. Pisz WYŁĄCZNIE gotowy tekst do wklejenia na stronę — bez komentarzy, wyjaśnień, meta-komentarzy
+2. NIE używaj znaków # do nagłówków — pisz nagłówki jako zwykły tekst z nową linią
+3. NIE używaj znaków ** do pogrubień — jeśli chcesz wyróżnić, użyj normalnego zdania
+4. NIE używaj znaków Markdown takich jak #, **, *, _, >, ---
+5. Listy punktowane pisz ze zwykłym myślnikiem i spacją: "- element"
+6. Nagłówki sekcji pisz jako osobne linie z dużej litery, bez żadnych znaków specjalnych
+7. Zachowaj naturalny, płynny styl języka — bez sztucznego brzmienia, bez KAPITALIKÓW w środku zdań
+8. Treść musi być poprawna językowo, stylistycznie i ortograficznie
+9. Długość: dostosuj do typu strony — produkt: 400-800 słów, artykuł: 800-1500 słów
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
         const modeInstructions: Record<string, string> = {
-          full_rewrite: `Completely rewrite the content below to be fully optimized for AI search citation. Fix all audit issues. Preserve the core topic and key facts but restructure everything for maximum AI readability. Add answer-first structure, FAQ section, and improve all headings.`,
-          answer_first: `Restructure the content below using the "answer-first" pattern: start with a direct, comprehensive answer to the main question in 2-3 sentences, then provide supporting details. Move the most important information to the top. Keep all existing content but reorganize it.`,
-          add_faq: `Keep the existing content and ADD a comprehensive FAQ section at the end. Generate 5-8 relevant FAQ questions based on the content topic and target queries, with direct, concise answers (2-4 sentences each). Format as ## Frequently Asked Questions with ### Q: format.`,
-          add_statistics: `Keep the existing content structure but enhance it by adding specific statistics, numbers, percentages, and data points throughout. Where statistics are mentioned vaguely, make them specific. Add a "Key Statistics" section near the top. If exact numbers aren't in the original, use realistic industry-standard estimates and note them as approximate.`,
-          improve_structure: `Keep all the existing content but improve its structure: convert prose into scannable sections with clear H2/H3 headings (as questions where possible), add bullet points and numbered lists, create a clear introduction paragraph, and ensure logical flow. Add a TL;DR summary at the top.`,
+          full_rewrite: `Przepisz całą poniższą treść od nowa, zachowując temat i kluczowe fakty, ale tworząc zupełnie nową, lepszą strukturę zoptymalizowaną pod AI Search. Napraw wszystkie wykryte problemy z audytu. Dodaj strukturę answer-first, sekcję FAQ i popraw wszystkie nagłówki. Wynik ma być gotowy do wklejenia na stronę.`,
+
+          answer_first: `Przeorganizuj poniższą treść według wzorca "answer-first": zacznij od bezpośredniej, wyczerpującej odpowiedzi na główne pytanie strony (2-3 zdania), następnie podaj szczegóły. Przenieś najważniejsze informacje na górę. Zachowaj całą istniejącą treść, ale zmień kolejność i strukturę.`,
+
+          add_faq: `Zachowaj istniejącą treść i DODAJ na końcu sekcję FAQ. Wygeneruj 6-8 pytań, które użytkownicy wpisują w Google i wyszukiwarkach AI w związku z tematem tej strony. Każda odpowiedź: 2-4 zdania, konkretna i bezpośrednia. Sekcja FAQ powinna zaczynać się od nagłówka "Najczęściej zadawane pytania" lub "Często zadawane pytania".`,
+
+          add_statistics: `Zachowaj strukturę istniejącej treści, ale wzbogać ją o konkretne dane: liczby, procenty, statystyki, daty. Tam gdzie treść jest ogólna, dodaj konkretne wartości. Dodaj sekcję "Kluczowe liczby" lub "Fakty i dane" blisko początku. Jeśli oryginał nie zawiera danych, użyj realistycznych szacunków branżowych i zaznacz je jako przybliżone.`,
+
+          improve_structure: `Zachowaj całą istniejącą treść, ale popraw jej strukturę: podziel na sekcje z jasnymi nagłówkami (w formie pytań tam gdzie możliwe), zamień długie akapity na listy punktowane, dodaj wyraźne wprowadzenie i podsumowanie. Dodaj skrócone streszczenie (TL;DR lub "W skrócie") na początku lub końcu.`,
         };
 
         const userPrompt = `${modeInstructions[input.mode]}
 
---- CONTENT TO OPTIMIZE ---
+--- TREŚĆ DO OPTYMALIZACJI ---
 ${input.content.slice(0, 15000)}
---- END CONTENT ---`;
+--- KONIEC TREŚCI ---`;
 
         try {
           const response = await invokeLLM({
@@ -335,6 +403,7 @@ ${input.content.slice(0, 15000)}
       .input(z.object({ url: z.string().url() }))
       .mutation(async ({ input }) => {
         const { default: axios } = await import("axios");
+        const cheerio = await import("cheerio");
         try {
           const pageResponse = await axios.get(input.url, {
             headers: { "User-Agent": "GEO-Auditor/1.0 (+https://geoauditor.com/bot)" },
@@ -350,9 +419,60 @@ ${input.content.slice(0, 15000)}
           } catch {
             robotsTxt = ""; // no robots.txt = allow all
           }
+
+          const rawHtml = typeof pageResponse.data === "string" ? pageResponse.data.slice(0, 500_000) : String(pageResponse.data).slice(0, 500_000);
+
+          // Extract clean text for AI Co-Pilot (no HTML tags, no scripts, no nav/footer noise)
+          const $ = cheerio.load(rawHtml);
+          $("script, style, nav, footer, header, aside, [role='navigation'], [role='banner'], [role='complementary'], .cookie-banner, .popup, .modal, noscript").remove();
+          const pageTitle = $("title").text().trim() || $("h1").first().text().trim() || "";
+          const h1 = $("h1").first().text().trim();
+          const metaDesc = $("meta[name='description']").attr("content") ?? "";
+
+          // Extract headings and body text in reading order
+          const contentParts: string[] = [];
+          if (pageTitle) contentParts.push(`Tytuł strony: ${pageTitle}`);
+          if (metaDesc) contentParts.push(`Meta description: ${metaDesc}`);
+          contentParts.push("");
+
+          const mainContent = $("main, article, [role='main'], .content, .post-content, .entry-content, #content, #main").first();
+          const contentRoot = mainContent.length > 0 ? mainContent : $("body");
+
+          contentRoot.find("h1, h2, h3, h4, p, li, td, th, blockquote, figcaption").each((_, el) => {
+            const tag = (el as any).tagName?.toLowerCase() ?? "";
+            const text = $(el).text().replace(/\s+/g, " ").trim();
+            if (!text || text.length < 3) return;
+            if (tag === "h1") contentParts.push(`\n## ${text}`);
+            else if (tag === "h2") contentParts.push(`\n### ${text}`);
+            else if (tag === "h3" || tag === "h4") contentParts.push(`\n#### ${text}`);
+            else if (tag === "li") contentParts.push(`- ${text}`);
+            else contentParts.push(text);
+          });
+
+          const cleanText = contentParts.join("\n").trim().slice(0, 12000);
+
+          // Detect page type from URL + schema signals
+          const urlPath = urlObj.pathname.toLowerCase();
+          let pageType = "generic";
+          const jsonldTypes: string[] = [];
+          $("script[type='application/ld+json']").each((_, el) => {
+            try { const d = JSON.parse($(el).html() ?? "{}"); if (d["@type"]) jsonldTypes.push(d["@type"]); } catch {}
+          });
+          if (jsonldTypes.some(t => ["Product", "ProductGroup"].includes(t))) pageType = "product";
+          else if (jsonldTypes.some(t => ["Article", "BlogPosting", "NewsArticle", "TechArticle"].includes(t))) pageType = "article";
+          else if (jsonldTypes.some(t => ["ItemList", "CollectionPage"].includes(t))) pageType = "product-listing";
+          else if (urlPath === "/" || urlPath === "") pageType = "homepage";
+          else if (/\/blog\/|\/news\/|\/article\/|\/post\/|\/guide\/|\/how-to\//.test(urlPath)) pageType = "article";
+          else if (/\/product\/|\/p\/|\/item\/|\/sklep\/|\/produkt\//.test(urlPath)) pageType = "product";
+          else if (/\/category\/|\/cat\/|\/kategoria\/|\/shop\/|\/store\//.test(urlPath)) pageType = "product-listing";
+          else if (/\/service\/|\/uslugi\/|\/oferta\/|\/solutions?\//.test(urlPath)) pageType = "service";
+
           return {
-            html: typeof pageResponse.data === "string" ? pageResponse.data.slice(0, 500_000) : String(pageResponse.data).slice(0, 500_000),
+            html: rawHtml,
             robotsTxt,
+            cleanText,
+            pageType,
+            pageTitle,
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Unknown error";

@@ -75,6 +75,54 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     value: !hasNosnippet,
   });
 
+  // 5b. nofollow check (meta robots)
+  const hasNofollow =
+    robotsMeta.toLowerCase().includes("nofollow") ||
+    xRobotsTag.toLowerCase().includes("nofollow");
+  checks.push({
+    id: "nofollow",
+    label: "Links Followable (nofollow)",
+    status: hasNofollow ? "warning" : "pass",
+    description: hasNofollow
+      ? "nofollow directive detected in meta robots — search engines and AI crawlers will not follow links on this page. This limits internal link equity distribution and may reduce crawl depth of your site."
+      : "No nofollow directive on this page — links are followable by crawlers.",
+    impact: "medium",
+    value: !hasNofollow,
+  });
+
+  // 5c. robots.txt Disallow check for this specific page path
+  const pageDisallowed = (() => {
+    if (!page.robotsTxt) return false;
+    try {
+      const pagePath = new URL(page.finalUrl).pathname;
+      const lines = page.robotsTxt.split("\n").map(l => l.trim());
+      let inAllBlock = false;
+      for (const line of lines) {
+        if (line.toLowerCase().startsWith("user-agent:")) {
+          const ua = line.substring("user-agent:".length).trim();
+          inAllBlock = ua === "*";
+        }
+        if (inAllBlock && line.toLowerCase().startsWith("disallow:")) {
+          const disallowPath = line.substring("disallow:".length).trim();
+          if (disallowPath === "/" || (disallowPath.length > 0 && pagePath.startsWith(disallowPath))) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch { return false; }
+  })();
+  checks.push({
+    id: "robots_disallow_page",
+    label: "Page Not Disallowed in robots.txt",
+    status: pageDisallowed ? "fail" : "pass",
+    description: pageDisallowed
+      ? `This page's path is blocked by a Disallow rule in robots.txt for all crawlers (User-agent: *). AI crawlers and search engines cannot access this page.`
+      : "This page's path is not blocked by robots.txt — crawlers can access it.",
+    impact: "high",
+    value: !pageDisallowed,
+  });
+
   // 6. robots.txt exists
   checks.push({
     id: "robots_txt_exists",
@@ -306,7 +354,9 @@ function computeScore(checks: AuditCheck[]): number {
     https: 10,
     http_status: 10,
     noindex: 10,
-    nosnippet: 10,
+    nosnippet: 8,
+    nofollow: 4,
+    robots_disallow_page: 10,
     noai_directive: 8,          // NEW — iPullRank Ch.7
     max_snippet: 8,             // NEW — iPullRank Ch.7
     js_rendering: 8,            // NEW — iPullRank Ch.7

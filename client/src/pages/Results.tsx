@@ -1054,23 +1054,33 @@ function WhatIfSection({ url }: { url: string }) {
   const [error, setError] = useState<string | null>(null);
   const [baselineResult, setBaselineResult] = useState<SimulationResult | null>(null);
   const [currentResult, setCurrentResult] = useState<SimulationResult | null>(null);
-  const [whatIfContent, setWhatIfContent] = useState("");
+  // cleanText = server-extracted plain text (no HTML tags)
+  const [cleanText, setCleanText] = useState("");
+  const [rewrittenText, setRewrittenText] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [cachedHtml, setCachedHtml] = useState("");
   const [cachedRobots, setCachedRobots] = useState("");
+  const [detectedPageType, setDetectedPageType] = useState("generic");
+  const [copied, setCopied] = useState(false);
 
   async function handleAnalyze() {
     setIsLoading(true);
     setError(null);
     try {
-      const { html, robotsTxt } = await fetchPageMutation.mutateAsync({ url });
+      const res = await fetchPageMutation.mutateAsync({ url });
+      const { html, robotsTxt } = res;
+      const ct = (res as any).cleanText as string ?? "";
+      const pt = (res as any).pageType as string ?? "generic";
       setCachedHtml(html);
       setCachedRobots(robotsTxt);
+      setDetectedPageType(pt);
       const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
       const result = runSimulation({ url, targetQueries, mode: "analyze" }, html, robotsTxt);
       setBaselineResult(result);
       setCurrentResult(result);
-      setWhatIfContent(result.contentAnalysis.rawText.slice(0, 8000));
+      // Prefer server-extracted clean text; fallback to rawText from simulator
+      setCleanText(ct || result.contentAnalysis.rawText.slice(0, 8000));
+      setRewrittenText(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -1078,13 +1088,15 @@ function WhatIfSection({ url }: { url: string }) {
     }
   }
 
-  async function handleWhatIfSimulate() {
-    if (!baselineResult || !whatIfContent.trim()) return;
+  async function handleWhatIfSimulate(overrideContent?: string) {
+    if (!baselineResult) return;
+    const contentToSim = overrideContent ?? rewrittenText ?? cleanText;
+    if (!contentToSim.trim()) return;
     setIsSimulating(true);
     try {
       const html = cachedHtml || (await fetchPageMutation.mutateAsync({ url })).html;
       const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-      const result = runSimulation({ url, targetQueries, contentOverride: whatIfContent, mode: "simulate" }, html, cachedRobots, baselineResult);
+      const result = runSimulation({ url, targetQueries, contentOverride: contentToSim, mode: "simulate" }, html, cachedRobots, baselineResult);
       setCurrentResult(result);
     } catch {
       setError("Simulation failed. Please try again.");
@@ -1094,7 +1106,8 @@ function WhatIfSection({ url }: { url: string }) {
   }
 
   async function handleAIRewrite(mode: typeof AI_COPILOT_MODES[number]["id"]) {
-    if (!whatIfContent.trim()) return;
+    const sourceContent = rewrittenText ?? cleanText;
+    if (!sourceContent.trim()) return;
     setIsRewriting(true);
     setRewritingMode(mode);
     setError(null);
@@ -1102,14 +1115,16 @@ function WhatIfSection({ url }: { url: string }) {
       const issues = baselineResult?.issues.map(i => `[${i.severity}] ${i.title}: ${i.description}`) ?? [];
       const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
       const { rewrittenContent } = await rewriteMutation.mutateAsync({
-        content: whatIfContent,
+        content: sourceContent,
         mode,
         issues,
         url,
+        pageType: detectedPageType,
         targetQueries,
       });
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
-      setWhatIfContent(rewrittenStr);
+      setRewrittenText(rewrittenStr);
+      setCopied(false);
       // Auto-simulate after rewrite
       if (baselineResult && cachedHtml) {
         const result = runSimulation({ url, targetQueries, contentOverride: rewrittenStr, mode: "simulate" }, cachedHtml, cachedRobots, baselineResult);
@@ -1123,9 +1138,19 @@ function WhatIfSection({ url }: { url: string }) {
     }
   }
 
+  function handleCopy() {
+    if (!rewrittenText) return;
+    navigator.clipboard.writeText(rewrittenText).then(() => {
+      setCopied(true);
+      toast.success("Skopiowano do schowka!");
+      setTimeout(() => setCopied(false), 3000);
+    });
+  }
+
   function handleReset() {
     setCurrentResult(baselineResult);
-    if (baselineResult) setWhatIfContent(baselineResult.contentAnalysis.rawText.slice(0, 8000));
+    setRewrittenText(null);
+    setCopied(false);
   }
 
   return (
@@ -1253,25 +1278,57 @@ function WhatIfSection({ url }: { url: string }) {
                 />
               </div>
 
-              {/* Content editor */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Edytor treści</span>
-                  <span className="text-xs text-zinc-600">{whatIfContent.length} znaków</span>
-                </div>
-                <textarea
-                  value={whatIfContent}
-                  onChange={e => setWhatIfContent(e.target.value)}
-                  rows={14}
-                  className="w-full bg-zinc-900/80 border border-white/10 rounded-xl px-4 py-3 text-xs text-zinc-300 placeholder:text-zinc-600 resize-y focus:outline-none focus:border-violet-500/50 font-mono leading-relaxed"
-                  placeholder="Treść strony zostanie tu załadowana..."
-                />
+              {/* Content panel: before / after */}
+              <div className="space-y-3">
+                {/* Rewritten text panel (shown after AI rewrite) */}
+                {rewrittenText ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-950/30">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-emerald-300">Gotowa treść po optymalizacji AI</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                          {detectedPageType !== "generic" ? detectedPageType : "ogólna"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-zinc-500">{rewrittenText.length} znaków</span>
+                        <button
+                          onClick={handleCopy}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                            copied
+                              ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10'
+                          }`}
+                        >
+                          <Copy className="w-3 h-3" />
+                          {copied ? "Skopiowano!" : "Kopiuj tekst"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="px-4 py-4 max-h-96 overflow-y-auto">
+                      <pre className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans">{rewrittenText}</pre>
+                    </div>
+                  </div>
+                ) : (
+                  /* Original content preview (before rewrite) */
+                  cleanText && (
+                    <div className="rounded-xl border border-white/8 bg-zinc-900/60 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
+                        <span className="text-xs font-semibold text-zinc-400">Oryginalna treść strony</span>
+                        <span className="text-[10px] text-zinc-600">{cleanText.length} znaków • typ: {detectedPageType}</span>
+                      </div>
+                      <div className="px-4 py-3 max-h-48 overflow-y-auto">
+                        <pre className="text-xs text-zinc-500 whitespace-pre-wrap leading-relaxed font-sans">{cleanText.slice(0, 1200)}{cleanText.length > 1200 ? "\n\n[...] (treść skrócona do podglądu)" : ""}</pre>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
 
               {/* Simulate + Reset buttons */}
               <div className="flex gap-3">
                 <Button
-                  onClick={handleWhatIfSimulate}
+                  onClick={() => handleWhatIfSimulate()}
                   disabled={isSimulating || isRewriting}
                   className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
                 >
@@ -1281,9 +1338,11 @@ function WhatIfSection({ url }: { url: string }) {
                     <><Zap className="w-3.5 h-3.5" /> Uruchom symulację</>
                   )}
                 </Button>
-                <Button variant="outline" onClick={handleReset} disabled={isSimulating || isRewriting} className="gap-2 text-zinc-400">
-                  Reset
-                </Button>
+                {rewrittenText && (
+                  <Button variant="outline" onClick={handleReset} disabled={isSimulating || isRewriting} className="gap-2 text-zinc-400">
+                    Powrót do oryginału
+                  </Button>
+                )}
               </div>
 
               {/* Delta results */}
