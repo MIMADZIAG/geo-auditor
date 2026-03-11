@@ -471,3 +471,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] notifyOwner() alert with full diagnostic: broken selectors vs blocked scraper vs degraded
 - [x] Added tRPC admin procedure: citation.selectorHealth (admin-only) — returns cached report or triggers forceRun
 - [x] 62 tests passing, 0 TS errors
+
+## Fix: Google AI Overview Citation Detection Reliability
+
+- [x] Root cause diagnosed: Google blocks datacenter IPs with CAPTCHA ("Nasze systemy wykryły nietypoć ruch") — Puppeteer scraper is fundamentally unreliable from server
+- [ ] Replace Puppeteer scraper with SerpApi Google Search API (reliable, no CAPTCHA)
+- [ ] Store SERPAPI_API_KEY in project secrets
+- [ ] Extract ai_overview.references[] for cited URLs and competitor domains
+- [ ] Handle missing AI Overview gracefully (not all queries trigger it)
+- [ ] Update selectorHealth.ts to use SerpApi health check instead of Puppeteer
+- [ ] Run TypeScript check and tests

@@ -3,7 +3,7 @@
  *
  * Strategy:
  *   1. Generate 5 entity-driven queries from Content Intelligence (keywords, top_questions)
- *   2. Check Google AI Overviews for each query
+ *   2. Check Google AI Overviews for each query (via SerpApi — reliable, no CAPTCHA)
  *   3. If NO citation found (exact URL or domain), generate 5 more queries (new round)
  *   4. Repeat up to 5 rounds (25 queries max)
  *   5. Stop early as soon as any citation is found
@@ -15,16 +15,15 @@
  *   - round: which fan-out round (1–5)
  *
  * ChatGPT Search runs only in round 1 (cost control).
- * Google AI Overview runs in all rounds (free via Puppeteer).
+ * Google AI Overview runs in all rounds via SerpApi.
  */
 
 import * as crypto from "crypto";
 import * as cheerio from "cheerio";
-import puppeteer from "puppeteer-core";
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
 import { citationChecks, citationJobs, audits } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,14 +113,12 @@ export async function extractPageContent(url: string, ciData?: any): Promise<Pag
     const ciTopics: string[] = [];
 
     if (ciData) {
-      // Extract keywords from CI dimensions
       if (ciData.query_coverage?.top_questions) {
         ciTopQuestions.push(...(ciData.query_coverage.top_questions as string[]).slice(0, 8));
       }
       if (ciData.page_topics) {
         ciTopics.push(...(ciData.page_topics as string[]).slice(0, 6));
       }
-      // Extract from semantic gaps (what topics are missing — also useful for queries)
       if (ciData.semantic_gaps) {
         ciKeywords.push(...(ciData.semantic_gaps as string[]).slice(0, 4));
       }
@@ -172,7 +169,6 @@ async function generateRoundQueries(
     ? "Generate ALL queries in POLISH (język polski). Use natural Polish phrasing."
     : `Generate ALL queries in the same language as the page (${language}).`;
 
-  // Build rich context for LLM
   const pageSignals = [
     title && `Title: ${title}`,
     h1 && `H1: ${h1}`,
@@ -435,7 +431,28 @@ async function checkChatGPT(query: string, targetUrl: string, round: number): Pr
   }
 }
 
-// ─── Engine 2: Google AI Overviews (Puppeteer) ────────────────────────────────
+// ─── Engine 2: Google AI Overviews (SerpApi) ──────────────────────────────────
+
+/**
+ * SerpApi response types for Google AI Overview
+ */
+interface SerpApiAIOverviewReference {
+  title?: string;
+  link?: string;
+  source?: { name?: string; link?: string };
+}
+
+interface SerpApiAIOverview {
+  text_blocks?: Array<{ snippet?: string; type?: string }>;
+  references?: SerpApiAIOverviewReference[];
+  text?: string;
+}
+
+interface SerpApiResponse {
+  ai_overview?: SerpApiAIOverview;
+  error?: string;
+  search_metadata?: { status?: string };
+}
 
 async function checkGoogleAIOverview(
   query: string,
@@ -443,108 +460,65 @@ async function checkGoogleAIOverview(
   language: string = "en",
   round: number = 1
 ): Promise<CitationResult> {
+  const apiKey = process.env.SERPAPI_API_KEY;
+  if (!apiKey) {
+    console.warn("[Citation/Google] SERPAPI_API_KEY not configured");
+    return {
+      query, engine: "google", round, isCited: "no",
+      allCitedUrls: [], competitorDomains: [],
+      hasAIOverview: false,
+      snippet: "SerpApi key not configured",
+    };
+  }
+
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
   const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
 
-  const localeMap: Record<string, { hl: string; gl: string; acceptLang: string }> = {
-    pl: { hl: "pl", gl: "pl", acceptLang: "pl-PL,pl;q=0.9" },
-    en: { hl: "en", gl: "us", acceptLang: "en-US,en;q=0.9" },
-    de: { hl: "de", gl: "de", acceptLang: "de-DE,de;q=0.9" },
-    fr: { hl: "fr", gl: "fr", acceptLang: "fr-FR,fr;q=0.9" },
-    es: { hl: "es", gl: "es", acceptLang: "es-ES,es;q=0.9" },
+  // Map language to Google locale params
+  const localeMap: Record<string, { hl: string; gl: string }> = {
+    pl: { hl: "pl", gl: "pl" },
+    en: { hl: "en", gl: "us" },
+    de: { hl: "de", gl: "de" },
+    fr: { hl: "fr", gl: "fr" },
+    es: { hl: "es", gl: "es" },
+    it: { hl: "it", gl: "it" },
   };
   const locale = localeMap[language] ?? localeMap.en;
 
-  let browser;
   try {
-    browser = await puppeteer.launch({
-      executablePath: "/usr/bin/chromium-browser",
-      args: [
-        "--no-sandbox", "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage", "--disable-gpu",
-        "--disable-blink-features=AutomationControlled",
-        `--lang=${locale.hl}`,
-      ],
-      headless: true,
+    console.log(`[Citation/Google/SerpApi] Round ${round}: "${query.slice(0, 60)}"`);
+
+    const params = new URLSearchParams({
+      q: query,
+      engine: "google",
+      api_key: apiKey,
+      hl: locale.hl,
+      gl: locale.gl,
+      num: "10",
     });
 
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    const { default: axios } = await import("axios");
+    const response = await axios.get<SerpApiResponse>(
+      `https://serpapi.com/search.json?${params.toString()}`,
+      { timeout: 30000 }
     );
-    await page.setExtraHTTPHeaders({ "Accept-Language": locale.acceptLang });
 
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${locale.hl}&gl=${locale.gl}`;
-    console.log(`[Citation/Google] Round ${round}: "${query.slice(0, 50)}"`);
-    await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 30000 });
-    await new Promise((r) => setTimeout(r, 4000));
+    const data = response.data;
 
-    const result = await page.evaluate(() => {
-      let el: Element | null = null;
+    if (data.error) {
+      console.warn(`[Citation/Google/SerpApi] API error: ${data.error}`);
+      return {
+        query, engine: "google", round, isCited: "no",
+        allCitedUrls: [], competitorDomains: [],
+        hasAIOverview: false,
+        snippet: `SerpApi error: ${data.error}`,
+      };
+    }
 
-      const classSelectors = [
-        ".YzCcne", ".M8OgIe", ".YzVZnd", ".kno-result",
-        "[data-attrid='SGE']", "div[jsname='yEVEwb']",
-        ".AIOverview", ".ai-overview",
-      ];
-      for (const sel of classSelectors) {
-        try {
-          const found = document.querySelector(sel);
-          if (found && (found.textContent?.length ?? 0) > 100) { el = found; break; }
-        } catch {}
-      }
+    const aiOverview = data.ai_overview;
 
-      if (!el) {
-        const headings = Array.from(document.querySelectorAll("h1, h2, h3, [role='heading']"));
-        for (const h of headings) {
-          const txt = h.textContent?.trim() ?? "";
-          if (txt === "AI Overview" || txt === "Przegląd od AI" || txt.startsWith("AI Overview")) {
-            let parent = h.parentElement;
-            for (let i = 0; i < 5 && parent; i++) {
-              if (parent.querySelectorAll("a[href]").length >= 2) { el = parent; break; }
-              parent = parent.parentElement;
-            }
-            if (el) break;
-          }
-        }
-      }
-
-      if (!el) {
-        const candidates = Array.from(document.querySelectorAll("[aria-label*='AI'], [data-ved]"));
-        for (const c of candidates) {
-          const txt = c.textContent?.trim() ?? "";
-          if ((txt.includes("AI Overview") || txt.includes("Przegląd od AI")) && c.querySelectorAll("a[href]").length >= 2) {
-            el = c; break;
-          }
-        }
-      }
-
-      if (!el) return { hasAIOverview: false, allCitedUrls: [] as string[], text: "" };
-
-      const text = el.textContent ?? "";
-      const links = Array.from(el.querySelectorAll("a[href]"));
-      const allCitedUrls = links
-        .map((a) => {
-          let href = (a as HTMLAnchorElement).href;
-          if (href.includes("/url?q=") || href.includes("google.com/url")) {
-            try { const u = new URL(href); href = u.searchParams.get("q") ?? href; } catch {}
-          }
-          return href.split("#")[0];
-        })
-        .filter((href) => {
-          if (!href.startsWith("http")) return false;
-          try {
-            const u = new URL(href);
-            return !u.hostname.includes("google.com") && !u.hostname.includes("googleapis.com") && !u.hostname.includes("gstatic.com");
-          } catch { return false; }
-        });
-
-      return { hasAIOverview: true, allCitedUrls: Array.from(new Set(allCitedUrls)), text: text.slice(0, 2000) };
-    });
-
-    console.log(`[Citation/Google] hasAIOverview: ${result.hasAIOverview}, sources: ${result.allCitedUrls.length}`);
-
-    if (!result.hasAIOverview) {
+    if (!aiOverview) {
+      console.log(`[Citation/Google/SerpApi] No AI Overview for: "${query.slice(0, 50)}"`);
       return {
         query, engine: "google", round, isCited: "no",
         allCitedUrls: [], competitorDomains: [],
@@ -553,9 +527,31 @@ async function checkGoogleAIOverview(
       };
     }
 
-    const competitorDomains = extractCompetitorDomains(result.allCitedUrls, targetDomain);
+    // Extract all cited URLs from references
+    const allCitedUrls: string[] = [];
+    const references = aiOverview.references ?? [];
 
-    const exactCitation = result.allCitedUrls.find((u: string) => {
+    for (const ref of references) {
+      // Primary link from reference
+      const link = ref.link ?? ref.source?.link;
+      if (link && link.startsWith("http")) {
+        const cleanUrl = link.split("#")[0];
+        if (!allCitedUrls.includes(cleanUrl)) allCitedUrls.push(cleanUrl);
+      }
+    }
+
+    // Build overview text from text_blocks
+    const overviewText = [
+      ...(aiOverview.text_blocks ?? []).map((b) => b.snippet ?? ""),
+      aiOverview.text ?? "",
+    ].filter(Boolean).join(" ").slice(0, 2000);
+
+    console.log(`[Citation/Google/SerpApi] AI Overview found, ${references.length} references, ${allCitedUrls.length} unique URLs`);
+
+    const competitorDomains = extractCompetitorDomains(allCitedUrls, targetDomain);
+
+    // Check for exact URL citation
+    const exactCitation = allCitedUrls.find((u) => {
       try {
         const cu = new URL(u);
         return cu.hostname.replace("www.", "") === targetDomain &&
@@ -566,14 +562,15 @@ async function checkGoogleAIOverview(
     if (exactCitation) {
       return {
         query, engine: "google", round, isCited: "yes",
-        citedUrl: exactCitation, allCitedUrls: result.allCitedUrls, competitorDomains,
+        citedUrl: exactCitation, allCitedUrls, competitorDomains,
         hasAIOverview: true,
-        snippet: extractSnippet(result.text, targetDomain),
-        responseText: result.text.slice(0, 1500),
+        snippet: extractSnippet(overviewText, targetDomain),
+        responseText: overviewText.slice(0, 1500),
       };
     }
 
-    const domainCitation = result.allCitedUrls.find((u: string) => {
+    // Check for domain-level citation (different page, same domain)
+    const domainCitation = allCitedUrls.find((u) => {
       try { return new URL(u).hostname.replace("www.", "") === targetDomain; }
       catch { return false; }
     });
@@ -581,24 +578,22 @@ async function checkGoogleAIOverview(
     if (domainCitation) {
       return {
         query, engine: "google", round, isCited: "domain",
-        domainCitedUrl: domainCitation, allCitedUrls: result.allCitedUrls, competitorDomains,
+        domainCitedUrl: domainCitation, allCitedUrls, competitorDomains,
         hasAIOverview: true,
-        snippet: extractSnippet(result.text, targetDomain),
-        responseText: result.text.slice(0, 1500),
+        snippet: extractSnippet(overviewText, targetDomain),
+        responseText: overviewText.slice(0, 1500),
       };
     }
 
     return {
       query, engine: "google", round, isCited: "no",
-      allCitedUrls: result.allCitedUrls, competitorDomains,
+      allCitedUrls, competitorDomains,
       hasAIOverview: true,
-      responseText: result.text.slice(0, 800),
+      responseText: overviewText.slice(0, 800),
     };
   } catch (e) {
-    console.warn("[Citation/Google] Puppeteer error:", e);
+    console.warn("[Citation/Google/SerpApi] Error:", e);
     return { query, engine: "google", round, isCited: "no", allCitedUrls: [], competitorDomains: [], hasAIOverview: false };
-  } finally {
-    if (browser) await browser.close().catch(() => {});
   }
 }
 
@@ -646,7 +641,6 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
     // Step 2: Adaptive fan-out loop (max 5 rounds × 5 queries)
     const MAX_ROUNDS = 5;
-    const QUERIES_PER_ROUND = 5;
     const allResults: CitationResult[] = [];
     const rounds: CitationRound[] = [];
     const usedQueries: string[] = [];
@@ -664,9 +658,9 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       const roundResults: CitationResult[] = [];
 
       for (const query of queries) {
-        // Google AI Overview — run in ALL rounds
+        // Google AI Overview — run in ALL rounds via SerpApi
         const googleCacheKey = makeCacheKey(query, "google");
-        let googleCached = await getCachedResult(googleCacheKey);
+        const googleCached = await getCachedResult(googleCacheKey);
         let googleResult: CitationResult;
 
         if (googleCached) {
@@ -675,7 +669,8 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
         } else {
           googleResult = await checkGoogleAIOverview(query, job.url, language, round);
           await saveResult(jobId, job.auditId, googleResult, googleCacheKey);
-          await new Promise((r) => setTimeout(r, 2000));
+          // Small delay to respect SerpApi rate limits
+          await new Promise((r) => setTimeout(r, 1000));
         }
         roundResults.push(googleResult);
         allResults.push(googleResult);
@@ -683,7 +678,7 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
         // ChatGPT Search — only in round 1 (cost control)
         if (round === 1) {
           const chatgptCacheKey = makeCacheKey(query, "chatgpt");
-          let chatgptCached = await getCachedResult(chatgptCacheKey);
+          const chatgptCached = await getCachedResult(chatgptCacheKey);
           let chatgptResult: CitationResult;
 
           if (chatgptCached) {
@@ -692,7 +687,7 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
           } else {
             chatgptResult = await checkChatGPT(query, job.url, round);
             await saveResult(jobId, job.auditId, chatgptResult, chatgptCacheKey);
-            await new Promise((r) => setTimeout(r, 1500));
+            await new Promise((r) => setTimeout(r, 1000));
           }
           roundResults.push(chatgptResult);
           allResults.push(chatgptResult);
