@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { runAndCacheHealthCheck } from "../citation/selectorHealth";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -63,3 +64,26 @@ async function startServer() {
 }
 
 startServer().catch(console.error);
+
+// ─── Google AI Overview Selector Health Monitor ───────────────────────────────
+// Runs every 6 hours. Tests 5 fixed queries to verify CSS selectors still work.
+// Sends immediate email alert to owner if selectors are broken or scraper is blocked.
+const SELECTOR_HEALTH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+// Initial check: run 2 minutes after server start (let server warm up first)
+setTimeout(() => {
+  console.log("[SelectorHealth] Running initial health check (2min after startup)...");
+  runAndCacheHealthCheck().catch((err) =>
+    console.error("[SelectorHealth] Initial check failed:", err)
+  );
+}, 2 * 60 * 1000);
+
+// Recurring check every 6 hours
+setInterval(() => {
+  console.log("[SelectorHealth] Running scheduled 6h health check...");
+  runAndCacheHealthCheck().catch((err) =>
+    console.error("[SelectorHealth] Scheduled check failed:", err)
+  );
+}, SELECTOR_HEALTH_INTERVAL_MS);
+
+console.log("[SelectorHealth] Selector monitoring active — checks every 6h, initial check in 2min.");

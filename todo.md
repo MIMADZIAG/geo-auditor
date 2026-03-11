@@ -462,3 +462,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Inform user clearly when domain is invisible after 25 queries (red hero card)
 - [x] PLGUpsell: What-IF Simulator + AI Sandbox CTA with amber note about technical factors
 - [x] 62 tests passing, 0 TS errors
+
+## Infrastructure: Google AI Overview Selector Monitoring
+
+- [x] Read current Puppeteer scraper — extracted all CSS selectors: .YzCcne, .M8OgIe, .YzVZnd, .kno-result, [data-attrid='SGE'], div[jsname='yEVEwb'], .AIOverview, .ai-overview + 2 fallback strategies
+- [x] Built server/citation/selectorHealth.ts — tests 5 fixed queries (EN+PL), 3-strategy detection, structured SelectorHealthReport type
+- [x] Wired cron job in server/_core/index.ts — initial check 2min after startup, recurring every 6h
+- [x] notifyOwner() alert with full diagnostic: broken selectors vs blocked scraper vs degraded
+- [x] Added tRPC admin procedure: citation.selectorHealth (admin-only) — returns cached report or triggers forceRun
+- [x] 62 tests passing, 0 TS errors

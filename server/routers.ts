@@ -7,6 +7,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { runAudit } from "./audit/index";
 import { createCitationJob, getCitationResultsForAudit } from "./citation/db";
 import { runCitationJob } from "./citation/worker";
+import { getLastHealthReport, runAndCacheHealthCheck } from "./citation/selectorHealth";
 import {
   createAudit,
   updateAudit,
@@ -259,6 +260,28 @@ export const appRouter = router({
       .input(z.object({ auditId: z.number() }))
       .query(async ({ input }) => {
         return getCitationResultsForAudit(input.auditId);
+      }),
+
+    /**
+     * Admin: Get last Google AI Overview selector health report.
+     * Returns the cached result from the last cron run.
+     * Admin can also trigger a manual re-check.
+     */
+    selectorHealth: protectedProcedure
+      .input(z.object({
+        forceRun: z.boolean().optional(), // if true, runs a fresh check immediately
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        // Only owner/admin can access this
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
+        }
+        if (input?.forceRun) {
+          // Run a fresh check synchronously (takes ~30-60s)
+          const report = await runAndCacheHealthCheck();
+          return report;
+        }
+        return getLastHealthReport();
       }),
   }),
 
