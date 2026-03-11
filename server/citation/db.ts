@@ -52,7 +52,7 @@ export async function getCitationChecksByJobId(jobId: number) {
     .select()
     .from(citationChecks)
     .where(eq(citationChecks.jobId, jobId))
-    .orderBy(citationChecks.engine, citationChecks.checkedAt);
+    .orderBy(citationChecks.round, citationChecks.engine, citationChecks.checkedAt);
 }
 
 export async function getCitationResultsForAudit(auditId: number) {

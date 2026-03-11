@@ -85,6 +85,13 @@
       "when": 1772974745639,
       "tag": "0011_organic_penance",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1773266134730,
+      "tag": "0012_smart_pyro",
+      "breakpoints": true
     }
   ]
 }

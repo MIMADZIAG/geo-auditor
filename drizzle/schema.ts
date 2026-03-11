@@ -140,6 +140,10 @@ export const citationChecks = mysqlTable("citation_checks", {
   hasAIOverview: boolean("hasAIOverview").default(false),
   // Cache key: hash(query + engine) for 24h deduplication
   cacheKey: varchar("cacheKey", { length: 64 }),
+  // Round number in adaptive fan-out (1-5)
+  round: int("round").default(1).notNull(),
+  // Competitor domains extracted from allCitedUrls (hostname only, deduplicated)
+  competitorDomains: json("competitorDomains"), // string[]
   checkedAt: timestamp("checkedAt").defaultNow().notNull(),
 });
 

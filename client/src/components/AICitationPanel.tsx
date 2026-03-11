@@ -1,24 +1,20 @@
 /**
- * AICitationPanel v3 — AI Visibility Check
+ * AICitationPanel v4 — Adaptive Fan-Out Results
  *
- * Shows whether the audited URL appears in:
- *   1. ChatGPT Search (OpenAI web search)
- *   2. Google AI Overviews (Puppeteer scrape)
+ * Displays:
+ *  - Idle: CTA with stats (5 rounds × 5 queries × 2 engines)
+ *  - Running: live progress with last checked queries
+ *  - Completed: round-by-round accordion with full query text,
+ *    per-engine status, competitor domains (Pro gate), summary hero
+ *  - Failed: retry button
  *
- * For each query × engine:
- *   - "yes"    = exact URL cited (green)
- *   - "domain" = different page on same domain cited (amber)
- *   - "no"     = not found (red)
- *   + Full list of competing domains that were cited instead
- *
- * PLG upsell: after results → What-IF Simulator + Sandbox
+ * PLG upsell: competitor domains blurred/locked in Free plan
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 
@@ -28,20 +24,23 @@ interface CitationCheck {
   id: number;
   query: string;
   engine: "chatgpt" | "google";
-  isCited: "yes" | "no" | "domain";
+  round: number;
+  isCited: "yes" | "domain" | "no";
   citedUrl?: string | null;
   domainCitedUrl?: string | null;
   allCitedUrls?: string[] | null;
+  competitorDomains?: string[] | null;
   snippet?: string | null;
   responseText?: string | null;
   hasAIOverview?: boolean | null;
+  fromCache?: boolean;
 }
 
 interface CitationJob {
   id: number;
-  auditId: number;
   status: "pending" | "running" | "completed" | "failed";
   prompts?: string[] | null;
+  language?: string | null;
 }
 
 interface Props {
@@ -56,178 +55,255 @@ function getDomain(url: string): string {
   catch { return url; }
 }
 
-function getPath(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.pathname + (u.search || "");
-  } catch { return url; }
+function groupByRound(checks: CitationCheck[]): Map<number, CitationCheck[]> {
+  const map = new Map<number, CitationCheck[]>();
+  for (const c of checks) {
+    const r = c.round ?? 1;
+    if (!map.has(r)) map.set(r, []);
+    map.get(r)!.push(c);
+  }
+  return map;
 }
 
-// Extract unique competitor domains from allCitedUrls, excluding the target domain
-function getCompetitorDomains(checks: CitationCheck[], targetDomain: string): string[] {
-  const domains = new Set<string>();
+function groupByQuery(checks: CitationCheck[]): Map<string, CitationCheck[]> {
+  const map = new Map<string, CitationCheck[]>();
   for (const c of checks) {
-    for (const u of c.allCitedUrls ?? []) {
+    if (!map.has(c.query)) map.set(c.query, []);
+    map.get(c.query)!.push(c);
+  }
+  return map;
+}
+
+function getQueryStatus(checks: CitationCheck[]): "yes" | "domain" | "no" {
+  if (checks.some(c => c.isCited === "yes")) return "yes";
+  if (checks.some(c => c.isCited === "domain")) return "domain";
+  return "no";
+}
+
+function rankCompetitors(checks: CitationCheck[], targetDomain: string): { domain: string; count: number }[] {
+  const freq: Record<string, number> = {};
+  for (const c of checks) {
+    for (const u of (c.allCitedUrls ?? [])) {
       try {
         const d = new URL(u).hostname.replace("www.", "");
-        if (d && d !== targetDomain) domains.add(d);
+        if (d && d !== targetDomain) freq[d] = (freq[d] ?? 0) + 1;
       } catch {}
     }
   }
-  return Array.from(domains).slice(0, 10);
+  return Object.entries(freq)
+    .map(([domain, count]) => ({ domain, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function hasCitation(checks: CitationCheck[]): boolean {
+  return checks.some(c => c.isCited === "yes" || c.isCited === "domain");
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
-function CitationStatus({ isCited, hasAIOverview }: { isCited: "yes" | "no" | "domain"; hasAIOverview?: boolean | null }) {
-  if (isCited === "yes") {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        Cytowany
-      </span>
-    );
-  }
-  if (isCited === "domain") {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-        Inna podstrona
-      </span>
-    );
-  }
-  if (hasAIOverview === false) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-500/15 text-zinc-400 border border-zinc-500/30">
-        Brak AI Overview
-      </span>
-    );
-  }
+function StatusBadge({ status, small }: { status: "yes" | "domain" | "no"; small?: boolean }) {
+  const cls = small ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2.5 py-1";
+  if (status === "yes") return (
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 ${cls}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      Cytowany
+    </span>
+  );
+  if (status === "domain") return (
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 ${cls}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+      Inna podstrona
+    </span>
+  );
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/15 text-red-400 border border-red-500/30">
-      <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-      Niewidoczny
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold bg-zinc-700/50 text-zinc-400 border border-zinc-600/50 ${cls}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+      Brak
     </span>
   );
 }
 
-// ─── Engine Header ─────────────────────────────────────────────────────────────
+// ─── Engine Icon ──────────────────────────────────────────────────────────────
 
-function EngineIcon({ engine }: { engine: "chatgpt" | "google" }) {
-  if (engine === "chatgpt") {
-    return (
-      <div className="w-8 h-8 rounded-lg bg-[#10a37f]/15 border border-[#10a37f]/30 flex items-center justify-center flex-shrink-0">
-        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#10a37f]">
-          <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.403-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
-        </svg>
-      </div>
-    );
-  }
+function EngineChip({ engine }: { engine: "chatgpt" | "google" }) {
+  if (engine === "chatgpt") return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[#10a37f]/15 text-[#10a37f] border border-[#10a37f]/20 font-medium">
+      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-[#10a37f]"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.403-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
+      ChatGPT
+    </span>
+  );
   return (
-    <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 font-medium">
+      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
       </svg>
-    </div>
+      Google AI
+    </span>
   );
 }
 
-// ─── Query Result Row ─────────────────────────────────────────────────────────
+// ─── Query Card ───────────────────────────────────────────────────────────────
 
-function QueryRow({ check, targetDomain }: { check: CitationCheck; targetDomain: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const competitors = (check.allCitedUrls ?? [])
-    .filter(u => { try { return new URL(u).hostname.replace("www.", "") !== targetDomain; } catch { return false; } })
-    .slice(0, 5);
+function QueryCard({ query, checks, isPro, defaultOpen }: {
+  query: string;
+  checks: CitationCheck[];
+  isPro: boolean;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const status = getQueryStatus(checks);
+  const googleCheck = checks.find(c => c.engine === "google");
+  const chatgptCheck = checks.find(c => c.engine === "chatgpt");
+  const allCitedUrls = Array.from(new Set(checks.flatMap(c => c.allCitedUrls ?? [])));
+  const competitors = allCitedUrls
+    .filter(u => { try { return !new URL(u).hostname.replace("www.", "").endsWith("google.com"); } catch { return false; } })
+    .slice(0, 8);
+
+  const borderCls = status === "yes"
+    ? "border-emerald-500/30 bg-emerald-500/4"
+    : status === "domain"
+    ? "border-amber-500/30 bg-amber-500/4"
+    : "border-white/6 bg-zinc-900/30";
 
   return (
-    <div className="border border-white/8 rounded-xl overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden ${borderCls}`}>
+      {/* Header */}
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-start gap-3 p-4 text-left hover:bg-white/3 transition-colors"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-start gap-3 p-3.5 text-left hover:bg-white/2 transition-colors"
       >
-        <CitationStatus isCited={check.isCited} hasAIOverview={check.hasAIOverview} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-zinc-200 font-medium leading-snug">„{check.query}"</p>
-          {check.isCited === "yes" && check.citedUrl && (
-            <p className="text-xs text-emerald-400 mt-1 truncate">↳ {getPath(check.citedUrl)}</p>
-          )}
-          {check.isCited === "domain" && check.domainCitedUrl && (
-            <p className="text-xs text-amber-400 mt-1 truncate">↳ Cytowana: {getPath(check.domainCitedUrl)}</p>
-          )}
-          {check.isCited === "no" && competitors.length > 0 && (
-            <p className="text-xs text-zinc-500 mt-1">
-              Zamiast Ciebie: {competitors.slice(0, 3).map(u => getDomain(u)).join(", ")}
-            </p>
-          )}
+        {/* Status dot */}
+        <div className="mt-0.5 flex-shrink-0">
+          {status === "yes" && <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1 animate-pulse" />}
+          {status === "domain" && <div className="w-2 h-2 rounded-full bg-amber-400 mt-1" />}
+          {status === "no" && <div className="w-2 h-2 rounded-full bg-zinc-600 mt-1" />}
         </div>
+
+        <div className="flex-1 min-w-0">
+          {/* Prompt label */}
+          <div className="flex items-center gap-1.5 mb-1">
+            <svg className="w-3 h-3 text-zinc-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wide">Zapytanie do AI</span>
+          </div>
+          {/* Full query text — professional exposition */}
+          <p className="text-sm text-zinc-100 font-medium leading-snug">
+            „{query}"
+          </p>
+          {/* Engine chips + status */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <StatusBadge status={status} small />
+            {googleCheck && <EngineChip engine="google" />}
+            {chatgptCheck && <EngineChip engine="chatgpt" />}
+            {googleCheck?.hasAIOverview === false && (
+              <span className="text-[10px] text-zinc-600">brak AI Overview</span>
+            )}
+            {allCitedUrls.length > 0 && (
+              <span className="text-[10px] text-zinc-500">{allCitedUrls.length} źródeł</span>
+            )}
+          </div>
+        </div>
+
         <svg
-          className={`w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform mt-0.5 ${expanded ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform mt-0.5 ${open ? "rotate-180" : ""}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
-      {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-white/8 pt-3">
-          {/* Cited URL detail */}
-          {check.isCited === "yes" && check.citedUrl && (
-            <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-lg p-3">
-              <p className="text-xs text-emerald-400 font-semibold mb-1">✅ Twoja strona jest cytowana</p>
-              <a href={check.citedUrl} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-emerald-300 hover:underline break-all">{check.citedUrl}</a>
-            </div>
-          )}
+      {/* Expanded details */}
+      {open && (
+        <div className="px-3.5 pb-3.5 pt-2 border-t border-white/6 space-y-3">
+          {/* Per-engine results */}
+          {checks.map(check => (
+            <div key={check.id} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <EngineChip engine={check.engine} />
+                <StatusBadge status={check.isCited} small />
+                {check.fromCache && <span className="text-[10px] text-zinc-600">cache</span>}
+              </div>
 
-          {/* Domain citation detail */}
-          {check.isCited === "domain" && check.domainCitedUrl && (
-            <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg p-3">
-              <p className="text-xs text-amber-400 font-semibold mb-1">🔗 Twoja domena jest widoczna — ale inna podstrona</p>
-              <a href={check.domainCitedUrl} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-amber-300 hover:underline break-all">{check.domainCitedUrl}</a>
-              <p className="text-xs text-zinc-500 mt-2">
-                AI cytuje inną podstronę Twojej domeny. Sprawdź, czy ta strona jest lepiej zoptymalizowana pod to zapytanie.
-              </p>
-            </div>
-          )}
+              {check.isCited === "yes" && check.citedUrl && (
+                <div className="ml-1 p-2.5 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
+                  <p className="text-[10px] text-emerald-400 font-semibold mb-1">✅ Twoja strona jest cytowana</p>
+                  <a href={check.citedUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-emerald-300 hover:underline break-all">
+                    {check.citedUrl}
+                  </a>
+                </div>
+              )}
 
-          {/* Competitors */}
+              {check.isCited === "domain" && check.domainCitedUrl && (
+                <div className="ml-1 p-2.5 rounded-lg bg-amber-500/8 border border-amber-500/20">
+                  <p className="text-[10px] text-amber-400 font-semibold mb-1">🔗 Inna podstrona Twojej domeny</p>
+                  <a href={check.domainCitedUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-amber-300 hover:underline break-all">
+                    {check.domainCitedUrl}
+                  </a>
+                  <p className="text-[10px] text-zinc-500 mt-1.5">
+                    AI cytuje inną podstronę Twojej domeny. Sprawdź, czy jest lepiej zoptymalizowana pod to zapytanie.
+                  </p>
+                </div>
+              )}
+
+              {check.snippet && (
+                <p className="ml-1 text-xs text-zinc-400 italic border-l-2 border-zinc-700 pl-2 leading-relaxed">
+                  {check.snippet}
+                </p>
+              )}
+
+              {check.engine === "google" && check.hasAIOverview === false && (
+                <p className="ml-1 text-[10px] text-zinc-600">
+                  Google nie wyświetlił AI Overview dla tego zapytania.
+                </p>
+              )}
+            </div>
+          ))}
+
+          {/* Competitor domains for this query */}
           {competitors.length > 0 && (
             <div>
-              <p className="text-xs text-zinc-500 font-semibold mb-2 uppercase tracking-wide">
-                {check.isCited === "no" ? "Kto jest cytowany zamiast Ciebie:" : "Inne cytowane domeny:"}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {competitors.map((u, i) => (
-                  <a
-                    key={i}
-                    href={u} target="_blank" rel="noopener noreferrer"
-                    className="text-xs px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors"
-                  >
-                    {getDomain(u)}
-                  </a>
-                ))}
-              </div>
+              {!isPro ? (
+                <div className="relative rounded-lg overflow-hidden">
+                  {/* Blurred preview */}
+                  <div className="blur-sm pointer-events-none select-none p-2 space-y-1" aria-hidden>
+                    {competitors.slice(0, 4).map((u, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0" />
+                        <span className="text-zinc-300">{getDomain(u)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Upsell overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/85 backdrop-blur-sm rounded-lg p-3 text-center">
+                    <svg className="w-4 h-4 text-amber-400 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <p className="text-xs font-semibold text-white mb-0.5">{competitors.length} konkurentów — plan Pro</p>
+                    <p className="text-[10px] text-zinc-400">Odblokuj pełną listę domen</p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide mb-1.5">
+                    Cytowane zamiast Ciebie:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {competitors.map((u, i) => (
+                      <a key={i} href={u} target="_blank" rel="noopener noreferrer"
+                        className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors">
+                        {getDomain(u)}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* AI response snippet */}
-          {check.snippet && (
-            <div className="bg-zinc-900/60 border border-white/6 rounded-lg p-3">
-              <p className="text-xs text-zinc-500 font-semibold mb-1">Fragment odpowiedzi AI:</p>
-              <p className="text-xs text-zinc-400 italic leading-relaxed">{check.snippet}</p>
-            </div>
-          )}
-
-          {/* No AI Overview note */}
-          {check.engine === "google" && check.hasAIOverview === false && (
-            <p className="text-xs text-zinc-500 italic">
-              Google nie wyświetlił AI Overview dla tego zapytania. Może to oznaczać, że zapytanie jest zbyt specyficzne lub Google nie ma wystarczającej pewności, by generować odpowiedź AI.
-            </p>
           )}
         </div>
       )}
@@ -235,90 +311,82 @@ function QueryRow({ check, targetDomain }: { check: CitationCheck; targetDomain:
   );
 }
 
-// ─── Engine Section ────────────────────────────────────────────────────────────
+// ─── Round Section ────────────────────────────────────────────────────────────
 
-function EngineSection({
-  engine,
-  checks,
-  targetDomain,
-}: {
-  engine: "chatgpt" | "google";
+function RoundSection({ round, checks, isPro, isLast }: {
+  round: number;
   checks: CitationCheck[];
-  targetDomain: string;
+  isPro: boolean;
+  isLast: boolean;
 }) {
-  const engineName = engine === "chatgpt" ? "ChatGPT Search" : "Google AI Overview";
-  const cited = checks.filter(c => c.isCited === "yes").length;
-  const domainCited = checks.filter(c => c.isCited === "domain").length;
-  const withAI = engine === "google"
-    ? checks.filter(c => c.hasAIOverview !== false).length
-    : checks.length;
-  const total = checks.length;
-
-  // Overall status for this engine
-  const overallStatus: "yes" | "domain" | "no" =
-    cited > 0 ? "yes" : domainCited > 0 ? "domain" : "no";
-
-  // Score: exact=1, domain=0.5, no=0
-  const score = total > 0
-    ? Math.round(((cited + domainCited * 0.5) / total) * 100)
-    : 0;
+  const [expanded, setExpanded] = useState(true);
+  const roundFound = hasCitation(checks);
+  const byQuery = groupByQuery(checks);
+  const queryCount = byQuery.size;
 
   return (
-    <div className="bg-zinc-900/40 border border-white/8 rounded-2xl overflow-hidden">
-      {/* Engine header */}
-      <div className="flex items-center gap-3 p-5 border-b border-white/8">
-        <EngineIcon engine={engine} />
+    <div className="space-y-2">
+      {/* Round header */}
+      <button
+        className="w-full flex items-center gap-3 py-1.5 text-left"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border ${
+          roundFound
+            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40"
+            : isLast
+            ? "bg-red-500/10 text-red-400 border-red-500/30"
+            : "bg-zinc-800 text-zinc-400 border-zinc-700"
+        }`}>
+          {round}
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold text-white">{engineName}</h3>
-            <CitationStatus isCited={overallStatus} hasAIOverview={withAI > 0 ? true : false} />
-          </div>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            {cited > 0
-              ? `Cytowany w ${cited} z ${total} zapytań`
-              : domainCited > 0
-              ? `Domena widoczna w ${domainCited} z ${total} zapytań`
-              : engine === "google" && withAI === 0
-              ? `Brak AI Overview dla żadnego z ${total} zapytań`
-              : `Niewidoczny w żadnym z ${total} zapytań`}
-          </p>
+          <span className="text-sm font-semibold text-zinc-200">
+            Runda {round} — {queryCount} {queryCount === 1 ? "zapytanie" : queryCount < 5 ? "zapytania" : "zapytań"}
+          </span>
+          {roundFound ? (
+            <span className="ml-2 text-xs text-emerald-400">✓ Znaleziono cytowanie</span>
+          ) : isLast ? (
+            <span className="ml-2 text-xs text-red-400">Brak cytowania</span>
+          ) : (
+            <span className="ml-2 text-xs text-zinc-500">Brak — kontynuowano</span>
+          )}
         </div>
-        {/* Score ring */}
-        <div className="flex-shrink-0 text-center">
-          <div className={`text-2xl font-bold tabular-nums ${
-            score >= 60 ? "text-emerald-400" : score >= 30 ? "text-amber-400" : "text-red-400"
-          }`}>{score}%</div>
-          <div className="text-xs text-zinc-600">widoczność</div>
-        </div>
-      </div>
+        <svg
+          className={`w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
 
-      {/* Query list */}
-      <div className="p-4 space-y-2">
-        {checks.map((check) => (
-          <QueryRow key={check.id} check={check} targetDomain={targetDomain} />
-        ))}
-      </div>
+      {expanded && (
+        <div className="space-y-2 ml-4 pl-4 border-l-2 border-zinc-800">
+          {Array.from(byQuery.entries()).map(([query, qChecks], i) => (
+            <QueryCard
+              key={query}
+              query={query}
+              checks={qChecks}
+              isPro={isPro}
+              defaultOpen={i === 0 && roundFound}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Competitor Summary ────────────────────────────────────────────────────────
+// ─── Global Competitor Summary ────────────────────────────────────────────────
 
-function CompetitorSummary({ checks, targetDomain }: { checks: CitationCheck[]; targetDomain: string }) {
-  const competitors = getCompetitorDomains(checks, targetDomain);
+function CompetitorSummary({ checks, targetDomain, isPro }: {
+  checks: CitationCheck[];
+  targetDomain: string;
+  isPro: boolean;
+}) {
+  const competitors = rankCompetitors(checks, targetDomain);
   if (competitors.length === 0) return null;
-
-  // Count how many times each competitor appears
-  const counts: Record<string, number> = {};
-  for (const c of checks) {
-    for (const u of c.allCitedUrls ?? []) {
-      try {
-        const d = new URL(u).hostname.replace("www.", "");
-        if (d && d !== targetDomain) counts[d] = (counts[d] ?? 0) + 1;
-      } catch {}
-    }
-  }
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxCount = competitors[0]?.count ?? 1;
 
   return (
     <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
@@ -332,72 +400,93 @@ function CompetitorSummary({ checks, targetDomain }: { checks: CitationCheck[]; 
           <h3 className="text-sm font-semibold text-white">Kto dominuje zamiast Ciebie</h3>
           <p className="text-xs text-zinc-500">Domeny najczęściej cytowane przez AI dla Twoich zapytań</p>
         </div>
+        {!isPro && (
+          <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
+            Pro
+          </span>
+        )}
       </div>
 
-      <div className="space-y-2">
-        {sorted.map(([domain, count], i) => {
-          const maxCount = sorted[0][1];
-          const pct = Math.round((count / maxCount) * 100);
-          return (
-            <div key={domain} className="flex items-center gap-3">
+      {!isPro ? (
+        <div className="relative">
+          {/* Blurred preview */}
+          <div className="blur-sm pointer-events-none select-none space-y-2" aria-hidden>
+            {competitors.slice(0, 6).map((d) => (
+              <div key={d.domain} className="flex items-center gap-3">
+                <span className="text-xs text-zinc-300 flex-1 truncate">{d.domain}</span>
+                <div className="h-1.5 bg-purple-500/50 rounded-full" style={{ width: `${Math.round((d.count / maxCount) * 100)}px` }} />
+                <span className="text-xs text-zinc-500 w-6 text-right">{d.count}×</span>
+              </div>
+            ))}
+          </div>
+          {/* Upsell overlay */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/85 backdrop-blur-sm rounded-xl p-5 text-center">
+            <svg className="w-6 h-6 text-amber-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p className="text-base font-bold text-white mb-1">
+              {competitors.length} domen wyprzedza Cię w AI Search
+            </p>
+            <p className="text-xs text-zinc-400 mb-4 max-w-xs">
+              Odblokuj pełną listę konkurentów, ich częstotliwość cytowań i strategię widoczności w planie Pro.
+            </p>
+            <Button className="bg-amber-500 hover:bg-amber-600 text-black font-bold text-sm">
+              ⚡ Odblokuj za $99/mies.
+            </Button>
+            <p className="text-[10px] text-zinc-600 mt-2">Anuluj w dowolnym momencie</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {competitors.map((d, i) => (
+            <div key={d.domain} className="flex items-center gap-3">
               <span className="text-xs text-zinc-600 w-4 text-right">{i + 1}</span>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <a
-                    href={`https://${domain}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-zinc-300 hover:text-white transition-colors font-medium"
-                  >
-                    {domain}
+                <div className="flex items-center justify-between mb-0.5">
+                  <a href={`https://${d.domain}`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-zinc-300 hover:text-white font-medium transition-colors">
+                    {d.domain}
                   </a>
-                  <span className="text-xs text-zinc-500">{count}×</span>
+                  <span className="text-xs text-zinc-500">{d.count}×</span>
                 </div>
                 <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full"
-                    style={{ width: `${pct}%` }}
+                    style={{ width: `${Math.round((d.count / maxCount) * 100)}%` }}
                   />
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      <p className="text-xs text-zinc-600 mt-4 italic">
-        Te strony są regularnie cytowane przez AI dla zapytań związanych z Twoją tematyką. Analiza ich struktury i treści może wskazać, co warto poprawić.
-      </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── PLG Upsell Block ─────────────────────────────────────────────────────────
+// ─── PLG Upsell ───────────────────────────────────────────────────────────────
 
-function PLGUpsell({ url, hasIssues }: { url?: string; hasIssues: boolean }) {
+function PLGUpsell({ url }: { url?: string }) {
   const sandboxHref = url ? `/sandbox?url=${encodeURIComponent(url)}` : "/sandbox";
   return (
     <div className="relative overflow-hidden rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/60 via-purple-950/40 to-zinc-900/60 p-6">
-      {/* Background glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none" />
-
       <div className="relative">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
-            <svg className="w-4.5 h-4.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">Co zrobić, żeby AI Cię cytowało?</h3>
             <p className="text-xs text-zinc-400 mt-0.5">
-              {hasIssues
-                ? "Wiemy już, że Twoja strona nie jest widoczna w AI. Teraz czas sprawdzić, co konkretnie to blokuje."
-                : "Twoja strona jest widoczna — sprawdź, jak zwiększyć częstotliwość cytowań."}
+              Wiemy już, gdzie stoisz. Teraz czas sprawdzić, co konkretnie blokuje Twoją widoczność i jak to zmienić.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-          {/* What-IF Simulator */}
           <div className="bg-white/4 border border-white/8 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-base">⚡</span>
@@ -408,8 +497,6 @@ function PLGUpsell({ url, hasIssues }: { url?: string; hasIssues: boolean }) {
               Symuluj zmiany treści i sprawdź natychmiast, jak wpłyną na Twój AI Visibility Score — bez edytowania strony.
             </p>
           </div>
-
-          {/* AI Sandbox */}
           <div className="bg-white/4 border border-white/8 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-base">🧪</span>
@@ -417,7 +504,7 @@ function PLGUpsell({ url, hasIssues }: { url?: string; hasIssues: boolean }) {
               <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">Pro</span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Testuj, jak ChatGPT i Google interpretują Twoją treść. Otrzymaj konkretne sugestie poprawek z podglądem „przed i po".
+              Testuj, jak ChatGPT i Google interpretują Twoją treść. Otrzymaj konkretne sugestie z podglądem „przed i po".
             </p>
           </div>
         </div>
@@ -447,6 +534,7 @@ function PLGUpsell({ url, hasIssues }: { url?: string; hasIssues: boolean }) {
 
 export function AICitationPanel({ auditId, url }: Props) {
   const { user } = useAuth();
+  const isPro = user?.role === "admin" || false; // TODO: replace with plan check
   const [jobStarted, setJobStarted] = useState(false);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
 
@@ -459,7 +547,7 @@ export function AICitationPanel({ auditId, url }: Props) {
   const job = resultsQuery.data?.job as CitationJob | null | undefined;
   const checks = (resultsQuery.data?.checks ?? []) as CitationCheck[];
 
-  // Poll while job is running
+  // Poll while running
   useEffect(() => {
     if (!jobStarted) return;
     if (job?.status === "completed" || job?.status === "failed") {
@@ -474,29 +562,25 @@ export function AICitationPanel({ auditId, url }: Props) {
   }, [jobStarted, job?.status]);
 
   const handleStart = useCallback(async () => {
-    if (!user) {
-      window.location.href = getLoginUrl();
-      return;
-    }
+    if (!user) { window.location.href = getLoginUrl(); return; }
     setJobStarted(true);
     await startCheck.mutateAsync({ auditId });
     resultsQuery.refetch();
   }, [user, auditId]);
 
   const targetDomain = url ? getDomain(url) : "";
-  const chatgptChecks = checks.filter(c => c.engine === "chatgpt");
-  const googleChecks = checks.filter(c => c.engine === "google");
   const isRunning = job?.status === "pending" || job?.status === "running";
   const isCompleted = job?.status === "completed";
-  const hasCitations = checks.some(c => c.isCited === "yes");
-  const hasDomainCitations = checks.some(c => c.isCited === "domain");
-  const hasIssues = !hasCitations && !hasDomainCitations;
+  const isFailed = job?.status === "failed";
+  const foundCitation = hasCitation(checks);
+  const byRound = groupByRound(checks);
+  const rounds = Array.from(byRound.keys()).sort((a, b) => a - b);
+  const totalQueries = new Set(checks.map(c => c.query)).size;
 
-  // ── Not started yet ──────────────────────────────────────────────────────────
+  // ── Idle ─────────────────────────────────────────────────────────────────────
   if (!jobStarted || (!job && !startCheck.isPending)) {
     return (
       <div className="bg-zinc-900/40 border border-white/8 rounded-2xl overflow-hidden">
-        {/* Header */}
         <div className="p-6 border-b border-white/8">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
@@ -513,50 +597,42 @@ export function AICitationPanel({ auditId, url }: Props) {
           </div>
         </div>
 
-        {/* What will be checked */}
         <div className="p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex items-start gap-3 bg-zinc-800/40 border border-white/6 rounded-xl p-4">
-              <EngineIcon engine="chatgpt" />
-              <div>
-                <p className="text-xs font-semibold text-white">ChatGPT Search</p>
-                <p className="text-xs text-zinc-500 mt-0.5">Sprawdza, czy ChatGPT cytuje Twoją stronę odpowiadając na pytania użytkowników</p>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {[
+              { val: "5", label: "rund max" },
+              { val: "25", label: "zapytań max" },
+              { val: "2", label: "silniki AI" },
+            ].map(({ val, label }) => (
+              <div key={label} className="bg-zinc-800/50 border border-white/6 rounded-xl p-3">
+                <p className="text-xl font-bold text-white">{val}</p>
+                <p className="text-xs text-zinc-500">{label}</p>
               </div>
-            </div>
-            <div className="flex items-start gap-3 bg-zinc-800/40 border border-white/6 rounded-xl p-4">
-              <EngineIcon engine="google" />
-              <div>
-                <p className="text-xs font-semibold text-white">Google AI Overview</p>
-                <p className="text-xs text-zinc-500 mt-0.5">Sprawdza, czy Google wyświetla Twoją stronę w sekcji AI Overview wyników wyszukiwania</p>
-              </div>
-            </div>
+            ))}
           </div>
 
           <div className="bg-zinc-800/30 border border-white/6 rounded-xl p-4 text-xs text-zinc-400 space-y-1.5">
             <p className="font-semibold text-zinc-300">Co otrzymasz:</p>
+            <p>✓ Pełne zapytania użyte do sprawdzenia (widoczne w wynikach)</p>
             <p>✓ Status cytowania dla każdego zapytania (dokładny URL / inna podstrona / brak)</p>
-            <p>✓ Pełna lista domen, które są cytowane zamiast Ciebie</p>
-            <p>✓ Fragmenty odpowiedzi AI, w których pojawia się Twoja domena</p>
+            <p>✓ Lista domen cytowanych zamiast Ciebie (plan Pro)</p>
+            <p>✓ Fragmenty odpowiedzi AI z Twoją domeną</p>
           </div>
 
           {!user ? (
             <div className="space-y-3">
               <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300">
-                Zaloguj się, aby uruchomić AI Visibility Check. Wymagamy rejestracji, aby chronić usługę przed nadużyciami.
+                Zaloguj się, aby uruchomić AI Visibility Check.
               </div>
-              <Button
-                onClick={() => { window.location.href = getLoginUrl(); }}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5"
-              >
+              <Button onClick={() => { window.location.href = getLoginUrl(); }}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5">
                 Zaloguj się i sprawdź widoczność →
               </Button>
             </div>
           ) : (
-            <Button
-              onClick={handleStart}
-              disabled={startCheck.isPending}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 text-sm"
-            >
+            <Button onClick={handleStart} disabled={startCheck.isPending}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 text-sm">
               {startCheck.isPending ? (
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -573,11 +649,13 @@ export function AICitationPanel({ auditId, url }: Props) {
     );
   }
 
-  // ── Loading / Running ────────────────────────────────────────────────────────
-  if (isRunning || startCheck.isPending || (!isCompleted && !job?.status)) {
+  // ── Running ───────────────────────────────────────────────────────────────────
+  if (isRunning || startCheck.isPending) {
+    const completedQueries = new Set(checks.map(c => c.query)).size;
+    const currentRound = checks.length > 0 ? Math.max(...checks.map(c => c.round ?? 1)) : 1;
     return (
-      <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-6">
-        <div className="flex items-center gap-4 mb-6">
+      <div className="bg-zinc-900/40 border border-indigo-500/20 rounded-2xl p-6">
+        <div className="flex items-center gap-4 mb-5">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
             <svg className="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -585,40 +663,32 @@ export function AICitationPanel({ auditId, url }: Props) {
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Sprawdzam widoczność w AI...</h2>
-            <p className="text-sm text-zinc-400 mt-0.5">To może potrwać 2–4 minuty. Analizujemy ChatGPT Search i Google AI Overview.</p>
+            <h2 className="text-base font-bold text-white">Sprawdzam widoczność w AI…</h2>
+            <p className="text-sm text-zinc-400 mt-0.5">
+              Runda {currentRound}/5 — sprawdzono {completedQueries} zapytań
+            </p>
           </div>
         </div>
 
-        <div className="space-y-3">
-          {[
-            { label: "Generowanie zapytań użytkowników", done: true },
-            { label: "Sprawdzanie ChatGPT Search", done: false },
-            { label: "Sprawdzanie Google AI Overview", done: false },
-            { label: "Analiza cytowanych domen", done: false },
-          ].map((step, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                step.done ? "bg-emerald-500/20 border border-emerald-500/40" : "bg-zinc-800 border border-zinc-700"
-              }`}>
-                {step.done ? (
-                  <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-pulse" />
-                )}
+        {checks.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-500 mb-2">Ostatnie sprawdzenia:</p>
+            {checks.slice(-5).map(c => (
+              <div key={c.id} className="flex items-center gap-2 text-xs">
+                <EngineChip engine={c.engine} />
+                <span className="text-zinc-400 truncate flex-1">„{c.query}"</span>
+                <StatusBadge status={c.isCited} small />
               </div>
-              <span className={`text-sm ${step.done ? "text-zinc-400" : "text-zinc-500"}`}>{step.label}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-zinc-600 mt-4">Strona odświeży się automatycznie co 4 sekundy</p>
       </div>
     );
   }
 
-  // ── Failed ───────────────────────────────────────────────────────────────────
-  if (job?.status === "failed") {
+  // ── Failed ────────────────────────────────────────────────────────────────────
+  if (isFailed) {
     return (
       <div className="bg-zinc-900/40 border border-red-500/20 rounded-2xl p-6 text-center">
         <p className="text-red-400 font-semibold mb-2">Sprawdzanie nie powiodło się</p>
@@ -630,26 +700,20 @@ export function AICitationPanel({ auditId, url }: Props) {
     );
   }
 
-  // ── Completed ────────────────────────────────────────────────────────────────
+  // ── Completed ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      {/* Summary header */}
-      <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
+      {/* Summary hero */}
+      <div className={`bg-zinc-900/40 border rounded-2xl p-5 ${
+        foundCitation ? "border-emerald-500/30" : "border-red-500/20"
+      }`}>
         <div className="flex items-start gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            hasCitations
-              ? "bg-emerald-500/20 border border-emerald-500/30"
-              : hasDomainCitations
-              ? "bg-amber-500/20 border border-amber-500/30"
-              : "bg-red-500/20 border border-red-500/30"
+            foundCitation ? "bg-emerald-500/20 border border-emerald-500/30" : "bg-red-500/15 border border-red-500/25"
           }`}>
-            {hasCitations ? (
+            {foundCitation ? (
               <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : hasDomainCitations ? (
-              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
             ) : (
               <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -657,40 +721,83 @@ export function AICitationPanel({ auditId, url }: Props) {
               </svg>
             )}
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-base font-bold text-white">
-              {hasCitations
-                ? "Twoja strona jest cytowana przez AI ✅"
-                : hasDomainCitations
-                ? "Twoja domena jest widoczna — ale nie ta podstrona 🔗"
-                : "Twoja strona nie jest cytowana przez AI ❌"}
+              {foundCitation
+                ? "Twoja strona jest widoczna w AI Search ✅"
+                : `Brak widoczności po ${totalQueries} zapytaniach ❌`}
             </h2>
             <p className="text-sm text-zinc-400 mt-1">
-              {hasCitations
-                ? "Dobra robota! Twoja strona pojawia się w odpowiedziach AI. Sprawdź szczegóły poniżej."
-                : hasDomainCitations
-                ? "AI cytuje inne podstrony Twojej domeny. Ta konkretna strona nie jest wystarczająco widoczna."
-                : "AI nie cytuje Twojej strony dla żadnego z testowanych zapytań. Poniżej znajdziesz, kto jest cytowany zamiast Ciebie."}
+              {foundCitation
+                ? `Znaleziono cytowanie w ${rounds.length} ${rounds.length === 1 ? "rundzie" : "rundach"} spośród ${totalQueries} sprawdzonych zapytań.`
+                : `Sprawdzono ${totalQueries} zapytań w ${rounds.length} rundach. Twoja domena nie pojawia się w odpowiedziach AI Search.`}
             </p>
+          </div>
+          {/* Stats */}
+          <div className="flex-shrink-0 text-right">
+            <div className="text-2xl font-bold text-white tabular-nums">{totalQueries}</div>
+            <div className="text-xs text-zinc-600">zapytań</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
+            <p className="text-sm font-bold text-white">{rounds.length}</p>
+            <p className="text-xs text-zinc-500">rundy</p>
+          </div>
+          <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
+            <p className="text-sm font-bold text-white">
+              {checks.filter(c => c.engine === "google" && c.hasAIOverview).length}
+            </p>
+            <p className="text-xs text-zinc-500">AI Overviews</p>
+          </div>
+          <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
+            <p className="text-sm font-bold text-white">
+              {rankCompetitors(checks, targetDomain).length}
+            </p>
+            <p className="text-xs text-zinc-500">konkurentów</p>
           </div>
         </div>
       </div>
 
-      {/* ChatGPT results */}
-      {chatgptChecks.length > 0 && (
-        <EngineSection engine="chatgpt" checks={chatgptChecks} targetDomain={targetDomain} />
-      )}
+      {/* Round-by-round results */}
+      <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Szczegóły sprawdzania — {rounds.length} {rounds.length === 1 ? "runda" : "rundy"}
+          </h3>
+          <button
+            onClick={() => resultsQuery.refetch()}
+            className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Odśwież
+          </button>
+        </div>
 
-      {/* Google results */}
-      {googleChecks.length > 0 && (
-        <EngineSection engine="google" checks={googleChecks} targetDomain={targetDomain} />
-      )}
+        <div className="space-y-4">
+          {rounds.map((round, idx) => (
+            <RoundSection
+              key={round}
+              round={round}
+              checks={byRound.get(round) ?? []}
+              isPro={isPro}
+              isLast={idx === rounds.length - 1 && !foundCitation}
+            />
+          ))}
+        </div>
+      </div>
 
-      {/* Competitor summary */}
-      <CompetitorSummary checks={checks} targetDomain={targetDomain} />
+      {/* Global competitor summary */}
+      <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
 
-      {/* PLG Upsell */}
-      <PLGUpsell url={url} hasIssues={hasIssues} />
+      {/* PLG upsell */}
+      <PLGUpsell url={url} />
     </div>
   );
 }

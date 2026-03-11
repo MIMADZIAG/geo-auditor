@@ -445,3 +445,20 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Added "Kopiuj tekst" button with clipboard API + toast confirmation
 - [x] After rewrite: shows green "Gotowa treść po optymalizacji AI" panel with detected page type badge
 - [x] 62 tests passing, 0 TS errors
+
+## AI Citation Check v4 — Adaptive Fan-Out + Entity-Driven Queries [DONE]
+
+- [x] Audited citation worker and Content Intelligence entity output
+- [x] Rebuilt citation worker v4: entity-driven query generation from CI keywords/top_questions/topics
+- [x] Implemented adaptive fan-out loop: up to 5 rounds × 5 queries = 25 max queries
+- [x] Stop early if citation found (exact URL or domain match)
+- [x] Collect competitor domains per query (all cited URLs in AI Overview)
+- [x] Updated DB schema: round column + competitorDomains JSON per check (migration applied)
+- [x] Rebuilt AICitationPanel v4: professional query exposition (full prompt text shown in accordion)
+- [x] Show round-by-round results with query text + per-engine status badges
+- [x] Show competitor domain count per query (blurred/locked in Free plan)
+- [x] Pro upsell gate: blurred competitor list + "X domen cytowanych zamiast Ciebie — odblokuj w Pro"
+- [x] Global CompetitorSummary: ranked bar chart of all competitor domains (Pro gate)
+- [x] Inform user clearly when domain is invisible after 25 queries (red hero card)
+- [x] PLGUpsell: What-IF Simulator + AI Sandbox CTA with amber note about technical factors
+- [x] 62 tests passing, 0 TS errors
