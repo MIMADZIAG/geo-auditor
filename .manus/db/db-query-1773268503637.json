@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, email, role FROM users WHERE email LIKE '%mikolaj%' OR email LIKE '%madziag%' OR name LIKE '%Miko%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, name, email, role FROM users WHERE email LIKE '%mikolaj%' OR email LIKE '%madziag%' OR name LIKE '%Miko%' LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Mikołaj Madziąg",
+      "email": "mikolajmadziag@gmail.com",
+      "role": "admin"
+    },
+    {
+      "id": "420069",
+      "name": "mikolaj.madziag",
+      "email": "mikolaj.madziag@totalmoney.pl",
+      "role": "user"
+    },
+    {
+      "id": "540003",
+      "name": "mikolaj.madziag",
+      "email": "mikolaj.madziag@iberion.pl",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n1\tMikołaj Madziąg\tmikolajmadziag@gmail.com\tadmin\n420069\tmikolaj.madziag\tmikolaj.madziag@totalmoney.pl\tuser\n540003\tmikolaj.madziag\tmikolaj.madziag@iberion.pl\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 914
+}

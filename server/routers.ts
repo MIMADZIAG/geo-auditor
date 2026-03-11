@@ -215,14 +215,13 @@ export const appRouter = router({
   }),
   citation: router({
     /**
-     * Start a citation check for an audit (Pro feature).
+     * Start a citation check for an audit.
+     * Available to all users (Free = limited view, Pro/admin = full competitor data).
      * Runs asynchronously — returns jobId immediately, results appear after ~2-5 min.
      */
-    startCheck: protectedProcedure
+    startCheck: publicProcedure
       .input(z.object({
         auditId: z.number(),
-        // v2: backend fetches URL from DB and generates queries via fan-out
-        // frontend only needs to pass auditId
       }))
       .mutation(async ({ ctx, input }) => {
         // Fetch audit from DB to get the URL
@@ -231,10 +230,13 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
         }
 
+        // Use user id if logged in, otherwise use 0 (anonymous)
+        const userId = ctx.user?.id ?? 0;
+
         // Create job with empty prompts — worker generates queries via fanOutQueries()
         const jobId = await createCitationJob({
           auditId: input.auditId,
-          userId: ctx.user.id,
+          userId,
           url: audit.url,
           prompts: [],   // worker generates via fanOutQueries() from live page content
           language: "auto", // worker auto-detects from page HTML
