@@ -510,3 +510,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 ### Tests
 - [x] 62 tests passing, 0 TS errors
+
+## Fix: SerpApi AI Overview Detection Rate (Warsaw/Poland)
+
+- [x] Diagnose root cause: desktop device + no location = 0% AI Overview detection for Polish queries
+- [x] Add `device=mobile` parameter — mobile shows AI Overviews significantly more frequently
+- [x] Add `location` parameter per language (Warsaw, Poland for pl; Berlin for de; Paris for fr; etc.)
+- [x] Handle deferred AI Overview (`page_token`) — second request to `google_ai_overview` engine when page_token is present
+- [x] Improve URL cleaning: strip `#fragment` and `:~:text=` suffixes from cited URLs
+- [x] Improve text extraction: include nested list items from text_blocks
+- [x] Test result: 7/8 queries (87.5%) now return AI Overview vs 0/3 before fix
+- [x] 62 tests passing, 0 TS errors

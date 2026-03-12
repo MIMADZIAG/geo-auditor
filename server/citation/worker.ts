@@ -439,19 +439,110 @@ async function checkChatGPT(query: string, targetUrl: string, round: number): Pr
 interface SerpApiAIOverviewReference {
   title?: string;
   link?: string;
+  snippet?: string;
   source?: { name?: string; link?: string };
+  index?: number;
 }
 
 interface SerpApiAIOverview {
-  text_blocks?: Array<{ snippet?: string; type?: string }>;
+  // Direct result (text_blocks + references present)
+  text_blocks?: Array<{ snippet?: string; type?: string; list?: Array<{ snippet?: string; title?: string }> }>;
   references?: SerpApiAIOverviewReference[];
   text?: string;
+  // Deferred result (requires second request via google_ai_overview engine)
+  page_token?: string;
+  serpapi_link?: string;
+  // Error
+  error?: string;
 }
 
 interface SerpApiResponse {
   ai_overview?: SerpApiAIOverview;
   error?: string;
   search_metadata?: { status?: string };
+}
+
+// ─── Location map for SerpApi ─────────────────────────────────────────────────
+const LOCALE_MAP: Record<string, { hl: string; gl: string; location: string }> = {
+  pl: { hl: "pl", gl: "pl", location: "Warsaw, Poland" },
+  en: { hl: "en", gl: "us", location: "United States" },
+  de: { hl: "de", gl: "de", location: "Berlin, Germany" },
+  fr: { hl: "fr", gl: "fr", location: "Paris, France" },
+  es: { hl: "es", gl: "es", location: "Madrid, Spain" },
+  it: { hl: "it", gl: "it", location: "Rome, Italy" },
+};
+
+/**
+ * Fetch AI Overview data from SerpApi.
+ * Handles both direct results (text_blocks present) and deferred results (page_token).
+ * Uses device=mobile + location for significantly higher AI Overview detection rate.
+ */
+async function fetchSerpApiAIOverview(
+  query: string,
+  locale: { hl: string; gl: string; location: string },
+  apiKey: string
+): Promise<SerpApiAIOverview | null> {
+  const { default: axios } = await import("axios");
+
+  // ── Step 1: Main search ──────────────────────────────────────────────────────
+  // device=mobile dramatically increases AI Overview appearance rate.
+  // location=city-level simulates a real user in the target country.
+  const params = new URLSearchParams({
+    q: query,
+    engine: "google",
+    api_key: apiKey,
+    hl: locale.hl,
+    gl: locale.gl,
+    location: locale.location,
+    device: "mobile",  // mobile shows AI Overviews much more frequently
+    num: "10",
+  });
+
+  const response = await axios.get<SerpApiResponse>(
+    `https://serpapi.com/search.json?${params.toString()}`,
+    { timeout: 30000 }
+  );
+
+  const data = response.data;
+
+  if (data.error) {
+    console.warn(`[Citation/Google/SerpApi] API error: ${data.error}`);
+    return null;
+  }
+
+  const aiOverview = data.ai_overview;
+  if (!aiOverview) return null;
+
+  // ── Step 2: Handle deferred AI Overview (page_token) ────────────────────────
+  // Google sometimes requires a second request to fetch the actual AI Overview content.
+  // The page_token expires within 1 minute — must be used immediately.
+  if (aiOverview.page_token && aiOverview.serpapi_link && !aiOverview.text_blocks) {
+    console.log(`[Citation/Google/SerpApi] page_token detected — fetching deferred AI Overview...`);
+    try {
+      const deferredUrl = `${aiOverview.serpapi_link}&api_key=${apiKey}`;
+      const deferredResponse = await axios.get<{ ai_overview?: SerpApiAIOverview }>(
+        deferredUrl,
+        { timeout: 20000 }
+      );
+      const deferredAO = deferredResponse.data?.ai_overview;
+      if (deferredAO && deferredAO.text_blocks) {
+        console.log(`[Citation/Google/SerpApi] Deferred AI Overview fetched: ${deferredAO.references?.length ?? 0} refs`);
+        return deferredAO;
+      }
+    } catch (e) {
+      console.warn(`[Citation/Google/SerpApi] Failed to fetch deferred AI Overview:`, e);
+    }
+    // Return the token-only response if deferred fetch failed
+    return aiOverview;
+  }
+
+  // ── Step 3: Handle error response ───────────────────────────────────────────
+  if (aiOverview.error && !aiOverview.text_blocks) {
+    console.log(`[Citation/Google/SerpApi] AI Overview error: ${aiOverview.error}`);
+    return null;
+  }
+
+  return aiOverview;
 }
 
 async function checkGoogleAIOverview(
@@ -473,49 +564,12 @@ async function checkGoogleAIOverview(
 
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
   const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
-
-  // Map language to Google locale params
-  const localeMap: Record<string, { hl: string; gl: string }> = {
-    pl: { hl: "pl", gl: "pl" },
-    en: { hl: "en", gl: "us" },
-    de: { hl: "de", gl: "de" },
-    fr: { hl: "fr", gl: "fr" },
-    es: { hl: "es", gl: "es" },
-    it: { hl: "it", gl: "it" },
-  };
-  const locale = localeMap[language] ?? localeMap.en;
+  const locale = LOCALE_MAP[language] ?? LOCALE_MAP.en;
 
   try {
-    console.log(`[Citation/Google/SerpApi] Round ${round}: "${query.slice(0, 60)}"`);
+    console.log(`[Citation/Google/SerpApi] Round ${round}: "${query.slice(0, 60)}" [${locale.hl}/${locale.gl}/${locale.location}]`);
 
-    const params = new URLSearchParams({
-      q: query,
-      engine: "google",
-      api_key: apiKey,
-      hl: locale.hl,
-      gl: locale.gl,
-      num: "10",
-    });
-
-    const { default: axios } = await import("axios");
-    const response = await axios.get<SerpApiResponse>(
-      `https://serpapi.com/search.json?${params.toString()}`,
-      { timeout: 30000 }
-    );
-
-    const data = response.data;
-
-    if (data.error) {
-      console.warn(`[Citation/Google/SerpApi] API error: ${data.error}`);
-      return {
-        query, engine: "google", round, isCited: "no",
-        allCitedUrls: [], competitorDomains: [],
-        hasAIOverview: false,
-        snippet: `SerpApi error: ${data.error}`,
-      };
-    }
-
-    const aiOverview = data.ai_overview;
+    const aiOverview = await fetchSerpApiAIOverview(query, locale, apiKey);
 
     if (!aiOverview) {
       console.log(`[Citation/Google/SerpApi] No AI Overview for: "${query.slice(0, 50)}"`);
@@ -532,19 +586,27 @@ async function checkGoogleAIOverview(
     const references = aiOverview.references ?? [];
 
     for (const ref of references) {
-      // Primary link from reference
+      // Primary link from reference — strip fragment and tracking params
       const link = ref.link ?? ref.source?.link;
       if (link && link.startsWith("http")) {
-        const cleanUrl = link.split("#")[0];
+        // Strip fragment (#...) and common tracking suffixes
+        const cleanUrl = link.split("#")[0].split(":~:text=")[0];
         if (!allCitedUrls.includes(cleanUrl)) allCitedUrls.push(cleanUrl);
       }
     }
 
-    // Build overview text from text_blocks
-    const overviewText = [
-      ...(aiOverview.text_blocks ?? []).map((b) => b.snippet ?? ""),
-      aiOverview.text ?? "",
-    ].filter(Boolean).join(" ").slice(0, 2000);
+    // Build overview text from text_blocks (including nested list items)
+    const textParts: string[] = [];
+    for (const block of aiOverview.text_blocks ?? []) {
+      if (block.snippet) textParts.push(block.snippet);
+      if (block.list) {
+        for (const item of block.list) {
+          if (item.snippet) textParts.push(item.snippet);
+        }
+      }
+    }
+    if (aiOverview.text) textParts.push(aiOverview.text);
+    const overviewText = textParts.filter(Boolean).join(" ").slice(0, 2000);
 
     console.log(`[Citation/Google/SerpApi] AI Overview found, ${references.length} references, ${allCitedUrls.length} unique URLs`);
 
