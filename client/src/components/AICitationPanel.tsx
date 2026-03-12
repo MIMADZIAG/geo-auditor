@@ -80,18 +80,39 @@ function getQueryStatus(checks: CitationCheck[]): "yes" | "domain" | "no" {
   return "no";
 }
 
-function rankCompetitors(checks: CitationCheck[], targetDomain: string): { domain: string; count: number }[] {
-  const freq: Record<string, number> = {};
+function rankCompetitors(checks: CitationCheck[], targetDomain: string): { domain: string; url: string; count: number }[] {
+  // Track both full URL and domain frequency
+  // We keep the most-cited URL per domain as the representative link
+  const urlFreq: Record<string, number> = {};
+  const domainToUrls: Record<string, string[]> = {};
+
   for (const c of checks) {
     for (const u of (c.allCitedUrls ?? [])) {
       try {
-        const d = new URL(u).hostname.replace("www.", "");
-        if (d && d !== targetDomain) freq[d] = (freq[d] ?? 0) + 1;
+        const parsed = new URL(u);
+        const d = parsed.hostname.replace("www.", "");
+        if (!d || d === targetDomain) continue;
+        // Skip translate.google.com and similar noise
+        if (d.includes("google.com") || d.includes("translate.")) continue;
+        urlFreq[u] = (urlFreq[u] ?? 0) + 1;
+        if (!domainToUrls[d]) domainToUrls[d] = [];
+        if (!domainToUrls[d].includes(u)) domainToUrls[d].push(u);
       } catch {}
     }
   }
-  return Object.entries(freq)
-    .map(([domain, count]) => ({ domain, count }))
+
+  // Aggregate by domain: sum all URL frequencies, pick most-cited URL as representative
+  const domainFreq: Record<string, number> = {};
+  const domainRepUrl: Record<string, string> = {};
+  for (const [domain, urls] of Object.entries(domainToUrls)) {
+    const total = urls.reduce((sum, u) => sum + (urlFreq[u] ?? 0), 0);
+    domainFreq[domain] = total;
+    // Pick the URL with highest individual frequency as representative
+    domainRepUrl[domain] = urls.sort((a, b) => (urlFreq[b] ?? 0) - (urlFreq[a] ?? 0))[0];
+  }
+
+  return Object.entries(domainFreq)
+    .map(([domain, count]) => ({ domain, url: domainRepUrl[domain], count }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -159,7 +180,12 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
   const chatgptCheck = checks.find(c => c.engine === "chatgpt");
   const allCitedUrls = Array.from(new Set(checks.flatMap(c => c.allCitedUrls ?? [])));
   const competitors = allCitedUrls
-    .filter(u => { try { return !new URL(u).hostname.replace("www.", "").endsWith("google.com"); } catch { return false; } })
+    .filter(u => {
+      try {
+        const h = new URL(u).hostname.replace("www.", "");
+        return !h.includes("google.com") && !h.includes("translate.");
+      } catch { return false; }
+    })
     .slice(0, 8);
 
   const borderCls = status === "yes"
@@ -293,11 +319,12 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
                   <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide mb-1.5">
                     Cytowane zamiast Ciebie:
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-col gap-1">
                     {competitors.map((u, i) => (
                       <a key={i} href={u} target="_blank" rel="noopener noreferrer"
-                        className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors">
-                        {getDomain(u)}
+                        className="text-xs text-zinc-300 hover:text-white hover:underline transition-colors truncate block"
+                        title={u}>
+                        {u}
                       </a>
                     ))}
                   </div>
@@ -443,11 +470,14 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
               <span className="text-xs text-zinc-600 w-4 text-right">{i + 1}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
-                  <a href={`https://${d.domain}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-zinc-300 hover:text-white font-medium transition-colors">
-                    {d.domain}
-                  </a>
-                  <span className="text-xs text-zinc-500">{d.count}×</span>
+                  <div className="flex flex-col min-w-0 flex-1 mr-2">
+                    <a href={d.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-zinc-300 hover:text-white font-medium transition-colors truncate"
+                      title={d.url}>
+                      {d.url}
+                    </a>
+                  </div>
+                  <span className="text-xs text-zinc-500 flex-shrink-0">{d.count}×</span>
                 </div>
                 <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div

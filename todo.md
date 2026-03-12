@@ -521,3 +521,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Improve text extraction: include nested list items from text_blocks
 - [x] Test result: 7/8 queries (87.5%) now return AI Overview vs 0/3 before fix
 - [x] 62 tests passing, 0 TS errors
+
+## Bug: AI Citations — fałszywy brak AI Overview + niepełne URL konkurencji
+
+- [x] Diagnoza: sprawdzić co SerpApi zwraca dla zapytań o "projekty domów parterowych"
+- [x] Naprawić generowanie zapytań dla stron e-commerce/katalogowych (extradom.pl/projekty-domow-parterowych)
+- [x] Zwracać pełne URL konkurencji (np. https://extradom.pl/projekty-domow-parterowych) zamiast tylko domen
+- [x] Sprawdzić czy problem leży w generowaniu zapytań przez LLM czy w parsowaniu odpowiedzi SerpApi

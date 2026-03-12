@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, name, email, role, plan FROM users WHERE email = 'mikolajmadziag@gmail.com' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, name, email, role, plan FROM users WHERE email = 'mikolajmadziag@gmail.com' LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Mikołaj Madziąg",
+      "email": "mikolajmadziag@gmail.com",
+      "role": "admin",
+      "plan": "free"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tplan\n1\tMikołaj Madziąg\tmikolajmadziag@gmail.com\tadmin\tfree\n",
+  "stderr": "",
+  "execution_time_ms": 78
+}

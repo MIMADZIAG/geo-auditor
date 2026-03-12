@@ -1,0 +1,17 @@
+{
+  "query": "UPDATE users SET plan = 'business', role = 'admin' WHERE email = 'mikolajmadziag@gmail.com';\nSELECT id, name, email, role, plan FROM users WHERE email = 'mikolajmadziag@gmail.com';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute UPDATE users SET plan = 'business', role = 'admin' WHERE email = 'mikolajmadziag@gmail.com';\nSELECT id, name, email, role, plan FROM users WHERE email = 'mikolajmadziag@gmail.com';",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Mikołaj Madziąg",
+      "email": "mikolajmadziag@gmail.com",
+      "role": "admin",
+      "plan": "business"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tplan\n1\tMikołaj Madziąg\tmikolajmadziag@gmail.com\tadmin\tbusiness\n",
+  "stderr": "",
+  "execution_time_ms": 77
+}

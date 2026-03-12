@@ -138,20 +138,21 @@ function buildFallbackQueries(content: PageContent, url: string, round: number):
   const lang = content.language;
   const isPolish = lang === "pl";
 
+  // Use modifiers proven to trigger AI Overviews (informational/comparative intent)
   const sets: string[][] = isPolish
     ? [
-        [base, `${base} ranking`, `najlepszy ${base}`, `${base} opinie`, `${base} porównanie`],
-        [`jak wybrać ${base}`, `${base} 2025`, `${base} kalkulator`, `${base} bez prowizji`, `${base} oferta`],
-        [`${base} warunki`, `${base} wymagania`, `${base} krok po kroku`, `${base} przykład`, `${base} co to jest`],
-        [`${base} dla firm`, `${base} online`, `${base} ranking 2025`, `${base} bezpieczny`, `${base} recenzja`],
-        [`${base} alternatywy`, `zamiast ${base}`, `${base} wady zalety`, `${base} czy warto`, `${base} doświadczenia`],
+        [`najlepszy ${base}`, `jak wybrać ${base}`, `${base} ranking`, `co to jest ${base}`, `${base} porównanie`],
+        [`${base} 2025`, `tanie ${base}`, `${base} opinie`, `${base} nowoczesne`, `${base} z garażem`],
+        [`jak wybrać ${base}`, `${base} krok po kroku`, `${base} poradnik`, `${base} przykład`, `${base} wady zalety`],
+        [`${base} dla małych działek`, `${base} online`, `${base} gotowe`, `${base} bezpieczny`, `${base} recenzja`],
+        [`${base} alternatywy`, `zamiast ${base}`, `${base} czy warto`, `${base} doświadczenia`, `${base} opłacalność`],
       ]
     : [
-        [base, `best ${base}`, `${base} review`, `${base} comparison`, `${base} guide`],
-        [`how to choose ${base}`, `${base} 2025`, `${base} calculator`, `${base} without fees`, `${base} offer`],
-        [`${base} requirements`, `${base} step by step`, `${base} example`, `what is ${base}`, `${base} explained`],
-        [`${base} for business`, `${base} online`, `${base} ranking 2025`, `${base} safe`, `${base} pros cons`],
-        [`${base} alternatives`, `instead of ${base}`, `${base} worth it`, `${base} experience`, `${base} tips`],
+        [`best ${base}`, `how to choose ${base}`, `${base} guide`, `what is ${base}`, `${base} comparison`],
+        [`top ${base} 2025`, `cheap ${base}`, `${base} reviews`, `modern ${base}`, `${base} with garage`],
+        [`${base} step by step`, `${base} tips`, `${base} examples`, `${base} pros cons`, `${base} explained`],
+        [`${base} for small lots`, `${base} online`, `${base} ready made`, `${base} safe`, `${base} worth it`],
+        [`${base} alternatives`, `instead of ${base}`, `${base} experience`, `${base} ranking`, `${base} advice`],
       ];
 
   return (sets[round - 1] ?? sets[0]).slice(0, 5);
@@ -198,15 +199,18 @@ async function generateRoundQueries(
       messages: [
         {
           role: "system",
-          content: `You are an expert in AI search behavior and GEO (Generative Engine Optimization). 
-          
-Your task: Generate exactly 5 search queries that real users would type into ChatGPT or Google to find information covered by this webpage.
+          content: `You are an expert in AI search behavior and GEO (Generative Engine Optimization).
+
+Your task: Generate exactly 5 search queries that are HIGHLY LIKELY to trigger a Google AI Overview (AI-generated summary block) for the topic of this webpage.
 
 ${roundContext}
 
-Rules:
+CRITICAL RULES for triggering AI Overviews:
 - ${langNote}
-- Queries must be natural and conversational (how real users ask AI assistants)
+- ALWAYS add informational/comparative modifiers that trigger AI Overviews:
+  * Polish: "najlepszy", "jak wybrać", "co to jest", "ranking", "tanie", "porównanie", "poradnik", "wady zalety", "czy warto"
+  * English: "best", "how to choose", "what is", "guide", "top", "comparison", "pros cons", "worth it"
+- Bare noun queries (e.g. just "projekty domów parterowych") rarely trigger AI Overviews — ALWAYS add a modifier
 - Do NOT include the domain name or URL in queries
 - Each query should be distinct and cover a different angle
 - Queries should be 3-10 words long${avoidNote}

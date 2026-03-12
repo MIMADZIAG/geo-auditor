@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, name, email, role, plan FROM users WHERE email = 'mikolajmadziag@gmail.com';\nSHOW COLUMNS FROM users LIKE 'plan';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, name, email, role, plan FROM users WHERE email = 'mikolajmadziag@gmail.com';\nSHOW COLUMNS FROM users LIKE 'plan';",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Mikołaj Madziąg",
+      "email": "mikolajmadziag@gmail.com",
+      "role": "admin",
+      "plan": "free"
+    }
+  ],
+  "messages": [
+    "Field\tType\tNull\tKey\tDefault\tExtra",
+    "plan\tenum('free','starter','pro','business')\tNO\t\tfree\t"
+  ],
+  "stdout": "id\tname\temail\trole\tplan\n1\tMikołaj Madziąg\tmikolajmadziag@gmail.com\tadmin\tfree\nField\tType\tNull\tKey\tDefault\tExtra\nplan\tenum('free','starter','pro','business')\tNO\t\tfree\t\n",
+  "stderr": "",
+  "execution_time_ms": 70
+}
