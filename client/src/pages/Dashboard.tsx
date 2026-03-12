@@ -524,8 +524,13 @@ function TrendBadge({ trend }: { trend: number }) {
 }
 
 // ─── Upgrade Banner ───────────────────────────────────────────────────────────
-
 function UpgradeBanner() {
+  const [, navigate] = useLocation();
+  const { data: myPlan } = trpc.payments.getMyPlan.useQuery();
+
+  // Don't show banner if user is on a paid plan
+  if (myPlan && myPlan.plan !== "free") return null;
+
   return (
     <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-violet-500/5 to-indigo-500/5 border border-primary/20 p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -533,7 +538,7 @@ function UpgradeBanner() {
           <Sparkles className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold mb-1">Upgrade to Starter — $29/month</h3>
+          <h3 className="font-semibold mb-1">Upgrade to Starter — $39/month</h3>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-emerald-400" />
@@ -554,7 +559,7 @@ function UpgradeBanner() {
           </div>
         </div>
         <Button
-          onClick={() => toast.info("Paid plans coming soon! You'll be notified.")}
+          onClick={() => navigate("/pricing")}
           className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 gap-2"
         >
           Upgrade

@@ -8,6 +8,9 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { runAndCacheHealthCheck } from "../citation/selectorHealth";
+import { handleStripeWebhook } from "../stripe/handler";
+import { generateAuditPDF } from "../pdf/reportGenerator";
+import { getAuditById } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,6 +34,56 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // ⚠️ Stripe webhook MUST be registered BEFORE express.json() to preserve raw body for signature verification
+  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
+
+  // PDF export endpoint
+  app.get("/api/audit/:auditId/pdf", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.auditId);
+      if (isNaN(auditId)) {
+        res.status(400).json({ error: "Invalid audit ID" });
+        return;
+      }
+
+      const audit = await getAuditById(auditId);
+      if (!audit) {
+        res.status(404).json({ error: "Audit not found" });
+        return;
+      }
+
+      const findings = Array.isArray(audit.findings) ? (audit.findings as any[]) : [];
+      const recommendations = Array.isArray(audit.recommendations) ? (audit.recommendations as string[]) : [];
+
+      const pdfBuffer = await generateAuditPDF({
+        url: audit.url,
+        pageTitle: audit.pageTitle ?? undefined,
+        overallScore: audit.overallScore ?? 0,
+        technicalScore: audit.technicalScore ?? undefined,
+        structuredDataScore: audit.structuredDataScore ?? undefined,
+        contentStructureScore: audit.contentStructureScore ?? undefined,
+        eeatScore: audit.eeatScore ?? undefined,
+        aiCrawlerScore: audit.aiCrawlerScore ?? undefined,
+        metaTagsScore: audit.metaTagsScore ?? undefined,
+        contentIntelligenceScore: audit.contentIntelligenceScore ?? undefined,
+        citeabilityScore: audit.citeabilityScore ?? undefined,
+        findings,
+        recommendations,
+        llmAiInsight: audit.llmAiInsight ?? undefined,
+        llmTopPriority: audit.llmTopPriority ?? undefined,
+        createdAt: audit.createdAt,
+      });
+
+      const filename = `geo-audit-${auditId}-${Date.now()}.pdf`;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Length", pdfBuffer.length);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error("[PDF] Generation failed:", err);
+      res.status(500).json({ error: "PDF generation failed" });
+    }
+  });
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

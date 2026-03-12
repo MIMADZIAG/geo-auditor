@@ -481,3 +481,32 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Handle missing AI Overview gracefully (not all queries trigger it)
 - [ ] Update selectorHealth.ts to use SerpApi health check instead of Puppeteer
 - [ ] Run TypeScript check and tests
+
+## v8 — Stripe Payments + PDF Export + SerpApi
+
+### SerpApi Integration (Google AI Overviews)
+- [x] Replace Puppeteer-based Google AI Overview scraper with SerpApi
+- [x] Add SERPAPI_API_KEY to environment secrets
+- [x] Update citation/worker.ts to use SerpApi Google Search endpoint
+- [x] Verify AI Overview detection works with real queries
+
+### Stripe Payment Integration
+- [x] Install stripe npm package
+- [x] Add stripeCustomerId, stripeSubscriptionId, plan, planExpiresAt to users table
+- [x] Push DB migration for new user fields
+- [x] Create server/stripe/products.ts — plan definitions (Starter $39, Pro $99, Business $299)
+- [x] Create server/stripe/handler.ts — checkout session, billing portal, webhook handler
+- [x] Register /api/stripe/webhook route before express.json() middleware
+- [x] Add payments.getPlans, payments.getMyPlan, payments.createCheckout, payments.createBillingPortal tRPC procedures
+- [x] Update Pricing.tsx — real Stripe checkout instead of window.alert placeholder
+- [x] Update Dashboard.tsx UpgradeBanner — real pricing ($39) and navigate to /pricing
+- [x] UpgradeBanner hides for paid users
+
+### PDF Export
+- [x] Install pdfkit + @types/pdfkit
+- [x] Create server/pdf/reportGenerator.ts — branded dark-theme PDF with score breakdown, findings, AI insight
+- [x] Register /api/audit/:auditId/pdf GET endpoint in server
+- [x] Add PDF download button to Results.tsx header (green, with Download icon)
+
+### Tests
+- [x] 62 tests passing, 0 TS errors

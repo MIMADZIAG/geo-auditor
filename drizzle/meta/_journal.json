@@ -92,6 +92,13 @@
       "when": 1773266134730,
       "tag": "0012_smart_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1773273201010,
+      "tag": "0013_pale_impossible_man",
+      "breakpoints": true
     }
   ]
 }

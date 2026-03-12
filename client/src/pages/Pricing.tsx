@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle2, ArrowLeft, Bot, Zap, Shield, Building2, Star,
   ArrowRight, Globe, Brain, BarChart3, Download, Users, Infinity,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Loader2,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 const plans = [
   {
@@ -125,6 +127,20 @@ export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const createCheckout = trpc.payments.createCheckout.useMutation({
+    onSuccess: ({ url }) => {
+      window.open(url, "_blank");
+      toast.success("Redirecting to checkout", {
+        description: "A new tab has been opened with the Stripe checkout page.",
+      });
+      setLoadingPlan(null);
+    },
+    onError: (err) => {
+      toast.error("Checkout failed", { description: err.message });
+      setLoadingPlan(null);
+    },
+  });
 
   const handleCta = (planId: string) => {
     if (planId === "free") {
@@ -135,7 +151,11 @@ export default function Pricing() {
       if (!isAuthenticated) {
         window.location.href = getLoginUrl();
       } else {
-        window.alert("Stripe integration coming soon! You'll be notified when payment is available.");
+        setLoadingPlan(planId);
+        createCheckout.mutate({
+          planId: planId as "starter" | "pro" | "business",
+          origin: window.location.origin,
+        });
       }
     }
   };

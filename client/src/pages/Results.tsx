@@ -29,6 +29,7 @@ import {
   Target,
   Search,
   Cpu,
+  Download,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -188,6 +189,11 @@ export default function Results() {
             <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs">
               <Share2 className="w-3.5 h-3.5" /> Share
             </Button>
+            <a href={`/api/audit/${auditId}/pdf`} download>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+                <Download className="w-3.5 h-3.5" /> PDF
+              </Button>
+            </a>
             {isAuthenticated ? (
               <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs">
                 <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard

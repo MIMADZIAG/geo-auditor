@@ -8,6 +8,11 @@ import { runAudit } from "./audit/index";
 import { createCitationJob, getCitationResultsForAudit } from "./citation/db";
 import { runCitationJob } from "./citation/worker";
 import { getLastHealthReport, runAndCacheHealthCheck } from "./citation/selectorHealth";
+import { createCheckoutSession, createBillingPortalSession } from "./stripe/handler";
+import { PLANS, getPlanLimits } from "./stripe/products";
+import { getDb } from "./db";
+import { users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import {
   createAudit,
   updateAudit,
@@ -502,6 +507,77 @@ ${input.content.slice(0, 15000)}
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Unknown error";
           throw new TRPCError({ code: "BAD_REQUEST", message: `Failed to fetch URL: ${msg}` });
+        }
+      }),
+  }),
+  // ─── Stripe / Payments ────────────────────────────────────────────────────────
+  payments: router({
+    // Get available plans
+    getPlans: publicProcedure.query(() => {
+      return Object.values(PLANS).map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        priceDisplay: p.priceDisplay,
+        description: p.description,
+        features: p.features,
+        limits: p.limits,
+      }));
+    }),
+
+    // Get current user's plan
+    getMyPlan: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const userRows = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const user = userRows[0];
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      return {
+        plan: user.plan ?? "free",
+        limits: getPlanLimits(user.plan ?? "free"),
+        hasStripeCustomer: !!user.stripeCustomerId,
+        hasActiveSubscription: !!user.stripeSubscriptionId,
+      };
+    }),
+
+    // Create Stripe Checkout Session
+    createCheckout: protectedProcedure
+      .input(z.object({
+        planId: z.enum(["starter", "pro", "business"]),
+        origin: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const userRows = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+        const user = userRows[0];
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+        try {
+          const { url } = await createCheckoutSession(
+            ctx.user.id,
+            user.email ?? ctx.user.email ?? "",
+            user.name ?? ctx.user.name ?? "",
+            input.planId,
+            input.origin
+          );
+          return { url };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Checkout failed";
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+        }
+      }),
+
+    // Create Billing Portal Session (manage subscription)
+    createBillingPortal: protectedProcedure
+      .input(z.object({ origin: z.string().url() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const { url } = await createBillingPortalSession(ctx.user.id, input.origin);
+          return { url };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Billing portal failed";
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
         }
       }),
   }),
