@@ -528,3 +528,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Naprawić generowanie zapytań dla stron e-commerce/katalogowych (extradom.pl/projekty-domow-parterowych)
 - [x] Zwracać pełne URL konkurencji (np. https://extradom.pl/projekty-domow-parterowych) zamiast tylko domen
 - [x] Sprawdzić czy problem leży w generowaniu zapytań przez LLM czy w parsowaniu odpowiedzi SerpApi
+
+## KRYTYCZNY BUG: AI Citations — ostateczna naprawa
+
+- [x] Deep-diagnoza: sprawdzić surowy JSON SerpApi dla zapytań które realnie mają AI Overview
+- [x] Zweryfikować wszystkie warianty struktury odpowiedzi SerpApi (ai_overview, knowledge_graph, answer_box, inline_images)
+- [x] Przepisać checkGoogleAIOverview — obsłużyć wszystkie przypadki poprawnie
+- [x] Test end-to-end z realnym linkiem Google AI Mode

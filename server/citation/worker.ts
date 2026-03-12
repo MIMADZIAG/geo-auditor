@@ -304,6 +304,15 @@ async function getCachedResult(cacheKey: string): Promise<CitationResult | null>
   const row = rows[0];
   if (!row || row.checkedAt < cutoff) return null;
 
+  // IMPORTANT: Do NOT serve stale negative cache entries (hasAIOverview=false, isCited="no").
+  // These may have been created with the old buggy SerpApi config (no location/mobile).
+  // Only serve cache hits that actually found something useful.
+  // Negative results expire after 4h instead of 24h to allow re-checking.
+  const negativeCutoff = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  if (!row.hasAIOverview && row.isCited === "no" && row.checkedAt < negativeCutoff) {
+    return null; // Force re-check for stale negative results
+  }
+
   const allCitedUrls = Array.isArray(row.allCitedUrls) ? (row.allCitedUrls as string[]) : [];
   const competitorDomains = Array.isArray(row.competitorDomains)
     ? (row.competitorDomains as string[])
@@ -444,7 +453,15 @@ interface SerpApiAIOverviewReference {
   title?: string;
   link?: string;
   snippet?: string;
-  source?: { name?: string; link?: string };
+  /**
+   * SerpApi returns `source` as EITHER:
+   *   - a plain string like "mfinanse.plhttps://mfinanse.pl" (direct response)
+   *   - a string like "mFinanse" (deferred response)
+   * Never an object — do NOT use ref.source?.link
+   */
+  source?: string | { name?: string; link?: string };
+  thumbnail?: string;
+  source_icon?: string;
   index?: number;
 }
 
@@ -515,29 +532,38 @@ async function fetchSerpApiAIOverview(
   }
 
   const aiOverview = data.ai_overview;
-  if (!aiOverview) return null;
+  if (!aiOverview) {
+    console.log(`[Citation/Google/SerpApi] No ai_overview key in response for: "${query.slice(0, 50)}"`);
+    return null;
+  }
 
   // ── Step 2: Handle deferred AI Overview (page_token) ────────────────────────
   // Google sometimes requires a second request to fetch the actual AI Overview content.
-  // The page_token expires within 1 minute — must be used immediately.
-  if (aiOverview.page_token && aiOverview.serpapi_link && !aiOverview.text_blocks) {
+  // The page_token expires within ~1 minute — must be used immediately.
+  // Deferred responses have: { page_token, serpapi_link } but NO text_blocks
+  if (aiOverview.page_token && aiOverview.serpapi_link) {
     console.log(`[Citation/Google/SerpApi] page_token detected — fetching deferred AI Overview...`);
     try {
+      // serpapi_link already contains the full URL with engine=google_ai_overview&page_token=...
+      // We just need to append our api_key
       const deferredUrl = `${aiOverview.serpapi_link}&api_key=${apiKey}`;
       const deferredResponse = await axios.get<{ ai_overview?: SerpApiAIOverview }>(
         deferredUrl,
-        { timeout: 20000 }
+        { timeout: 25000 }
       );
       const deferredAO = deferredResponse.data?.ai_overview;
       if (deferredAO && deferredAO.text_blocks) {
-        console.log(`[Citation/Google/SerpApi] Deferred AI Overview fetched: ${deferredAO.references?.length ?? 0} refs`);
+        const refCount = deferredAO.references?.length ?? 0;
+        console.log(`[Citation/Google/SerpApi] Deferred AI Overview fetched: ${deferredAO.text_blocks.length} blocks, ${refCount} refs`);
         return deferredAO;
       }
+      // Deferred response came back but no text_blocks — AI Overview may not have loaded
+      console.warn(`[Citation/Google/SerpApi] Deferred response had no text_blocks`);
     } catch (e) {
       console.warn(`[Citation/Google/SerpApi] Failed to fetch deferred AI Overview:`, e);
     }
-    // Return the token-only response if deferred fetch failed
-    return aiOverview;
+    // page_token present but deferred fetch failed — return null (no usable data)
+    return null;
   }
 
   // ── Step 3: Handle error response ───────────────────────────────────────────
@@ -586,16 +612,32 @@ async function checkGoogleAIOverview(
     }
 
     // Extract all cited URLs from references
+    // SerpApi returns different structures depending on whether the result is direct or deferred:
+    //   Direct:   { link, source: "domain.comhttps://domain.com", index }
+    //   Deferred: { title, link, snippet, source: "DisplayName", thumbnail, source_icon, index }
+    // In BOTH cases, `link` is the canonical URL. Never rely on `source` for the URL.
     const allCitedUrls: string[] = [];
     const references = aiOverview.references ?? [];
 
     for (const ref of references) {
-      // Primary link from reference — strip fragment and tracking params
-      const link = ref.link ?? ref.source?.link;
-      if (link && link.startsWith("http")) {
-        // Strip fragment (#...) and common tracking suffixes
-        const cleanUrl = link.split("#")[0].split(":~:text=")[0];
-        if (!allCitedUrls.includes(cleanUrl)) allCitedUrls.push(cleanUrl);
+      // `link` is always the correct field — present in both direct and deferred responses
+      const rawLink = ref.link;
+      if (rawLink && rawLink.startsWith("http")) {
+        // Strip fragment (#...), text fragments (:~:text=...), and query tracking params
+        let cleanUrl = rawLink;
+        // Remove :~:text= fragment (Google text highlight)
+        cleanUrl = cleanUrl.split("#:~:text=")[0];
+        // Remove regular fragment
+        cleanUrl = cleanUrl.split("#")[0];
+        // Remove trailing slash for consistency
+        cleanUrl = cleanUrl.replace(/\/$/, "");
+        // Filter out Google internal URLs
+        try {
+          const h = new URL(cleanUrl).hostname;
+          if (!h.includes("google.com") && !h.includes("translate.") && cleanUrl.length > 10) {
+            if (!allCitedUrls.includes(cleanUrl)) allCitedUrls.push(cleanUrl);
+          }
+        } catch { /* invalid URL, skip */ }
       }
     }
 
@@ -612,7 +654,10 @@ async function checkGoogleAIOverview(
     if (aiOverview.text) textParts.push(aiOverview.text);
     const overviewText = textParts.filter(Boolean).join(" ").slice(0, 2000);
 
-    console.log(`[Citation/Google/SerpApi] AI Overview found, ${references.length} references, ${allCitedUrls.length} unique URLs`);
+    console.log(`[Citation/Google/SerpApi] AI Overview found: ${references.length} raw refs → ${allCitedUrls.length} clean URLs`);
+    if (allCitedUrls.length > 0) {
+      console.log(`[Citation/Google/SerpApi] Cited URLs: ${allCitedUrls.slice(0, 5).join(" | ")}`);
+    }
 
     const competitorDomains = extractCompetitorDomains(allCitedUrls, targetDomain);
 
