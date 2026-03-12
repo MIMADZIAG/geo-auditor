@@ -46,6 +46,8 @@ interface CitationJob {
 interface Props {
   auditId: number;
   url?: string;
+  /** Called when citation job completes with all cited competitor URLs */
+  onCompetitorUrlsReady?: (urls: string[]) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -562,11 +564,12 @@ function PLGUpsell({ url }: { url?: string }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function AICitationPanel({ auditId, url }: Props) {
+export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) {
   const { user } = useAuth();
   const isPro = user?.role === "admin" || false; // TODO: replace with plan check
   const [jobStarted, setJobStarted] = useState(false);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [competitorUrlsNotified, setCompetitorUrlsNotified] = useState(false);
 
   const startCheck = trpc.citation.startCheck.useMutation();
   const resultsQuery = trpc.citation.getResults.useQuery(
@@ -590,6 +593,25 @@ export function AICitationPanel({ auditId, url }: Props) {
     }
     return () => { if (pollInterval) clearInterval(pollInterval); };
   }, [jobStarted, job?.status]);
+
+  // Notify parent when job completes with competitor URLs
+  useEffect(() => {
+    if (job?.status === "completed" && checks.length > 0 && !competitorUrlsNotified && onCompetitorUrlsReady) {
+      const targetDomainLocal = url ? getDomain(url) : "";
+      const allUrls = checks.flatMap(c => c.allCitedUrls ?? []);
+      const competitorUrls = allUrls.filter(u => {
+        try {
+          const h = new URL(u).hostname.replace("www.", "");
+          return h !== targetDomainLocal && !h.includes("google.com") && !h.includes("translate.");
+        } catch { return false; }
+      });
+      const uniqueUrls = Array.from(new Set(competitorUrls));
+      if (uniqueUrls.length > 0) {
+        onCompetitorUrlsReady(uniqueUrls);
+        setCompetitorUrlsNotified(true);
+      }
+    }
+  }, [job?.status, checks.length]);
 
   const handleStart = useCallback(async () => {
     if (!user) { window.location.href = getLoginUrl(); return; }

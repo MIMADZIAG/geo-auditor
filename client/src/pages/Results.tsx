@@ -114,6 +114,8 @@ export default function Results() {
   const [, navigate] = useLocation();
   const auditId = parseInt(params.id ?? "0");
   const { isAuthenticated } = useAuth();
+  // Competitor URLs from AI Citations — passed to WhatIfSection for Full Rewrite AI
+  const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
     { id: auditId },
@@ -238,9 +240,10 @@ export default function Results() {
         <AICitationPanel
           auditId={auditId}
           url={audit.url}
+          onCompetitorUrlsReady={setCitedCompetitorUrls}
         />
         {/* ── 7. What-IF Simulator — inline, no navigation needed ── */}
-        <WhatIfSection url={audit.url} />
+        <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} />
         {/* ── 7. Competitor Analysis Teaser (Pro) ── */}
         <CompetitorAnalysisTeaser navigate={navigate} />
         {/* ── 7. What's Working ── */}
@@ -1049,7 +1052,7 @@ const AI_COPILOT_MODES = [
   { id: "improve_structure" as const, label: "Popraw strukturę", icon: "📝", desc: "Nagłówki i listy" },
 ] as const;
 
-function WhatIfSection({ url }: { url: string }) {
+function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCompetitorUrls?: string[] }) {
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
   const rewriteMutation = trpc.sandbox.rewrite.useMutation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1120,14 +1123,21 @@ function WhatIfSection({ url }: { url: string }) {
     try {
       const issues = baselineResult?.issues.map(i => `[${i.severity}] ${i.title}: ${i.description}`) ?? [];
       const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-      const { rewrittenContent } = await rewriteMutation.mutateAsync({
+      const result = await rewriteMutation.mutateAsync({
         content: sourceContent,
         mode,
         issues,
         url,
         pageType: detectedPageType,
         targetQueries,
+        // Pass competitor URLs for full_rewrite mode so AI can use them
+        citedCompetitorUrls: mode === "full_rewrite" ? citedCompetitorUrls : undefined,
       });
+      const { rewrittenContent } = result;
+      // Show competitor insights badge if available
+      if (mode === "full_rewrite" && result.competitorInsights && result.competitorInsights.count > 0) {
+        toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
+      }
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
       setRewrittenText(rewrittenStr);
       setCopied(false);

@@ -302,9 +302,12 @@ export const appRouter = router({
         url: z.string().optional(),
         pageType: z.string().optional(),
         targetQueries: z.array(z.string()).optional(),
+        // Competitor cited URLs from AI Citations (for full_rewrite mode)
+        citedCompetitorUrls: z.array(z.string()).optional(),
       }))
       .mutation(async ({ input }) => {
         const { invokeLLM } = await import("./_core/llm");
+        const { crawlCompetitors, formatCompetitorContext } = await import("./rewrite/competitorCrawler");
 
         const issuesList = (input.issues ?? []).slice(0, 10).join("\n");
         const queriesStr = (input.targetQueries ?? []).join(", ") || "ogólne zapytania w wyszukiwarkach AI";
@@ -394,22 +397,83 @@ ${issuesList || "Brak konkretnych problemów — zoptymalizuj ogólnie pod kąte
 9. Długość: dostosuj do typu strony — produkt: 400-800 słów, artykuł: 800-1500 słów
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
+        // ─── Clean the input content: remove JSON-LD, HTML tags, technical noise ───
+        const cleanInputContent = (raw: string): string => {
+          // Remove JSON-LD blocks — use non-greedy match limited to 2000 chars to avoid eating real content
+          // Only remove blocks that contain @type (JSON-LD indicator)
+          let cleaned = raw.replace(/\{[^{}]{0,2000}"@type"[^{}]{0,2000}\}/g, "");
+          // Also remove standalone JSON-LD script blocks
+          cleaned = cleaned.replace(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi, "");
+          // Remove HTML tags if any leaked through
+          cleaned = cleaned.replace(/<[^>]{0,200}>/g, " ");
+          // Remove lines that look like JSON keys/values (technical noise)
+          cleaned = cleaned.split("\n").filter(line => {
+            const t = line.trim();
+            if (!t) return false;
+            // Skip lines that are pure JSON-like (key: value or {, })
+            if (/^[{\[\]},]$/.test(t)) return false;
+            if (/^"[\w@]+"\s*:/.test(t)) return false; // JSON key
+            if (/^\s*"@/.test(t)) return false; // JSON-LD @type, @context
+            // Skip lines shorter than 10 chars (likely noise)
+            if (t.length < 10) return false;
+            // Skip lines that are just URLs without context
+            if (/^https?:\/\/\S+$/.test(t)) return false;
+            return true;
+          }).join("\n");
+          // Collapse multiple blank lines
+          cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
+          return cleaned;
+        };
+
+        const cleanedContent = cleanInputContent(input.content);
+
+        // ─── For full_rewrite: crawl competitor URLs from AI Citations ───────────
+        let competitorContext = "";
+        let crawledDomains: string[] = [];
+        if (input.mode === "full_rewrite" && input.citedCompetitorUrls && input.citedCompetitorUrls.length > 0) {
+          try {
+            const targetDomain = input.url ? new URL(input.url).hostname.replace("www.", "") : "";
+            const crawlResult = await crawlCompetitors(input.citedCompetitorUrls, targetDomain, 6);
+            competitorContext = formatCompetitorContext(crawlResult);
+            crawledDomains = crawlResult.crawledDomains;
+            console.log(`[Rewrite] Crawled ${crawledDomains.length} competitor domains for full_rewrite`);
+          } catch (e) {
+            console.warn("[Rewrite] Competitor crawl failed (non-fatal):", (e as Error).message);
+          }
+        }
+
         const modeInstructions: Record<string, string> = {
-          full_rewrite: `Przepisz całą poniższą treść od nowa, zachowując temat i kluczowe fakty, ale tworząc zupełnie nową, lepszą strukturę zoptymalizowaną pod AI Search. Napraw wszystkie wykryte problemy z audytu. Dodaj strukturę answer-first, sekcję FAQ i popraw wszystkie nagłówki. Wynik ma być gotowy do wklejenia na stronę.`,
+          full_rewrite: `Przepisz całą poniższą treść od nowa. Stworzony tekst musi być LEPSZY od oryginału pod każdym względem:
+
+1. PRIORYTET 1 — Helpful Content: Odpowiedz na główne pytanie użytkownika w pierwszych 2-3 zdaniach (answer-first). Treść musi być konkretna, praktyczna i wartościowa.
+
+2. PRIORYTET 2 — Naprawa problemów z audytu: Zastosuj wszystkie wskazane poprawki techniczne i contentowe.
+
+3. PRIORYTET 3 — Struktura AI-ready:
+   - Nagłówki sekcji w formie pytań ("Jak...", "Co to jest...", "Dlaczego...")
+   - Sekcja FAQ z 5-7 pytaniami i konkretnymi odpowiedziami (2-4 zdania każda)
+   - Listy punktowane dla cech, kroków, porównań
+   - Konkretne liczby, daty, dane tam gdzie to naturalne
+
+4. PRIORYTET 4 — Encje i fakty z konkurencji: Jeśli poniżej podano analizę konkurencji, sparafrazuj kluczowe fakty i encje, które wzbogacą tekst. NIE kopiuj dosłownie — twórz oryginalną treść.
+
+Tekst musi być idealny językowo, stylistycznie i gramatycznie. Pisz naturalnie, jak ekspert dla użytkownika — nie jak robot SEO.`,
 
           answer_first: `Przeorganizuj poniższą treść według wzorca "answer-first": zacznij od bezpośredniej, wyczerpującej odpowiedzi na główne pytanie strony (2-3 zdania), następnie podaj szczegóły. Przenieś najważniejsze informacje na górę. Zachowaj całą istniejącą treść, ale zmień kolejność i strukturę.`,
 
-          add_faq: `Zachowaj istniejącą treść i DODAJ na końcu sekcję FAQ. Wygeneruj 6-8 pytań, które użytkownicy wpisują w Google i wyszukiwarkach AI w związku z tematem tej strony. Każda odpowiedź: 2-4 zdania, konkretna i bezpośrednia. Sekcja FAQ powinna zaczynać się od nagłówka "Najczęściej zadawane pytania" lub "Często zadawane pytania".`,
+          add_faq: `Zachowaj istniejącą treść i DODAJ na końcu sekcję FAQ. Wygeneruj 6-8 pytań, które użytkownicy wpisują w Google i wyszukiwarkach AI w związku z tematem tej strony. Każda odpowiedź: 2-4 zdania, konkretna i bezpośrednia. Sekcja FAQ powinna zaczynać się od nagłówka "Najczęściej zadawane pytania".`,
 
-          add_statistics: `Zachowaj strukturę istniejącej treści, ale wzbogać ją o konkretne dane: liczby, procenty, statystyki, daty. Tam gdzie treść jest ogólna, dodaj konkretne wartości. Dodaj sekcję "Kluczowe liczby" lub "Fakty i dane" blisko początku. Jeśli oryginał nie zawiera danych, użyj realistycznych szacunków branżowych i zaznacz je jako przybliżone.`,
+          add_statistics: `Zachowaj strukturę istniejącej treści, ale wzbogac ją o konkretne dane: liczby, procenty, statystyki, daty. Tam gdzie treść jest ogólna, dodaj konkretne wartości. Dodaj sekcję "Kluczowe liczby" lub "Fakty i dane" blisko początku. Jeśli oryginał nie zawiera danych, użyj realistycznych szacunków branżowych i zaznacz je jako przybliżone.`,
 
           improve_structure: `Zachowaj całą istniejącą treść, ale popraw jej strukturę: podziel na sekcje z jasnymi nagłówkami (w formie pytań tam gdzie możliwe), zamień długie akapity na listy punktowane, dodaj wyraźne wprowadzenie i podsumowanie. Dodaj skrócone streszczenie (TL;DR lub "W skrócie") na początku lub końcu.`,
         };
 
         const userPrompt = `${modeInstructions[input.mode]}
 
+${competitorContext}
+
 --- TREŚĆ DO OPTYMALIZACJI ---
-${input.content.slice(0, 15000)}
+${cleanedContent.slice(0, 12000)}
 --- KONIEC TREŚCI ---`;
 
         try {
@@ -421,7 +485,13 @@ ${input.content.slice(0, 15000)}
           });
           const rewritten = response.choices?.[0]?.message?.content ?? "";
           if (!rewritten) throw new Error("Empty response from AI");
-          return { rewrittenContent: rewritten };
+          return {
+            rewrittenContent: rewritten,
+            competitorInsights: crawledDomains.length > 0 ? {
+              crawledDomains,
+              count: crawledDomains.length,
+            } : null,
+          };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "AI rewrite failed";
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });

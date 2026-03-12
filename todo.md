@@ -535,3 +535,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Zweryfikować wszystkie warianty struktury odpowiedzi SerpApi (ai_overview, knowledge_graph, answer_box, inline_images)
 - [x] Przepisać checkGoogleAIOverview — obsłużyć wszystkie przypadki poprawnie
 - [x] Test end-to-end z realnym linkiem Google AI Mode
+
+## What-IF Full Rewrite AI — Rebuild
+
+- [x] Audyt aktualnego kodu What-IF Full Rewrite — znaleźć wszystkie błędy (JSON/dane techniczne w output)
+- [x] Crawler konkurencji — crawl 3-10 cytowanych URL-i z AI Citations
+- [x] Ekstrakcja kluczowych fragmentów i encji z treści konkurencji
+- [x] Przepisanie backendu Full Rewrite: naprawienie błędów + integracja z danymi konkurencji
+- [x] Prompt Helpful Content: uwagi z audytu + Content Intelligence + encje konkurencji
+- [x] Aktualizacja UI What-IF: źródła konkurencji, wskaźniki jakości, czysty output
+- [x] Test end-to-end z realnym URL
