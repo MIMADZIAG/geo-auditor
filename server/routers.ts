@@ -308,6 +308,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { invokeLLM } = await import("./_core/llm");
         const { crawlCompetitors, formatCompetitorContext } = await import("./rewrite/competitorCrawler");
+        const { verifyAndRevise } = await import("./rewrite/eeatVerifier");
 
         const issuesList = (input.issues ?? []).slice(0, 10).join("\n");
         const queriesStr = (input.targetQueries ?? []).join(", ") || "ogólne zapytania w wyszukiwarkach AI";
@@ -430,13 +431,14 @@ ${issuesList || "Brak konkretnych problemów — zoptymalizuj ogólnie pod kąte
         // ─── For full_rewrite: crawl competitor URLs from AI Citations ───────────
         let competitorContext = "";
         let crawledDomains: string[] = [];
+        let crawlResult: Awaited<ReturnType<typeof crawlCompetitors>> | null = null;
         if (input.mode === "full_rewrite" && input.citedCompetitorUrls && input.citedCompetitorUrls.length > 0) {
           try {
             const targetDomain = input.url ? new URL(input.url).hostname.replace("www.", "") : "";
-            const crawlResult = await crawlCompetitors(input.citedCompetitorUrls, targetDomain, 6);
+            crawlResult = await crawlCompetitors(input.citedCompetitorUrls, targetDomain, 6, cleanedContent);
             competitorContext = formatCompetitorContext(crawlResult);
             crawledDomains = crawlResult.crawledDomains;
-            console.log(`[Rewrite] Crawled ${crawledDomains.length} competitor domains for full_rewrite`);
+            console.log(`[Rewrite] Crawled ${crawledDomains.length} competitor domains, ${crawlResult.allTriples.length} triples`);
           } catch (e) {
             console.warn("[Rewrite] Competitor crawl failed (non-fatal):", (e as Error).message);
           }
@@ -476,21 +478,168 @@ ${competitorContext}
 ${cleanedContent.slice(0, 12000)}
 --- KONIEC TREŚCI ---`;
 
+        // ─── Helper: split content into sections by H2/H3 headings ─────────────
+        const splitIntoSections = (text: string): Array<{ heading: string; body: string }> => {
+          const lines = text.split("\n");
+          const sections: Array<{ heading: string; body: string }> = [];
+          let currentHeading = "";
+          let currentBody: string[] = [];
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            // Detect headings: lines starting with ## / ### or [H] markers, or short ALL-CAPS lines
+            const isHeading =
+              /^#{1,4}\s/.test(trimmed) ||
+              /^\[H\]\s/.test(trimmed) ||
+              (trimmed.length > 5 && trimmed.length < 100 && /^[A-ZŁŚŻŹĆŃÓĄĘ]/.test(trimmed) &&
+               !trimmed.includes(".") && !trimmed.includes(",") && lines.indexOf(line) > 0);
+
+            if (isHeading && currentBody.join(" ").trim().length > 0) {
+              sections.push({ heading: currentHeading, body: currentBody.join("\n").trim() });
+              currentHeading = trimmed.replace(/^#+\s*/, "").replace(/^\[H\]\s*/, "");
+              currentBody = [];
+            } else if (isHeading) {
+              currentHeading = trimmed.replace(/^#+\s*/, "").replace(/^\[H\]\s*/, "");
+            } else {
+              currentBody.push(line);
+            }
+          }
+          if (currentBody.join(" ").trim().length > 0) {
+            sections.push({ heading: currentHeading, body: currentBody.join("\n").trim() });
+          }
+          return sections.filter(s => s.body.length > 30);
+        };
+
         try {
-          const response = await invokeLLM({
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-          });
-          const rewritten = response.choices?.[0]?.message?.content ?? "";
-          if (!rewritten) throw new Error("Empty response from AI");
+          let rewritten: string;
+
+          if (input.mode === "full_rewrite") {
+            // ── Krok 4: Iterative section-by-section generation ──────────────────
+            const sections = splitIntoSections(cleanedContent);
+            const MAX_SECTIONS = 8;
+            const sectionsToProcess = sections.slice(0, MAX_SECTIONS);
+
+            console.log(`[Rewrite] Iterative mode: ${sectionsToProcess.length} sections detected`);
+
+            if (sectionsToProcess.length <= 1) {
+              // Single block — use standard single-shot (no sections to iterate)
+              const response = await invokeLLM({
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  { role: "user", content: userPrompt },
+                ],
+                max_tokens: 8000,
+              } as any);
+              rewritten = String(response.choices?.[0]?.message?.content ?? "");
+            } else {
+              // Multi-section iterative generation
+              const generatedSections: string[] = [];
+
+              for (let i = 0; i < sectionsToProcess.length; i++) {
+                const section = sectionsToProcess[i];
+                const isFirst = i === 0;
+                const isLast = i === sectionsToProcess.length - 1;
+
+                // Find BM25-relevant triples for this section
+                const sectionTriples = crawlResult?.allTriples
+                  ? crawlResult.allTriples
+                      .filter(t => {
+                        const sectionLower = (section.heading + " " + section.body).toLowerCase();
+                        return (
+                          sectionLower.includes(t.subject.toLowerCase()) ||
+                          sectionLower.includes(t.object.toLowerCase())
+                        );
+                      })
+                      .slice(0, 4)
+                  : [];
+
+                const sectionTriplesStr = sectionTriples.length > 0
+                  ? `\nKnowledge Graph dla tej sekcji:\n${sectionTriples.map(t => `  [${t.subject}] → ${t.predicate} → [${t.object}]`).join("\n")}`
+                  : "";
+
+                const sectionPrompt =
+                  `${modeInstructions["full_rewrite"]}\n\n` +
+                  `${isFirst ? competitorContext + "\n\n" : ""}` +
+                  `INSTRUKCJA DLA TEJ SEKCJI:\n` +
+                  `- Sekcja ${i + 1} z ${sectionsToProcess.length}: "${section.heading || "Wprowadzenie"}".\n` +
+                  (isFirst ? `- To jest PIERWSZE sekcja — zacznij od bezpośredniej odpowiedzi na główne pytanie strony (answer-first).\n` : "") +
+                  (isLast ? `- To jest OSTATNIA sekcja — zakończ podsumowaniem i sekcją FAQ (5-7 pytań z odpowiedziami).\n` : "") +
+                  `- Rozbuduj tę sekcję do wyczerpującego formatu, zachowując wysoką szczegółowość. NIE streszczaj.\n` +
+                  `- Pisz min. 150-300 słów dla tej sekcji.\n` +
+                  `${sectionTriplesStr}\n\n` +
+                  `--- TREŚĆ SEKCJI DO PRZEPISANIA ---\n` +
+                  (section.heading ? `${section.heading}\n` : "") +
+                  `${section.body.slice(0, 3000)}\n` +
+                  `--- KONIEC SEKCJI ---`;
+
+                const sectionResponse = await invokeLLM({
+                  messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: sectionPrompt },
+                  ],
+                  max_tokens: 3000,
+                } as any);
+
+                const sectionContent = String(sectionResponse.choices?.[0]?.message?.content ?? "");
+                if (sectionContent.trim()) {
+                  generatedSections.push(sectionContent.trim());
+                }
+
+                console.log(`[Rewrite] Section ${i + 1}/${sectionsToProcess.length} done (${sectionContent.length} chars)`);
+              }
+
+              rewritten = generatedSections.join("\n\n");
+            }
+          } else {
+            // Non-full_rewrite modes: standard single-shot
+            const response = await invokeLLM({
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+            });
+            rewritten = String(response.choices?.[0]?.message?.content ?? "");
+          }
+
+          if (!rewritten || rewritten.trim().length < 100) throw new Error("Empty response from AI");
+
+          // ── Krok 3: E-E-A-T Verification + auto-revision ─────────────────────
+          let finalContent = rewritten;
+          let eeatScore = null;
+          let wasRevised = false;
+          if (input.mode === "full_rewrite") {
+            try {
+              const verifyResult = await verifyAndRevise(
+                rewritten,
+                queriesStr,
+                systemPrompt,
+                "Polish"
+              );
+              finalContent = verifyResult.content;
+              eeatScore = {
+                overall: verifyResult.score.overall,
+                verifiableFacts: verifyResult.score.verifiableFacts,
+                expertVoice: verifyResult.score.expertVoice,
+                intentMatch: verifyResult.score.intentMatch,
+                languageQuality: verifyResult.score.languageQuality,
+              };
+              wasRevised = verifyResult.wasRevised;
+              if (wasRevised) {
+                console.log(`[Rewrite] E-E-A-T revision applied (score was ${verifyResult.score.overall}/10)`);
+              }
+            } catch (e) {
+              console.warn("[Rewrite] E-E-A-T verification failed (non-fatal):", (e as Error).message);
+            }
+          }
+
           return {
-            rewrittenContent: rewritten,
+            rewrittenContent: finalContent,
             competitorInsights: crawledDomains.length > 0 ? {
               crawledDomains,
               count: crawledDomains.length,
             } : null,
+            eeatScore,
+            wasRevised,
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "AI rewrite failed";

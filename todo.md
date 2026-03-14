@@ -554,3 +554,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Usunięcie parametru thinking (Gemini-specific)
 - [x] Test API: GPT-4o odpowiada poprawnie (model: gpt-4o-2024-08-06)
 - [x] 62 testy przechodzą, 0 błędów TS
+
+## Full Rewrite AI — Refaktoryzacja (4 mechanizmy)
+
+- [x] Krok 1: BM25 chunking w competitorCrawler.ts (zamiast 70% word overlap)
+- [x] Krok 2: Ekstrakcja trójek semantycznych (Subject-Predicate-Object) przez LLM
+- [x] Krok 3: Weryfikator E-E-A-T (nowy plik eeAtVerifier.ts) z auto-rewizją
+- [x] Krok 4: Iteracyjne generowanie sekcja po sekcji w routers.ts
+- [x] TypeScript check + testy po wszystkich zmianach (62/62 pass, 0 TS errors)
