@@ -524,11 +524,12 @@ ${cleanedContent.slice(0, 12000)}
             if (sectionsToProcess.length <= 1) {
               // Single block — use standard single-shot (no sections to iterate)
               const response = await invokeLLM({
+                model: "gpt-5.4",  // draft generation — high verbosity
                 messages: [
                   { role: "system", content: systemPrompt },
                   { role: "user", content: userPrompt },
                 ],
-                max_tokens: 8000,
+                max_tokens: 16000,
               } as any);
               rewritten = String(response.choices?.[0]?.message?.content ?? "");
             } else {
@@ -573,11 +574,12 @@ ${cleanedContent.slice(0, 12000)}
                   `--- KONIEC SEKCJI ---`;
 
                 const sectionResponse = await invokeLLM({
+                  model: "gpt-5.4",  // draft generation per section — high verbosity
                   messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: sectionPrompt },
                   ],
-                  max_tokens: 3000,
+                  max_tokens: 4000,
                 } as any);
 
                 const sectionContent = String(sectionResponse.choices?.[0]?.message?.content ?? "");
@@ -591,8 +593,9 @@ ${cleanedContent.slice(0, 12000)}
               rewritten = generatedSections.join("\n\n");
             }
           } else {
-            // Non-full_rewrite modes: standard single-shot
+            // Non-full_rewrite modes: standard single-shot (gpt-5.4 default)
             const response = await invokeLLM({
+              model: "gpt-5.4",
               messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },

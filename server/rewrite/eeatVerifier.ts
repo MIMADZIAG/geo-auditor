@@ -40,34 +40,35 @@ async function evaluateEEAT(
 ): Promise<EEATScore> {
   const { invokeLLM } = await import("../_core/llm");
 
-  const result = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a senior content quality evaluator specialising in Google's E-E-A-T and Helpful Content guidelines. " +
-          "Evaluate the provided text and return a JSON object with numeric scores and specific feedback. " +
-          "Be strict — a score of 10 means publication-ready expert content.",
-      },
-      {
-        role: "user",
-        content:
-          `Evaluate this ${language} content against E-E-A-T criteria.\n\n` +
-          `ORIGINAL SEARCH INTENT: ${originalIntent}\n\n` +
-          `CONTENT TO EVALUATE:\n${content.slice(0, 4000)}\n\n` +
-          `Return ONLY this JSON (no explanation):\n` +
-          `{\n` +
-          `  "verifiableFacts": <1-10>,\n` +
-          `  "expertVoice": <1-10>,\n` +
-          `  "intentMatch": <1-10>,\n` +
-          `  "languageQuality": <1-10>,\n` +
-          `  "feedback": "<2-3 specific, actionable improvement instructions in ${language}>"\n` +
-          `}`,
-      },
-    ] as Message[],
-    response_format: { type: "json_object" },
-    max_tokens: 400,
-  } as any);
+    const result = await invokeLLM({
+      model: "gpt-5.4",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a senior content quality evaluator specialising in Google's E-E-A-T and Helpful Content guidelines. " +
+            "Evaluate the provided text and return a JSON object with numeric scores and specific feedback. " +
+            "Be strict — a score of 10 means publication-ready expert content.",
+        },
+        {
+          role: "user",
+          content:
+            `Evaluate this ${language} content against E-E-A-T criteria.\n\n` +
+            `ORIGINAL SEARCH INTENT: ${originalIntent}\n\n` +
+            `CONTENT TO EVALUATE:\n${content.slice(0, 4000)}\n\n` +
+            `Return ONLY this JSON (no explanation):\n` +
+            `{\n` +
+            `  "verifiableFacts": <1-10>,\n` +
+            `  "expertVoice": <1-10>,\n` +
+            `  "intentMatch": <1-10>,\n` +
+            `  "languageQuality": <1-10>,\n` +
+            `  "feedback": "<2-3 specific, actionable improvement instructions in ${language}>"\n` +
+            `}`,
+        },
+      ] as Message[],
+      response_format: { type: "json_object" },
+      max_tokens: 600,
+    } as any);
 
   const raw = result.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
@@ -100,11 +101,17 @@ async function reviseContent(
   content: string,
   feedback: string,
   systemPrompt: string,
-  language: string
+  language: string,
+  score: number
 ): Promise<string> {
   const { invokeLLM } = await import("../_core/llm");
 
+  // Use gpt-5.4-pro for hard cases (score < 6), gpt-5.4 for moderate revisions
+  const revisionModel = score < 6 ? "gpt-5.4-pro" : "gpt-5.4";
+  console.log(`[EEATVerifier] Revision model: ${revisionModel} (score was ${score})`);
+
   const result = await invokeLLM({
+    model: revisionModel,
     messages: [
       { role: "system", content: systemPrompt },
       {
@@ -120,7 +127,7 @@ async function reviseContent(
           `CONTENT TO REVISE:\n${content}`,
       },
     ] as Message[],
-    max_tokens: 8000,
+    max_tokens: 16000,
   } as any);
 
   const revised = result.choices[0]?.message?.content;
@@ -176,7 +183,7 @@ export async function verifyAndRevise(
 
   let revised = content;
   try {
-    revised = await reviseContent(content, score.feedback, systemPrompt, language);
+    revised = await reviseContent(content, score.feedback, systemPrompt, language, score.overall);
   } catch (e) {
     console.warn("[EEATVerifier] Revision failed, using original:", (e as Error).message);
   }

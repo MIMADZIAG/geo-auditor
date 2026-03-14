@@ -171,6 +171,7 @@ async function extractSemanticTriples(
     const fragmentText = fragments.slice(0, 5).map((f, i) => `[${i + 1}] ${f}`).join("\n\n");
 
     const result = await invokeLLM({
+      model: "gpt-4.1",  // cheap auxiliary task — extraction only
       messages: [
         {
           role: "system",

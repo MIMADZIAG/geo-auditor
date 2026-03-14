@@ -562,3 +562,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Krok 3: Weryfikator E-E-A-T (nowy plik eeAtVerifier.ts) z auto-rewizją
 - [x] Krok 4: Iteracyjne generowanie sekcja po sekcji w routers.ts
 - [x] TypeScript check + testy po wszystkich zmianach (62/62 pass, 0 TS errors)
+
+## Model Update: GPT-5.4 / GPT-4.1
+
+- [x] llm.ts: zmienić domyślny model na gpt-5.4 (główne wywołania)
+- [x] routers.ts sandbox.rewrite: draft generation → gpt-5.4, wysoki max_tokens
+- [x] eeatVerifier.ts: evaluateEEAT → gpt-5.4, reviseContent → gpt-5.4-pro dla trudnych przypadków (score < 6)
+- [x] competitorCrawler.ts: extractSemanticTriples → gpt-4.1 (tanie zadanie ekstrakcji)
+- [x] routers.ts: inne tanie zadania pomocnicze (klasyfikacja sekcji, scoring) → gpt-4.1

@@ -66,6 +66,8 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
+  /** Override the model for this specific call. Defaults to gpt-5.4. */
+  model?: string;
 };
 
 export type ToolCall = {
@@ -279,7 +281,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gpt-4o",
+    model: (params as any).model ?? "gpt-5.4",
     messages: messages.map(normalizeMessage),
   };
 
@@ -295,7 +297,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 16384;
+  // Allow per-call override; default is high for gpt-5.4 verbosity
+  payload.max_tokens = (params as any).max_tokens ?? (params as any).maxTokens ?? 32768;
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
