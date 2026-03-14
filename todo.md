@@ -545,3 +545,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Prompt Helpful Content: uwagi z audytu + Content Intelligence + encje konkurencji
 - [x] Aktualizacja UI What-IF: źródła konkurencji, wskaźniki jakości, czysty output
 - [x] Test end-to-end z realnym URL
+
+## LLM Switch: Gemini → GPT-4o
+
+- [x] Zamiana modelu z Gemini 2.5 Flash (Manus Forge) na GPT-4o (OpenAI API)
+- [x] Podłączenie OPENAI_API_KEY z connectorów użytkownika
+- [x] Aktualizacja llm.ts: endpoint → api.openai.com, model → gpt-4o, max_tokens → 16384
+- [x] Usunięcie parametru thinking (Gemini-specific)
+- [x] Test API: GPT-4o odpowiada poprawnie (model: gpt-4o-2024-08-06)
+- [x] 62 testy przechodzą, 0 błędów TS
