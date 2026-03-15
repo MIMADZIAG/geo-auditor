@@ -583,3 +583,17 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Usunąć "AI Sandbox" z nawigacji głównej (topbar) — zastąpić linkiem do /pricing
 - [x] Dodać wskaźnik postępu podczas Full Rewrite (etapy: Pobieranie → Crawl → Generowanie sekcji → E-E-A-T)
 - [x] Renderowanie Markdown w output Full Rewrite (Streamdown zamiast <pre>)
+
+## Homepage Redesign — Konwersja do planów płatnych
+
+- [x] Nowe hero: asymetryczny layout, live audit demo po lewej + mockup wyników po prawej
+- [x] Social proof bar: liczby (40+ checks, AI engines covered, pages audited)
+- [x] Sekcja "Twoi konkurenci są już cytowani" — emocjonalny hook
+- [x] Feature showcase: 6 kart z ikonami i opisem każdej funkcji
+- [x] Sekcja AI Citations — kluczowy differentiator vs konkurencji
+- [x] Full Rewrite AI — showcase z przykładem przed/po
+- [x] Pricing preview (3 plany) z CTA bezpośrednio na stronie głównej
+- [x] Testimonials / social proof (mock na start — liczniki)
+- [x] FAQ sekcja (5 pytań)
+- [x] Final CTA z urgency
+- [x] Footer rozbudowany z linkami
