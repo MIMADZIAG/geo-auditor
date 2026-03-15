@@ -570,3 +570,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] eeatVerifier.ts: evaluateEEAT → gpt-5.4, reviseContent → gpt-5.4-pro dla trudnych przypadków (score < 6)
 - [x] competitorCrawler.ts: extractSemanticTriples → gpt-4.1 (tanie zadanie ekstrakcji)
 - [x] routers.ts: inne tanie zadania pomocnicze (klasyfikacja sekcji, scoring) → gpt-4.1
+
+## UI Uproszczenie — Content Copilot
+
+- [x] Usunąć zakładkę/sekcję What-IF z widoku wyników (zachować kod backendu)
+- [x] Usunąć tryby Content Copilot inne niż full_rewrite (zachować kod backendu)
+- [x] Usunąć baner/element zachęcający do AI Simulator z widoku AI Citations
+- [x] Zostawić tylko "AI Full Rewrite" jako jedyną opcję Content Copilot

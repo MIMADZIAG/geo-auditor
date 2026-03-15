@@ -848,8 +848,7 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
       {/* Global competitor summary */}
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
 
-      {/* PLG upsell */}
-      <PLGUpsell url={url} />
+      {/* PLG upsell removed — What-IF/Sandbox promo hidden */}
     </div>
   );
 }

@@ -185,9 +185,7 @@ export default function Results() {
                 {audit.url}
               </a>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate(`/sandbox?url=${encodeURIComponent(audit.url)}`)} className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 flex">
-              <Cpu className="w-3.5 h-3.5" /> AI Sandbox
-            </Button>
+            {/* AI Sandbox button hidden — feature simplified */}
             <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs">
               <Share2 className="w-3.5 h-3.5" /> Share
             </Button>
@@ -1043,13 +1041,10 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
   );
 }
 
-// ─── What-IF Simulator (inline, no navigation) ──────────────────────────────────────
+// ─── AI Content Co-Pilot — Full Rewrite AI only ─────────────────────────────────────
+// Other modes (answer_first, add_faq, add_statistics, improve_structure) preserved in backend but hidden from UI
 const AI_COPILOT_MODES = [
   { id: "full_rewrite" as const, label: "Pełny rewrite AI", icon: "✨", desc: "Kompletne przepisanie treści" },
-  { id: "answer_first" as const, label: "Answer-First", icon: "🎯", desc: "Odpowiedź na początku" },
-  { id: "add_faq" as const, label: "Dodaj FAQ", icon: "❓", desc: "Sekcja pytań i odpowiedzi" },
-  { id: "add_statistics" as const, label: "Dodaj statystyki", icon: "📊", desc: "Dane i liczby" },
-  { id: "improve_structure" as const, label: "Popraw strukturę", icon: "📝", desc: "Nagłówki i listy" },
 ] as const;
 
 function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCompetitorUrls?: string[] }) {
@@ -1059,16 +1054,10 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
   const [queries, setQueries] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
-  const [rewritingMode, setRewritingMode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [baselineResult, setBaselineResult] = useState<SimulationResult | null>(null);
-  const [currentResult, setCurrentResult] = useState<SimulationResult | null>(null);
   // cleanText = server-extracted plain text (no HTML tags)
   const [cleanText, setCleanText] = useState("");
   const [rewrittenText, setRewrittenText] = useState<string | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [cachedHtml, setCachedHtml] = useState("");
-  const [cachedRobots, setCachedRobots] = useState("");
   const [detectedPageType, setDetectedPageType] = useState("generic");
   const [copied, setCopied] = useState(false);
 
@@ -1077,18 +1066,10 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
     setError(null);
     try {
       const res = await fetchPageMutation.mutateAsync({ url });
-      const { html, robotsTxt } = res;
       const ct = (res as any).cleanText as string ?? "";
       const pt = (res as any).pageType as string ?? "generic";
-      setCachedHtml(html);
-      setCachedRobots(robotsTxt);
       setDetectedPageType(pt);
-      const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-      const result = runSimulation({ url, targetQueries, mode: "analyze" }, html, robotsTxt);
-      setBaselineResult(result);
-      setCurrentResult(result);
-      // Prefer server-extracted clean text; fallback to rawText from simulator
-      setCleanText(ct || result.contentAnalysis.rawText.slice(0, 8000));
+      setCleanText(ct);
       setRewrittenText(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to fetch URL");
@@ -1097,60 +1078,34 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
     }
   }
 
-  async function handleWhatIfSimulate(overrideContent?: string) {
-    if (!baselineResult) return;
-    const contentToSim = overrideContent ?? rewrittenText ?? cleanText;
-    if (!contentToSim.trim()) return;
-    setIsSimulating(true);
-    try {
-      const html = cachedHtml || (await fetchPageMutation.mutateAsync({ url })).html;
-      const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-      const result = runSimulation({ url, targetQueries, contentOverride: contentToSim, mode: "simulate" }, html, cachedRobots, baselineResult);
-      setCurrentResult(result);
-    } catch {
-      setError("Simulation failed. Please try again.");
-    } finally {
-      setIsSimulating(false);
-    }
-  }
+  // handleWhatIfSimulate preserved in backend — hidden from UI
 
-  async function handleAIRewrite(mode: typeof AI_COPILOT_MODES[number]["id"]) {
+  async function handleAIRewrite() {
     const sourceContent = rewrittenText ?? cleanText;
     if (!sourceContent.trim()) return;
     setIsRewriting(true);
-    setRewritingMode(mode);
     setError(null);
     try {
-      const issues = baselineResult?.issues.map(i => `[${i.severity}] ${i.title}: ${i.description}`) ?? [];
-      const targetQueries = queries.split("\n").map(q => q.trim()).filter(q => q.length > 0);
       const result = await rewriteMutation.mutateAsync({
         content: sourceContent,
-        mode,
-        issues,
+        mode: "full_rewrite",
+        issues: [],
         url,
         pageType: detectedPageType,
-        targetQueries,
-        // Pass competitor URLs for full_rewrite mode so AI can use them
-        citedCompetitorUrls: mode === "full_rewrite" ? citedCompetitorUrls : undefined,
+        targetQueries: [],
+        citedCompetitorUrls,
       });
       const { rewrittenContent } = result;
-      // Show competitor insights badge if available
-      if (mode === "full_rewrite" && result.competitorInsights && result.competitorInsights.count > 0) {
+      if (result.competitorInsights && result.competitorInsights.count > 0) {
         toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
       }
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
       setRewrittenText(rewrittenStr);
       setCopied(false);
-      // Auto-simulate after rewrite
-      if (baselineResult && cachedHtml) {
-        const result = runSimulation({ url, targetQueries, contentOverride: rewrittenStr, mode: "simulate" }, cachedHtml, cachedRobots, baselineResult);
-        setCurrentResult(result);
-      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "AI rewrite failed");
     } finally {
       setIsRewriting(false);
-      setRewritingMode(null);
     }
   }
 
@@ -1164,7 +1119,6 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
   }
 
   function handleReset() {
-    setCurrentResult(baselineResult);
     setRewrittenText(null);
     setCopied(false);
   }
@@ -1174,28 +1128,21 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
       {/* Header — always visible, click to expand */}
       <button
         className="w-full flex items-center justify-between gap-4 p-5 bg-gradient-to-r from-violet-950/60 via-indigo-950/40 to-zinc-900/80 hover:from-violet-950/80 transition-colors text-left"
-        onClick={() => { setIsExpanded(v => !v); if (!isExpanded && !baselineResult) handleAnalyze(); }}
+        onClick={() => { setIsExpanded(v => !v); if (!isExpanded && !cleanText) handleAnalyze(); }}
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center flex-shrink-0">
-            <Cpu className="w-5 h-5 text-violet-300" />
+            <Sparkles className="w-5 h-5 text-violet-300" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-white">⚡ What-IF Simulator + AI Co-Pilot</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">DARMOWY</span>
+              <span className="text-sm font-bold text-white">✨ AI Content Co-Pilot</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">Full Rewrite AI</span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">AI przepisze Twoją treść i pokaże wpływ na AI Score — bez edytowania strony</p>
+            <p className="text-xs text-zinc-400 mt-0.5">AI przepisze Twoją treść zgodnie z zasadami Helpful Content i danymi z AI Citations</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {baselineResult && (
-            <span className="text-xs text-violet-300 font-semibold hidden sm:block">
-              Score: {currentResult?.overallScore ?? baselineResult.overallScore}
-            </span>
-          )}
-          <ChevronDown className={`w-5 h-5 text-violet-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-        </div>
+        <ChevronDown className={`w-5 h-5 text-violet-400 transition-transform ${isExpanded ? "rotate-180" : ""} shrink-0`} />
       </button>
 
       {/* Expanded content */}
@@ -1204,7 +1151,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
           {isLoading && (
             <div className="flex items-center justify-center gap-3 py-12">
               <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-zinc-400">Pobieranie i analiza treści strony...</span>
+              <span className="text-sm text-zinc-400">Pobieranie treści strony...</span>
             </div>
           )}
           {error && (
@@ -1212,192 +1159,89 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
               <AlertCircle className="w-4 h-4 shrink-0" />{error}
             </div>
           )}
-          {!isLoading && !baselineResult && !error && (
+
+          {!isLoading && !cleanText && !error && (
             <div className="flex flex-col items-center gap-4 py-10">
-              <p className="text-sm text-zinc-400">Kliknij, aby pobrać treść strony i uruchomić symulację</p>
+              <p className="text-sm text-zinc-400">Kliknij, aby pobrać treść strony i przygotować rewrite</p>
               <Button onClick={handleAnalyze} className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
-                <Sparkles className="w-4 h-4" /> Uruchom analizę
+                <Sparkles className="w-4 h-4" /> Pobierz treść strony
               </Button>
             </div>
           )}
-          {!isLoading && currentResult && (
-            <div className="p-4 space-y-5">
 
-              {/* Score row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: "Overall", score: currentResult.overallScore, baseline: baselineResult?.overallScore },
-                  { label: "ChatGPT", score: currentResult.chatgptScore, baseline: baselineResult?.chatgptScore },
-                  { label: "Perplexity", score: currentResult.perplexityScore, baseline: baselineResult?.perplexityScore },
-                  { label: "Google AIO", score: currentResult.googleAIOScore, baseline: baselineResult?.googleAIOScore },
-                ].map(({ label, score, baseline }) => {
-                  const delta = baseline !== undefined ? score - baseline : 0;
-                  return (
-                    <div key={label} className="bg-zinc-900 border border-white/8 rounded-xl p-3 text-center">
-                      <div className="text-xl font-bold text-white">{score}</div>
-                      <div className="text-xs text-zinc-500 mt-0.5">{label}</div>
-                      {delta !== 0 && (
-                        <div className={`text-xs font-semibold mt-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {delta > 0 ? '+' : ''}{delta}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+          {!isLoading && cleanText && (
+            <div className="p-4 space-y-4">
 
-              {/* AI Co-Pilot section */}
-              <div className="rounded-xl border border-violet-500/20 bg-violet-950/20 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
-                  <span className="text-sm font-semibold text-violet-300">AI Content Co-Pilot</span>
-                  <span className="text-xs text-zinc-500">Wybierz tryb — AI przepisze treść i od razu pokaże nowy score</span>
+              {/* Original content preview */}
+              {!rewrittenText && (
+                <div className="rounded-xl border border-white/8 bg-zinc-900/60 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
+                    <span className="text-xs font-semibold text-zinc-400">Oryginalna treść strony</span>
+                    <span className="text-[10px] text-zinc-600">{cleanText.length} znaków • typ: {detectedPageType}</span>
+                  </div>
+                  <div className="px-4 py-3 max-h-48 overflow-y-auto">
+                    <pre className="text-xs text-zinc-500 whitespace-pre-wrap leading-relaxed font-sans">{cleanText.slice(0, 1200)}{cleanText.length > 1200 ? "\n\n[...] (treść skrócona do podglądu)" : ""}</pre>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {AI_COPILOT_MODES.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => handleAIRewrite(m.id)}
-                      disabled={isRewriting}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-all ${
-                        rewritingMode === m.id
-                          ? 'border-violet-400 bg-violet-500/20 text-violet-200'
-                          : 'border-white/10 bg-zinc-900 hover:border-violet-500/40 hover:bg-violet-950/40 text-zinc-300'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {rewritingMode === m.id ? (
-                        <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span className="text-base">{m.icon}</span>
-                      )}
-                      <span className="text-xs font-medium leading-tight">{m.label}</span>
-                      <span className="text-[10px] text-zinc-500 leading-tight">{m.desc}</span>
-                    </button>
-                  ))}
-                </div>
-                {isRewriting && (
-                  <p className="text-xs text-violet-400 animate-pulse">
-                    AI przepisuje treść na podstawie wyników audytu... (~15–30 sek)
-                  </p>
-                )}
-              </div>
+              )}
 
-              {/* Optional queries */}
-              <div>
-                <label className="text-xs text-zinc-500 mb-1 block">Zapytania docelowe (opcjonalnie, jedno na linię)</label>
-                <textarea
-                  value={queries}
-                  onChange={e => setQueries(e.target.value)}
-                  placeholder="np. najlepszy kredyt gotówkowy&#10;porównywarka kredytów"
-                  rows={2}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-300 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500/50"
-                />
-              </div>
-
-              {/* Content panel: before / after */}
-              <div className="space-y-3">
-                {/* Rewritten text panel (shown after AI rewrite) */}
-                {rewrittenText ? (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-950/30">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-emerald-300">Gotowa treść po optymalizacji AI</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
-                          {detectedPageType !== "generic" ? detectedPageType : "ogólna"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-zinc-500">{rewrittenText.length} znaków</span>
-                        <button
-                          onClick={handleCopy}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                            copied
-                              ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
-                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10'
-                          }`}
-                        >
-                          <Copy className="w-3 h-3" />
-                          {copied ? "Skopiowano!" : "Kopiuj tekst"}
-                        </button>
-                      </div>
+              {/* Rewritten text panel */}
+              {rewrittenText && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-950/30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-emerald-300">✨ Przepisana treść — gotowa do wdrożenia</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                        {detectedPageType !== "generic" ? detectedPageType : "ogólna"}
+                      </span>
                     </div>
-                    <div className="px-4 py-4 max-h-96 overflow-y-auto">
-                      <pre className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans">{rewrittenText}</pre>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-zinc-500">{rewrittenText.length} znaków</span>
+                      <button
+                        onClick={handleCopy}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          copied
+                            ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10'
+                        }`}
+                      >
+                        <Copy className="w-3 h-3" />
+                        {copied ? "Skopiowano!" : "Kopiuj tekst"}
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  /* Original content preview (before rewrite) */
-                  cleanText && (
-                    <div className="rounded-xl border border-white/8 bg-zinc-900/60 overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
-                        <span className="text-xs font-semibold text-zinc-400">Oryginalna treść strony</span>
-                        <span className="text-[10px] text-zinc-600">{cleanText.length} znaków • typ: {detectedPageType}</span>
-                      </div>
-                      <div className="px-4 py-3 max-h-48 overflow-y-auto">
-                        <pre className="text-xs text-zinc-500 whitespace-pre-wrap leading-relaxed font-sans">{cleanText.slice(0, 1200)}{cleanText.length > 1200 ? "\n\n[...] (treść skrócona do podglądu)" : ""}</pre>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
+                  <div className="px-4 py-4 max-h-[500px] overflow-y-auto">
+                    <pre className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans">{rewrittenText}</pre>
+                  </div>
+                </div>
+              )}
 
-              {/* Simulate + Reset buttons */}
+              {/* Action buttons */}
               <div className="flex gap-3">
                 <Button
-                  onClick={() => handleWhatIfSimulate()}
-                  disabled={isSimulating || isRewriting}
+                  onClick={handleAIRewrite}
+                  disabled={isRewriting}
                   className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
                 >
-                  {isSimulating ? (
-                    <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Symulowanie...</>
+                  {isRewriting ? (
+                    <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generowanie...(30–60 sek)</>
                   ) : (
-                    <><Zap className="w-3.5 h-3.5" /> Uruchom symulację</>
+                    <><Sparkles className="w-3.5 h-3.5" /> {rewrittenText ? "Przepisz ponownie" : "Uruchom Full Rewrite AI"}</>
                   )}
                 </Button>
                 {rewrittenText && (
-                  <Button variant="outline" onClick={handleReset} disabled={isSimulating || isRewriting} className="gap-2 text-zinc-400">
+                  <Button variant="outline" onClick={() => { setRewrittenText(null); setCopied(false); }} disabled={isRewriting} className="gap-2 text-zinc-400">
                     Powrót do oryginału
                   </Button>
                 )}
               </div>
 
-              {/* Delta results */}
-              {currentResult.deltaFromBaseline && (
-                <div className="rounded-xl bg-zinc-900 border border-white/8 p-4">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Wynik symulacji — zmiana score</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {[
-                      { label: "Overall", v: currentResult.deltaFromBaseline.overallDelta },
-                      { label: "ChatGPT", v: currentResult.deltaFromBaseline.chatgptDelta },
-                      { label: "Perplexity", v: currentResult.deltaFromBaseline.perplexityDelta },
-                      { label: "Google AIO", v: currentResult.deltaFromBaseline.googleAIODelta },
-                      { label: "Cytowanie", v: currentResult.deltaFromBaseline.citationProbabilityDelta },
-                    ].map(({ label, v }) => (
-                      <div key={label} className={`rounded-lg p-2 text-center border ${
-                        v > 0 ? 'bg-emerald-500/10 border-emerald-500/30' : v < 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-zinc-800 border-white/8'
-                      }`}>
-                        <div className={`text-lg font-bold ${v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
-                          {v > 0 ? '+' : ''}{v}
-                        </div>
-                        <div className="text-[10px] text-zinc-500">{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {currentResult.deltaFromBaseline.improvedIssues.length > 0 && (
-                    <div className="mt-3 text-xs text-emerald-400">
-                      ✅ Naprawione problemy: {currentResult.deltaFromBaseline.improvedIssues.join(", ")}
-                    </div>
-                  )}
-                </div>
+              {isRewriting && (
+                <p className="text-xs text-violet-400 animate-pulse">
+                  AI analizuje treść strony, crawluje konkurencję z AI Citations i generuje tekst zgodny z Helpful Content...
+                </p>
               )}
 
-              {/* Issues */}
-              {currentResult.issues.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Wykryte problemy</p>
-                  <IssuesList issues={currentResult.issues} />
-                </div>
-              )}
             </div>
           )}
         </div>
