@@ -47,6 +47,7 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import { Streamdown } from "streamdown";
 import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
 import type { SimulationResult } from "@/geo-sandbox/types/simulator";
 import WhatIfEditor from "@/geo-sandbox/components/WhatIfEditor";
@@ -1041,6 +1042,76 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
   );
 }
 
+// ─── Rewrite Progress Indicator ─────────────────────────────────────────────
+const REWRITE_STEPS = [
+  { id: 1, label: "Pobieranie treści strony", icon: "🔍", detail: "Analizuję HTML, nagłówki i strukturę" },
+  { id: 2, label: "Crawl konkurencji z AI Citations", icon: "🕷️", detail: "Pobieram treści cytowanych stron" },
+  { id: 3, label: "Generowanie tekstu", icon: "✍️", detail: "GPT-5.4 pisze sekcję po sekcji" },
+  { id: 4, label: "Weryfikacja E-E-A-T", icon: "🎯", detail: "Sprawdzam jakość i poprawiam jeśli potrzeba" },
+];
+
+function RewriteProgressIndicator({
+  step,
+  sectionProgress,
+}: {
+  step: number;
+  sectionProgress: { current: number; total: number } | null;
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-950/30 p-4 space-y-3">
+      <p className="text-xs font-semibold text-violet-300 uppercase tracking-wider">Postęp generowania</p>
+      <div className="space-y-2">
+        {REWRITE_STEPS.map((s) => {
+          const isDone = step > s.id;
+          const isActive = step === s.id;
+          const isPending = step < s.id;
+          return (
+            <div key={s.id} className={`flex items-start gap-3 transition-opacity duration-300 ${
+              isPending ? "opacity-30" : "opacity-100"
+            }`}>
+              {/* Status icon */}
+              <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                isDone
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : isActive
+                  ? "bg-violet-500/30 text-violet-300"
+                  : "bg-zinc-800 text-zinc-600"
+              }`}>
+                {isDone ? "✓" : isActive ? (
+                  <span className="block w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                ) : s.id}
+              </div>
+              {/* Label + detail */}
+              <div className="min-w-0">
+                <p className={`text-sm font-medium ${
+                  isDone ? "text-emerald-400" : isActive ? "text-violet-200" : "text-zinc-500"
+                }`}>
+                  {s.icon} {s.label}
+                  {isActive && s.id === 3 && sectionProgress && (
+                    <span className="ml-2 text-xs text-violet-400 font-normal">
+                      sekcja {sectionProgress.current}/{sectionProgress.total}
+                    </span>
+                  )}
+                </p>
+                {isActive && (
+                  <p className="text-xs text-zinc-400 mt-0.5">{s.detail}</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Progress bar */}
+      <div className="h-1 rounded-full bg-zinc-800 overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-violet-600 to-indigo-500 rounded-full transition-all duration-700 ease-out"
+          style={{ width: `${Math.min(100, (step / REWRITE_STEPS.length) * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── AI Content Co-Pilot — Full Rewrite AI only ─────────────────────────────────────
 // Other modes (answer_first, add_faq, add_statistics, improve_structure) preserved in backend but hidden from UI
 const AI_COPILOT_MODES = [
@@ -1054,6 +1125,8 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
   const [queries, setQueries] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
+  const [rewriteStep, setRewriteStep] = useState(0); // 0=idle, 1=fetch, 2=crawl, 3=generate, 4=verify
+  const [rewriteSectionProgress, setRewriteSectionProgress] = useState<{current: number; total: number} | null>(null);
   const [error, setError] = useState<string | null>(null);
   // cleanText = server-extracted plain text (no HTML tags)
   const [cleanText, setCleanText] = useState("");
@@ -1084,7 +1157,29 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
     const sourceContent = rewrittenText ?? cleanText;
     if (!sourceContent.trim()) return;
     setIsRewriting(true);
+    setRewriteStep(1); // Fetching page
+    setRewriteSectionProgress(null);
     setError(null);
+
+    // Simulate realistic step progression while waiting for the server
+    const stepTimings = [
+      { step: 2, delay: 1800 },  // Crawling competitors
+      { step: 3, delay: 5000 },  // Generating sections
+      { step: 4, delay: 35000 }, // E-E-A-T verification
+    ];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    stepTimings.forEach(({ step, delay }) => {
+      timers.push(setTimeout(() => setRewriteStep(step), delay));
+    });
+    // Simulate section progress during step 3
+    const sectionTimers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i <= 6; i++) {
+      sectionTimers.push(setTimeout(() => {
+        setRewriteStep(3);
+        setRewriteSectionProgress({ current: i, total: 6 });
+      }, 5000 + i * 4500));
+    }
+
     try {
       const result = await rewriteMutation.mutateAsync({
         content: sourceContent,
@@ -1095,6 +1190,8 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
         targetQueries: [],
         citedCompetitorUrls,
       });
+      // Clear all timers immediately on success
+      [...timers, ...sectionTimers].forEach(clearTimeout);
       const { rewrittenContent } = result;
       if (result.competitorInsights && result.competitorInsights.count > 0) {
         toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
@@ -1103,9 +1200,12 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
       setRewrittenText(rewrittenStr);
       setCopied(false);
     } catch (err: unknown) {
+      [...timers, ...sectionTimers].forEach(clearTimeout);
       setError(err instanceof Error ? err.message : "AI rewrite failed");
     } finally {
       setIsRewriting(false);
+      setRewriteStep(0);
+      setRewriteSectionProgress(null);
     }
   }
 
@@ -1210,8 +1310,8 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
                       </button>
                     </div>
                   </div>
-                  <div className="px-4 py-4 max-h-[500px] overflow-y-auto">
-                    <pre className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans">{rewrittenText}</pre>
+                  <div className="px-4 py-4 max-h-[600px] overflow-y-auto prose prose-invert prose-sm max-w-none prose-headings:text-zinc-100 prose-headings:font-bold prose-p:text-zinc-200 prose-p:leading-relaxed prose-li:text-zinc-200 prose-strong:text-white prose-a:text-violet-400 prose-blockquote:border-violet-500 prose-blockquote:text-zinc-300 prose-code:text-emerald-300 prose-code:bg-zinc-800/60 prose-code:rounded prose-code:px-1">
+                    <Streamdown className="text-sm leading-relaxed">{rewrittenText}</Streamdown>
                   </div>
                 </div>
               )}
@@ -1237,9 +1337,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
               </div>
 
               {isRewriting && (
-                <p className="text-xs text-violet-400 animate-pulse">
-                  AI analizuje treść strony, crawluje konkurencję z AI Citations i generuje tekst zgodny z Helpful Content...
-                </p>
+                <RewriteProgressIndicator step={rewriteStep} sectionProgress={rewriteSectionProgress} />
               )}
 
             </div>

@@ -577,3 +577,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Usunąć tryby Content Copilot inne niż full_rewrite (zachować kod backendu)
 - [x] Usunąć baner/element zachęcający do AI Simulator z widoku AI Citations
 - [x] Zostawić tylko "AI Full Rewrite" jako jedyną opcję Content Copilot
+
+## UX Improvements — 3 zadania
+
+- [x] Usunąć "AI Sandbox" z nawigacji głównej (topbar) — zastąpić linkiem do /pricing
+- [x] Dodać wskaźnik postępu podczas Full Rewrite (etapy: Pobieranie → Crawl → Generowanie sekcji → E-E-A-T)
+- [x] Renderowanie Markdown w output Full Rewrite (Streamdown zamiast <pre>)
