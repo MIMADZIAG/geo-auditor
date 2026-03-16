@@ -625,3 +625,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ## Bug Fix: Full Rewrite AI — "The string did not match the expected pattern"
 - [x] Diagnoza: eeatVerifier.ts używał gpt-5.4-pro (nie jest modelem chat) dla score < 6 — API zwracało 400
 - [x] Naprawa: zastąpiono gpt-5.4-pro przez gpt-5.4 w reviseContent()
+
+## Bug Fix: Full Rewrite AI — "Unexpected token '<', <!DOCTYPE is not valid JSON"
+- [x] Diagnoza: llm.ts używał bezpośrednio api.openai.com z kluczem sk-proj z limitami rate limit — przy 8 sekcjach x 4000 tokenow API zwracało błąd/timeout, a Vite fallback zwracał HTML
+- [x] Naprawa: llm.ts używa teraz Manus Forge API (forge.manus.ai) bez limitów, z fallbackiem do OpenAI

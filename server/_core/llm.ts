@@ -211,15 +211,23 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () => "https://api.openai.com/v1/chat/completions";
+// Use Manus Forge API (built-in, no rate limits) with fallback to direct OpenAI
+const resolveApiUrl = () => {
+  const forgeUrl = process.env.BUILT_IN_FORGE_API_URL;
+  if (forgeUrl) return `${forgeUrl}/v1/chat/completions`;
+  return "https://api.openai.com/v1/chat/completions";
+};
 
 const assertApiKey = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  const hasForge = Boolean(process.env.BUILT_IN_FORGE_API_KEY);
+  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+  if (!hasForge && !hasOpenAI) {
+    throw new Error("No LLM API key configured (BUILT_IN_FORGE_API_KEY or OPENAI_API_KEY)");
   }
 };
 
-const getApiKey = () => process.env.OPENAI_API_KEY ?? "";
+const getApiKey = () =>
+  process.env.BUILT_IN_FORGE_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
 
 const normalizeResponseFormat = ({
   responseFormat,
