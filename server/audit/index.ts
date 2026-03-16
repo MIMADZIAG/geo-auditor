@@ -113,31 +113,39 @@ export async function runAudit(url: string): Promise<AuditResult> {
   const scoreLabel = getScoreLabel(overallScore);
   const recommendations = generateRecommendations(findings);
 
-  // Generate LLM-powered personalized recommendations (best-effort, non-fatal)
-  let llmResult: LLMRecommendationsResult | undefined;
-  try {
-    // Pass detected schemas separately so LLM knows what's already present
-    llmResult = await generateLLMRecommendations(page, findings, pageType, structuredDataResult.schemas);
-  } catch (err) {
-    console.warn(
-      "[LLM] Failed to generate LLM recommendations:",
-      err instanceof Error ? err.message : err
-    );
-    // Non-fatal: audit still succeeds without LLM recommendations
+  // Helper: retry an async fn up to `attempts` times with exponential backoff
+  async function withRetry<T>(fn: () => Promise<T>, attempts: number, label: string): Promise<T | undefined> {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        const isLast = i === attempts - 1;
+        console.warn(
+          `[${label}] Attempt ${i + 1}/${attempts} failed:`,
+          err instanceof Error ? err.message : err
+        );
+        if (!isLast) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+    return undefined;
   }
 
-  // Generate Content Intelligence analysis (best-effort, non-fatal)
-  let contentIntelligence: ContentIntelligenceResult | undefined;
-  try {
-    contentIntelligence = await analyzeContentIntelligence(page, pageType);
+  // Generate LLM-powered personalized recommendations (best-effort, non-fatal, 2 retries)
+  const llmResult = await withRetry(
+    () => generateLLMRecommendations(page, findings, pageType, structuredDataResult.schemas),
+    2,
+    "LLM"
+  );
+
+  // Generate Content Intelligence analysis (best-effort, non-fatal, 2 retries)
+  let contentIntelligence = await withRetry(
+    () => analyzeContentIntelligence(page, pageType),
+    2,
+    "ContentIntelligence"
+  );
+  if (contentIntelligence) {
     // Also store in findings for scoring
     findings.contentIntelligence = contentIntelligence;
-  } catch (err) {
-    console.warn(
-      "[ContentIntelligence] Failed to generate analysis:",
-      err instanceof Error ? err.message : err
-    );
-    // Non-fatal: audit still succeeds without Content Intelligence
   }
 
   // Recompute overall score if Content Intelligence is available

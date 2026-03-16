@@ -216,6 +216,7 @@ export default function Results() {
           pageTitle={audit.pageTitle ?? audit.url}
           url={audit.url}
           findings={findings}
+          citeabilityScore={contentIntelligence?.citeabilityScore}
         />
 
            {/* ── 2. Issues & Fixes — Critical first ── */}
@@ -234,6 +235,7 @@ export default function Results() {
         <ContentIntelligencePanel
           contentIntelligence={contentIntelligence}
           isAuthenticated={isAuthenticated}
+          auditStatus={audit.status}
         />
         {/* ── 6. AI Citation Check (Pro) ── */}
         <AICitationPanel
@@ -242,7 +244,7 @@ export default function Results() {
           onCompetitorUrlsReady={setCitedCompetitorUrls}
         />
         {/* ── 7. What-IF Simulator — inline, no navigation needed ── */}
-        <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} />
+        <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
         {/* ── 7. Competitor Analysis Teaser (Pro) ── */}
         <CompetitorAnalysisTeaser navigate={navigate} />
         {/* ── 7. What's Working ── */}
@@ -266,18 +268,24 @@ function ScoreHero({
   pageTitle,
   url,
   findings,
+  citeabilityScore,
 }: {
   score: number;
   pageTitle: string;
   url: string;
   findings: AuditResult["findings"] | null;
+  citeabilityScore?: number;
 }) {
   const [displayScore, setDisplayScore] = useState(0);
+  const [displayCite, setDisplayCite] = useState(0);
   const scoreColor = getScoreColor(score);
   const scoreLabel = getScoreLabel(score);
   const scoreSublabel = getScoreSublabel(score);
   const circumference = 2 * Math.PI * 54;
   const strokeDashoffset = circumference - (displayScore / 100) * circumference;
+  const citeCircumference = 2 * Math.PI * 30;
+  const citeOffset = citeCircumference - (displayCite / 100) * citeCircumference;
+  const citeColor = citeabilityScore !== undefined ? getScoreColor(citeabilityScore) : "oklch(0.55 0.02 250)";
 
   // Animate score count-up
   useEffect(() => {
@@ -287,40 +295,77 @@ function ScoreHero({
       if (!start) start = timestamp;
       const progress = Math.min((timestamp - start) / duration, 1);
       setDisplayScore(Math.round(progress * score));
+      if (citeabilityScore !== undefined) setDisplayCite(Math.round(progress * citeabilityScore));
       if (progress < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
-  }, [score]);
+  }, [score, citeabilityScore]);
 
   return (
     <div className="rounded-2xl bg-card border border-border/50 p-8">
       <div className="flex flex-col lg:flex-row items-center gap-8">
-        {/* Score Ring */}
-        <div className="shrink-0 relative">
-          <svg width="160" height="160" viewBox="0 0 160 160" className="-rotate-90">
-            <circle cx="80" cy="80" r="54" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="10" />
-            <circle
-              cx="80" cy="80" r="54" fill="none"
-              stroke={scoreColor}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              style={{ transition: "stroke-dashoffset 0.05s linear" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-5xl font-black" style={{ color: scoreColor }}>{displayScore}</span>
-            <span className="text-xs text-muted-foreground mt-0.5">/ 100</span>
+        {/* Score Rings — AI Visibility + Citeability side by side */}
+        <div className="shrink-0 flex items-end gap-4">
+          {/* Main AI Visibility Score ring */}
+          <div className="relative">
+            <svg width="160" height="160" viewBox="0 0 160 160" className="-rotate-90">
+              <circle cx="80" cy="80" r="54" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="10" />
+              <circle
+                cx="80" cy="80" r="54" fill="none"
+                stroke={scoreColor}
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                style={{ transition: "stroke-dashoffset 0.05s linear" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-5xl font-black" style={{ color: scoreColor }}>{displayScore}</span>
+              <span className="text-xs text-muted-foreground mt-0.5">/ 100</span>
+            </div>
+            <div className="absolute -bottom-5 left-0 right-0 text-center">
+              <span className="text-[10px] text-muted-foreground font-medium">AI Visibility</span>
+            </div>
           </div>
+
+          {/* Citeability Score — smaller ring, shown when CI data is available */}
+          {citeabilityScore !== undefined && (
+            <div className="relative mb-1">
+              <svg width="88" height="88" viewBox="0 0 88 88" className="-rotate-90">
+                <circle cx="44" cy="44" r="30" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="7" />
+                <circle
+                  cx="44" cy="44" r="30" fill="none"
+                  stroke={citeColor}
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeDasharray={citeCircumference}
+                  strokeDashoffset={citeOffset}
+                  style={{ transition: "stroke-dashoffset 0.05s linear" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-black" style={{ color: citeColor }}>{displayCite}</span>
+                <span className="text-[8px] text-muted-foreground">/100</span>
+              </div>
+              <div className="absolute -bottom-5 left-0 right-0 text-center">
+                <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">Citeability</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Info */}
-        <div className="flex-1 text-center lg:text-left">
+        <div className="flex-1 text-center lg:text-left mt-6 lg:mt-0">
           <div className="flex items-center justify-center lg:justify-start gap-2 mb-3">
             <span className="text-sm font-semibold px-3 py-1 rounded-full" style={{ color: scoreColor, background: `${scoreColor}20` }}>
               {scoreLabel} AI Visibility
             </span>
+            {citeabilityScore !== undefined && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ color: citeColor, background: `${citeColor}20` }}>
+                Citeability: {citeabilityScore}
+              </span>
+            )}
           </div>
           <h1 className="text-xl sm:text-2xl font-bold mb-1 break-words line-clamp-2 leading-tight" title={pageTitle || url}>{pageTitle || url}</h1>
           <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center lg:justify-start gap-1 mb-3 min-w-0" style={{wordBreak:'break-all'}}>
@@ -363,14 +408,44 @@ function ScoreHero({
 function ContentIntelligencePanel({
   contentIntelligence,
   isAuthenticated,
+  auditStatus,
 }: {
   contentIntelligence: ContentIntelligenceResult | null;
   isAuthenticated: boolean;
+  auditStatus?: string;
 }) {
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
 
-  // Loading state — CI is computed async
+  // If audit is done but CI is null — it failed after retries
+  const isAuditDone = auditStatus === "completed" || auditStatus === "done" || !auditStatus;
   if (!contentIntelligence) {
+    if (isAuditDone) {
+      // Error state — show friendly message instead of empty section
+      return (
+        <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold">Content Intelligence</h2>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Deep content analysis — answer density, factual richness, citeability</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-amber-300 font-medium">Analiza AI chwilowo niedostępna</p>
+              <p className="text-xs text-muted-foreground mt-1">Serwer AI był przeciążony podczas tego audytu. Uruchom audyt ponownie, aby uzyskać pełną analizę Content Intelligence.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    // Still loading
     return (
       <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-indigo-500/3 to-background p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -1118,11 +1193,107 @@ const AI_COPILOT_MODES = [
   { id: "full_rewrite" as const, label: "Pełny rewrite AI", icon: "✨", desc: "Kompletne przepisanie treści" },
 ] as const;
 
-function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCompetitorUrls?: string[] }) {
+// ─── Upsell Paywall for Free plan users ───────────────────────────────────────
+function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
+  const BENEFITS = [
+    { icon: "✨", title: "Pełny rewrite AI", desc: "AI przepisuje całą stronę zgodnie z zasadami Helpful Content" },
+    { icon: "🥇", title: "Dane z AI Citations", desc: "Rewrite oparty na analizie cytowanych konkurentów" },
+    { icon: "🛡️", title: "Weryfikacja E-E-A-T", desc: "Automatyczna kontrola jakości i wiarygodności treści" },
+    { icon: "📊", title: "5 trybów optymalizacji", desc: "Full Rewrite, Answer First, FAQ, Statystyki, Struktura" },
+  ];
+  return (
+    <div className="rounded-2xl border-2 border-violet-500/40 overflow-hidden relative">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 p-5 bg-gradient-to-r from-violet-950/60 via-indigo-950/40 to-zinc-900/80">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-violet-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-white">✨ AI Content Co-Pilot</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">Full Rewrite AI</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Starter+
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 mt-0.5">AI przepisze Twoją treść zgodnie z zasadami Helpful Content i danymi z AI Citations</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Blurred preview */}
+      <div className="relative bg-zinc-950/80 border-t border-violet-500/20">
+        {/* Fake content — blurred */}
+        <div className="p-4 select-none pointer-events-none" style={{ filter: "blur(5px)", opacity: 0.45 }}>
+          <div className="rounded-xl border border-white/8 bg-zinc-900/60 overflow-hidden mb-4">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
+              <span className="text-xs font-semibold text-zinc-400">Oryginalna treść strony</span>
+              <span className="text-[10px] text-zinc-600">4 820 znaków • typ: product</span>
+            </div>
+            <div className="px-4 py-3">
+              <div className="space-y-2">
+                {["Nasz produkt to najlepszy wybor dla kazdego klienta.", "Oferujemy szeroki wybor produktow w atrakcyjnych cenach.", "Skontaktuj sie z nami, aby dowiedziec sie wiecej o naszej ofercie.", "Zapraszamy do zapoznania sie z nasza pelna oferta produktow."].map((line, i) => (
+                  <div key={i} className="text-xs text-zinc-500">{line}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-950/30">
+              <span className="text-xs font-semibold text-emerald-300">✨ Przepisana treść — gotowa do wdrożenia</span>
+            </div>
+            <div className="px-4 py-4 space-y-2">
+              {["## Poduszka dekoracyjna Premium — idealna do salonu i sypialni", "Poduszka dekoracyjna Premium to wyjątkowy dodatek, który odmieni wygląd Twojego wnętrza. Wykonana z wysokiej jakości tkaniny...", "### Dla kogo jest ten produkt?", "Idealna dla osób urządzających salon lub sypialnię, które szukają eleganckiego akcentu..."].map((line, i) => (
+                <div key={i} className="text-xs text-emerald-200/70">{line}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Overlay CTA */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-zinc-950/95 via-zinc-950/70 to-transparent px-6 py-8">
+          <div className="text-center max-w-md">
+            <div className="w-14 h-14 rounded-2xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-7 h-7 text-violet-300" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Odblokuj Full Rewrite AI</h3>
+            <p className="text-sm text-zinc-400 mb-5 leading-relaxed">
+              AI przepisze Twoją stronę od nowa — z uwzględnieniem danych z AI Citations, zasad Helpful Content i weryfikacji E-E-A-T. Gotowy tekst do wklejenia.
+            </p>
+
+            {/* Benefits grid */}
+            <div className="grid grid-cols-2 gap-2.5 mb-5 text-left">
+              {BENEFITS.map(({ icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-2 bg-white/4 border border-white/8 rounded-xl p-2.5">
+                  <span className="text-base flex-shrink-0">{icon}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-white">{title}</p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              onClick={() => navigate("/pricing")}
+              className="bg-violet-600 hover:bg-violet-500 text-white font-semibold gap-2 shadow-lg shadow-violet-500/25 px-6"
+            >
+              <Sparkles className="w-4 h-4" /> Przejdź na Starter — od $39/mies.
+            </Button>
+            <p className="text-[10px] text-zinc-600 mt-2">Anuluj w dowolnym momencie • Bez ukrytych opłat</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: string; citedCompetitorUrls?: string[]; navigate: (path: string) => void }) {
+  const { user } = useAuth();
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
   const rewriteMutation = trpc.sandbox.rewrite.useMutation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [queries, setQueries] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
   const [rewriteStep, setRewriteStep] = useState(0); // 0=idle, 1=fetch, 2=crawl, 3=generate, 4=verify
@@ -1133,6 +1304,16 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
   const [rewrittenText, setRewrittenText] = useState<string | null>(null);
   const [detectedPageType, setDetectedPageType] = useState("generic");
   const [copied, setCopied] = useState(false);
+
+  // Show upsell for unauthenticated users or users on free plan
+  // We detect free plan by checking if the user is not authenticated (free tier)
+  // Authenticated users with paid plan can use the feature
+  const userPlan = (user as any)?.plan ?? "free";
+  const isFreePlan = !user || userPlan === "free";
+
+  if (isFreePlan) {
+    return <FullRewriteUpsell navigate={navigate} />;
+  }
 
   async function handleAnalyze() {
     setIsLoading(true);
@@ -1150,8 +1331,6 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
       setIsLoading(false);
     }
   }
-
-  // handleWhatIfSimulate preserved in backend — hidden from UI
 
   async function handleAIRewrite() {
     const sourceContent = rewrittenText ?? cleanText;
@@ -1201,7 +1380,12 @@ function WhatIfSection({ url, citedCompetitorUrls = [] }: { url: string; citedCo
       setCopied(false);
     } catch (err: unknown) {
       [...timers, ...sectionTimers].forEach(clearTimeout);
-      setError(err instanceof Error ? err.message : "AI rewrite failed");
+      const msg = err instanceof Error ? err.message : "AI rewrite failed";
+      if (msg === "UPGRADE_REQUIRED") {
+        setError("Ta funkcja wymaga planu Starter lub wyższego.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsRewriting(false);
       setRewriteStep(0);

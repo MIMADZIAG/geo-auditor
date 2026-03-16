@@ -614,3 +614,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ## Bug Fix: Content Intelligence nie działa
 - [x] Diagnoza błędu Content Intelligence — max_tokens: 32768 przekracza limit gpt-4o (max 16384)
 - [x] Naprawa: llm.ts clampuje limit do 16384 dla modeli gpt-4* automatycznie
+
+## Ulepszenia UX: Retry CI + Full Rewrite Paywall + Citeability Score
+- [x] Retry z fallbackiem w audit/index.ts (2 próby + exponential backoff dla CI i LLM)
+- [x] Frontend: komunikat "Analiza AI chwilowo niedostępna" zamiast pustej sekcji CI
+- [x] Backend: blokada Full Rewrite + fetchPage dla planu Free (FORBIDDEN dla nieplącących)
+- [x] Frontend: atrakcyjny upsell/paywall w miejscu Full Rewrite dla Free (blur + CTA + benefits grid)
+- [x] Citeability Score jako drugi główny wskaźnik w nagłówku wyników (obok AI Visibility Score — animowany ring)

@@ -294,7 +294,8 @@ export const appRouter = router({
 
   sandbox: router({
     // AI Content Co-Pilot — rewrites content using LLM with 5 optimization modes
-    rewrite: publicProcedure
+    // Full Rewrite is a paid-only feature (Starter, Pro, Business)
+    rewrite: protectedProcedure
       .input(z.object({
         content: z.string().max(20000),
         mode: z.enum(["full_rewrite", "answer_first", "add_faq", "add_statistics", "improve_structure"]),
@@ -305,7 +306,19 @@ export const appRouter = router({
         // Competitor cited URLs from AI Citations (for full_rewrite mode)
         citedCompetitorUrls: z.array(z.string()).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Gate: Full Rewrite is only available on paid plans
+        const db = await getDb();
+        if (db) {
+          const userRows = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+          const userPlan = userRows[0]?.plan ?? "free";
+          if (userPlan === "free") {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "UPGRADE_REQUIRED",
+            });
+          }
+        }
         const { invokeLLM } = await import("./_core/llm");
         const { crawlCompetitors, formatCompetitorContext } = await import("./rewrite/competitorCrawler");
         const { verifyAndRevise } = await import("./rewrite/eeatVerifier");
@@ -651,9 +664,10 @@ ${cleanedContent.slice(0, 12000)}
       }),
 
     // Fetch raw HTML + robots.txt for a given URL so the client-side simulation engine can run
-    fetchPage: publicProcedure
+    // Requires login — prevents anonymous abuse of the proxy
+    fetchPage: protectedProcedure
       .input(z.object({ url: z.string().url() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx: _ctx, input }) => {
         const { default: axios } = await import("axios");
         const cheerio = await import("cheerio");
         try {
