@@ -299,13 +299,18 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   // Allow per-call override; default is high for gpt-5.4 verbosity
   // GPT-5.4+ and o-series models require max_completion_tokens instead of max_tokens
+  // gpt-4o supports max 16384 output tokens; gpt-5.4 supports up to 32768
   const model = (params as any).model ?? "gpt-5.4";
-  const tokenLimit = (params as any).max_tokens ?? (params as any).maxTokens ?? 32768;
+  const isGpt4Series = model.startsWith("gpt-4");
+  const defaultTokenLimit = isGpt4Series ? 16384 : 32768;
+  const tokenLimit = (params as any).max_tokens ?? (params as any).maxTokens ?? defaultTokenLimit;
+  // Clamp gpt-4o to its hard limit of 16384
+  const clampedTokenLimit = isGpt4Series ? Math.min(tokenLimit, 16384) : tokenLimit;
   const usesCompletionTokens = model.startsWith("gpt-5") || model.startsWith("o1") || model.startsWith("o3") || model.startsWith("o4");
   if (usesCompletionTokens) {
-    payload.max_completion_tokens = tokenLimit;
+    payload.max_completion_tokens = clampedTokenLimit;
   } else {
-    payload.max_tokens = tokenLimit;
+    payload.max_tokens = clampedTokenLimit;
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({

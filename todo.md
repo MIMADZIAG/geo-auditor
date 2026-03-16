@@ -610,3 +610,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Badge: "94% stron jest niewidocznych dla AI — sprawdź czy Twoja też"
 - [x] Emotional hook section: "Każde zapytanie w ChatGPT to szansa sprzedażowa. Twój konkurent ją właśnie zgarnął."
 - [x] Final CTA: "Twoja konkurencja już to wie. Ty możesz wiedzieć za darmo."
+
+## Bug Fix: Content Intelligence nie działa
+- [x] Diagnoza błędu Content Intelligence — max_tokens: 32768 przekracza limit gpt-4o (max 16384)
+- [x] Naprawa: llm.ts clampuje limit do 16384 dla modeli gpt-4* automatycznie
