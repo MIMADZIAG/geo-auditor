@@ -499,7 +499,7 @@ Tekst musi być idealny językowo, stylistycznie i gramatycznie. Pisz naturalnie
 ${competitorContext}
 
 --- TREŚĆ DO OPTYMALIZACJI ---
-${cleanedContent.slice(0, 12000)}
+${cleanedContent.slice(0, 20000)}
 --- KONIEC TREŚCI ---`;
 
         // ─── Helper: split content into sections by H2/H3 headings ─────────────
@@ -587,15 +587,21 @@ ${cleanedContent.slice(0, 12000)}
                   `${isFirst ? competitorContext + "\n\n" : ""}` +
                   `INSTRUKCJA DLA TEJ SEKCJI:\n` +
                   `- Sekcja ${i + 1} z ${sectionsToProcess.length}: "${section.heading || "Wprowadzenie"}".\n` +
-                  (isFirst ? `- To jest PIERWSZE sekcja — zacznij od bezpośredniej odpowiedzi na główne pytanie strony (answer-first).\n` : "") +
-                  (isLast ? `- To jest OSTATNIA sekcja — zakończ podsumowaniem i sekcją FAQ (5-7 pytań z odpowiedziami).\n` : "") +
+                  (isFirst ? `- To jest PIERWSZA sekcja — zacznij od bezpośredniej odpowiedzi na główne pytanie strony (answer-first).\n` : "") +
+                  (isLast ? `- To jest OSTATNIA sekcja — zakończ podsumowaniem i sekcją FAQ z dokładnie 6 pytaniami i pełnymi odpowiedziami (min. 2-3 zdania każda).\n` +
+                            `- KRYTYCZNE: każde pytanie FAQ musi mieć kompletną, zakończoną odpowiedź. NIE urywaj tekstu w połowie zdania.\n` +
+                            `- Sekcja FAQ musi być kompletna — wszystkie 6 pytań z odpowiedziami, ostatnie zdanie musi być zakończone kropką.\n` : "") +
                   `- Rozbuduj tę sekcję do wyczerpującego formatu, zachowując wysoką szczegółowość. NIE streszczaj.\n` +
-                  `- Pisz min. 150-300 słów dla tej sekcji.\n` +
+                  `- Pisz min. ${isLast ? "400-600" : "200-350"} słów dla tej sekcji.\n` +
+                  `- BEZWZGLĘDNIE zakończ każde zdanie i akapit — nigdy nie urywaj w połowie.\n` +
                   `${sectionTriplesStr}\n\n` +
                   `--- TREŚĆ SEKCJI DO PRZEPISANIA ---\n` +
                   (section.heading ? `${section.heading}\n` : "") +
-                  `${section.body.slice(0, 3000)}\n` +
+                  `${section.body}\n` +
                   `--- KONIEC SEKCJI ---`;
+
+                // Last section (FAQ + summary) needs more tokens to complete fully
+                const sectionMaxTokens = isLast ? 8000 : 5000;
 
                 const sectionResponse = await invokeLLM({
                   model: "gpt-5.4",  // draft generation per section — high verbosity
@@ -603,7 +609,7 @@ ${cleanedContent.slice(0, 12000)}
                     { role: "system", content: systemPrompt },
                     { role: "user", content: sectionPrompt },
                   ],
-                  max_tokens: 4000,
+                  max_tokens: sectionMaxTokens,
                 } as any);
 
                 const sectionContent = String(sectionResponse.choices?.[0]?.message?.content ?? "");

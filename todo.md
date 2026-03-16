@@ -637,3 +637,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Nowy moduł hallucinationGuard.ts: regex + LLM weryfikacja post-generation, usuwanie fałszywych cytatów
 - [x] Integracja w routers.ts: Krok 4 (Hallucination Guard) po E-E-A-T verification
 - [x] 62 testy, 0 błędów TS
+
+## Bug Fix: Full AI Rewrite — tekst urywa się w trakcie (niepełna treść)
+- [x] Diagnoza: max_tokens=4000 za mało dla ostatniej sekcji FAQ, section.body.slice(0,3000) obcinało wejście, brak instrukcji kompletności
+- [x] Naprawa: ostatnia sekcja max_tokens=8000, pozostałe 5000; usunięto slice na body; dodano instrukcję BEZWZGLĘDNIE zakończ każde zdanie; cleanedContent.slice 12000→20000

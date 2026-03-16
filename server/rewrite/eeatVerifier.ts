@@ -55,7 +55,7 @@ async function evaluateEEAT(
           content:
             `Evaluate this ${language} content against E-E-A-T criteria.\n\n` +
             `ORIGINAL SEARCH INTENT: ${originalIntent}\n\n` +
-            `CONTENT TO EVALUATE:\n${content.slice(0, 4000)}\n\n` +
+            `CONTENT TO EVALUATE:\n${content.slice(0, 6000)}\n\n` +
             `Return ONLY this JSON (no explanation):\n` +
             `{\n` +
             `  "verifiableFacts": <1-10>,\n` +
