@@ -602,3 +602,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix max_tokens → max_completion_tokens w llm.ts (GPT-5.4 wymaga nowego parametru)
 - [x] Diagnoza i naprawa błędu ładowania Content Intelligence (gpt-4o dla json_schema Structured Outputs)
 - [x] Przepisanie hero copy — "Dowiedz się, czy AI cytuje Twoją stronę. I co zrobić, żeby cytowała."
+
+## Hero Copy v2 — Emocjonalne, konwertujące
+- [x] Hero headline: "Twoja strona istnieje. Dla AI — nie."
+- [x] Subheadline: "ChatGPT i Google AI ignorują Cię i cytują konkurencję."
+- [x] CTA: "Sprawdź teraz — za darmo" + trust: "Bez rejestracji · Wynik w 30 sekund"
+- [x] Badge: "94% stron jest niewidocznych dla AI — sprawdź czy Twoja też"
+- [x] Emotional hook section: "Każde zapytanie w ChatGPT to szansa sprzedażowa. Twój konkurent ją właśnie zgarnął."
+- [x] Final CTA: "Twoja konkurencja już to wie. Ty możesz wiedzieć za darmo."

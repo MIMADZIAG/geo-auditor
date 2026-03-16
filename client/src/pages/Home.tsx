@@ -156,19 +156,22 @@ export default function Home() {
 
             {/* Left: copy + form */}
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                AI Citations — sprawdź kto cytuje Twoją branżę w ChatGPT i Google AI
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-semibold mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                94% stron jest niewidocznych dla AI — sprawdź czy Twoja też
               </div>
 
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-[1.06]">
-                Dowiedz się, czy AI<br />
-                <span className="text-primary">cytuje Twoją stronę.</span><br />
-                <span className="text-muted-foreground/70 text-3xl sm:text-4xl font-bold">I co zrobić, żeby cytowała.</span>
+                Twoja strona istnieje.<br />
+                <span className="text-primary">Dla AI — nie.</span>
               </h1>
 
-              <p className="text-base text-muted-foreground mb-8 leading-relaxed max-w-lg">
-                Wklej URL dowolnej podstrony. W 30 sekund zobaczysz jej wynik AI-Readiness, kto z konkurencji pojawia się zamiast Ciebie w ChatGPT i Google AI Overviews — i gotowy przepisany tekst, który to zmieni.
+              <p className="text-lg text-muted-foreground/90 font-medium mb-3 leading-snug max-w-lg">
+                ChatGPT i Google AI ignorują Cię i cytują konkurencję.
+              </p>
+
+              <p className="text-sm text-muted-foreground mb-8 leading-relaxed max-w-lg">
+                Wklej URL podstrony. W 30 sekund dowiesz się kto pojawia się zamiast Ciebie — i dostaniesz gotowy tekst, który to zmieni.
               </p>
 
               {/* URL Input */}
@@ -189,12 +192,12 @@ export default function Home() {
                     {isLoading ? (
                       <><div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />Skanuję…</>
                     ) : (
-                      <>Audyt za darmo <ArrowRight className="w-4 h-4" /></>
+                      <>Sprawdź teraz — za darmo <ArrowRight className="w-4 h-4" /></>
                     )}
                   </Button>
                 </div>
                 <div className="flex items-center gap-4 mt-3">
-                  <p className="text-xs text-muted-foreground">✓ Bezpłatnie · ✓ 5 audytów/mies. · ✓ Bez karty kredytowej</p>
+                  <p className="text-xs text-muted-foreground">✓ Bezpłatnie · ✓ Bez rejestracji · ✓ Wynik w 30 sekund</p>
                 </div>
               </form>
 
@@ -319,11 +322,11 @@ export default function Home() {
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black mb-3 leading-tight">
-                  Twoi konkurenci pojawiają się w odpowiedziach AI.<br />
-                  <span className="text-amber-400">Ty — nie.</span>
+                  Każde zapytanie w ChatGPT to szansa sprzedażowa.<br />
+                  <span className="text-amber-400">Twój konkurent ją właśnie zgarnął.</span>
                 </h2>
                 <p className="text-muted-foreground leading-relaxed mb-5 max-w-xl">
-                  Kiedy ktoś pyta ChatGPT o produkt z Twojej branży, AI cytuje strony które spełniają konkretne kryteria techniczne i contentowe. GEO-Auditor pokazuje Ci dokładnie co robią lepiej — i jak to naprawić.
+                  AI nie cytuje losowo. Wybiera strony, które spełniają konkretne kryteria techniczne i contentowe. GEO-Auditor pokazuje Ci dokładnie co robią lepiej Twoi rywale — i daje gotowy tekst, który odwraca tę sytuację.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
@@ -552,15 +555,15 @@ export default function Home() {
             <Zap className="w-7 h-7 text-primary" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black mb-4">
-            Sprawdź swoją stronę teraz.<br />
-            <span className="text-primary">Wyniki w 30 sekund.</span>
+            Twoja konkurencja już to wie.<br />
+            <span className="text-primary">Ty możesz wiedzieć za darmo.</span>
           </h2>
           <p className="text-muted-foreground mb-8 leading-relaxed">
-            Bezpłatnie. Bez rejestracji. Bez karty kredytowej.<br />
-            Tylko konkretna analiza i lista poprawek.
+            Jeden URL. 30 sekund. Pełna analiza — bez rejestracji, bez karty.<br />
+            Dowiedz się, dlaczego AI Cię ignoruje i co konkretnie zmienić.
           </p>
           <Button size="lg" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => document.querySelector("input")?.focus(), 400); }} className="gap-2 px-10 h-12 text-base font-bold">
-            <Search className="w-5 h-5" /> Zacznij darmowy audyt
+            <Search className="w-5 h-5" /> Sprawdź swoją stronę teraz
           </Button>
           <p className="text-xs text-muted-foreground mt-4">
             Dołącz do {auditsCount.toLocaleString("pl-PL")}+ audytów już wykonanych
