@@ -106,8 +106,8 @@ async function reviseContent(
 ): Promise<string> {
   const { invokeLLM } = await import("../_core/llm");
 
-  // Use gpt-5.4-pro for hard cases (score < 6), gpt-5.4 for moderate revisions
-  const revisionModel = score < 6 ? "gpt-5.4-pro" : "gpt-5.4";
+  // gpt-5.4-pro is NOT a chat model (unsupported in v1/chat/completions) — always use gpt-5.4
+  const revisionModel = "gpt-5.4";
   console.log(`[EEATVerifier] Revision model: ${revisionModel} (score was ${score})`);
 
   const result = await invokeLLM({

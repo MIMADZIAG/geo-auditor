@@ -621,3 +621,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Backend: blokada Full Rewrite + fetchPage dla planu Free (FORBIDDEN dla nieplącących)
 - [x] Frontend: atrakcyjny upsell/paywall w miejscu Full Rewrite dla Free (blur + CTA + benefits grid)
 - [x] Citeability Score jako drugi główny wskaźnik w nagłówku wyników (obok AI Visibility Score — animowany ring)
+
+## Bug Fix: Full Rewrite AI — "The string did not match the expected pattern"
+- [x] Diagnoza: eeatVerifier.ts używał gpt-5.4-pro (nie jest modelem chat) dla score < 6 — API zwracało 400
+- [x] Naprawa: zastąpiono gpt-5.4-pro przez gpt-5.4 w reviseContent()
