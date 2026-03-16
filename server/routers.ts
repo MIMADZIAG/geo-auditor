@@ -29,6 +29,7 @@ import {
   MAX_MONITORING_SLOTS_FREE,
   captureEmailLead,
 } from "./db";
+import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 
 export const appRouter = router({
   system: systemRouter,
@@ -381,6 +382,16 @@ export const appRouter = router({
 Twoim zadaniem jest przepisanie treści strony internetowej tak, aby maksymalizować jej szansę na cytowanie w odpowiedziach AI.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 ZAKAZ HALUCYNACJI (BEZWZGLĘDNY — NAJWAŻNIEJSZA REGUŁA):
+NIGDY nie wymylaj, nie fałszuj ani nie dodawaj następujących elementów, których NIE MA w oryginalnej treści:
+- Cytatów ekspertów, lekarzy, naukowców, specjalistów (np. "Dr Jan Kowalski powiedział...")
+- Opinii przypisanych konkretnym osobom (prawdziwym lub fikcyjnym)
+- Statystyk, liczb, procentów, dat, wyników badań, których NIE MA w oryginalnej treści
+- Nazw instytucji, organizacji, certyfikatów, których NIE MA w oryginalnej treści
+- Jakichkolwiek twierdzeń faktycznych, których nie można zweryfikować na podstawie dostarczonego tekstu
+Możesz TYLKO: reorganizować istniejącą treść, poprawiać jej strukturę, styl i czytelność dla AI.
+Jeśli oryginał nie zawiera danych liczbowych — NIE dodawaj fikcyjnych. Jeśli nie ma cytatów — NIE tworzysz nowych.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌍 REGUŁA JĘZYKA (BEZWZGLĘDNA):
 Wykryj język treści dostarczonej przez użytkownika i pisz CAŁĄ odpowiedź w TYM SAMYM języku.
 - Treść po polsku → odpowiedź po polsku
@@ -468,9 +479,9 @@ ${issuesList || "Brak konkretnych problemów — zoptymalizuj ogólnie pod kąte
    - Nagłówki sekcji w formie pytań ("Jak...", "Co to jest...", "Dlaczego...")
    - Sekcja FAQ z 5-7 pytaniami i konkretnymi odpowiedziami (2-4 zdania każda)
    - Listy punktowane dla cech, kroków, porównań
-   - Konkretne liczby, daty, dane tam gdzie to naturalne
+   - Konkretne liczby, daty, dane TYLKO też, które występują w oryginalnej treści lub w analizie konkurencji poniżej
 
-4. PRIORYTET 4 — Encje i fakty z konkurencji: Jeśli poniżej podano analizę konkurencji, sparafrazuj kluczowe fakty i encje, które wzbogacą tekst. NIE kopiuj dosłownie — twórz oryginalną treść.
+4. PRIORYTET 4 — Encje i fakty z konkurencji: Jeśli poniżej podano analizę konkurencji, sparafrazuj kluczowe fakty i encje, które wzbogacą tekst. NIE kopiuj dosłownie — twórz oryginalną treść. NIE dodawaj faktów spoza tej analizy.
 
 Tekst musi być idealny językowo, stylistycznie i gramatycznie. Pisz naturalnie, jak ekspert dla użytkownika — nie jak robot SEO.`,
 
@@ -478,7 +489,7 @@ Tekst musi być idealny językowo, stylistycznie i gramatycznie. Pisz naturalnie
 
           add_faq: `Zachowaj istniejącą treść i DODAJ na końcu sekcję FAQ. Wygeneruj 6-8 pytań, które użytkownicy wpisują w Google i wyszukiwarkach AI w związku z tematem tej strony. Każda odpowiedź: 2-4 zdania, konkretna i bezpośrednia. Sekcja FAQ powinna zaczynać się od nagłówka "Najczęściej zadawane pytania".`,
 
-          add_statistics: `Zachowaj strukturę istniejącej treści, ale wzbogac ją o konkretne dane: liczby, procenty, statystyki, daty. Tam gdzie treść jest ogólna, dodaj konkretne wartości. Dodaj sekcję "Kluczowe liczby" lub "Fakty i dane" blisko początku. Jeśli oryginał nie zawiera danych, użyj realistycznych szacunków branżowych i zaznacz je jako przybliżone.`,
+          add_statistics: `Zachowaj strukturę istniejącej treści. Jeśli w oryginalnej treści lub w analizie konkurencji poniżej występują konkretne dane (liczby, procenty, statystyki, daty) — wyeksponuj je i umieść blisko początku w sekcji "Kluczowe liczby" lub "Fakty i dane". UWAGA: NIE dodawaj żadnych danych, których NIE MA w oryginalnej treści ani w analizie konkurencji. Jeśli oryginalna treść nie zawiera danych liczbowych — napisz to wprost użytkownikowi jako komentarz na końcu: "[Uwaga: oryginalna treść nie zawierała danych liczbowych — dodaj je ręcznie]".`,
 
           improve_structure: `Zachowaj całą istniejącą treść, ale popraw jej strukturę: podziel na sekcje z jasnymi nagłówkami (w formie pytań tam gdzie możliwe), zamień długie akapity na listy punktowane, dodaj wyraźne wprowadzenie i podsumowanie. Dodaj skrócone streszczenie (TL;DR lub "W skrócie") na początku lub końcu.`,
         };
@@ -619,7 +630,7 @@ ${cleanedContent.slice(0, 12000)}
 
           if (!rewritten || rewritten.trim().length < 100) throw new Error("Empty response from AI");
 
-          // ── Krok 3: E-E-A-T Verification + auto-revision ─────────────────────
+          // ―― Krok 3: E-E-A-T Verification + auto-revision ─────────────────────
           let finalContent = rewritten;
           let eeatScore = null;
           let wasRevised = false;
@@ -646,6 +657,22 @@ ${cleanedContent.slice(0, 12000)}
             } catch (e) {
               console.warn("[Rewrite] E-E-A-T verification failed (non-fatal):", (e as Error).message);
             }
+          }
+
+          // ―― Krok 4: Hallucination Guard ──────────────────────────────────────────────
+          // Always run guard — removes fake quotes, statistics, expert attributions
+          try {
+            const guardResult = await guardAgainstHallucinations(
+              finalContent,
+              cleanedContent,  // original page content as source of truth
+              true             // use LLM verification
+            );
+            if (guardResult.wasModified) {
+              console.log(`[Rewrite] HallucinationGuard removed ${guardResult.issues.length} issue(s)`);
+              finalContent = guardResult.content;
+            }
+          } catch (e) {
+            console.warn("[Rewrite] HallucinationGuard failed (non-fatal):", (e as Error).message);
           }
 
           return {
