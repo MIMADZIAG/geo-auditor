@@ -597,3 +597,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] FAQ sekcja (5 pytań)
 - [x] Final CTA z urgency
 - [x] Footer rozbudowany z linkami
+
+## Bug Fixes + Hero Copy
+- [x] Fix max_tokens → max_completion_tokens w llm.ts (GPT-5.4 wymaga nowego parametru)
+- [x] Diagnoza i naprawa błędu ładowania Content Intelligence (gpt-4o dla json_schema Structured Outputs)
+- [x] Przepisanie hero copy — "Dowiedz się, czy AI cytuje Twoją stronę. I co zrobić, żeby cytowała."

@@ -246,6 +246,8 @@ provide the COMPLETE, READY-TO-USE code snippet tailored to this specific page's
 The code must be immediately usable — fill in real values based on the page title, URL, and content you can see.`;
 
   const response = await invokeLLM({
+    // gpt-4o: supports json_schema Structured Outputs; gpt-5.4 does not yet
+    model: "gpt-4o",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },

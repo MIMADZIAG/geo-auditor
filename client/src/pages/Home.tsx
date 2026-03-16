@@ -158,17 +158,17 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Nowe: AI Citations — sprawdź kto cytuje Twoją konkurencję
+                AI Citations — sprawdź kto cytuje Twoją branżę w ChatGPT i Google AI
               </div>
 
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-[1.06]">
-                Twoja strona jest<br />
-                <span className="text-primary">niewidoczna dla AI.</span><br />
-                <span className="text-muted-foreground/70 text-3xl sm:text-4xl font-bold">Naprawmy to w 30 sekund.</span>
+                Dowiedz się, czy AI<br />
+                <span className="text-primary">cytuje Twoją stronę.</span><br />
+                <span className="text-muted-foreground/70 text-3xl sm:text-4xl font-bold">I co zrobić, żeby cytowała.</span>
               </h1>
 
               <p className="text-base text-muted-foreground mb-8 leading-relaxed max-w-lg">
-                GEO-Auditor analizuje każdą podstronę pod kątem widoczności w ChatGPT, Perplexity i Google AI Overviews — i daje Ci konkretną listę poprawek z gotowym przepisanym tekstem.
+                Wklej URL dowolnej podstrony. W 30 sekund zobaczysz jej wynik AI-Readiness, kto z konkurencji pojawia się zamiast Ciebie w ChatGPT i Google AI Overviews — i gotowy przepisany tekst, który to zmieni.
               </p>
 
               {/* URL Input */}

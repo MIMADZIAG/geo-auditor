@@ -196,6 +196,8 @@ async function generateRoundQueries(
 
   try {
     const result = await invokeLLM({
+      // gpt-4.1: cheap auxiliary task (query generation); supports json_schema
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",

@@ -322,6 +322,8 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
   })();
 
   const response = await invokeLLM({
+    // gpt-4o: supports json_schema Structured Outputs; gpt-5.4 does not yet
+    model: "gpt-4o",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: `${userPrompt}\n\n${schemaSignals}` },
