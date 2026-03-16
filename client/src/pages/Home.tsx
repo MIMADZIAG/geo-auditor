@@ -162,8 +162,8 @@ export default function Home() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-[1.06]">
-                Twoja strona istnieje.<br />
-                <span className="text-primary">Dla AI — nie.</span>
+                Zrozum, dlaczego AI<br />
+                <span className="text-primary">ignoruje Twoją stronę.</span>
               </h1>
 
               <p className="text-lg text-muted-foreground/90 font-medium mb-3 leading-snug max-w-lg">
