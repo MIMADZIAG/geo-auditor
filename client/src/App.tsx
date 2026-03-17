@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import PublicReport from "./pages/PublicReport";
 import Pricing from "./pages/Pricing";
 import Sandbox from "./pages/Sandbox";
+import PageCreator from "./pages/PageCreator";
+import PageCreatorResult from "./pages/PageCreatorResult";
 function Router() {
   return (
     <Switch>
@@ -19,6 +21,8 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/sandbox" component={Sandbox} />
+      <Route path="/page-creator" component={PageCreator} />
+      <Route path="/page-creator/:id" component={PageCreatorResult} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

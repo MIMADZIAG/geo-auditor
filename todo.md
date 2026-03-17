@@ -641,3 +641,22 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ## Bug Fix: Full AI Rewrite — tekst urywa się w trakcie (niepełna treść)
 - [x] Diagnoza: max_tokens=4000 za mało dla ostatniej sekcji FAQ, section.body.slice(0,3000) obcinało wejście, brak instrukcji kompletności
 - [x] Naprawa: ostatnia sekcja max_tokens=8000, pozostałe 5000; usunięto slice na body; dodano instrukcję BEZWZGLĘDNIE zakończ każde zdanie; cleanedContent.slice 12000→20000
+
+## Nowa funkcjonalność: AI Page Creator (tylko płatne plany)
+- [x] Schemat bazy: tabela page_creations (id, userId, pageType, brief, status, result, createdAt, queryFanOut, groundingSources)
+- [x] Backend: procedure pageCreator.create — walidacja planu, query fan-out (8 zapytań), grounding scraper, LLM pipeline
+- [x] Backend: procedure pageCreator.getStatus — polling statusu i pobieranie wyników
+- [x] Backend: procedure pageCreator.list — historia generacji użytkownika
+- [x] Frontend: wizard krok 1 — 8 typów stron z ikonami i opisami
+- [x] Frontend: wizard krok 2 — szczegółowy brief (temat, słowa kluczowe, tone of voice, język, dodatkowe info)
+- [x] Frontend: wizard krok 3 — progress z etapami (researching/generating/completed)
+- [x] Frontend: strona wyników PageCreatorResult.tsx — 3 zakładki: Treść / Wytyczne techniczne / Badania AI
+- [x] Treść: Answer-First Paragraph, sekcje z nagłówkami H1/H2/H3, FAQ, kluczowe encje
+- [x] Wytyczne techniczne: meta title/desc, OG tags, schema.org JSON-LD, linkowanie wewnętrzne, cele długości
+- [x] Badania AI: query fan-out, źródła grounding, synteza badań
+- [x] AI Readiness Score (predicted) z animowanym ringiem SVG
+- [x] Frontend: CTA "Audytuj tę stronę" + "Stwórz kolejną stronę" po wygenerowaniu
+- [x] Paywall dla Free — blokada z upsell i listą benefitów
+- [x] Nawigacja: link "AI Page Creator" w Dashboard nav (zielony, z ikoną Sparkles)
+- [x] Routing: /page-creator i /page-creator/:id w App.tsx
+- [x] 62 testy, 0 błędów TS

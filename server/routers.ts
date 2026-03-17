@@ -30,6 +30,8 @@ import {
   captureEmailLead,
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
+import { runPageCreatorPipeline } from "./pageCreator/index";
+import { pageCreations } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
@@ -849,6 +851,149 @@ ${cleanedContent.slice(0, 20000)}
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
         }
       }),
+  }),
+
+  // ─── AI Page Creator ─────────────────────────────────────────────────────────────────────────────────────
+  pageCreator: router({
+
+    // Create a new page creation job (paid plans only)
+    create: protectedProcedure
+      .input(z.object({
+        pageType: z.enum(["article", "listing", "landing", "product", "faq", "category", "comparison", "local"]),
+        topic: z.string().min(10).max(2000),
+        targetKeywords: z.array(z.string()).optional(),
+        toneOfVoice: z.enum(["professional", "friendly", "expert", "conversational"]).optional(),
+        targetAudience: z.string().max(500).optional(),
+        additionalContext: z.string().max(3000).optional(),
+        language: z.enum(["pl", "en"]).default("pl"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+        // Check plan — paid only
+        const userRows = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+        const user = userRows[0];
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        if (!user.plan || user.plan === "free") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "AI Page Creator jest dostępny tylko dla planów płatnych (Starter, Pro, Business).",
+          });
+        }
+
+        // Create record in DB
+        const [inserted] = await db.insert(pageCreations).values({
+          userId: ctx.user.id,
+          pageType: input.pageType,
+          topic: input.topic,
+          targetKeywords: input.targetKeywords ?? [],
+          toneOfVoice: input.toneOfVoice ?? "professional",
+          targetAudience: input.targetAudience ?? "",
+          additionalContext: input.additionalContext ?? "",
+          language: input.language,
+          status: "pending",
+        });
+
+        const creationId = (inserted as any).insertId as number;
+        console.log(`[PageCreator] Job created: id=${creationId} user=${ctx.user.id} type=${input.pageType}`);
+
+        // Run pipeline asynchronously — update DB as stages complete
+        (async () => {
+          try {
+            await db.update(pageCreations)
+              .set({ status: "researching" })
+              .where(eq(pageCreations.id, creationId));
+
+            const result = await runPageCreatorPipeline(
+              {
+                pageType: input.pageType,
+                topic: input.topic,
+                targetKeywords: input.targetKeywords,
+                toneOfVoice: input.toneOfVoice,
+                targetAudience: input.targetAudience,
+                additionalContext: input.additionalContext,
+                language: input.language,
+              },
+              async (progress) => {
+                const statusMap: Record<string, "pending" | "researching" | "generating" | "completed" | "failed"> = {
+                  fan_out: "researching",
+                  researching: "researching",
+                  synthesizing: "researching",
+                  generating: "generating",
+                  technical: "generating",
+                  done: "completed",
+                };
+                const newStatus = statusMap[progress.stage] ?? "generating";
+                await db.update(pageCreations)
+                  .set({ status: newStatus })
+                  .where(eq(pageCreations.id, creationId));
+              }
+            );
+
+            await db.update(pageCreations).set({
+              status: "completed",
+              result: result as any,
+              queryFanOut: result.queryFanOut,
+              groundingUrls: result.groundingSources.map(s => s.url),
+              groundingSummary: result.researchSummary,
+              completedAt: new Date(),
+            }).where(eq(pageCreations.id, creationId));
+
+            console.log(`[PageCreator] Job ${creationId} completed`);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "Pipeline failed";
+            console.error(`[PageCreator] Job ${creationId} failed:`, msg);
+            await db.update(pageCreations)
+              .set({ status: "failed", errorMessage: msg })
+              .where(eq(pageCreations.id, creationId));
+          }
+        })();
+
+        return { id: creationId, status: "pending" };
+      }),
+
+    // Poll status of a page creation job
+    getStatus: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const rows = await db.select().from(pageCreations)
+          .where(eq(pageCreations.id, input.id))
+          .limit(1);
+        const row = rows[0];
+        if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
+        if (row.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        return {
+          id: row.id,
+          status: row.status,
+          errorMessage: row.errorMessage,
+          result: row.result,
+          pageType: row.pageType,
+          topic: row.topic,
+          createdAt: row.createdAt,
+          completedAt: row.completedAt,
+        };
+      }),
+
+    // List user's page creations
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select({
+        id: pageCreations.id,
+        pageType: pageCreations.pageType,
+        topic: pageCreations.topic,
+        status: pageCreations.status,
+        aiReadinessScore: pageCreations.result,
+        createdAt: pageCreations.createdAt,
+        completedAt: pageCreations.completedAt,
+      }).from(pageCreations)
+        .where(eq(pageCreations.userId, ctx.user.id))
+        .orderBy(pageCreations.createdAt);
+      return rows;
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;

@@ -99,6 +99,13 @@
       "when": 1773273201010,
       "tag": "0013_pale_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1773763058194,
+      "tag": "0014_lazy_pride",
+      "breakpoints": true
     }
   ]
 }

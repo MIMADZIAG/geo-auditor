@@ -653,6 +653,15 @@ function DashboardNav({ user }: { user?: { name?: string | null } | null }) {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => navigate("/page-creator")}
+            className="text-xs gap-1.5 text-emerald-400 hover:text-emerald-300 hidden sm:flex"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            AI Page Creator
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => navigate("/")}
             className="text-xs gap-1.5"
           >

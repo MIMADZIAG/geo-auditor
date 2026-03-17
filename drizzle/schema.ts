@@ -155,3 +155,36 @@ export const citationChecks = mysqlTable("citation_checks", {
 
 export type CitationCheck = typeof citationChecks.$inferSelect;
 export type InsertCitationCheck = typeof citationChecks.$inferInsert;
+
+// AI Page Creator — stores wizard sessions and generated page blueprints
+export const pageCreations = mysqlTable("page_creations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+
+  // Wizard inputs
+  pageType: varchar("pageType", { length: 64 }).notNull(),          // article | listing | landing | product | faq | category | comparison | local
+  topic: text("topic").notNull(),                                    // user-provided topic / brief
+  targetKeywords: json("targetKeywords"),                           // string[] — extracted or user-provided
+  toneOfVoice: varchar("toneOfVoice", { length: 64 }),              // professional | friendly | expert | conversational
+  targetAudience: text("targetAudience"),
+  additionalContext: text("additionalContext"),                      // extra info user provided
+  language: varchar("language", { length: 10 }).default("pl").notNull(),
+
+  // Processing
+  status: mysqlEnum("status", ["pending", "researching", "generating", "completed", "failed"]).default("pending").notNull(),
+  errorMessage: text("errorMessage"),
+
+  // Research phase
+  groundingUrls: json("groundingUrls"),                             // URLs scraped for grounding
+  groundingSummary: text("groundingSummary"),                       // condensed research summary
+  queryFanOut: json("queryFanOut"),                                  // string[] — generated search queries
+
+  // Generated output — full blueprint
+  result: json("result"),                                           // PageCreationResult (see shared/types)
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type PageCreation = typeof pageCreations.$inferSelect;
+export type InsertPageCreation = typeof pageCreations.$inferInsert;

@@ -1,0 +1,20 @@
+CREATE TABLE `page_creations` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`pageType` varchar(64) NOT NULL,
+	`topic` text NOT NULL,
+	`targetKeywords` json,
+	`toneOfVoice` varchar(64),
+	`targetAudience` text,
+	`additionalContext` text,
+	`language` varchar(10) NOT NULL DEFAULT 'pl',
+	`status` enum('pending','researching','generating','completed','failed') NOT NULL DEFAULT 'pending',
+	`errorMessage` text,
+	`groundingUrls` json,
+	`groundingSummary` text,
+	`queryFanOut` json,
+	`result` json,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`completedAt` timestamp,
+	CONSTRAINT `page_creations_id` PRIMARY KEY(`id`)
+);
