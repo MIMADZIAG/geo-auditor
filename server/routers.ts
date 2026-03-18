@@ -555,6 +555,8 @@ ${cleanedContent.slice(0, 20000)}
 --- KONIEC TREŚCI ---`;
 
         // ─── Helper: split content into sections by H2/H3 headings ─────────────
+        // IMPORTANT: Only detect EXPLICIT heading markers (##, ###, [H]) — never heuristic
+        // short-line detection, which causes false positives and FAQ duplication.
         const splitIntoSections = (text: string): Array<{ heading: string; body: string }> => {
           const lines = text.split("\n");
           const sections: Array<{ heading: string; body: string }> = [];
@@ -563,12 +565,11 @@ ${cleanedContent.slice(0, 20000)}
 
           for (const line of lines) {
             const trimmed = line.trim();
-            // Detect headings: lines starting with ## / ### or [H] markers, or short ALL-CAPS lines
+            // Detect headings ONLY by explicit markers: ## / ### / [H] prefix
+            // Do NOT use heuristic (short line + capital letter) — causes false splits
             const isHeading =
               /^#{1,4}\s/.test(trimmed) ||
-              /^\[H\]\s/.test(trimmed) ||
-              (trimmed.length > 5 && trimmed.length < 100 && /^[A-ZŁŚŻŹĆŃÓĄĘ]/.test(trimmed) &&
-               !trimmed.includes(".") && !trimmed.includes(",") && lines.indexOf(line) > 0);
+              /^\[H\]\s/.test(trimmed);
 
             if (isHeading && currentBody.join(" ").trim().length > 0) {
               sections.push({ heading: currentHeading, body: currentBody.join("\n").trim() });
@@ -584,6 +585,47 @@ ${cleanedContent.slice(0, 20000)}
             sections.push({ heading: currentHeading, body: currentBody.join("\n").trim() });
           }
           return sections.filter(s => s.body.length > 30);
+        };
+
+        // ─── Helper: deduplicate FAQ and repeated sections from joined output ────
+        const deduplicateContent = (text: string): string => {
+          // Split into paragraphs/blocks
+          const blocks = text.split(/\n{2,}/);
+          const seen = new Set<string>();
+          const deduped: string[] = [];
+
+          for (const block of blocks) {
+            // Normalize for comparison: lowercase, collapse whitespace
+            const key = block.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
+            if (!key || key.length < 20) {
+              deduped.push(block);
+              continue;
+            }
+            if (!seen.has(key)) {
+              seen.add(key);
+              deduped.push(block);
+            }
+            // else: skip duplicate block
+          }
+
+          // Also deduplicate FAQ sections: keep only the LAST occurrence of FAQ heading
+          const joined = deduped.join("\n\n");
+          const faqRegex = /\n{0,2}(Najczęściej zadawane pytania|Często zadawane pytania|FAQ|Pytania i odpowiedzi)[\s\S]*?(?=\n{2,}[A-ZŁŚŻŹĆŃÓĄĘ]|$)/gi;
+          const faqMatches: string[] = [];
+          let faqMatch: RegExpExecArray | null;
+          while ((faqMatch = faqRegex.exec(joined)) !== null) {
+            faqMatches.push(faqMatch[0]);
+          }
+          if (faqMatches.length > 1) {
+            // Remove all but the last FAQ block
+            let result = joined;
+            for (let i = 0; i < faqMatches.length - 1; i++) {
+              result = result.replace(faqMatches[i], "");
+            }
+            return result.replace(/\n{3,}/g, "\n\n").trim();
+          }
+
+          return deduped.join("\n\n").replace(/\n{3,}/g, "\n\n").trim();
         };
 
         try {
@@ -672,7 +714,9 @@ ${cleanedContent.slice(0, 20000)}
                 console.log(`[Rewrite] Section ${i + 1}/${sectionsToProcess.length} done (${sectionContent.length} chars)`);
               }
 
-              rewritten = generatedSections.join("\n\n");
+              // Join sections and deduplicate repeated blocks (e.g. FAQ generated multiple times)
+              const rawJoined = generatedSections.join("\n\n");
+              rewritten = deduplicateContent(rawJoined);
             }
           } else {
             // Non-full_rewrite modes: standard single-shot (gpt-5.4 default)

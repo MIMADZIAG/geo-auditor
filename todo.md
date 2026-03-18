@@ -674,3 +674,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Tab Źródła: lista scraped sources z tytułem, snippetem i URL
 - [x] Toast po rewrite: "Zbadano X źródeł — treść wzbogacona o kontekst badawczy"
 - [x] 62 testy, 0 błędów TS
+
+## Bug Fix: Full Rewrite AI — duplikacja sekcji (FAQ pisane dwukrotnie)
+- [x] Diagnoza: splitIntoSections używał heurystyki "krótka linia z wielkiej litery" jako nagłówek — fałszywe podziały powodowały wielokrotne is Last=true i generowanie FAQ wielokrotnie
+- [x] Naprawa 1: splitIntoSections wykrywa nagłówki TYLKO przez ## / ### / [H] — usunięto heurystykę
+- [x] Naprawa 2: nowy deduplicateContent() — usuwa zduplikowane bloki (porównanie 120 znaków) + deduplikacja sekcji FAQ (zachowuje ostatnią)
+- [x] 62 testy, 0 błędów TS
