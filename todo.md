@@ -680,3 +680,6 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Naprawa 1: splitIntoSections wykrywa nagłówki TYLKO przez ## / ### / [H] — usunięto heurystykę
 - [x] Naprawa 2: nowy deduplicateContent() — usuwa zduplikowane bloki (porównanie 120 znaków) + deduplikacja sekcji FAQ (zachowuje ostatnią)
 - [x] 62 testy, 0 błędów TS
+
+## Bug Fix: PageCreator — "Cannot update Route while rendering PageCreator" (navigate w render)
+- [x] Naprawa: navigate() przeniesiony do useEffect (był wywoływany bezpośrednio w render przy jobStatus==completed)

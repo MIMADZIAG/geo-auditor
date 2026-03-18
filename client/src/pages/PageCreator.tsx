@@ -159,12 +159,17 @@ export default function PageCreator() {
 
   useEffect(() => {
     if (statusQuery.data) {
-      setJobStatus(statusQuery.data.status);
-      if (statusQuery.data.status === "completed" || statusQuery.data.status === "failed") {
+      const newStatus = statusQuery.data.status;
+      setJobStatus(newStatus);
+      if (newStatus === "completed" || newStatus === "failed") {
         if (pollRef.current) clearInterval(pollRef.current);
       }
+      // Navigate to result page only when completed — MUST be inside useEffect, never in render
+      if (newStatus === "completed" && statusQuery.data.result && jobId !== null) {
+        navigate(`/page-creator/${jobId}`);
+      }
     }
-  }, [statusQuery.data]);
+  }, [statusQuery.data, jobId, navigate]);
 
   // ─── Paywall for Free users ───────────────────────────────────────────────
 
@@ -196,9 +201,9 @@ export default function PageCreator() {
     const currentStage = PROGRESS_STAGES.find(s => s.key === jobStatus) ?? PROGRESS_STAGES[0];
     const progressPct = currentStage.pct;
 
+    // Navigation to result is handled in useEffect above — never call navigate() in render
     if (jobStatus === "completed" && statusQuery.data?.result) {
-      navigate(`/page-creator/${jobId}`);
-      return null;
+      return null; // useEffect will navigate, show nothing briefly
     }
 
     if (jobStatus === "failed") {
