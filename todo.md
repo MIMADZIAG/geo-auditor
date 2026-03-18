@@ -56,8 +56,8 @@
 - [ ] Email capture for waitlist
 
 ## Phase 3 — Monetization (Future)
-- [ ] Stripe integration
-- [ ] Paid plan tiers (Starter, Pro, Business)
+- [x] Stripe integration
+- [x] Paid plan tiers (Starter, Pro, Business)
 - [ ] Audit history dashboard
 - [ ] PDF export
 - [ ] Page monitoring / scheduled re-audits
@@ -702,3 +702,20 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Frontend: AI Insights (3 dynamiczne wskazówki), Top Keywords table (cited/AI Overview/Standard)
 - [x] Wstawiony między ScoreHero a IssuesAndFixes w Results.tsx
 - [x] 62 testy, 0 błędów TS
+
+## Bug Fix: Audyt nie ładuje się — crash w Results.tsx (runtime error po AI Exposure Score)
+- [ ] Diagnoza i naprawa błędu runtime w Results.tsx
+- [ ] Pełny test e2e wyników audytu
+
+## Bug Fix: AiExposurePanel field name mismatch (2026-03-18)
+
+- [x] Fix AiExposureResult interface in Results.tsx — align field names with backend:
+  - `totalKeywords` → `totalKeywordsAnalyzed`
+  - `citedInAiOverview` → `keywordsCitedInAiOverview`
+  - `topAiKeywords` → `topKeywords`
+  - `isCited` → `isCitedInAiOverview`
+  - Removed `aiOverviewCoveragePercent` (now calculated on frontend from `keywordsWithAiOverview / totalKeywordsAnalyzed`)
+  - Added `exposureScore`, `citationScore`, `tierLabel`, `opportunities` fields
+- [x] Add defensive `?? []` guards for `topKeywords` and `opportunities` arrays
+- [x] Add Growth Opportunities section to AiExposurePanel
+- [x] Write unit tests for aiExposure module (19 tests, 81 total passing)

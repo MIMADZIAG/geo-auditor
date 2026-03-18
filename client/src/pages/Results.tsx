@@ -1785,16 +1785,18 @@ type ExposureTier = "invisible" | "emerging" | "visible" | "dominant";
 
 interface AiExposureResult {
   domain: string;
-  totalKeywords: number;
+  totalKeywordsAnalyzed: number;
   keywordsWithAiOverview: number;
-  aiOverviewCoveragePercent: number;
-  citedInAiOverview: number;
-  citationRate: number;
+  keywordsCitedInAiOverview: number;
+  exposureScore: number;
+  citationScore: number;
   compositeScore: number;
   tier: ExposureTier;
-  topAiKeywords: Array<{ keyword: string; volume: number; hasAiOverview: boolean; isCited: boolean }>;
+  tierLabel: string;
+  topKeywords: Array<{ keyword: string; volume: number; hasAiOverview: boolean; isCitedInAiOverview: boolean }>;
+  opportunities: Array<{ keyword: string; volume: number; hasAiOverview: boolean; isCitedInAiOverview: boolean }>;
   insights: string[];
-  analyzedAt: string;
+  analyzedAt: number;
 }
 
 const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: string; border: string; icon: React.ElementType; desc: string }> = {
@@ -1847,14 +1849,17 @@ function AiExposurePanel({ url }: { url: string }) {
 
   // Animate score count-up
   useEffect(() => {
-    if (!result) return;
+      if (!result) return;
     let start = 0;
     const duration = 1400;
+    const coveragePct = result.totalKeywordsAnalyzed > 0
+      ? Math.round((result.keywordsWithAiOverview / result.totalKeywordsAnalyzed) * 100)
+      : 0;
     const step = (ts: number) => {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
       setDisplayScore(Math.round(p * result.compositeScore));
-      setDisplayCoverage(Math.round(p * result.aiOverviewCoveragePercent));
+      setDisplayCoverage(Math.round(p * coveragePct));
       if (p < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -1953,15 +1958,15 @@ function AiExposurePanel({ url }: { url: string }) {
                 <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center">
                   <div className="text-2xl font-black" style={{ color: tier.color }}>{displayCoverage}%</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">AI Overview Coverage</div>
-                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">{result.keywordsWithAiOverview} of {result.totalKeywords} keywords</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">{result.keywordsWithAiOverview} of {result.totalKeywordsAnalyzed} keywords</div>
                 </div>
                 <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center">
-                  <div className="text-2xl font-black text-violet-400">{result.citedInAiOverview}</div>
+                  <div className="text-2xl font-black text-violet-400">{result.keywordsCitedInAiOverview}</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">Direct Citations</div>
                   <div className="text-[9px] text-muted-foreground/60 mt-0.5">cited in AI answers</div>
                 </div>
                 <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center col-span-2 sm:col-span-1">
-                  <div className="text-2xl font-black text-sky-400">{result.totalKeywords}</div>
+                  <div className="text-2xl font-black text-sky-400">{result.totalKeywordsAnalyzed}</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">Keywords Analyzed</div>
                   <div className="text-[9px] text-muted-foreground/60 mt-0.5">top organic keywords</div>
                 </div>
@@ -1992,7 +1997,7 @@ function AiExposurePanel({ url }: { url: string }) {
             )}
 
             {/* Top AI keywords */}
-            {result.topAiKeywords.length > 0 && (
+            {(result.topKeywords ?? []).length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                   <BarChart3 className="w-3.5 h-3.5 text-primary" /> Top Keywords in AI Overviews
@@ -2003,12 +2008,12 @@ function AiExposurePanel({ url }: { url: string }) {
                     <span className="text-right pr-4">Volume</span>
                     <span className="text-right">Status</span>
                   </div>
-                  {result.topAiKeywords.slice(0, 8).map((kw, i) => (
+                  {(result.topKeywords ?? []).slice(0, 8).map((kw, i) => (
                     <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-2.5 border-b border-border/10 last:border-0 hover:bg-muted/10 transition-colors">
                       <span className="text-xs font-medium truncate pr-2">{kw.keyword}</span>
                       <span className="text-xs text-muted-foreground text-right pr-4">{kw.volume >= 1000 ? `${(kw.volume / 1000).toFixed(1)}k` : kw.volume}</span>
                       <div className="flex items-center gap-1.5">
-                        {kw.isCited ? (
+                        {kw.isCitedInAiOverview ? (
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>Cited</span>
                         ) : kw.hasAiOverview ? (
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-sky-500/10 text-sky-400">AI Overview</span>
@@ -2027,6 +2032,22 @@ function AiExposurePanel({ url }: { url: string }) {
               <p className="text-[10px] text-muted-foreground/50 text-right">
                 Data refreshed every 24h · Last scan: {new Date(result.analyzedAt).toLocaleString()}
               </p>
+            )}
+            {/* Opportunities section */}
+            {(result.opportunities ?? []).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-amber-400" /> Growth Opportunities
+                </h3>
+                <div className="grid gap-1.5">
+                  {(result.opportunities ?? []).slice(0, 3).map((kw, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/15">
+                      <span className="text-xs font-medium text-amber-300/90">{kw.keyword}</span>
+                      <span className="text-[10px] text-muted-foreground">{kw.volume >= 1000 ? `${(kw.volume / 1000).toFixed(1)}k/mo` : `${kw.volume}/mo`}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
