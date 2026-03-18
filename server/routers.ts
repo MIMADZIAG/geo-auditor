@@ -34,6 +34,7 @@ import { runRewriteResearch } from "./rewrite/rewriteResearch";
 import { runPageCreatorPipeline } from "./pageCreator/index";
 import { pageCreations, aiExposureCache } from "../drizzle/schema";
 import { computeAiExposureScore, type AiExposureResult } from "./aiExposure/index";
+import { ENV } from "./_core/env";
 
 export const appRouter = router({
   system: systemRouter,
@@ -1137,8 +1138,16 @@ ${cleanedContent.slice(0, 20000)}
           .limit(1);
 
         if (cached.length > 0 && cached[0].expiresAt > now) {
-          console.log(`[AiExposure] Cache hit for domain: ${domain}`);
-          return { result: cached[0].result as AiExposureResult, fromCache: true };
+          const cachedResult = cached[0].result as AiExposureResult;
+          // Invalidate stale cache entries where API key was not available (totalKeywordsAnalyzed === 0)
+          // but now the key IS available — force a fresh fetch
+          const apiKeyAvailable = !!ENV.ahrefsApiKey;
+          const isStaleZeroData = apiKeyAvailable && cachedResult.totalKeywordsAnalyzed === 0;
+          if (!isStaleZeroData) {
+            console.log(`[AiExposure] Cache hit for domain: ${domain}`);
+            return { result: cachedResult, fromCache: true };
+          }
+          console.log(`[AiExposure] Cache stale (0 keywords, API key now available) for domain: ${domain} — refreshing`);
         }
 
         // Compute fresh score

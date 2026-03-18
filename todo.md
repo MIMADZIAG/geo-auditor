@@ -734,3 +734,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Dodanie AHREFS_API_KEY jako sekretu projektu przez webdev_request_secrets
 - [x] Weryfikacja: healthline.com = 71% AI Overview (tier: Widoczny), nytimes.com = 1%, wikipedia.org = 5%
 - [x] 86 testów jednostkowych passing (5 nowych testów dla Ahrefs API params)
+
+## Bug Fix: AI Search Exposure — 0 fraz dla direct.money.pl (2026-03-18)
+
+- [x] Diagnoza: direct.money.pl był w cache z danymi 0 keywords (z czasów gdy AHREFS_API_KEY nie był dostępny)
+- [x] Naprawa: dodanie cache invalidation dla wpisów z totalKeywordsAnalyzed=0 gdy klucz API jest dostępny
+- [x] Dodanie importu ENV do routers.ts
+- [x] Wyczyszczenie całego cache ai_exposure_cache przez SQL
+- [x] Weryfikacja: direct.money.pl = 48% AI Overview, tier 'Wschodzący w AI Search', score 29/100
+- [x] 86 testów passing, 0 błędów TypeScript
