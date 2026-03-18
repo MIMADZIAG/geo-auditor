@@ -10,7 +10,7 @@
  *
  * Algorithm:
  *   1. Extract domain from audited URL
- *   2. Fetch top-50 organic keywords for the domain (by traffic)
+ *   2. Fetch top-100 organic keywords for the domain (by traffic)
  *   3. For each keyword, check SERP features for "ai_overview" / "ai_overview_sitelink"
  *   4. Calculate:
  *      - exposureScore: % of keywords with AI Overview present (0–100)
@@ -64,6 +64,12 @@ function generateInsights(result: Omit<AiExposureResult, "insights">): string[] 
 
   const { keywordsWithAiOverview, keywordsCitedInAiOverview, totalKeywordsAnalyzed, opportunities } = result;
 
+  if (totalKeywordsAnalyzed === 0) {
+    insights.push("Brak danych organicznych dla tej domeny — możliwe, że jest zbyt nowa lub ma bardzo małą widoczność w Google.");
+    insights.push("Priorytet: budowanie widoczności organicznej przez treści odpowiadające na pytania użytkowników.");
+    return insights;
+  }
+
   if (keywordsWithAiOverview === 0) {
     insights.push(`Żadna z ${totalKeywordsAnalyzed} analizowanych fraz nie wyzwala Google AI Overview — domena jest poza zasięgiem AI Search.`);
     insights.push("Priorytet: tworzenie treści odpowiadających na pytania (FAQ, poradniki) — to główny trigger dla AI Overviews.");
@@ -91,40 +97,75 @@ function generateInsights(result: Omit<AiExposureResult, "insights">): string[] 
 
 const AHREFS_BASE = "https://api.ahrefs.com/v3";
 
-async function fetchOrganicKeywords(domain: string, limit = 50): Promise<AiExposureKeyword[]> {
+/**
+ * Returns the most recent full month date in YYYY-MM-DD format.
+ * Ahrefs requires a date parameter for organic-keywords endpoint.
+ */
+function getAhrefsDate(): string {
+  const now = new Date();
+  // Use first day of current month; if before 5th, use previous month
+  const day = now.getUTCDate();
+  let year = now.getUTCFullYear();
+  let month = now.getUTCMonth() + 1; // 1-12
+  if (day < 5) {
+    month -= 1;
+    if (month === 0) { month = 12; year -= 1; }
+  }
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}
+
+async function fetchOrganicKeywords(domain: string, limit = 100): Promise<AiExposureKeyword[]> {
   const apiKey = ENV.ahrefsApiKey;
   if (!apiKey) {
     console.warn("[AiExposure] AHREFS_API_KEY not set — returning empty keyword list");
     return [];
   }
 
+  const date = getAhrefsDate();
+
   const params = new URLSearchParams({
     target: domain,
-    mode: "domain",
+    mode: "subdomains",           // FIX: was "domain" — subdomains returns more results
     limit: String(limit),
-    order_by: "traffic:desc",
-    select: "keyword,volume,keyword_difficulty,positions",
+    order_by: "sum_traffic:desc", // FIX: was "traffic:desc" — correct column is sum_traffic
+    select: "keyword,volume,keyword_difficulty,serp_features,best_position", // FIX: was "positions" which doesn't exist
+    date,                         // FIX: date is required by Ahrefs API v3
   });
 
   const url = `${AHREFS_BASE}/site-explorer/organic-keywords?${params}`;
 
+  console.log(`[AiExposure] Fetching keywords for ${domain} (date: ${date})`);
+
   try {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!res.ok) {
       const body = await res.text();
-      console.error(`[AiExposure] organic-keywords error ${res.status}: ${body.slice(0, 200)}`);
+      console.error(`[AiExposure] organic-keywords error ${res.status}: ${body.slice(0, 300)}`);
       return [];
     }
 
-    const data = await res.json() as { keywords?: Array<{ keyword: string; volume: number; keyword_difficulty: number; positions?: Array<{ serp_features?: string[] }> }> };
+    const data = await res.json() as {
+      keywords?: Array<{
+        keyword: string;
+        volume: number;
+        keyword_difficulty: number;
+        serp_features?: string[];  // FIX: direct array, not nested in positions
+        best_position?: number;
+      }>
+    };
+
     const keywords = data.keywords ?? [];
+    console.log(`[AiExposure] Got ${keywords.length} keywords for ${domain}`);
 
     return keywords.map((kw) => {
-      const serpFeatures: string[] = kw.positions?.[0]?.serp_features ?? [];
+      // FIX: serp_features is now a direct array on the keyword object
+      const serpFeatures: string[] = kw.serp_features ?? [];
+      // "ai_overview" = AI Overview present in SERP (domain may or may not be cited)
+      // "ai_overview_sitelink" = domain IS cited as a source in AI Overview
       const hasAiOverview = serpFeatures.includes("ai_overview") || serpFeatures.includes("ai_overview_sitelink");
       const isCitedInAiOverview = serpFeatures.includes("ai_overview_sitelink");
 
@@ -134,7 +175,7 @@ async function fetchOrganicKeywords(domain: string, limit = 50): Promise<AiExpos
         difficulty: kw.keyword_difficulty ?? 0,
         hasAiOverview,
         isCitedInAiOverview,
-        position: kw.positions?.[0] ? 1 : null,
+        position: kw.best_position ?? null,
       };
     });
   } catch (err) {
@@ -154,7 +195,7 @@ export async function computeAiExposureScore(url: string): Promise<AiExposureRes
     domain = url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
   }
 
-  const keywords = await fetchOrganicKeywords(domain, 50);
+  const keywords = await fetchOrganicKeywords(domain, 100);
 
   const totalKeywordsAnalyzed = keywords.length;
   const withAiOverview = keywords.filter((k) => k.hasAiOverview);

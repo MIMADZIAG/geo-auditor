@@ -726,3 +726,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Naprawa: zmiana `type="url"` na `type="text"` we wszystkich formularzach URL (Home.tsx, Dashboard.tsx, Sandbox.tsx, AISandbox.tsx)
 - [x] Testy TypeScript: 0 błędów, 81 testów jednostkowych passing
 - [x] Testy e2e API: audit.run, audit.getById, aiExposure.getScore — wszystkie PASS
+
+## Bug Fix: AI Search Exposure Score — zawsze pokazuje "Invisible" (2026-03-18)
+
+- [x] Diagnoza: 4 błędy w Ahrefs API v3 — brak `date`, zła kolumna `positions` (powinno być `serp_features`), zły `order_by=traffic` (powinno być `sum_traffic`), tryb `domain` zamiast `subdomains`
+- [x] Naprawa: poprawne parametry API, dodanie `getAhrefsDate()`, zwiększenie limitu do 100 słów kluczowych
+- [x] Dodanie AHREFS_API_KEY jako sekretu projektu przez webdev_request_secrets
+- [x] Weryfikacja: healthline.com = 71% AI Overview (tier: Widoczny), nytimes.com = 1%, wikipedia.org = 5%
+- [x] 86 testów jednostkowych passing (5 nowych testów dla Ahrefs API params)
