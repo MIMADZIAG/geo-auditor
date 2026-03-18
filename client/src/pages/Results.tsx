@@ -1304,6 +1304,15 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
   const [rewrittenText, setRewrittenText] = useState<string | null>(null);
   const [detectedPageType, setDetectedPageType] = useState("generic");
   const [copied, setCopied] = useState(false);
+  const [researchData, setResearchData] = useState<{
+    queries: string[];
+    keyEntities: string[];
+    aiReadinessTips: string[];
+    answerFirstDraft: string;
+    sources: Array<{ url: string; title: string; snippet: string }>;
+  } | null>(null);
+  const [pageMetadata, setPageMetadata] = useState<{ title: string; h1: string; metaDescription: string } | null>(null);
+  const [activeResultTab, setActiveResultTab] = useState<"content" | "entities" | "tips">("content");
 
   // Show upsell for unauthenticated users or users on free plan
   // We detect free plan by checking if the user is not authenticated (free tier)
@@ -1322,9 +1331,12 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
       const res = await fetchPageMutation.mutateAsync({ url });
       const ct = (res as any).cleanText as string ?? "";
       const pt = (res as any).pageType as string ?? "generic";
+      const meta = (res as any).metadata as { title: string; h1: string; metaDescription: string } | undefined;
       setDetectedPageType(pt);
       setCleanText(ct);
       setRewrittenText(null);
+      setResearchData(null);
+      if (meta) setPageMetadata(meta);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -1368,6 +1380,11 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
         pageType: detectedPageType,
         targetQueries: [],
         citedCompetitorUrls,
+        // Pass page metadata for research pipeline
+        pageTitle: pageMetadata?.title,
+        h1: pageMetadata?.h1,
+        metaDescription: pageMetadata?.metaDescription,
+        language: "pl",
       });
       // Clear all timers immediately on success
       [...timers, ...sectionTimers].forEach(clearTimeout);
@@ -1378,6 +1395,14 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
       setRewrittenText(rewrittenStr);
       setCopied(false);
+      // Store research data if available
+      if ((result as any).researchData) {
+        setResearchData((result as any).researchData);
+        if ((result as any).researchData.queries?.length > 0) {
+          toast.success(`🔬 Zbadano ${(result as any).researchData.sources?.length ?? 0} źródeł — treść wzbogacona o kontekst badawczy`);
+        }
+      }
+      setActiveResultTab("content");
     } catch (err: unknown) {
       [...timers, ...sectionTimers].forEach(clearTimeout);
       const msg = err instanceof Error ? err.message : "AI rewrite failed";
@@ -1469,17 +1494,52 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
                 </div>
               )}
 
-              {/* Rewritten text panel */}
+              {/* Rewritten text panel with tabs */}
               {rewrittenText && (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-950/30">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-emerald-300">✨ Przepisana treść — gotowa do wdrożenia</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
-                        {detectedPageType !== "generic" ? detectedPageType : "ogólna"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                  {/* Tab bar */}
+                  <div className="flex items-center gap-0 border-b border-emerald-500/20 bg-emerald-950/40">
+                    <button
+                      onClick={() => setActiveResultTab("content")}
+                      className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+                        activeResultTab === "content"
+                          ? "border-emerald-400 text-emerald-300 bg-emerald-950/40"
+                          : "border-transparent text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      ✨ Treść
+                    </button>
+                    {researchData && researchData.keyEntities.length > 0 && (
+                      <button
+                        onClick={() => setActiveResultTab("entities")}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+                          activeResultTab === "entities"
+                            ? "border-violet-400 text-violet-300 bg-violet-950/40"
+                            : "border-transparent text-zinc-500 hover:text-zinc-300"
+                        }`}
+                      >
+                        🏷️ Encje i wskazówki
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 text-[10px]">
+                          {researchData.keyEntities.length}
+                        </span>
+                      </button>
+                    )}
+                    {researchData && researchData.sources.length > 0 && (
+                      <button
+                        onClick={() => setActiveResultTab("tips")}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+                          activeResultTab === "tips"
+                            ? "border-blue-400 text-blue-300 bg-blue-950/40"
+                            : "border-transparent text-zinc-500 hover:text-zinc-300"
+                        }`}
+                      >
+                        🔬 Źródła badań
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]">
+                          {researchData.sources.length}
+                        </span>
+                      </button>
+                    )}
+                    <div className="ml-auto flex items-center gap-2 pr-3">
                       <span className="text-[10px] text-zinc-500">{rewrittenText.length} znaków</span>
                       <button
                         onClick={handleCopy}
@@ -1490,13 +1550,81 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
                         }`}
                       >
                         <Copy className="w-3 h-3" />
-                        {copied ? "Skopiowano!" : "Kopiuj tekst"}
+                        {copied ? "Skopiowano!" : "Kopiuj"}
                       </button>
                     </div>
                   </div>
-                  <div className="px-4 py-4 max-h-[600px] overflow-y-auto prose prose-invert prose-sm max-w-none prose-headings:text-zinc-100 prose-headings:font-bold prose-p:text-zinc-200 prose-p:leading-relaxed prose-li:text-zinc-200 prose-strong:text-white prose-a:text-violet-400 prose-blockquote:border-violet-500 prose-blockquote:text-zinc-300 prose-code:text-emerald-300 prose-code:bg-zinc-800/60 prose-code:rounded prose-code:px-1">
-                    <Streamdown className="text-sm leading-relaxed">{rewrittenText}</Streamdown>
-                  </div>
+
+                  {/* Tab: Content */}
+                  {activeResultTab === "content" && (
+                    <div className="px-4 py-4 max-h-[600px] overflow-y-auto prose prose-invert prose-sm max-w-none prose-headings:text-zinc-100 prose-headings:font-bold prose-p:text-zinc-200 prose-p:leading-relaxed prose-li:text-zinc-200 prose-strong:text-white prose-a:text-violet-400 prose-blockquote:border-violet-500 prose-blockquote:text-zinc-300 prose-code:text-emerald-300 prose-code:bg-zinc-800/60 prose-code:rounded prose-code:px-1">
+                      <Streamdown className="text-sm leading-relaxed">{rewrittenText}</Streamdown>
+                    </div>
+                  )}
+
+                  {/* Tab: Entities & Tips */}
+                  {activeResultTab === "entities" && researchData && (
+                    <div className="p-4 space-y-5">
+                      {researchData.answerFirstDraft && (
+                        <div className="rounded-lg bg-amber-950/30 border border-amber-500/20 p-4">
+                          <p className="text-xs font-semibold text-amber-300 mb-2">💡 Sugerowany Answer-First Opening (wzorzec AI snippet)</p>
+                          <p className="text-sm text-zinc-200 leading-relaxed italic">{researchData.answerFirstDraft}</p>
+                        </div>
+                      )}
+                      {researchData.keyEntities.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-violet-300 mb-3">🏷️ Kluczowe encje wplecione w treść</p>
+                          <div className="flex flex-wrap gap-2">
+                            {researchData.keyEntities.map((entity, i) => (
+                              <span key={i} className="px-2.5 py-1 rounded-full bg-violet-500/15 border border-violet-500/25 text-xs text-violet-300">
+                                {entity}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {researchData.aiReadinessTips.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-emerald-300 mb-3">🚀 Wskazówki GEO zastosowane w rewrite</p>
+                          <div className="space-y-2">
+                            {researchData.aiReadinessTips.map((tip, i) => (
+                              <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/15">
+                                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs flex items-center justify-center flex-shrink-0 font-bold mt-0.5">{i + 1}</span>
+                                <p className="text-xs text-zinc-300 leading-relaxed">{tip}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {researchData.queries.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-zinc-400 mb-2">🔍 Zapytania badawcze (query fan-out)</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {researchData.queries.map((q, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded bg-zinc-800 border border-white/8 text-[11px] text-zinc-400">{q}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab: Research Sources */}
+                  {activeResultTab === "tips" && researchData && (
+                    <div className="p-4 space-y-3">
+                      <p className="text-xs text-zinc-500">Treść została wzbogacona o kontekst z {researchData.sources.length} źródeł internetowych. Żadną informację nie dodano bez podstawy w oryginalnej treści.</p>
+                      {researchData.sources.map((src, i) => (
+                        <div key={i} className="rounded-lg bg-zinc-900/60 border border-white/8 p-3">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <p className="text-xs font-medium text-zinc-200 leading-tight">{src.title}</p>
+                            <span className="text-[10px] text-zinc-600 shrink-0">[{i + 1}]</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 leading-relaxed mb-2">{src.snippet}</p>
+                          <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 truncate block">{src.url}</a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

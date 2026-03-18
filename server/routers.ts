@@ -30,6 +30,7 @@ import {
   captureEmailLead,
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
+import { runRewriteResearch } from "./rewrite/rewriteResearch";
 import { runPageCreatorPipeline } from "./pageCreator/index";
 import { pageCreations } from "../drizzle/schema";
 
@@ -306,6 +307,11 @@ export const appRouter = router({
         url: z.string().optional(),
         pageType: z.string().optional(),
         targetQueries: z.array(z.string()).optional(),
+        // Page metadata for research pipeline (full_rewrite mode)
+        pageTitle: z.string().optional(),
+        h1: z.string().optional(),
+        metaDescription: z.string().optional(),
+        language: z.string().optional(),
         // Competitor cited URLs from AI Citations (for full_rewrite mode)
         citedCompetitorUrls: z.array(z.string()).optional(),
       }))
@@ -327,8 +333,51 @@ export const appRouter = router({
         const { verifyAndRevise } = await import("./rewrite/eeatVerifier");
 
         const issuesList = (input.issues ?? []).slice(0, 10).join("\n");
-        const queriesStr = (input.targetQueries ?? []).join(", ") || "ogólne zapytania w wyszukiwarkach AI";
         const pageType = input.pageType ?? "generic";
+
+        // ─── Pre-Rewrite Research Pipeline (AI Page Creator architecture) ──────
+        // Only for full_rewrite mode — adds query fan-out, grounding, synthesis
+        let researchContext = "";
+        let researchQueries: string[] = input.targetQueries ?? [];
+        let researchKeyEntities: string[] = [];
+        let researchAiReadinessTips: string[] = [];
+        let researchAnswerFirstDraft = "";
+        let researchSources: Array<{ url: string; title: string; snippet: string }> = [];
+
+        if (input.mode === "full_rewrite" && input.url) {
+          try {
+            console.log("[Rewrite] Starting pre-rewrite research pipeline...");
+            const researchResult = await runRewriteResearch({
+              url: input.url,
+              title: input.pageTitle || input.url,
+              h1: input.h1,
+              metaDescription: input.metaDescription,
+              pageType: input.pageType,
+              language: input.language ?? "pl",
+              cleanContent: input.content.slice(0, 3000),
+            });
+            researchQueries = researchResult.queries.length > 0 ? researchResult.queries : researchQueries;
+            researchKeyEntities = researchResult.keyEntities;
+            researchAiReadinessTips = researchResult.aiReadinessTips;
+            researchAnswerFirstDraft = researchResult.answerFirstDraft;
+            researchSources = researchResult.sources;
+
+            if (researchResult.researchBrief) {
+              researchContext =
+                `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `🔬 KONTEKST BADAWCZY (zebrane z internetu przed przepisaniem):\n` +
+                `${researchResult.researchBrief}\n\n` +
+                `🏷️ KLUCZOWE ENCJE DO WPLECENIA W TREŚĆ:\n${researchKeyEntities.join(", ")}\n\n` +
+                (researchAnswerFirstDraft ? `💡 SUGEROWANY ANSWER-FIRST OPENING:\n${researchAnswerFirstDraft}\n` : "") +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+            }
+            console.log(`[Rewrite] Research done: ${researchResult.queries.length} queries, ${researchResult.sources.length} sources`);
+          } catch (e) {
+            console.warn("[Rewrite] Research pipeline failed (non-fatal):", (e as Error).message);
+          }
+        }
+
+        const queriesStr = researchQueries.join(", ") || "ogólne zapytania w wyszukiwarkach AI";
 
         // Page-type-specific context for the AI
         const pageTypeContext: Record<string, string> = {
@@ -410,6 +459,7 @@ ${queriesStr}
 
 🔧 Problemy wykryte w audycie do naprawienia:
 ${issuesList || "Brak konkretnych problemów — zoptymalizuj ogólnie pod kątem AI readiness"}
+${researchContext}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✍️ ZASADY FORMATOWANIA WYJŚCIOWEGO (BEZWZGLĘDNE):
@@ -691,6 +741,14 @@ ${cleanedContent.slice(0, 20000)}
             } : null,
             eeatScore,
             wasRevised,
+            // Research pipeline results (AI Page Creator architecture)
+            researchData: (researchKeyEntities.length > 0 || researchAiReadinessTips.length > 0) ? {
+              queries: researchQueries,
+              keyEntities: researchKeyEntities,
+              aiReadinessTips: researchAiReadinessTips,
+              answerFirstDraft: researchAnswerFirstDraft,
+              sources: researchSources,
+            } : null,
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "AI rewrite failed";
@@ -774,6 +832,12 @@ ${cleanedContent.slice(0, 20000)}
             cleanText,
             pageType,
             pageTitle,
+            // Page metadata for research pipeline
+            metadata: {
+              title: pageTitle,
+              h1,
+              metaDescription: metaDesc,
+            },
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Unknown error";

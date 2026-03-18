@@ -660,3 +660,17 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Nawigacja: link "AI Page Creator" w Dashboard nav (zielony, z ikoną Sparkles)
 - [x] Routing: /page-creator i /page-creator/:id w App.tsx
 - [x] 62 testy, 0 błędów TS
+
+## Rozbudowa Full Rewrite AI — architektura AI Page Creator
+- [x] Analiza porównawcza: 6 mechanizmów AI Page Creator przeniesionych do Full Rewrite
+- [x] Nowy moduł rewriteResearch.ts: query fan-out (6 zapytań), grounding (DDG + fetch top 3 wyników), synthesis LLM
+- [x] Integracja w sandbox.rewrite: research pipeline uruchamiany przed generowaniem sekcji (tylko full_rewrite + url)
+- [x] Kontekst badawczy wstrzyknięty do systemPrompt (brief badawczy, kluczowe encje, answer-first draft)
+- [x] Return rozszerzony o researchData (queries, keyEntities, aiReadinessTips, answerFirstDraft, sources)
+- [x] fetchPage zwraca metadata (title, h1, metaDescription) — przekazywane do research pipeline
+- [x] Input schema rozszerzony o pageTitle, h1, metaDescription, language
+- [x] Frontend: 3 zakładki wyników: ✨ Treść / 🏷️ Encje i wskazówki / 🔬 Źródła badań
+- [x] Tab Encje: Answer-First Opening, lista encji jako tagi, wskazówki GEO z numerami, query fan-out
+- [x] Tab Źródła: lista scraped sources z tytułem, snippetem i URL
+- [x] Toast po rewrite: "Zbadano X źródeł — treść wzbogacona o kontekst badawczy"
+- [x] 62 testy, 0 błędów TS
