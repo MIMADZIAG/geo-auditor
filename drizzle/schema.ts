@@ -188,3 +188,15 @@ export const pageCreations = mysqlTable("page_creations", {
 
 export type PageCreation = typeof pageCreations.$inferSelect;
 export type InsertPageCreation = typeof pageCreations.$inferInsert;
+
+// AI Search Exposure Score cache — one row per domain, TTL 24h
+export const aiExposureCache = mysqlTable("ai_exposure_cache", {
+  id: int("id").autoincrement().primaryKey(),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  result: json("result").notNull(),  // AiExposureResult
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: bigint("expiresAt", { mode: "number" }).notNull(), // Unix ms
+});
+
+export type AiExposureCache = typeof aiExposureCache.$inferSelect;
+export type InsertAiExposureCache = typeof aiExposureCache.$inferInsert;

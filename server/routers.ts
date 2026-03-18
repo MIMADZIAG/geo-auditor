@@ -32,7 +32,8 @@ import {
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
 import { runPageCreatorPipeline } from "./pageCreator/index";
-import { pageCreations } from "../drizzle/schema";
+import { pageCreations, aiExposureCache } from "../drizzle/schema";
+import { computeAiExposureScore, type AiExposureResult } from "./aiExposure/index";
 
 export const appRouter = router({
   system: systemRouter,
@@ -1102,6 +1103,63 @@ ${cleanedContent.slice(0, 20000)}
         .orderBy(pageCreations.createdAt);
       return rows;
     }),
+  }),
+  aiExposure: router({
+    /**
+     * Get AI Search Exposure Score for a domain.
+     * Cached per domain for 24 hours.
+     * Available to all authenticated users (free plan gets basic data, paid gets full breakdown).
+     */
+    getScore: publicProcedure
+      .input((val: unknown) => {
+        const v = val as { url: string };
+        if (!v?.url || typeof v.url !== "string") throw new TRPCError({ code: "BAD_REQUEST", message: "URL is required" });
+        return v;
+      })
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const now = Date.now();
+
+        // Extract domain for cache lookup
+        let domain: string;
+        try {
+          domain = new URL(input.url).hostname.replace(/^www\./, "");
+        } catch {
+          domain = input.url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
+        }
+
+        // Check cache (TTL: 24h)
+        const cached = await db
+          .select()
+          .from(aiExposureCache)
+          .where(eq(aiExposureCache.domain, domain))
+          .limit(1);
+
+        if (cached.length > 0 && cached[0].expiresAt > now) {
+          console.log(`[AiExposure] Cache hit for domain: ${domain}`);
+          return { result: cached[0].result as AiExposureResult, fromCache: true };
+        }
+
+        // Compute fresh score
+        console.log(`[AiExposure] Computing fresh score for domain: ${domain}`);
+        const result = await computeAiExposureScore(input.url);
+
+        // Upsert cache
+        const TTL_24H = 24 * 60 * 60 * 1000;
+        if (cached.length > 0) {
+          await db
+            .update(aiExposureCache)
+            .set({ result, expiresAt: now + TTL_24H })
+            .where(eq(aiExposureCache.domain, domain));
+        } else {
+          await db
+            .insert(aiExposureCache)
+            .values({ domain, result, expiresAt: now + TTL_24H });
+        }
+
+        return { result, fromCache: false };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

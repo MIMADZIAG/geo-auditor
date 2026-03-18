@@ -30,6 +30,12 @@ import {
   Search,
   Cpu,
   Download,
+  Eye,
+  Globe,
+  TrendingDown,
+  Activity,
+  Award,
+  Flame,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -219,7 +225,10 @@ export default function Results() {
           citeabilityScore={contentIntelligence?.citeabilityScore}
         />
 
-           {/* ── 2. Issues & Fixes — Critical first ── */}
+           {/* ── 2. AI Search Exposure Score ── */}
+        <AiExposurePanel url={audit.url} />
+
+        {/* ── 3. Issues & Fixes — Critical first ── */}
         <IssuesAndFixes
           findings={findings}
           llmRecs={llmResult?.recommendations ?? null}
@@ -1765,6 +1774,262 @@ function ErrorState({ message }: { message: string }) {
         <Button onClick={() => navigate("/")} className="gap-2">
           <ArrowLeft className="w-4 h-4" /> Try Another URL
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── AI Search Exposure Score Panel ──────────────────────────────────────────
+
+type ExposureTier = "invisible" | "emerging" | "visible" | "dominant";
+
+interface AiExposureResult {
+  domain: string;
+  totalKeywords: number;
+  keywordsWithAiOverview: number;
+  aiOverviewCoveragePercent: number;
+  citedInAiOverview: number;
+  citationRate: number;
+  compositeScore: number;
+  tier: ExposureTier;
+  topAiKeywords: Array<{ keyword: string; volume: number; hasAiOverview: boolean; isCited: boolean }>;
+  insights: string[];
+  analyzedAt: string;
+}
+
+const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: string; border: string; icon: React.ElementType; desc: string }> = {
+  invisible: {
+    label: "Invisible",
+    color: "oklch(0.65 0.22 25)",
+    bg: "oklch(0.65 0.22 25 / 0.08)",
+    border: "oklch(0.65 0.22 25 / 0.25)",
+    icon: TrendingDown,
+    desc: "Your domain has virtually no presence in Google AI Overviews.",
+  },
+  emerging: {
+    label: "Emerging",
+    color: "oklch(0.78 0.18 75)",
+    bg: "oklch(0.78 0.18 75 / 0.08)",
+    border: "oklch(0.78 0.18 75 / 0.25)",
+    icon: Activity,
+    desc: "Your domain is beginning to appear in AI Overviews — growth potential is high.",
+  },
+  visible: {
+    label: "Visible",
+    color: "oklch(0.72 0.18 160)",
+    bg: "oklch(0.72 0.18 160 / 0.08)",
+    border: "oklch(0.72 0.18 160 / 0.25)",
+    icon: Eye,
+    desc: "Your domain has solid AI Overview presence — keep optimizing to reach Dominant.",
+  },
+  dominant: {
+    label: "Dominant",
+    color: "oklch(0.72 0.18 145)",
+    bg: "oklch(0.72 0.18 145 / 0.08)",
+    border: "oklch(0.72 0.18 145 / 0.25)",
+    icon: Award,
+    desc: "Your domain dominates AI Overviews — you are a top authority in your niche.",
+  },
+};
+
+function AiExposurePanel({ url }: { url: string }) {
+  const [displayScore, setDisplayScore] = useState(0);
+  const [displayCoverage, setDisplayCoverage] = useState(0);
+
+  const { data, isLoading, error } = trpc.aiExposure.getScore.useQuery(
+    { url },
+    { enabled: !!url, staleTime: 1000 * 60 * 30 }
+  );
+
+  const result = data?.result as AiExposureResult | undefined;
+  const tier = result ? TIER_CONFIG[result.tier] : null;
+  const TierIcon = tier?.icon ?? Activity;
+
+  // Animate score count-up
+  useEffect(() => {
+    if (!result) return;
+    let start = 0;
+    const duration = 1400;
+    const step = (ts: number) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      setDisplayScore(Math.round(p * result.compositeScore));
+      setDisplayCoverage(Math.round(p * result.aiOverviewCoveragePercent));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [result]);
+
+  const circumference = 2 * Math.PI * 40;
+  const strokeOffset = circumference - (displayScore / 100) * circumference;
+
+  return (
+    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: tier?.border ?? "oklch(0.3 0.02 250 / 0.4)" }}>
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4 flex items-center justify-between" style={{ background: tier?.bg ?? "oklch(0.15 0.015 250 / 0.5)" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: tier?.bg ?? "oklch(0.2 0.02 250 / 0.6)", border: `1px solid ${tier?.border ?? "oklch(0.3 0.02 250 / 0.3)"}` }}>
+            <Globe className="w-5 h-5" style={{ color: tier?.color ?? "oklch(0.6 0.1 250)" }} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">AI Search Exposure</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
+                Live Intelligence
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">How often your domain appears in Google AI Overviews</p>
+          </div>
+        </div>
+        {result && (
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Flame className="w-3.5 h-3.5" style={{ color: tier?.color }} />
+            <span style={{ color: tier?.color }} className="font-semibold">{tier?.label}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="px-6 pb-6 bg-card/50">
+        {isLoading && (
+          <div className="py-10 flex flex-col items-center gap-4">
+            <div className="relative w-20 h-20">
+              <svg className="w-20 h-20 -rotate-90 animate-spin" style={{ animationDuration: "3s" }} viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="30" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="6" />
+                <circle cx="40" cy="40" r="30" fill="none" stroke="oklch(0.72 0.18 145)" strokeWidth="6" strokeLinecap="round" strokeDasharray="188" strokeDashoffset="140" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Globe className="w-6 h-6 text-primary animate-pulse" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium">Scanning AI Search landscape…</p>
+              <p className="text-xs text-muted-foreground mt-1">Analyzing your domain's presence in Google AI Overviews</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="py-8 flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mt-4">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-300">AI Exposure data temporarily unavailable</p>
+              <p className="text-xs text-muted-foreground mt-1">We couldn't retrieve AI Overview data for this domain right now. Try again in a moment.</p>
+            </div>
+          </div>
+        )}
+
+        {result && tier && (
+          <div className="mt-4 space-y-5">
+            {/* Main metrics row */}
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* Composite Score ring */}
+              <div className="shrink-0 flex flex-col items-center gap-2">
+                <div className="relative">
+                  <svg width="100" height="100" viewBox="0 0 100 100" className="-rotate-90">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="8" />
+                    <circle
+                      cx="50" cy="50" r="40" fill="none"
+                      stroke={tier.color}
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeOffset}
+                      style={{ transition: "stroke-dashoffset 0.05s linear" }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black" style={{ color: tier.color }}>{displayScore}</span>
+                    <span className="text-[9px] text-muted-foreground">/100</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: tier.bg, color: tier.color, border: `1px solid ${tier.border}` }}>
+                  <TierIcon className="w-3 h-3" />
+                  {tier.label}
+                </div>
+              </div>
+
+              {/* Stats grid */}
+              <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+                <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center">
+                  <div className="text-2xl font-black" style={{ color: tier.color }}>{displayCoverage}%</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">AI Overview Coverage</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">{result.keywordsWithAiOverview} of {result.totalKeywords} keywords</div>
+                </div>
+                <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center">
+                  <div className="text-2xl font-black text-violet-400">{result.citedInAiOverview}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Direct Citations</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">cited in AI answers</div>
+                </div>
+                <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center col-span-2 sm:col-span-1">
+                  <div className="text-2xl font-black text-sky-400">{result.totalKeywords}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Keywords Analyzed</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">top organic keywords</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier description */}
+            <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: tier.bg, border: `1px solid ${tier.border}` }}>
+              <TierIcon className="w-4 h-4 shrink-0 mt-0.5" style={{ color: tier.color }} />
+              <p className="text-sm" style={{ color: tier.color }}>{tier.desc}</p>
+            </div>
+
+            {/* AI Insights */}
+            {result.insights.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" /> AI Insights
+                </h3>
+                <div className="grid gap-2">
+                  {result.insights.map((insight, i) => (
+                    <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-muted/15 border border-border/20">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-muted-foreground leading-relaxed">{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top AI keywords */}
+            {result.topAiKeywords.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <BarChart3 className="w-3.5 h-3.5 text-primary" /> Top Keywords in AI Overviews
+                </h3>
+                <div className="rounded-xl border border-border/30 overflow-hidden">
+                  <div className="grid grid-cols-[1fr_auto_auto] text-[10px] text-muted-foreground font-medium px-4 py-2 bg-muted/20 border-b border-border/20">
+                    <span>Keyword</span>
+                    <span className="text-right pr-4">Volume</span>
+                    <span className="text-right">Status</span>
+                  </div>
+                  {result.topAiKeywords.slice(0, 8).map((kw, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-2.5 border-b border-border/10 last:border-0 hover:bg-muted/10 transition-colors">
+                      <span className="text-xs font-medium truncate pr-2">{kw.keyword}</span>
+                      <span className="text-xs text-muted-foreground text-right pr-4">{kw.volume >= 1000 ? `${(kw.volume / 1000).toFixed(1)}k` : kw.volume}</span>
+                      <div className="flex items-center gap-1.5">
+                        {kw.isCited ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>Cited</span>
+                        ) : kw.hasAiOverview ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-sky-500/10 text-sky-400">AI Overview</span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-muted/30 text-muted-foreground">Standard</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cache note */}
+            {data?.fromCache && (
+              <p className="text-[10px] text-muted-foreground/50 text-right">
+                Data refreshed every 24h · Last scan: {new Date(result.analyzedAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

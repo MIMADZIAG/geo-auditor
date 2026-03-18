@@ -683,3 +683,22 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 ## Bug Fix: PageCreator — "Cannot update Route while rendering PageCreator" (navigate w render)
 - [x] Naprawa: navigate() przeniesiony do useEffect (był wywoływany bezpośrednio w render przy jobStatus==completed)
+
+## Nowa funkcjonalność: AI Search Exposure Score (Ahrefs AI Overview)
+- [ ] Backend: moduł aiExposure.ts — pobieranie top-50 fraz domeny, analiza ai_overview w SERP features
+- [ ] Backend: tabela ai_exposure_cache w bazie (TTL 24h)
+- [ ] Backend: tRPC procedure audit.getAiExposure
+- [ ] Frontend: AI Search Exposure Score w nagłówku Results — animowany ring, breakdown, insight cards
+- [ ] Frontend: sekcja "Twoja widoczność w AI Search" — lista fraz z AI Overview, porównanie z domeną
+- [ ] Testy i weryfikacja
+
+## Nowa funkcjonalność: AI Search Exposure Score (Live Intelligence)
+- [x] Moduł aiExposure/index.ts — query fan-out Ahrefs, SERP features analysis, composite score (60% coverage + 40% citation)
+- [x] 4 tiery: Invisible / Emerging / Visible / Dominant z kolorami i opisami
+- [x] Tabela ai_exposure_cache (migracja 0015) — TTL 24h per domena
+- [x] tRPC procedure aiExposure.getScore — cache lookup + compute + upsert
+- [x] ENV.ahrefsApiKey dodany do env.ts
+- [x] Frontend: AiExposurePanel — animowany ring score, 3 metryki (coverage%, citations, keywords), tier badge
+- [x] Frontend: AI Insights (3 dynamiczne wskazówki), Top Keywords table (cited/AI Overview/Standard)
+- [x] Wstawiony między ScoreHero a IssuesAndFixes w Results.tsx
+- [x] 62 testy, 0 błędów TS
