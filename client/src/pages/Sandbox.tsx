@@ -216,7 +216,7 @@ function SandboxWithTRPC({
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
           <input
-            type="url"
+            type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://yourwebsite.com/product-page"

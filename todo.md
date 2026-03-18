@@ -719,3 +719,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Add defensive `?? []` guards for `topKeywords` and `opportunities` arrays
 - [x] Add Growth Opportunities section to AiExposurePanel
 - [x] Write unit tests for aiExposure module (19 tests, 81 total passing)
+
+## Bug Fix: "The string didn't match expected pattern" (2026-03-18 — krytyczny)
+
+- [x] Zidentyfikować źródło błędu: natywna walidacja HTML5 `<input type="url">` w przeglądarce
+- [x] Naprawa: zmiana `type="url"` na `type="text"` we wszystkich formularzach URL (Home.tsx, Dashboard.tsx, Sandbox.tsx, AISandbox.tsx)
+- [x] Testy TypeScript: 0 błędów, 81 testów jednostkowych passing
+- [x] Testy e2e API: audit.run, audit.getById, aiExposure.getScore — wszystkie PASS

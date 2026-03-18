@@ -148,7 +148,7 @@ const AISandbox: React.FC<AISandboxProps> = ({
       <div style={styles.inputSection}>
         <div style={styles.inputRow}>
           <input
-            type="url"
+            type="text"
             value={url}
             onChange={e => setUrl(e.target.value)}
             placeholder="https://yourwebsite.com/product-page"

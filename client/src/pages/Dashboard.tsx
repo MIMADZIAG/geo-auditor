@@ -167,7 +167,7 @@ export default function Dashboard() {
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="flex gap-3">
                 <Input
-                  type="url"
+                  type="text"
                   placeholder="https://yoursite.com/product-page"
                   value={addUrl}
                   onChange={(e) => setAddUrl(e.target.value)}

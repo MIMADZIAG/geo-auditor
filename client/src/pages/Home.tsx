@@ -181,7 +181,7 @@ export default function Home() {
                     <Search className="w-4 h-4" />
                   </div>
                   <Input
-                    type="url"
+                    type="text"
                     placeholder="https://twojasklepinternetowy.pl/produkt"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
