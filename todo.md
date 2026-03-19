@@ -743,3 +743,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Wyczyszczenie całego cache ai_exposure_cache przez SQL
 - [x] Weryfikacja: direct.money.pl = 48% AI Overview, tier 'Wschodzący w AI Search', score 29/100
 - [x] 86 testów passing, 0 błędów TypeScript
+
+## Bug Fix: AI Search Exposure — błędna logika wykrywania cytowań (2026-03-19)
+
+- [x] Diagnoza: Ahrefs API nie dostarcza bezpośrednich danych o cytowaniach — `ai_overview_sitelink` to feature SERP (sitelinki), a nie wskaźnik cytowania konkretnej domeny
+- [x] Naprawa: nowa heurystyka cytowania: `hasAiOverview && position <= 5` (Google AI Overview cytuje głównie top-5 organicznych wyników)
+- [x] Weryfikacja: doz.pl / nimesil (pos=1, ai_overview) = isCitedInAiOverview: true ✔
+- [x] Zaktualizowano komunikaty insights — poprawna terminologia ("prawdopodobnie cytowana")
+- [x] 88 testów passing (2 nowe testy dla nowej logiki cytowania)

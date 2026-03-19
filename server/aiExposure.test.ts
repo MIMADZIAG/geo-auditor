@@ -236,24 +236,59 @@ describe("Ahrefs API parameter validation", () => {
       serp_features: ["ai_overview", "snippet", "image_th"],
       best_position: 3,
     };
-    const hasAiOverview = kw.serp_features.includes("ai_overview");
-    const isCited = kw.serp_features.includes("ai_overview_sitelink");
+    const hasAiOverview = kw.serp_features.includes("ai_overview") || kw.serp_features.includes("ai_overview_sitelink");
+    const position = kw.best_position;
+    // Citation heuristic: ai_overview present AND ranked in top 5
+    const isCitedInAiOverview = hasAiOverview && position !== null && position <= 5;
     expect(hasAiOverview).toBe(true);
-    expect(isCited).toBe(false);
+    expect(isCitedInAiOverview).toBe(true); // pos=3 <= 5, so cited
   });
 
-  it("should detect ai_overview_sitelink as citation", () => {
+  it("should NOT cite domain when ranked outside top 5", () => {
     const kw = {
       keyword: "test",
       volume: 500,
       keyword_difficulty: 20,
-      serp_features: ["ai_overview", "ai_overview_sitelink"],
+      serp_features: ["ai_overview"],
+      best_position: 8, // outside top 5
+    };
+    const hasAiOverview = kw.serp_features.includes("ai_overview");
+    const position = kw.best_position;
+    const isCitedInAiOverview = hasAiOverview && position !== null && position <= 5;
+    expect(hasAiOverview).toBe(true);
+    expect(isCitedInAiOverview).toBe(false); // pos=8 > 5, not cited
+  });
+
+  it("should cite domain when ranked in top 5 with ai_overview", () => {
+    // This test validates the doz.pl / nimesil scenario:
+    // doz.pl ranks #1 for 'nimesil' with ai_overview -> should be cited
+    const kw = {
+      keyword: "nimesil",
+      volume: 97000,
+      keyword_difficulty: 30,
+      serp_features: ["ai_overview", "image_th", "question", "sitelink"],
       best_position: 1,
     };
     const hasAiOverview = kw.serp_features.includes("ai_overview") || kw.serp_features.includes("ai_overview_sitelink");
-    const isCited = kw.serp_features.includes("ai_overview_sitelink");
+    const position = kw.best_position;
+    const isCitedInAiOverview = hasAiOverview && position !== null && position <= 5;
     expect(hasAiOverview).toBe(true);
-    expect(isCited).toBe(true);
+    expect(isCitedInAiOverview).toBe(true); // pos=1 <= 5, cited
+  });
+
+  it("should handle ai_overview_sitelink as hasAiOverview=true", () => {
+    const kw = {
+      keyword: "test",
+      volume: 500,
+      keyword_difficulty: 20,
+      serp_features: ["ai_overview_sitelink"],
+      best_position: 2,
+    };
+    const hasAiOverview = kw.serp_features.includes("ai_overview") || kw.serp_features.includes("ai_overview_sitelink");
+    const position = kw.best_position;
+    const isCitedInAiOverview = hasAiOverview && position !== null && position <= 5;
+    expect(hasAiOverview).toBe(true);
+    expect(isCitedInAiOverview).toBe(true); // ai_overview_sitelink + pos=2
   });
 });
 

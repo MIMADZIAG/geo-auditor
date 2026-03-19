@@ -3,7 +3,7 @@
  *
  * Proprietary GEO-Auditor metric that measures how many of a domain's
  * organic keywords trigger Google AI Overviews (and whether the domain
- * is cited as a source in those Overviews).
+ * is likely cited as a source in those Overviews).
  *
  * Data source: internal SERP intelligence engine (powered by keyword
  * research infrastructure — source NOT disclosed to end users).
@@ -11,12 +11,17 @@
  * Algorithm:
  *   1. Extract domain from audited URL
  *   2. Fetch top-100 organic keywords for the domain (by traffic)
- *   3. For each keyword, check SERP features for "ai_overview" / "ai_overview_sitelink"
- *   4. Calculate:
+ *   3. For each keyword, check SERP features for "ai_overview"
+ *   4. Citation heuristic: domain is considered cited when:
+ *      - AI Overview is present (ai_overview in serp_features), AND
+ *      - Domain ranks in top 5 organically (best_position <= 5)
+ *      Rationale: Google AI Overviews predominantly cite top-5 organic results.
+ *      Note: Ahrefs does not provide direct citation data; this is a best-effort estimate.
+ *   5. Calculate:
  *      - exposureScore: % of keywords with AI Overview present (0–100)
- *      - citationScore: % of keywords where domain is cited in AI Overview (0–100)
+ *      - citationScore: % of AI Overview keywords where domain is likely cited (0–100)
  *      - compositeScore: weighted average (60% exposure + 40% citation)
- *   5. Classify domain into tier: Invisible / Emerging / Visible / Dominant
+ *   6. Classify domain into tier: Invisible / Emerging / Visible / Dominant
  */
 
 import { ENV } from "../_core/env";
@@ -78,15 +83,16 @@ function generateInsights(result: Omit<AiExposureResult, "insights">): string[] 
     insights.push(`${exposurePct}% analizowanych fraz wyzwala Google AI Overview — to ${keywordsWithAiOverview} z ${totalKeywordsAnalyzed} słów kluczowych.`);
 
     if (keywordsCitedInAiOverview === 0) {
-      insights.push(`Domena pojawia się w ${keywordsWithAiOverview} AI Overview, ale nie jest cytowana jako źródło — treści istnieją, ale nie spełniają kryteriów cytowania.`);
+      insights.push(`Domena pojawia się w ${keywordsWithAiOverview} AI Overview, ale nie rankuje w top 5 dla żadnej z tych fraz — zwiększ pozycje organiczne, aby być cytowanym.`);
     } else {
       const citePct = Math.round((keywordsCitedInAiOverview / keywordsWithAiOverview) * 100);
-      insights.push(`Domena jest cytowana w ${citePct}% AI Overview, w których się pojawia (${keywordsCitedInAiOverview}/${keywordsWithAiOverview} fraz).`);
+      insights.push(`Domena prawdopodobnie jest cytowana w ${citePct}% AI Overview, w których się pojawia (${keywordsCitedInAiOverview}/${keywordsWithAiOverview} fraz) — rankuje w top 5 dla tych zapytań.`);
     }
 
     if (opportunities.length > 0) {
       const topOpportunity = opportunities.sort((a, b) => b.volume - a.volume)[0];
-      insights.push(`Największa szansa: "${topOpportunity.keyword}" (${topOpportunity.volume.toLocaleString()} wyszukiwań/mies.) — AI Overview aktywny, ale domena nie jest cytowana.`);
+      const posInfo = topOpportunity.position ? ` (pozycja ${topOpportunity.position})` : '';
+      insights.push(`Szansa na cytowanie: "${topOpportunity.keyword}" (${topOpportunity.volume.toLocaleString()} wyszukiwań/mies.) — AI Overview aktywny, ale domena rankuje poza top 5${posInfo}.`);
     }
   }
 
@@ -162,12 +168,17 @@ async function fetchOrganicKeywords(domain: string, limit = 100): Promise<AiExpo
     console.log(`[AiExposure] Got ${keywords.length} keywords for ${domain}`);
 
     return keywords.map((kw) => {
-      // FIX: serp_features is now a direct array on the keyword object
       const serpFeatures: string[] = kw.serp_features ?? [];
-      // "ai_overview" = AI Overview present in SERP (domain may or may not be cited)
-      // "ai_overview_sitelink" = domain IS cited as a source in AI Overview
+      const position = kw.best_position ?? null;
+
+      // ai_overview = AI Overview is present in SERP for this keyword
+      // ai_overview_sitelink = AI Overview has sitelinks (NOT a citation indicator — rarely returned by Ahrefs)
       const hasAiOverview = serpFeatures.includes("ai_overview") || serpFeatures.includes("ai_overview_sitelink");
-      const isCitedInAiOverview = serpFeatures.includes("ai_overview_sitelink");
+
+      // Citation heuristic: Ahrefs does not expose direct citation data.
+      // Google AI Overviews predominantly cite top-5 organic results.
+      // We consider the domain "cited" when it has AI Overview AND ranks in top 5.
+      const isCitedInAiOverview = hasAiOverview && position !== null && position <= 5;
 
       return {
         keyword: kw.keyword,
@@ -175,7 +186,7 @@ async function fetchOrganicKeywords(domain: string, limit = 100): Promise<AiExpo
         difficulty: kw.keyword_difficulty ?? 0,
         hasAiOverview,
         isCitedInAiOverview,
-        position: kw.best_position ?? null,
+        position,
       };
     });
   } catch (err) {
