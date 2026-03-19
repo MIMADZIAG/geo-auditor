@@ -52,13 +52,15 @@ export default function PublicReport() {
   const llmRecs = audit.llmRecommendations as unknown as LLMRecommendation[] | null;
   const llmAiInsight = audit.llmAiInsight as string | null;
   const llmTopPriority = audit.llmTopPriority as string | null;
+  const llmScoreGain = (audit as unknown as { llmScoreGain?: number | null }).llmScoreGain ?? null;
+  const llmDifficulty = (audit as unknown as { llmDifficulty?: string | null }).llmDifficulty as "easy" | "medium" | "hard" | null;
   const overallScore = audit.overallScore ?? 0;
   const scoreLabel = getScoreLabel(overallScore);
   const scoreColor = getScoreColor(overallScore);
 
   const llmResult: LLMRecommendationsResult | null =
     llmRecs && llmAiInsight
-      ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "" }
+      ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "", scoreGain: llmScoreGain ?? 5, difficulty: llmDifficulty ?? "medium" }
       : null;
 
   const reportUrl = `${window.location.origin}/report/${auditId}`;

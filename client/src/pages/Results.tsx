@@ -147,13 +147,15 @@ export default function Results() {
   const llmRecs = audit.llmRecommendations as unknown as LLMRecommendation[] | null;
   const llmAiInsight = audit.llmAiInsight as string | null;
   const llmTopPriority = audit.llmTopPriority as string | null;
+  const llmScoreGain = (audit as unknown as { llmScoreGain?: number | null }).llmScoreGain ?? null;
+  const llmDifficulty = (audit as unknown as { llmDifficulty?: string | null }).llmDifficulty as "easy" | "medium" | "hard" | null;
   const overallScore = Math.round(audit.overallScore ?? 0);
   const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
   const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
 
   const llmResult: LLMRecommendationsResult | null =
     llmRecs && llmAiInsight
-      ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "" }
+      ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "", scoreGain: llmScoreGain ?? 5, difficulty: llmDifficulty ?? "medium" }
       : null;
 
   const handleShare = (platform: "linkedin" | "twitter" | "copy") => {
@@ -227,7 +229,12 @@ export default function Results() {
 
         {/* ── 2. #1 Priority Fix — natychmiastowa wartość, "aha moment" ── */}
         {llmResult?.topPriority && (
-          <TopPriorityBanner topPriority={llmResult.topPriority} aiInsight={llmResult.aiInsight} />
+          <TopPriorityBanner
+            topPriority={llmResult.topPriority}
+            aiInsight={llmResult.aiInsight}
+            scoreGain={llmResult.scoreGain}
+            difficulty={llmResult.difficulty}
+          />
         )}
 
         {/* ── 3. AI Citation Check — kto Cię wyprzedza (PLG hook) ── */}
@@ -755,8 +762,45 @@ function CompetitorAnalysisTeaser({ navigate }: { navigate: (path: string) => vo
 
 // ─── 3. Top Priority Banner ───────────────────────────────────────────────────
 
-function TopPriorityBanner({ topPriority, aiInsight }: { topPriority: string; aiInsight: string }) {
+const DIFFICULTY_CONFIG = {
+  easy: {
+    label: "Easy fix",
+    sublabel: "No developer needed",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10 border-emerald-500/20",
+    icon: Zap,
+  },
+  medium: {
+    label: "Medium effort",
+    sublabel: "~30 min with developer",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10 border-amber-500/20",
+    icon: Code2,
+  },
+  hard: {
+    label: "Requires dev work",
+    sublabel: "~2h+ with developer",
+    color: "text-rose-400",
+    bg: "bg-rose-500/10 border-rose-500/20",
+    icon: Cpu,
+  },
+};
+
+function TopPriorityBanner({
+  topPriority,
+  aiInsight,
+  scoreGain,
+  difficulty,
+}: {
+  topPriority: string;
+  aiInsight: string;
+  scoreGain?: number;
+  difficulty?: "easy" | "medium" | "hard";
+}) {
   const [showInsight, setShowInsight] = useState(false);
+  const diff = difficulty ? DIFFICULTY_CONFIG[difficulty] : DIFFICULTY_CONFIG.medium;
+  const DiffIcon = diff.icon;
+
   return (
     <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
       <div className="flex items-start gap-4">
@@ -764,13 +808,33 @@ function TopPriorityBanner({ topPriority, aiInsight }: { topPriority: string; ai
           <Target className="w-4 h-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Your #1 Priority Fix</div>
-          <p className="text-sm font-medium leading-relaxed">{topPriority}</p>
+          <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Your #1 Priority Fix</div>
+          <p className="text-sm font-medium leading-relaxed mb-3">{topPriority}</p>
+
+          {/* Quick Win Badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            {scoreGain != null && scoreGain > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/25 text-primary">
+                <TrendingUp className="w-3 h-3" />
+                +{scoreGain} pts potential
+              </span>
+            )}
+            {difficulty && (
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${diff.bg} ${diff.color}`}>
+                <DiffIcon className="w-3 h-3" />
+                {diff.label}
+              </span>
+            )}
+            {difficulty && (
+              <span className="text-xs text-muted-foreground">{diff.sublabel}</span>
+            )}
+          </div>
+
           {aiInsight && (
             <>
               <button
                 onClick={() => setShowInsight(!showInsight)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-3"
               >
                 <Lightbulb className="w-3 h-3" />
                 {showInsight ? "Hide" : "Show"} AI analysis

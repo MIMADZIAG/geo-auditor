@@ -24,6 +24,8 @@ export interface LLMRecommendationsResult {
   recommendations: LLMRecommendation[];
   aiInsight: string; // 2–3 sentence overall AI-readiness summary
   topPriority: string; // The single most impactful action
+  scoreGain: number; // Estimated score increase (1–15 pts) after implementing topPriority
+  difficulty: "easy" | "medium" | "hard"; // Implementation difficulty
 }
 
 // ─── Context Assembly ─────────────────────────────────────────────────────────
@@ -150,7 +152,18 @@ const LLM_RESPONSE_SCHEMA = {
         topPriority: {
           type: "string",
           description:
-            "One sentence describing the single most impactful action the owner should take first.",
+            "One sentence describing the single most impactful action the owner should take first. Base it ONLY on the detected issues listed in the audit context — do not invent new problems.",
+        },
+        scoreGain: {
+          type: "integer",
+          description:
+            "Estimated score increase in points (1–15) after implementing the topPriority fix. Base this on the severity of the issue: critical issues = 6–15 pts, high = 4–8 pts, medium = 2–5 pts, low = 1–3 pts.",
+        },
+        difficulty: {
+          type: "string",
+          enum: ["easy", "medium", "hard"],
+          description:
+            "Implementation difficulty of the topPriority fix. Use 'easy' for changes doable in a CMS/WordPress without a developer (e.g., adding text, meta tags, FAQ section) — typically 5–15 min. Use 'medium' for changes requiring a developer ~30 min (e.g., adding JSON-LD schema, fixing robots.txt). Use 'hard' for changes requiring a developer 2h+ (e.g., fixing render-blocking scripts, major structural refactoring).",
         },
         recommendations: {
           type: "array",
@@ -203,7 +216,7 @@ const LLM_RESPONSE_SCHEMA = {
           },
         },
       },
-      required: ["aiInsight", "topPriority", "recommendations"],
+      required: ["aiInsight", "topPriority", "scoreGain", "difficulty", "recommendations"],
       additionalProperties: false,
     },
   },
@@ -262,6 +275,8 @@ The code must be immediately usable — fill in real values based on the page ti
   const parsed = JSON.parse(rawContent as string) as {
     aiInsight: string;
     topPriority: string;
+    scoreGain: number;
+    difficulty: "easy" | "medium" | "hard";
     recommendations: Array<{
       id: string;
       category: string;
@@ -301,5 +316,7 @@ The code must be immediately usable — fill in real values based on the page ti
     recommendations,
     aiInsight: parsed.aiInsight,
     topPriority: parsed.topPriority,
+    scoreGain: Math.min(15, Math.max(1, parsed.scoreGain ?? 5)),
+    difficulty: parsed.difficulty ?? "medium",
   };
 }

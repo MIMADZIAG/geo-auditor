@@ -755,3 +755,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ## Zmiana kolejności sekcji w karcie audytu (2026-03-19)
 - [x] Zmiana kolejności: Score → #1 Priority Fix → AI Citations → Issues → Content Intelligence → AI Exposure → Rewrite → Competitor → Share → Upsell
 - [x] 88 testów passing, 0 błędów TS
+
+## #1 Priority Fix — Quick Win badge (2026-03-19)
+- [x] Backend: rozszerzenie llmResult.topPriority o scoreGain (szacowany wzrost score) i difficulty (łatwe/średnie/trudne) bazując na wykrytych problemach
+- [x] Backend: nowe kolumny llmScoreGain i llmDifficulty w tabeli audits (migracja DB)
+- [x] Frontend: badge w TopPriorityBanner z "+X pkt potential" i stopniem trudności (Easy/Medium/Hard)
+- [x] Logika: difficulty i scoreGain generowane przez LLM na podstawie severity (critical/improvement) i kategorii problemu
+- [x] Aktualizacja shared/auditTypes.ts, PublicReport.tsx, Results.tsx
+- [x] 88 testów passing, 0 błędów TypeScript

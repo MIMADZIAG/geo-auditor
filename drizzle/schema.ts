@@ -39,6 +39,8 @@ export const audits = mysqlTable("audits", {
   llmRecommendations: json("llmRecommendations"),
   llmAiInsight: text("llmAiInsight"),
   llmTopPriority: text("llmTopPriority"),
+  llmScoreGain: int("llmScoreGain"),
+  llmDifficulty: text("llmDifficulty"),
   contentIntelligence: json("contentIntelligence"),
   contentIntelligenceScore: float("contentIntelligenceScore"),
   citeabilityScore: float("citeabilityScore"),

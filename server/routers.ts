@@ -98,6 +98,8 @@ export const appRouter = router({
             llmRecommendations: result.llmResult?.recommendations as unknown as Record<string, unknown>[] ?? null,
             llmAiInsight: result.llmResult?.aiInsight ?? null,
             llmTopPriority: result.llmResult?.topPriority ?? null,
+            llmScoreGain: result.llmResult?.scoreGain ?? null,
+            llmDifficulty: result.llmResult?.difficulty ?? null,
             contentIntelligence: result.contentIntelligence as unknown as Record<string, unknown> ?? null,
             contentIntelligenceScore: result.contentIntelligence?.overallScore ?? null,
             citeabilityScore: result.contentIntelligence?.citeabilityScore ?? null,

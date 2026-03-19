@@ -57,6 +57,8 @@ export interface LLMRecommendationsResult {
   recommendations: LLMRecommendation[];
   aiInsight: string;
   topPriority: string;
+  scoreGain: number; // Estimated score increase (1–15 pts)
+  difficulty: "easy" | "medium" | "hard"; // Implementation difficulty
 }
 
 export type PageType = "article" | "product" | "product-listing" | "homepage" | "landing" | "service" | "generic";
