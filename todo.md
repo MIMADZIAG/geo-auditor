@@ -751,3 +751,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Weryfikacja: doz.pl / nimesil (pos=1, ai_overview) = isCitedInAiOverview: true ✔
 - [x] Zaktualizowano komunikaty insights — poprawna terminologia ("prawdopodobnie cytowana")
 - [x] 88 testów passing (2 nowe testy dla nowej logiki cytowania)
+
+## Zmiana kolejności sekcji w karcie audytu (2026-03-19)
+- [x] Zmiana kolejności: Score → #1 Priority Fix → AI Citations → Issues → Content Intelligence → AI Exposure → Rewrite → Competitor → Share → Upsell
+- [x] 88 testów passing, 0 błędów TS

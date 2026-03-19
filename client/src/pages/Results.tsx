@@ -225,43 +225,52 @@ export default function Results() {
           citeabilityScore={contentIntelligence?.citeabilityScore}
         />
 
-           {/* ── 2. AI Search Exposure Score ── */}
-        <AiExposurePanel url={audit.url} />
-
-        {/* ── 3. Issues & Fixes — Critical first ── */}
-        <IssuesAndFixes
-          findings={findings}
-          llmRecs={llmResult?.recommendations ?? null}
-          recommendations={recommendations}
-        />
-        {/* ── 3. Top Priority Fix ── */}
+        {/* ── 2. #1 Priority Fix — natychmiastowa wartość, "aha moment" ── */}
         {llmResult?.topPriority && (
           <TopPriorityBanner topPriority={llmResult.topPriority} aiInsight={llmResult.aiInsight} />
         )}
-        {/* ── 4. Monitor CTA — contextual after seeing issues ── */}
-        <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />
-        {/* ── 5. Content Intelligence — the "Aha!" section ── */}
-        <ContentIntelligencePanel
-          contentIntelligence={contentIntelligence}
-          isAuthenticated={isAuthenticated}
-          auditStatus={audit.status}
-        />
-        {/* ── 6. AI Citation Check (Pro) ── */}
+
+        {/* ── 3. AI Citation Check — kto Cię wyprzedza (PLG hook) ── */}
         <AICitationPanel
           auditId={auditId}
           url={audit.url}
           onCompetitorUrlsReady={setCitedCompetitorUrls}
         />
-        {/* ── 7. What-IF Simulator — inline, no navigation needed ── */}
+
+        {/* ── 4. Issues & Fixes — Critical first ── */}
+        <IssuesAndFixes
+          findings={findings}
+          llmRecs={llmResult?.recommendations ?? null}
+          recommendations={recommendations}
+        />
+        {/* ── 4b. Monitor CTA — contextual after seeing issues ── */}
+        <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />
+
+        {/* ── 5. Content Intelligence — Citeability deep-dive ── */}
+        <ContentIntelligencePanel
+          contentIntelligence={contentIntelligence}
+          isAuthenticated={isAuthenticated}
+          auditStatus={audit.status}
+        />
+
+        {/* ── 6. AI Search Exposure Score — domain-level AI visibility ── */}
+        <AiExposurePanel url={audit.url} />
+
+        {/* ── 7. Full Rewrite AI — Content Co-Pilot ── */}
         <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
-        {/* ── 7. Competitor Analysis Teaser (Pro) ── */}
+
+        {/* ── 8. Competitor Analysis Teaser (Pro) ── */}
         <CompetitorAnalysisTeaser navigate={navigate} />
-        {/* ── 7. What's Working ── */}
+
+        {/* ── 8b. What's Working ── */}
         {findings && <PassingChecks findings={findings} />}
-        {/* ── 8. Share ── */}
+
+        {/* ── 9. Share ── */}
         <SharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
-        {/* ── 9. Score History Teaser ── */}
+
+        {/* ── 9b. Score History Teaser ── */}
         {!isAuthenticated && <ScoreHistoryTeaser />}
+
         {/* ── 10. PLG Upgrade Banner ── */}
         <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />
 
