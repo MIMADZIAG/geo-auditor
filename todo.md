@@ -763,3 +763,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Logika: difficulty i scoreGain generowane przez LLM na podstawie severity (critical/improvement) i kategorii problemu
 - [x] Aktualizacja shared/auditTypes.ts, PublicReport.tsx, Results.tsx
 - [x] 88 testów passing, 0 błędów TypeScript
+
+## Reguła normalizacji liter po znakach interpunkcyjnych (2026-03-21)
+- [x] Funkcja `normalizePolishCapitalization(text)` — małe litery po : - – — / | • w języku polskim
+- [x] Detekcja języka (PL/EN) — reguła aktywna tylko dla polskiego
+- [x] Wstrzyknięcie do pipeline Full Rewrite (server-side, po odpowiedzi LLM, Krok 5)
+- [x] Wstrzyknięcie do pipeline AI Content Creator (server-side, po odpowiedzi LLM)
+- [x] TypeScript: 0 błędów, 108 testów passing (20 nowych testów dla modułu normalizacji)

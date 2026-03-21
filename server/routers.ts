@@ -32,6 +32,7 @@ import {
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
+import { normalizePolishCapitalization, isPolishText } from "./utils/textNormalization";
 import { runPageCreatorPipeline } from "./pageCreator/index";
 import { pageCreations, aiExposureCache } from "../drizzle/schema";
 import { computeAiExposureScore, type AiExposureResult } from "./aiExposure/index";
@@ -783,6 +784,21 @@ ${cleanedContent.slice(0, 20000)}
             }
           } catch (e) {
             console.warn("[Rewrite] HallucinationGuard failed (non-fatal):", (e as Error).message);
+          }
+
+          // ―― Krok 5: Polish Capitalization Normalization ──────────────────────────────
+          // NIEZMIENIALNĄ ZASADA: Po znakach : - – — / | • słowa zaczynają się od małej litery (PL)
+          // Reguła NIE obowiązuje dla języka angielskiego.
+          {
+            const detectedLang = (input.language === "en" || input.language === "english")
+              ? "en" as const
+              : (input.language === "pl" || input.language === "polish" || isPolishText(finalContent))
+                ? "pl" as const
+                : undefined;
+            if (detectedLang !== "en") {
+              finalContent = normalizePolishCapitalization(finalContent, detectedLang);
+              console.log(`[Rewrite] Polish capitalization normalization applied (lang=${detectedLang ?? "auto-detected"})`);
+            }
           }
 
           return {

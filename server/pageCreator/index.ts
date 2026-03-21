@@ -10,6 +10,7 @@
  */
 
 import { invokeLLM } from "../_core/llm";
+import { normalizePageCreatorResult } from "../utils/textNormalization";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -574,5 +575,14 @@ export async function runPageCreatorPipeline(
   onProgress?.({ stage: "done", message: "Gotowe!", progress: 100 });
   console.log(`[PageCreator] Done — ${result.estimatedWordCount} words, score: ${result.aiReadinessScore}`);
 
-  return result;
+  // NIEZMIENIALNĄ ZASADA: Po znakach : - – — / | • słowa zaczynają się od małej litery (PL)
+  // Reguła NIE obowiązuje dla języka angielskiego.
+  const lang = (brief.language === "en") ? "en" : "pl";
+  const normalizedResult = normalizePageCreatorResult(
+    result as unknown as Record<string, unknown>,
+    lang
+  ) as unknown as typeof result;
+  console.log(`[PageCreator] Polish capitalization normalization applied (lang=${lang})`);
+
+  return normalizedResult;
 }
