@@ -18,6 +18,7 @@ import {
   updateAudit,
   getAuditById,
   getAuditsByUser,
+  getAuditUsageStats,
   checkRateLimit,
   incrementRateLimit,
   getMonitoredPagesByUser,
@@ -158,6 +159,9 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return getAuditsByUser(ctx.user.id, input.limit);
       }),
+    getUsageStats: protectedProcedure.query(async ({ ctx }) => {
+      return getAuditUsageStats(ctx.user.id);
+    }),
   }),
 
   // ─── Monitoring procedures ────────────────────────────────────────────────────

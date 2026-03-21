@@ -262,3 +262,43 @@ export async function captureEmailLead(email: string, auditId?: number, source =
     return false;
   }
 }
+
+// ─── Usage Stats helper ───────────────────────────────────────────────────────
+export async function getAuditUsageStats(userId: number) {
+  const db = await getDb();
+  if (!db) return { auditsThisMonth: 0, avgScore: null as number | null, bestScore: null as number | null, totalAudits: 0 };
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const allAudits = await db
+    .select()
+    .from(audits)
+    .where(eq(audits.userId, userId));
+
+  const monthlyCount = allAudits.filter(
+    (a) => new Date(a.createdAt) >= monthStart
+  ).length;
+
+  const completedAudits = allAudits.filter((a) => a.overallScore != null);
+
+  const avgScore =
+    completedAudits.length > 0
+      ? Math.round(
+          completedAudits.reduce((sum, a) => sum + (a.overallScore ?? 0), 0) /
+            completedAudits.length
+        )
+      : null;
+
+  const bestScore =
+    completedAudits.length > 0
+      ? Math.round(Math.max(...completedAudits.map((a) => a.overallScore ?? 0)))
+      : null;
+
+  return {
+    auditsThisMonth: monthlyCount,
+    avgScore,
+    bestScore,
+    totalAudits: allAudits.length,
+  };
+}
