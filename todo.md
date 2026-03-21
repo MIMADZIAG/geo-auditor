@@ -777,3 +777,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Ukryj 3 boxy jeśli user jest zalogowany i ma plan płatny (starter/pro/business/agency)
 - [x] Zachowaj boxy dla: niezalogowanych, free, bez planu
 - [x] TypeScript: 0 błędów, 108 testów passing
+
+## Tłumaczenie sekcji Problemy i poprawki (2026-03-21)
+- [x] Przetłumaczono etykiety i opisy w 7 plikach audytu: aiCrawlers.ts, brandAuthority.ts, metaTags.ts, technical.ts, contentStructure.ts, eeat.ts, structuredData.ts
+- [x] Przetłumaczono system prompt contentIntelligence.ts (LLM generuje opisy po polsku)
+- [x] Przetłumaczono system prompt llmRecommendations.ts (LLM generuje rekomendacje po polsku)
+- [x] Przetłumaczono etykiety checków w contentIntelligence.ts (8 etykiet)
+- [x] TypeScript: 0 błędów, 108 testów passing

@@ -228,12 +228,12 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   // 1. Any JSON-LD present
   checks.push({
     id: "jsonld_present",
-    label: "JSON-LD Schema Present",
+    label: "Schema JSON-LD obecna",
     status: schemas.length > 0 ? "pass" : "fail",
     description:
       schemas.length > 0
-        ? `Found ${schemas.length} JSON-LD schema block${schemas.length > 1 ? "s" : ""}: ${detectedTypes.join(", ")}`
-        : "No JSON-LD structured data found. Schema markup is essential for AI engines to understand your content without reading every word — it's how they build knowledge graph connections.",
+        ? `Znaleziono ${schemas.length} blok${schemas.length > 1 ? "i" : ""} schematu JSON-LD: ${detectedTypes.join(", ")}`
+        : "Brak danych strukturalnych JSON-LD. Markup schematu jest niezbędny, aby silniki AI mogły zrozumieć Twoją treść bez czytania każdego słowa — tak budują połączenia grafu wiedzy.",
     impact: "high",
     value: schemas.length,
   });
@@ -286,7 +286,7 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   const foundHighValue = Array.from(expandedTypes).filter((t) => HIGH_VALUE_TYPES.includes(t));
   checks.push({
     id: "high_value_schema",
-    label: "High-Value Schema Types",
+    label: "Typy schematu wysokiej wartości",
     status:
       foundHighValue.length >= 2
         ? "pass"
@@ -295,8 +295,8 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
         : "fail",
     description:
       foundHighValue.length > 0
-        ? `Detected: ${Array.from(new Set([...detectedTypes, ...foundHighValue])).join(", ")}`
-        : "No high-value schema types (Article, Product, FAQ, HowTo, Organization) detected. These are the types AI engines use to categorize and cite content.",
+        ? `Wykryto: ${Array.from(new Set([...detectedTypes, ...foundHighValue])).join(", ")}`
+        : "Brak typów schematu wysokiej wartości (Article, Product, FAQ, HowTo, Organization). To typy, których silniki AI używają do kategoryzowania i cytowania treści.",
     impact: "high",
     value: foundHighValue.join(", ") || null,
   });
@@ -309,11 +309,11 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
 
   checks.push({
     id: "faq_schema",
-    label: "FAQPage Schema",
+    label: "Schema FAQPage",
     status: hasFaq ? "pass" : "warning",
     description: hasFaq
-      ? `FAQPage schema with ${faqItemCount} Q&A item${faqItemCount !== 1 ? "s" : ""} found — excellent for AI answer inclusion. FAQPage is one of the most impactful schema types for GEO.`
-      : "No FAQPage schema. Adding FAQ structured data significantly improves AI answer inclusion — it's one of the most cited schema types in AI Overviews and Perplexity answers.",
+      ? `Znaleziono schemat FAQPage z ${faqItemCount} par${faqItemCount !== 1 ? "ami" : "ą"} Q&A — świetne dla inkluzji odpowiedzi AI. FAQPage to jeden z najbardziej wpływowych typów schematu dla GEO.`
+      : "Brak schematu FAQPage. Dodanie danych strukturalnych FAQ znacznie poprawia inkluzję odpowiedzi AI — to jeden z najczęściej cytowanych typów schematu w AI Overviews i odpowiedziach Perplexity.",
     impact: "high",
     value: hasFaq,
   });
@@ -326,11 +326,11 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
 
   checks.push({
     id: "howto_schema",
-    label: "HowTo Schema",
+    label: "Schema HowTo",
     status: hasHowTo ? "pass" : "info",
     description: hasHowTo
-      ? `HowTo schema with ${howToStepCount} step${howToStepCount !== 1 ? "s" : ""} found — step-by-step content is highly cited by AI engines for instructional queries.`
-      : "No HowTo schema. If your page contains step-by-step instructions, add HowTo schema — AI engines heavily cite structured instructional content.",
+      ? `Znaleziono schemat HowTo z ${howToStepCount} krokiem${howToStepCount !== 1 ? "ami" : ""} — treści krok po kroku są chętnie cytowane przez silniki AI dla zapytań instruktarzowych.`
+      : "Brak schematu HowTo. Jeśli Twoja strona zawiera instrukcje krok po kroku, dodaj schemat HowTo — silniki AI chętnie cytują ustrukturyzowane treści instruktarzowe.",
     impact: "medium",
     value: hasHowTo,
   });
@@ -342,13 +342,13 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   );
   checks.push({
     id: "article_product_schema",
-    label: "Article or Product Schema",
+    label: "Schema Article lub Product",
     status: hasArticleOrProduct ? "pass" : "warning",
     description: hasArticleOrProduct
       ? articleSubtype
-        ? `${articleSubtype} schema detected (a subtype of Article) — helps AI engines categorize your content.`
-        : "Article or Product schema detected — helps AI engines categorize your content."
-      : "No Article or Product schema. Add appropriate schema for your page type.",
+        ? `Wykryto schemat ${articleSubtype} (podtyp Article) — pomaga silnikom AI kategoryzować Twoją treść.`
+        : "Wykryto schemat Article lub Product — pomaga silnikom AI kategoryzować Twoją treść."
+      : "Brak schematu Article lub Product. Dodaj odpowiedni schemat dla swojego typu strony.",
     impact: "medium",
     value: hasArticleOrProduct,
   });
@@ -359,13 +359,13 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
 
   checks.push({
     id: "organization_schema",
-    label: "Organization / WebSite Schema",
+    label: "Schema Organization / WebSite",
     status: hasOrg ? (hasSameAs ? "pass" : "warning") : "warning",
     description: hasOrg
       ? hasSameAs
-        ? "Organization or WebSite schema with sameAs links found — strong Knowledge Graph readiness signal. AI engines use sameAs to identify your brand as a known entity."
-        : "Organization schema found but missing sameAs property. Add sameAs links (Wikipedia, Wikidata, official social profiles) to establish your brand as a known entity in AI knowledge graphs."
-      : "No Organization schema. Add Organization or WebSite schema with sameAs links to establish entity identity in AI knowledge graphs.",
+        ? "Znaleziono schemat Organization lub WebSite z linkami sameAs — silny sygnał gotowości do Knowledge Graph. Silniki AI używają sameAs do identyfikacji Twojej marki jako znany podmiot."
+        : "Znaleziono schemat Organization, ale brak właściwości sameAs. Dodaj linki sameAs (Wikipedia, Wikidata, oficjalne profile społecznościowe), aby ustanowić markę jako znany podmiot w grafach wiedzy AI."
+      : "Brak schematu Organization. Dodaj schemat Organization lub WebSite z linkami sameAs, aby ustanowić tożsamość podmiotu w grafach wiedzy AI.",
     impact: "medium",
     value: hasOrg,
   });
@@ -377,15 +377,15 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
 
   checks.push({
     id: "schema_completeness",
-    label: "Schema Completeness",
+    label: "Kompletność schematu",
     status: avgCompleteness >= 70 ? "pass" : avgCompleteness >= 40 ? "warning" : schemas.length > 0 ? "fail" : "info",
     description: schemas.length === 0
-      ? "No schema to evaluate completeness. Add JSON-LD schema first."
+      ? "Brak schematu do oceny kompletności. Najpierw dodaj schemat JSON-LD."
       : avgCompleteness >= 70
-      ? `Schema completeness: ${avgCompleteness}% — schemas are well-populated with recommended properties. More complete schemas give AI engines richer context.`
+      ? `Kompletność schematu: ${avgCompleteness}% — schematy są dobrze wypełnione zalecanymi właściwościami. Bardziej kompletne schematy dają silnikom AI bogatszy kontekst.`
       : avgCompleteness >= 40
-      ? `Schema completeness: ${avgCompleteness}% — schemas are present but missing many recommended properties. Fill in all available fields: author, datePublished, dateModified, image, description. iPullRank: 'Be comprehensive, not just compliant'.`
-      : `Schema completeness: ${avgCompleteness}% — schemas are sparse. Many recommended properties are missing. Complete all schema fields — the more context you provide, the more accurately AI engines can extract and reuse your content.`,
+      ? `Kompletność schematu: ${avgCompleteness}% — schematy są obecne, ale brakuje wielu zalecanych właściwości. Wypełnij wszystkie dostępne pola: author, datePublished, dateModified, image, description.`
+      : `Kompletność schematu: ${avgCompleteness}% — schematy są ubogie. Brakuje wielu zalecanych właściwości. Uzupełnij wszystkie pola schematu — im więcej kontekstu dostarczysz, tym dokładniej silniki AI będą mogły ekstrahować i ponownie wykorzystywać Twoją treść.`,
     impact: "high",
     value: `${avgCompleteness}%`,
   });
@@ -394,11 +394,11 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   const hasAuthor = schemas.some((s) => s.hasAuthor);
   checks.push({
     id: "author_schema",
-    label: "Author Markup",
+    label: "Markup autora",
     status: hasAuthor ? "pass" : "warning",
     description: hasAuthor
-      ? "Author property found in schema — supports E-E-A-T signals."
-      : "No author markup in schema. Add 'author' property to Article schema for E-E-A-T.",
+      ? "Znaleziono właściwość autora w schemacie — wspiera sygnały E-E-A-T."
+      : "Brak markup autora w schemacie. Dodaj właściwość 'author' do schematu Article dla E-E-A-T.",
     impact: "medium",
     value: hasAuthor,
   });
@@ -408,15 +408,15 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   const hasDatePublished = schemas.some((s) => s.hasDatePublished);
   checks.push({
     id: "date_signals",
-    label: "Date Signals (Published & Modified)",
+    label: "Sygnały dat (publikacja i modyfikacja)",
     status: hasDateModified && hasDatePublished ? "pass" : hasDateModified || hasDatePublished ? "warning" : "warning",
     description: hasDateModified && hasDatePublished
-      ? "Both datePublished and dateModified found — AI engines use these to assess content freshness and relevance."
+      ? "Znaleziono datePublished i dateModified — silniki AI używają ich do oceny świeżości i trafności treści."
       : hasDateModified
-      ? "dateModified found but no datePublished. Add datePublished to complete freshness signals."
+      ? "Znaleziono dateModified, ale brak datePublished. Dodaj datePublished, aby uzupełnić sygnały świeżości."
       : hasDatePublished
-      ? "datePublished found but no dateModified. Add dateModified and update it when content changes — AI engines use this to assess freshness."
-      : "No date properties found. Add datePublished and dateModified to help AI engines assess content freshness. Outdated content is deprioritized in AI answers.",
+      ? "Znaleziono datePublished, ale brak dateModified. Dodaj dateModified i aktualizuj go przy zmianach treści — silniki AI używają tego do oceny świeżości."
+      : "Brak właściwości dat. Dodaj datePublished i dateModified, aby pomóc silnikom AI ocenić świeżość treści. Przestarzałe treści są depriorytetyzowane w odpowiedziach AI.",
     impact: "medium",
     value: `published:${hasDatePublished}, modified:${hasDateModified}`,
   });
@@ -425,11 +425,11 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   const hasBreadcrumb = detectedTypes.includes("BreadcrumbList");
   checks.push({
     id: "breadcrumb_schema",
-    label: "BreadcrumbList Schema",
+    label: "Schema BreadcrumbList",
     status: hasBreadcrumb ? "pass" : "info",
     description: hasBreadcrumb
-      ? "BreadcrumbList schema found — improves navigation context for AI engines."
-      : "No BreadcrumbList schema. Consider adding breadcrumb markup for better context.",
+      ? "Znaleziono schemat BreadcrumbList — poprawia kontekst nawigacji dla silników AI."
+      : "Brak schematu BreadcrumbList. Rozważ dodanie markup nawigacji okruszkowej dla lepszego kontekstu.",
     impact: "low",
     value: hasBreadcrumb,
   });
@@ -480,10 +480,10 @@ function buildSummary(
   avgCompleteness: number
 ): string {
   if (schemaCount === 0)
-    return "No structured data found. Adding JSON-LD schema is the single highest-impact improvement for AI visibility — it allows AI engines to understand your content without reading every word.";
+    return "Brak danych strukturalnych. Dodanie schematu JSON-LD to pojedyncza poprawa o najwyższym wpływie na widoczność AI — pozwala silnikom AI zrozumieć Twoją treść bez czytania każdego słowa.";
   if (score >= 80)
-    return `Strong structured data: ${schemaCount} schema block${schemaCount > 1 ? "s" : ""} with ${highValueCount} high-value type${highValueCount > 1 ? "s" : ""} at ${avgCompleteness}% completeness.`;
+    return `Silne dane strukturalne: ${schemaCount} blok${schemaCount > 1 ? "i" : ""} schematu z ${highValueCount} typem${highValueCount > 1 ? "ami" : ""} wysokiej wartości przy ${avgCompleteness}% kompletności.`;
   if (avgCompleteness < 50)
-    return `${schemaCount} schema block${schemaCount > 1 ? "s" : ""} found but poorly populated (${avgCompleteness}% complete). Fill in all recommended properties — be comprehensive, not just compliant.`;
-  return `${schemaCount} schema block${schemaCount > 1 ? "s" : ""} found but missing key types. Add FAQPage, HowTo, and Organization schemas with sameAs links.`;
+    return `Znaleziono ${schemaCount} blok${schemaCount > 1 ? "i" : ""} schematu, ale słabo wypełnione (${avgCompleteness}% kompletności). Wypełnij wszystkie zalecane właściwości.`;
+  return `Znaleziono ${schemaCount} blok${schemaCount > 1 ? "i" : ""} schematu, ale brakuje kluczowych typów. Dodaj schematy FAQPage, HowTo i Organization z linkami sameAs.`;
 }

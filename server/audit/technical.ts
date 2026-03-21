@@ -8,11 +8,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   // 1. HTTPS
   checks.push({
     id: "https",
-    label: "HTTPS Enabled",
+    label: "HTTPS włączony",
     status: page.isHttps ? "pass" : "fail",
     description: page.isHttps
-      ? "Page is served over HTTPS — required for AI crawler trust signals."
-      : "Page is served over HTTP. HTTPS is required for indexation and AI crawler access.",
+      ? "Strona jest serwowana przez HTTPS — wymagane dla sygnałów zaufania crawlerów AI."
+      : "Strona jest serwowana przez HTTP. HTTPS jest wymagane do indeksowania i dostępu crawlerów AI.",
     impact: "high",
     value: page.isHttps,
   });
@@ -21,11 +21,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const statusOk = page.statusCode >= 200 && page.statusCode < 300;
   checks.push({
     id: "http_status",
-    label: "HTTP 200 Status",
+    label: "Status HTTP 200",
     status: statusOk ? "pass" : "fail",
     description: statusOk
-      ? `Page returned HTTP ${page.statusCode}.`
-      : `Page returned HTTP ${page.statusCode || "error"}. AI crawlers cannot index non-200 pages.`,
+      ? `Strona zwróciła HTTP ${page.statusCode}.`
+      : `Strona zwróciła HTTP ${page.statusCode || "błąd"}. Crawlery AI nie mogą indeksować stron bez kodu 200.`,
     impact: "high",
     value: page.statusCode,
   });
@@ -34,11 +34,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const canonical = $('link[rel="canonical"]').attr("href");
   checks.push({
     id: "canonical",
-    label: "Canonical Tag",
+    label: "Tag canonical",
     status: canonical ? "pass" : "warning",
     description: canonical
-      ? `Canonical tag found: ${canonical}`
-      : "No canonical tag found. Add <link rel='canonical'> to prevent duplicate content issues.",
+      ? `Znaleziono tag canonical: ${canonical}`
+      : "Brak tagu canonical. Dodaj <link rel='canonical'>, aby zapobiec problemom z duplikatem treści.",
     impact: "medium",
     value: canonical ?? null,
   });
@@ -51,11 +51,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     xRobotsTag.toLowerCase().includes("noindex");
   checks.push({
     id: "noindex",
-    label: "Page is Indexable",
+    label: "Strona jest indeksowalna",
     status: hasNoindex ? "fail" : "pass",
     description: hasNoindex
-      ? "Page has noindex directive — it cannot appear in AI Overviews or search results."
-      : "Page is indexable (no noindex directive detected).",
+      ? "Strona ma dyrektywę noindex — nie może pojawić się w AI Overviews ani wynikach wyszukiwania."
+      : "Strona jest indeksowalna (brak dyrektywy noindex).",
     impact: "high",
     value: !hasNoindex,
   });
@@ -66,11 +66,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     xRobotsTag.toLowerCase().includes("nosnippet");
   checks.push({
     id: "nosnippet",
-    label: "Snippets Allowed",
+    label: "Snippety dozwolone",
     status: hasNosnippet ? "fail" : "pass",
     description: hasNosnippet
-      ? "nosnippet directive detected — this blocks AI Overviews and featured snippets from using your content."
-      : "Snippet generation is allowed — AI engines can quote your content.",
+      ? "Wykryto dyrektywę nosnippet — blokuje to AI Overviews i featured snippety przed używaniem Twojej treści."
+      : "Generowanie snippetów jest dozwolone — silniki AI mogą cytować Twoją treść.",
     impact: "high",
     value: !hasNosnippet,
   });
@@ -81,11 +81,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     xRobotsTag.toLowerCase().includes("nofollow");
   checks.push({
     id: "nofollow",
-    label: "Links Followable (nofollow)",
+    label: "Linki śledzalne (nofollow)",
     status: hasNofollow ? "warning" : "pass",
     description: hasNofollow
-      ? "nofollow directive detected in meta robots — search engines and AI crawlers will not follow links on this page. This limits internal link equity distribution and may reduce crawl depth of your site."
-      : "No nofollow directive on this page — links are followable by crawlers.",
+      ? "Wykryto dyrektywę nofollow w meta robots — wyszukiwarki i crawlery AI nie będą śledzitć linków na tej stronie. Ogranicza to dystrybucję link equity i może zmniejszyć głębokość indeksowania witryny."
+      : "Brak dyrektywy nofollow na tej stronie — linki są śledzalne przez crawlery.",
     impact: "medium",
     value: !hasNofollow,
   });
@@ -114,11 +114,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   })();
   checks.push({
     id: "robots_disallow_page",
-    label: "Page Not Disallowed in robots.txt",
+    label: "Strona nie jest zablokowana w robots.txt",
     status: pageDisallowed ? "fail" : "pass",
     description: pageDisallowed
-      ? `This page's path is blocked by a Disallow rule in robots.txt for all crawlers (User-agent: *). AI crawlers and search engines cannot access this page.`
-      : "This page's path is not blocked by robots.txt — crawlers can access it.",
+      ? `Ścieżka tej strony jest zablokowana regułą Disallow w robots.txt dla wszystkich crawlerów (User-agent: *). Crawlery AI i wyszukiwarki nie mogą uzyskać dostępu do tej strony.`
+      : "Strona nie jest zablokowana w robots.txt — crawlery mogą uzyskać do niej dostęp.",
     impact: "high",
     value: !pageDisallowed,
   });
@@ -126,12 +126,12 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   // 6. robots.txt exists
   checks.push({
     id: "robots_txt_exists",
-    label: "robots.txt Present",
+    label: "Plik robots.txt obecny",
     status: page.robotsTxt !== null ? "pass" : "warning",
     description:
       page.robotsTxt !== null
-        ? "robots.txt file found and accessible."
-        : "No robots.txt found. While not required, it helps crawlers understand your site structure.",
+        ? "Plik robots.txt znaleziony i dostępny."
+        : "Brak robots.txt. Choć nie jest wymagany, pomaga crawlerom zrozumieć strukturę witryny.",
     impact: "low",
     value: page.robotsTxt !== null,
   });
@@ -140,11 +140,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const fastResponse = page.responseTimeMs < 3000;
   checks.push({
     id: "response_time",
-    label: "Fast Response Time",
+    label: "Szybki czas odpowiedzi",
     status: fastResponse ? "pass" : "warning",
     description: fastResponse
-      ? `Page loaded in ${page.responseTimeMs}ms — good for crawlability.`
-      : `Page loaded in ${page.responseTimeMs}ms — slow pages may be deprioritized by crawlers.`,
+      ? `Strona załadowana w ${page.responseTimeMs}ms — dobry wynik dla indeksowalności.`
+      : `Strona załadowana w ${page.responseTimeMs}ms — wolne strony mogą być depriorytetyzowane przez crawlery.`,
     impact: "medium",
     value: page.responseTimeMs,
   });
@@ -154,11 +154,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const isHtml = contentType.includes("text/html");
   checks.push({
     id: "content_type",
-    label: "HTML Content-Type",
+    label: "Typ zawartości HTML",
     status: isHtml ? "pass" : "warning",
     description: isHtml
-      ? "Content-Type is text/html — correct for web pages."
-      : `Content-Type is '${contentType || "unknown"}' — AI crawlers expect text/html.`,
+      ? "Content-Type to text/html — poprawny dla stron internetowych."
+      : `Content-Type to '${contentType || "nieznany"}' — crawlery AI oczekują text/html.`,
     impact: "low",
     value: contentType,
   });
@@ -167,11 +167,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const viewport = $('meta[name="viewport"]').attr("content");
   checks.push({
     id: "viewport",
-    label: "Mobile Viewport Meta",
+    label: "Meta tag viewport (mobile)",
     status: viewport ? "pass" : "warning",
     description: viewport
-      ? "Viewport meta tag present — page is mobile-friendly."
-      : "No viewport meta tag. Mobile-friendliness is a ranking factor for AI features.",
+      ? "Meta tag viewport obecny — strona jest przyjazna dla urządzeń mobilnych."
+      : "Brak meta tagu viewport. Responsywność mobilna jest czynnikiem rankingowym dla funkcji AI.",
     impact: "medium",
     value: viewport ?? null,
   });
@@ -182,11 +182,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     !!page.headers["content-security-policy"];
   checks.push({
     id: "security_headers",
-    label: "Security Headers",
+    label: "Nagłówki bezpieczeństwa",
     status: hasSecurityHeaders ? "pass" : "info",
     description: hasSecurityHeaders
-      ? "Security headers detected — good trust signals."
-      : "No security headers detected. Adding X-Frame-Options or CSP improves trust signals.",
+      ? "Wykryto nagłówki bezpieczeństwa — dobre sygnały zaufania."
+      : "Brak nagłówków bezpieczeństwa. Dodanie X-Frame-Options lub CSP poprawia sygnały zaufania.",
     impact: "low",
     value: hasSecurityHeaders,
   });
@@ -197,13 +197,13 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const hasLangDeclaration = !!langAttr;
   checks.push({
     id: "hreflang",
-    label: "Language Declaration",
+    label: "Deklaracja języka",
     status: hasLangDeclaration ? (hasHreflang ? "pass" : "warning") : "fail",
     description: !hasLangDeclaration
-      ? "No lang attribute on <html>. AI engines use language signals to match content to user queries in the right language."
+      ? "Brak atrybutu lang na <html>. Silniki AI używają sygnałów językowych do dopasowania treści do zapytań użytkowników w odpowiednim języku."
       : hasHreflang
-      ? `Language declared (lang='${langAttr}') with hreflang alternate links — strong international signal.`
-      : `Language declared (lang='${langAttr}') but no hreflang links. If you target multiple regions, add hreflang tags.`,
+      ? `Zadeklarowany język (lang='${langAttr}') z linkami hreflang — silny sygnał międzynarodowy.`
+      : `Zadeklarowany język (lang='${langAttr}'), ale brak linków hreflang. Jeśli kierujesz do wielu regionów, dodaj tagi hreflang.`,
     impact: "medium",
     value: langAttr || null,
   });
@@ -214,11 +214,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     : false;
   checks.push({
     id: "sitemap_reference",
-    label: "Sitemap in robots.txt",
+    label: "Mapa strony w robots.txt",
     status: hasSitemapInRobots ? "pass" : "warning",
     description: hasSitemapInRobots
-      ? "Sitemap URL referenced in robots.txt — helps AI crawlers discover all pages."
-      : "No Sitemap directive in robots.txt. Add 'Sitemap: https://yourdomain.com/sitemap.xml' to help AI crawlers discover your content.",
+      ? "URL mapy strony podany w robots.txt — pomaga crawlerom AI odkryć wszystkie strony."
+      : "Brak dyrektywy Sitemap w robots.txt. Dodaj 'Sitemap: https://twojadomena.pl/sitemap.xml', aby pomóc crawlerom AI odkryć Twoją treść.",
     impact: "medium",
     value: hasSitemapInRobots,
   });
@@ -232,13 +232,13 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   })();
   checks.push({
     id: "url_depth",
-    label: "URL Depth",
+    label: "Głębokość URL",
     status: urlDepth <= 3 ? "pass" : urlDepth <= 5 ? "warning" : "fail",
     description: urlDepth <= 3
-      ? `URL depth is ${urlDepth} levels — shallow URLs are easier for AI crawlers to prioritize.`
+      ? `Głębokość URL wynosi ${urlDepth} poziomów — płytkie URL są łatwiejsze do priorytetyzowania przez crawlery AI.`
       : urlDepth <= 5
-      ? `URL depth is ${urlDepth} levels — consider flattening your URL structure for better crawlability.`
-      : `URL depth is ${urlDepth} levels — deep URLs are deprioritized by AI crawlers. Flatten your URL structure.`,
+      ? `Głębokość URL wynosi ${urlDepth} poziomów — rozważ spłaszczenie struktury URL dla lepszej indeksowalności.`
+      : `Głębokość URL wynosi ${urlDepth} poziomów — głębokie URL są depriorytetyzowane przez crawlery AI. Spląszcz strukturę URL.`,
     impact: "low",
     value: urlDepth,
   });
@@ -247,13 +247,13 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const htmlSizeKb = Math.round(page.html.length / 1024);
   checks.push({
     id: "page_size",
-    label: "Page HTML Size",
+    label: "Rozmiar HTML strony",
     status: htmlSizeKb < 200 ? "pass" : htmlSizeKb < 500 ? "warning" : "fail",
     description: htmlSizeKb < 200
-      ? `HTML size is ${htmlSizeKb}KB — lightweight and fast to crawl.`
+      ? `Rozmiar HTML wynosi ${htmlSizeKb}KB — lekki i szybki do indeksowania.`
       : htmlSizeKb < 500
-      ? `HTML size is ${htmlSizeKb}KB — consider reducing inline scripts/styles to improve crawl efficiency.`
-      : `HTML size is ${htmlSizeKb}KB — very large HTML can slow AI crawler processing and reduce crawl budget.`,
+      ? `Rozmiar HTML wynosi ${htmlSizeKb}KB — rozważ zmniejszenie skryptów i stylów inline, aby poprawić efektywność indeksowania.`
+      : `Rozmiar HTML wynosi ${htmlSizeKb}KB — bardzo duży HTML może spowolnić przetwarzanie przez crawlery AI i zmniejszyć budżet indeksowania.`,
     impact: "low",
     value: htmlSizeKb,
   });
@@ -262,13 +262,13 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
   const headScripts = $('head script:not([async]):not([defer]):not([type="application/ld+json"])').length;
   checks.push({
     id: "render_blocking",
-    label: "No Render-Blocking Scripts",
+    label: "Brak skryptów blokujących renderowanie",
     status: headScripts === 0 ? "pass" : headScripts <= 2 ? "warning" : "fail",
     description: headScripts === 0
-      ? "No render-blocking scripts in <head> — page loads efficiently for crawlers."
+      ? "Brak skryptów blokujących renderowanie w <head> — strona ładuje się sprawnie dla crawlerów."
       : headScripts <= 2
-      ? `${headScripts} render-blocking script(s) in <head>. Add async or defer attributes to improve crawl speed.`
-      : `${headScripts} render-blocking scripts in <head>. This significantly slows page rendering for AI crawlers.`,
+      ? `${headScripts} skrypt(y) blokujące renderowanie w <head>. Dodaj atrybuty async lub defer, aby poprawić szybkość indeksowania.`
+      : `${headScripts} skryptów blokujących renderowanie w <head>. Znacznie spowalnia to renderowanie strony dla crawlerów AI.`,
     impact: "medium",
     value: headScripts,
   });
@@ -282,23 +282,23 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
 
   checks.push({
     id: "max_snippet",
-    label: "max-snippet Not Restricted",
+    label: "max-snippet bez ograniczeń",
     status: maxSnippetValue === null
-      ? "pass"  // No restriction = unlimited by default
+      ? "pass"
       : maxSnippetValue === -1
-      ? "pass"  // Explicitly unlimited
+      ? "pass"
       : maxSnippetValue === 0
-      ? "fail"  // No snippets at all
+      ? "fail"
       : maxSnippetValue < 200
-      ? "warning"  // Limited
+      ? "warning"
       : "pass",
     description: maxSnippetValue === null
-      ? "No max-snippet restriction detected — AI engines can quote your full content (default unlimited)."
+      ? "Brak ograniczenia max-snippet — silniki AI mogą cytować pełną treść (domyślnie bez limitu)."
       : maxSnippetValue === -1
-      ? "max-snippet:-1 detected — explicitly unlimited, AI engines can quote any length of your content."
+      ? "Wykryto max-snippet:-1 — jawnie bez limitu, silniki AI mogą cytować treść o dowolnej długości."
       : maxSnippetValue === 0
-      ? "max-snippet:0 detected — this blocks all AI snippet generation. Remove this directive to allow AI Overviews and Perplexity to quote your content."
-      : `max-snippet:${maxSnippetValue} detected — AI engines can only quote up to ${maxSnippetValue} characters. For GEO, set max-snippet:-1 (unlimited) to allow full content extraction.`,
+      ? "Wykryto max-snippet:0 — blokuje to całe generowanie snippetów AI. Usuń tę dyrektywę, aby AI Overviews i Perplexity mogły cytować Twoją treść."
+      : `Wykryto max-snippet:${maxSnippetValue} — silniki AI mogą cytować tylko do ${maxSnippetValue} znaków. Dla GEO ustaw max-snippet:-1 (bez limitu), aby umożliwić pełną ekstrakcję treści.`,
     impact: "high",
     value: maxSnippetValue,
   });
@@ -311,11 +311,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
 
   checks.push({
     id: "noai_directive",
-    label: "No noai Directive",
+    label: "Brak dyrektywy noai",
     status: hasNoAI ? "fail" : "pass",
     description: hasNoAI
-      ? "noai directive detected in robots meta tag — this explicitly blocks AI engines from using your content. Remove this directive to allow AI citation."
-      : "No noai directive detected — AI engines are allowed to use your content.",
+      ? "Wykryto dyrektywę noai w meta tagu robots — jawnie blokuje to silniki AI przed używaniem Twojej treści. Usuń tę dyrektywę, aby umożliwić cytowanie przez AI."
+      : "Brak dyrektywy noai — silniki AI mogą używać Twojej treści.",
     impact: "high",
     value: !hasNoAI,
   });
@@ -330,11 +330,11 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
 
   checks.push({
     id: "js_rendering",
-    label: "Content Not JS-Dependent",
+    label: "Treść nie wymaga JavaScript",
     status: isJsHeavy ? "warning" : "pass",
     description: isJsHeavy
-      ? `Low body text (${bodyTextLength} chars) with heavy inline JavaScript (${Math.round(inlineScriptLength / 1024)}KB). Content may require JavaScript rendering to be visible. Many AI crawlers do not execute JavaScript — ensure critical content is in the HTML source.`
-      : `Body text is present in HTML source (${bodyTextLength} chars) — AI crawlers can access content without JavaScript execution.`,
+      ? `Mało tekstu w body (${bodyTextLength} znaków) przy dużej ilości JavaScript inline (${Math.round(inlineScriptLength / 1024)}KB). Treść może wymagać renderowania JavaScript, aby być widoczna. Wiele crawlerów AI nie wykonuje JavaScript — upewnij się, że krytyczna treść jest w źródle HTML.`
+      : `Tekst body jest obecny w źródle HTML (${bodyTextLength} znaków) — crawlery AI mogą uzyskać dostęp do treści bez wykonywania JavaScript.`,
     impact: "high",
     value: !isJsHeavy,
   });
@@ -393,8 +393,8 @@ function buildSummary(
 ): string {
   const fails = checks.filter((c) => c.status === "fail").length;
   const warnings = checks.filter((c) => c.status === "warning").length;
-  if (score >= 80) return `${category} setup is strong with ${checks.filter((c) => c.status === "pass").length} checks passing.`;
-  if (fails > 0) return `${fails} critical issue${fails > 1 ? "s" : ""} found that block AI crawler access.`;
-  if (warnings > 0) return `${warnings} improvement${warnings > 1 ? "s" : ""} recommended to strengthen ${category.toLowerCase()} signals.`;
-  return `${category} score: ${score}/100.`;
+  if (score >= 80) return `Konfiguracja techniczna jest mocna — ${checks.filter((c) => c.status === "pass").length} testów zakończonych sukcesem.`;
+  if (fails > 0) return `${fails} krytycz${fails > 1 ? "ne problemy blokują" : "ny problem blokuje"} dostęp crawlerów AI.`;
+  if (warnings > 0) return `${warnings} usprawnie${warnings > 1 ? "nia zalecane" : "nie zalecane"} w celu wzmocnienia sygnałów technicznych.`;
+  return `Wynik techniczny: ${score}/100.`;
 }

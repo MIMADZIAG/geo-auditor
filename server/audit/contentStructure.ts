@@ -39,14 +39,14 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
   const fullHtml = $.html() ?? "";
   checks.push({
     id: "h1_present",
-    label: "H1 Heading Present",
+    label: "Nagłówek H1 obecny",
     status: h1Count === 1 ? "pass" : h1Count === 0 ? "fail" : "warning",
     description:
       h1Count === 1
-        ? `H1 found: "${$("h1").first().text().trim().slice(0, 80)}"`
+        ? `Znaleziono H1: "${$("h1").first().text().trim().slice(0, 80)}"`
         : h1Count === 0
-        ? "No H1 heading found. Every page needs exactly one H1 for AI engines to identify the main topic."
-        : `${h1Count} H1 headings found. Use exactly one H1 per page.`,
+        ? "Brak nagłówka H1. Każda strona potrzebuje dokładnie jednego H1, aby silniki AI mogły zidentyfikować główny temat."
+        : `Znaleziono ${h1Count} nagłówków H1. Użyj dokładnie jednego H1 na stronę.`,
     impact: "high",
     value: h1Count,
   });
@@ -57,13 +57,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
   const headingStructure = `H1:${h1Count}, H2:${h2Count}, H3:${h3Count}`;
   checks.push({
     id: "heading_hierarchy",
-    label: "Heading Structure (Advisory)",
+    label: "Struktura nagłówków (informacyjnie)",
     status: "info",
     description: h1Count >= 1 && h2Count >= 2
-      ? `Heading structure: ${headingStructure} — well organised for both users and AI scanners.`
+      ? `Struktura nagłówków: ${headingStructure} — dobrze zorganizowana dla użytkowników i scannerów AI.`
       : h2Count === 0
-      ? `Heading structure: ${headingStructure}. Consider adding H2 subheadings to help users and AI engines navigate the page. (Advisory — not a ranking factor.)`
-      : `Heading structure: ${headingStructure}. Adding more H2/H3 headings can improve scannability. (Advisory — not a ranking factor.)`,
+      ? `Struktura nagłówków: ${headingStructure}. Rozważ dodanie podnagłówków H2, aby pomóc użytkownikom i silnikom AI nawigować po stronie. (Informacyjnie — nie jest czynnikiem rankingowym.)`
+      : `Struktura nagłówków: ${headingStructure}. Dodanie większej liczby nagłówków H2/H3 może poprawić skanowalność. (Informacyjnie — nie jest czynnikiem rankingowym.)`,
     impact: "low",
     value: headingStructure,
   });
@@ -80,13 +80,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "passage_optimization",
-    label: "Passage-Optimized Headings",
+    label: "Nagłówki zoptymalizowane pod fragmenty",
     status: passageOptimized ? "pass" : headingTexts.length === 0 ? "fail" : "warning",
     description: passageOptimized
-      ? `${questionHeadings} question-style heading${questionHeadings !== 1 ? "s" : ""} and ${descriptiveHeadings} descriptive heading${descriptiveHeadings !== 1 ? "s" : ""} detected — headings act as semantic units for AI passage retrieval.`
+      ? `Wykryto ${questionHeadings} nagłówków w formie pytań i ${descriptiveHeadings} opisowych — nagłówki pełnią rolę jednostek semantycznych do wyszukiwania fragmentów przez AI.`
       : headingTexts.length === 0
-      ? "No subheadings found. Add descriptive H2/H3 headings that directly answer user questions — each heading is a retrieval anchor for AI engines."
-      : "Headings are too generic (e.g., 'Introduction', 'Section 1'). Use descriptive, query-answering headings like 'How to optimize product pages for AI search' — this is core to passage optimization.",
+      ? "Brak podnagłówków. Dodaj opisowe nagłówki H2/H3, które bezpośrednio odpowiadają na pytania użytkowników — każdy nagłówek to kotwica wyszukiwania dla silników AI."
+      : "Nagłówki są zbyt ogólne (np. 'Wprowadzenie', 'Sekcja 1'). Użyj opisowych nagłówków odpowiadających na zapytania, np. 'Jak zoptymalizować strony produktów pod AI search' — to podstawa optymalizacji fragmentów.",
     impact: "high",
     value: `${questionHeadings} question headings, ${descriptiveHeadings} descriptive headings`,
   });
@@ -100,17 +100,17 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "tldr_summary",
-    label: "TL;DR / Summary Block",
+    label: "Blok TL;DR / Podsumowanie",
     status: hasTldr
       ? "pass"
       : tldrRelevant
       ? "fail"
       : "warning",
     description: hasTldr
-      ? "Summary or TL;DR section detected — AI engines can quote this directly."
+      ? "Wykryto sekcję podsumowania lub TL;DR — silniki AI mogą cytować ją bezpośrednio."
       : tldrRelevant
-      ? "No TL;DR or summary section found. This is a critical GEO gap — AI engines heavily quote page summaries. Add a 2–4 sentence summary at the top labeled 'TL;DR', 'Summary', or 'Key Takeaways'."
-      : "No summary section found. Consider adding a short product description summary for AI citation.",
+      ? "Brak sekcji TL;DR lub podsumowania. To krytyczna luka GEO — silniki AI chętnie cytują podsumowania stron. Dodaj 2–4 zdania podsumowania na górze strony z etykietą 'TL;DR', 'Podsumowanie' lub 'Kluczowe informacje'."
+      : "Brak sekcji podsumowania. Rozważ dodanie krótkiego opisu produktu do cytowania przez AI.",
     impact: "high",
     value: hasTldr,
   });
@@ -127,17 +127,17 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
   const faqRelevant = !["product-listing"].includes(pageType);
   checks.push({
     id: "faq_section",
-    label: "FAQ Section",
+    label: "Sekcja FAQ",
     status: hasFaqSection
       ? "pass"
       : faqRelevant
       ? "fail"
       : "warning",
     description: hasFaqSection
-      ? "FAQ section detected — great for AI answer inclusion."
+      ? "Wykryto sekcję FAQ — świetne dla inkluzji odpowiedzi AI."
       : faqRelevant
-      ? "No FAQ section found. This is a major GEO gap — FAQ content is one of the most cited formats in AI-generated answers. Add 5–10 Q&A pairs about your page topic."
-      : "No FAQ section found. Adding a FAQ to your category page can improve AI citation rates.",
+      ? "Brak sekcji FAQ. To poważna luka GEO — treści FAQ to jeden z najczęściej cytowanych formatów w odpowiedziach generowanych przez AI. Dodaj 5–10 par Q&A na temat swojej strony."
+      : "Brak sekcji FAQ. Dodanie FAQ do strony kategorii może poprawić wskaźniki cytowania przez AI.",
     impact: "high",
     value: hasFaqSection,
   });
@@ -165,15 +165,15 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "semantic_chunking",
-    label: "Semantic Chunking (Paragraph Structure)",
+    label: "Chunking semantyczny (struktura akapitów)",
     status: chunking_status,
     description: paragraphs.length < 3
-      ? "Too few paragraphs detected. Structure content into short, self-contained paragraphs — each expressing one complete idea for AI extraction."
+      ? "Wykryto zbyt mało akapitów. Podziel treść na krótkie, samodzielne akapity — każdy wyrażający jedną pełną myśl do ekstrakcji przez AI."
       : hasGoodChunking
-      ? `Good chunking: avg ${Math.round(avgParaWords)} words/paragraph, ${Math.round(shortParaRatio * 100)}% of paragraphs are concise. AI engines can extract individual paragraphs as answers.`
+      ? `Dobry chunking: średn. ${Math.round(avgParaWords)} słów/akapit, ${Math.round(shortParaRatio * 100)}% akapitów jest zwięzłych. Silniki AI mogą wyodrębniać poszczególne akapity jako odpowiedzi.`
       : avgParaWords > 150
-      ? `Paragraphs are too long (avg ${Math.round(avgParaWords)} words). Break long paragraphs into shorter, self-contained blocks — AI engines like Gemini and ChatGPT segment pages by paragraph and select one at a time for summarization.`
-      : `Paragraph structure could be improved (avg ${Math.round(avgParaWords)} words). Aim for paragraphs of 40–80 words, each expressing a single complete idea.`,
+      ? `Akapity są za długie (średn. ${Math.round(avgParaWords)} słów). Podziel długie akapity na krótsze, samodzielne bloki — silniki AI jak Gemini i ChatGPT segmentują strony według akapitów i wybierają jeden na raz do podsumowania.`
+      : `Struktura akapitów wymaga poprawy (średn. ${Math.round(avgParaWords)} słów). Celuj w akapity 40–80 słów, każdy wyrażający jedną pełną myśl.`,
     impact: "high",
     value: `${paragraphs.length} paragraphs, avg ${Math.round(avgParaWords)} words`,
   });
@@ -200,13 +200,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "entity_richness",
-    label: "Entity Richness (Named Entities & Facts)",
+    label: "Bogactwo encji (nazwane encje i fakty)",
     status: totalEntitySignals >= 15 ? "pass" : totalEntitySignals >= 5 ? "warning" : "fail",
     description: totalEntitySignals >= 15
-      ? `Rich entity density: ~${totalEntitySignals} named entities and specific facts detected. AI engines use named entities to build semantic embeddings and knowledge graph connections.`
+      ? `Bogata gęstość encji: ~${totalEntitySignals} nazwanych encji i konkretnych faktów. Silniki AI używają nazwanych encji do budowania osadzeń semantycznych i połączeń grafu wiedzy.`
       : totalEntitySignals >= 5
-      ? `Moderate entity density: ~${totalEntitySignals} named entities detected. Increase specificity — instead of "this tool", say "Google Search Console". Instead of "most users", say "73% of users".`
-      : `Low entity density: very few named entities or specific facts found. Content is too generic. Name specific brands, products, people, and places. Include specific statistics with numbers. AI models resolve meaning through named entities — vague content gets poor embeddings.`,
+      ? `Umiarkowana gęstość encji: ~${totalEntitySignals} wykrytych encji. Zwiększ szczegółowość — zamiast 'to narzędzie' napisz 'Google Search Console'. Zamiast 'większość użytkowników' napisz '73% użytkowników'.`
+      : `Niska gęstość encji: bardzo mało nazwanych encji lub konkretnych faktów. Treść jest zbyt ogólna. Nazywaj konkretne marki, produkty, osoby i miejsca. Dodaj konkretne statystyki z liczbami. Modele AI rozumieją znaczenie przez nazwane encje — niejasna treść otrzymuje słabe osadzenia.`,
     impact: "high",
     value: totalEntitySignals,
   });
@@ -226,13 +226,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "readability",
-    label: "Readability (Sentence Complexity)",
+    label: "Czytelność (złożoność zdań)",
     status: readability_status,
     description: avgSentenceWords <= 20
-      ? `Good readability: avg ${Math.round(avgSentenceWords)} words/sentence. Short, clear sentences improve AI extraction accuracy and Flesch-Kincaid score.`
+      ? `Dobra czytelność: średn. ${Math.round(avgSentenceWords)} słów/zdanie. Krótkie, jasne zdania poprawiają dokładność ekstrakcji AI i wskaźnik Flesch-Kincaid.`
       : avgSentenceWords <= 28
-      ? `Moderate readability: avg ${Math.round(avgSentenceWords)} words/sentence. Aim for sentences under 20 words. Long sentences reduce AI extraction accuracy and readability scores.`
-      : `Poor readability: avg ${Math.round(avgSentenceWords)} words/sentence. Sentences are too complex for optimal AI processing. Break long sentences into shorter, direct statements. AI performs better with simple, readable language (Flesch-Kincaid Grade 6-8).`,
+      ? `Umiarkowana czytelność: średn. ${Math.round(avgSentenceWords)} słów/zdanie. Celuj w zdania do 20 słów. Długie zdania zmniejszają dokładność ekstrakcji AI.`
+      : `Słaba czytelność: średn. ${Math.round(avgSentenceWords)} słów/zdanie. Zdania są zbyt złożone dla optymalnego przetwarzania AI. Podziel długie zdania na krótsze, bezpośrednie stwierdzenia. AI działa lepiej z prostym, czytelnym językiem (Flesch-Kincaid klasa 6-8).`,
     impact: "medium",
     value: `avg ${Math.round(avgSentenceWords)} words/sentence`,
   });
@@ -256,13 +256,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "semantic_triples",
-    label: "Semantic Triple Density",
+    label: "Gęstość trójek semantycznych",
     status: triplesPerHundredWords >= 3 ? "pass" : triplesPerHundredWords >= 1.5 ? "warning" : "fail",
     description: triplesPerHundredWords >= 3
-      ? `Good semantic triple density (${Math.round(triplesPerHundredWords)} per 100 words). Clear subject-predicate-object statements help AI engines build knowledge graph connections from your content.`
+      ? `Dobra gęstość trójek semantycznych (${Math.round(triplesPerHundredWords)} na 100 słów). Jasne stwierdzenia podmiot-orzeczenie-dopełnienie pomagają silnikom AI budować połączenia grafu wiedzy.`
       : triplesPerHundredWords >= 1.5
-      ? `Moderate semantic triple density. Write more clear, direct statements: 'Schema markup improves content discoverability', 'ChatGPT was created by OpenAI'. These subject-predicate-object patterns are the building blocks of knowledge graphs.`
-      : `Low semantic triple density. Content lacks clear factual statements. Write in subject-predicate-object format: 'Paris is located in France', 'FAQPage schema improves AI citation rates'. Avoid vague phrases like 'this can help' — say exactly what helps and how.`,
+      ? `Umiarkowana gęstość trójek semantycznych. Pisz więcej jasnych, bezpośrednich stwierdzeń: 'Schema markup poprawia wykrywalność treści', 'ChatGPT został stworzony przez OpenAI'. Te wzorce podmiot-orzeczenie-dopełnienie to budulec grafów wiedzy.`
+      : `Niska gęstość trójek semantycznych. Treści brakuje jasnych stwierdzeń faktycznych. Pisz w formacie podmiot-orzeczenie-dopełnienie: 'Paryż leży we Francji', 'Schema FAQPage poprawia wskaźniki cytowania przez AI'. Unikaj niejasnych zwrotów jak 'to może pomóc' — powiedz dokładnie co pomaga i jak.`,
     impact: "medium",
     value: `${Math.round(triplesPerHundredWords)} triples/100 words`,
   });
@@ -278,13 +278,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "coreference_clarity",
-    label: "Co-reference Clarity",
+    label: "Jasność ko-referencji",
     status: pronounRatio <= 3 ? "pass" : pronounRatio <= 6 ? "warning" : "fail",
     description: pronounRatio <= 3
-      ? `Good co-reference clarity: low ambiguous pronoun usage (${Math.round(pronounRatio)}% of words). Specific nouns are used consistently — AI engines can resolve entity references accurately.`
+      ? `Dobra jasność ko-referencji: niskie użycie niejednoznacznych zaimków (${Math.round(pronounRatio)}% słów). Konkretne rzeczowniki są używane spójnie — silniki AI mogą dokładnie rozpoznawać odniesienia do encji.`
       : pronounRatio <= 6
-      ? `Moderate pronoun usage (${Math.round(pronounRatio)}% of words). Replace ambiguous pronouns like 'it', 'this', 'they' with specific nouns. Instead of 'it improves visibility', say 'schema markup improves visibility in AI search results'.`
-      : `High ambiguous pronoun usage (${Math.round(pronounRatio)}% of words). This significantly reduces AI extraction accuracy. Each sentence should work independently — restate key terms instead of using 'this', 'it', 'they'. AI co-reference resolution fails when pronouns lack clear referents.`,
+      ? `Umiarkowane użycie zaimków (${Math.round(pronounRatio)}% słów). Zastąp niejednoznaczne zaimki jak 'to', 'ono', 'oni' konkretnymi rzeczownikami. Zamiast 'to poprawia widoczność' napisz 'schema markup poprawia widoczność w wynikach AI search'.`
+      : `Wysokie użycie niejednoznacznych zaimków (${Math.round(pronounRatio)}% słów). Znacznie zmniejsza to dokładność ekstrakcji AI. Każde zdanie powinno działać samodzielnie — powtarzaj kluczowe terminy zamiast używać 'to', 'ono', 'oni'. Rozpoznawanie ko-referencji przez AI zawodzi, gdy zaimki nie mają jasnych odniesień.`,
     impact: "medium",
     value: `${Math.round(pronounRatio)}% pronoun ratio`,
   });
@@ -294,13 +294,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
   const hasLists = listCount >= 2;
   checks.push({
     id: "lists_present",
-    label: "Lists & Structured Content",
+    label: "Listy i treść strukturalna",
     status: hasLists ? "pass" : listCount === 1 ? "warning" : "fail",
     description: hasLists
-      ? `${listCount} list elements found — structured content is preferred by AI engines.`
+      ? `Znaleziono ${listCount} elementów listy — treść strukturalna jest preferowana przez silniki AI.`
       : listCount === 1
-      ? "Only 1 list found. Use more bullet/numbered lists to make content scannable by AI."
-      : "No lists found. AI engines prefer structured content with bullet points and numbered steps.",
+      ? "Znaleziono tylko 1 listę. Użyj więcej list punktowanych/numerowanych, aby treść była skanowalna przez AI."
+      : "Brak list. Silniki AI preferują treść strukturalną z punktami i numerowanymi krokami.",
     impact: "medium",
     value: listCount,
   });
@@ -311,14 +311,14 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "content_length",
-    label: "Adequate Content Length",
+    label: "Odpowiednia długość treści",
     status: wordCount >= richWords ? "pass" : wordCount >= minWords ? "warning" : "fail",
     description:
       wordCount >= richWords
-        ? `${wordCount} words — rich content length, good for AI citation.`
+        ? `${wordCount} słów — bogata długość treści, dobra do cytowania przez AI.`
         : wordCount >= minWords
-        ? `${wordCount} words — adequate but consider expanding to ${richWords}+ words for better AI coverage.`
-        : `${wordCount} words — thin content. AI engines prefer pages with at least ${minWords} words.`,
+        ? `${wordCount} słów — wystarczające, ale rozważ rozszerzenie do ${richWords}+ słów dla lepszego pokrycia przez AI.`
+        : `${wordCount} słów — cienka treść. Silniki AI preferują strony z co najmniej ${minWords} słowami.`,
     impact: "high",
     value: wordCount,
   });
@@ -339,13 +339,13 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
 
   checks.push({
     id: "information_gain",
-    label: "Information Gain (Unique Data)",
+    label: "Przyrost informacji (unikalne dane)",
     status: informationGainScore >= 2 ? "pass" : informationGainScore === 1 ? "warning" : "fail",
     description: informationGainScore >= 2
-      ? `Strong information gain signals: original data, specific statistics, and/or date context detected. LLMs seek salient, distinctive, non-generic content — redundant or boilerplate content is filtered out.`
+      ? `Silne sygnały przyrostu informacji: wykryto oryginalne dane, konkretne statystyki i/lub kontekst dat. LLM szukają wyrazistych, niepowtarzalnych treści — powtarzalne lub szablonowe treści są odfiltrowywane.`
       : informationGainScore === 1
-      ? `Partial information gain: some unique signals found but content could be more distinctive. Add original research, proprietary data, or specific statistics with dates (e.g., 'as of Q1 2025, 73% of users...').`
-      : `Low information gain: content appears generic. LLMs prioritize content that only you can publish — personal insights, original research, expert opinions, proprietary data. Generic content that mirrors thousands of other pages gets filtered out of AI answers.`,
+      ? `Częściowy przyrost informacji: znaleziono niektóre unikalne sygnały, ale treść mogłaby być bardziej wyrazista. Dodaj oryginalne badania, własne dane lub konkretne statystyki z datami (np. 'stan na Q1 2025, 73% użytkowników...').`
+      : `Niski przyrost informacji: treść wydaje się generyczna. LLM priorytetyzują treści, które tylko Ty możesz opublikować — osobiste spostrzegą, oryginalne badania, opinie ekspertów, własne dane. Generyczna treść powielająca tysiące innych stron jest odfiltrowywana z odpowiedzi AI.`,
     impact: "high",
     value: `${informationGainScore}/3 signals`,
   });
@@ -357,11 +357,11 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
     );
   checks.push({
     id: "answer_patterns",
-    label: "Direct Answer Patterns",
+    label: "Wzorce bezpośrednich odpowiedzi",
     status: hasAnswerPatterns ? "pass" : "info",
     description: hasAnswerPatterns
-      ? "Definitional and answer-pattern language detected — AI engines love quotable direct answers."
-      : "Consider adding clear definitions and direct answers to likely user questions to improve citation potential.",
+      ? "Wykryto język definicyjny i wzorce odpowiedzi — silniki AI uwielbiają cytowalne bezpośrednie odpowiedzi."
+      : "Rozważ dodanie jasnych definicji i bezpośrednich odpowiedzi na prawdopodobne pytania użytkowników, aby poprawić potencjał cytowania.",
     impact: "medium",
     value: hasAnswerPatterns,
   });
@@ -381,7 +381,7 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
   const citationRelevant = ["article", "service", "homepage"].includes(pageType);
   checks.push({
     id: "external_citations",
-    label: "External Citations & Links",
+    label: "Cytowania zewnętrzne i linki",
     status:
       externalLinkCount >= 3
         ? "pass"
@@ -392,12 +392,12 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
         : "info",
     description:
       externalLinkCount >= 3
-        ? `${externalLinkCount} external links found — good citation signals for AI engines.`
+        ? `Znaleziono ${externalLinkCount} linków zewnętrznych — dobre sygnały cytowania dla silników AI.`
         : externalLinkCount >= 1
-        ? `Only ${externalLinkCount} external link found. Add 3–5 links to authoritative sources.`
+        ? `Znaleziono tylko ${externalLinkCount} link zewnętrzny. Dodaj 3–5 linków do autorytatywnych źródeł.`
         : citationRelevant
-        ? "No external citations found. Linking to authoritative sources (research, statistics, official sites) is a key E-E-A-T and GEO signal."
-        : "No external links found. Consider citing sources where relevant.",
+        ? "Brak cytowań zewnętrznych. Linkowanie do autorytatywnych źródeł (badania, statystyki, oficjalne strony) to kluczowy sygnał E-E-A-T i GEO."
+        : "Brak linków zewnętrznych. Rozważ cytowanie źródeł tam, gdzie jest to zasadne.",
     impact: "medium",
     value: externalLinkCount,
   });
@@ -409,11 +409,11 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
     );
   checks.push({
     id: "data_points",
-    label: "Facts & Data Points in Text",
+    label: "Fakty i dane liczbowe w tekście",
     status: hasDataPoints ? "pass" : "info",
     description: hasDataPoints
-      ? "Numerical facts and data points found in text — AI engines can cite these directly."
-      : "No clear data points found in text. Include statistics and facts in text (not just images) for AI citation.",
+      ? "Znaleziono fakty liczbowe i dane w tekście — silniki AI mogą cytować je bezpośrednio."
+      : "Brak wyraźnych danych liczbowych w tekście. Umieść statystyki i fakty w tekście (nie tylko w obrazach) do cytowania przez AI.",
     impact: "low",
     value: hasDataPoints,
   });
@@ -471,14 +471,14 @@ function buildSummary(
   hasTldr: boolean,
   pageType: PageType
 ): string {
-  const typeLabel = pageType === "article" ? "article" : pageType === "product-listing" ? "category page" : "page";
+  const typeLabel = pageType === "article" ? "artykuł" : pageType === "product-listing" ? "strona kategorii" : "strona";
   if (score >= 80)
-    return `Content is well-structured for AI citation with good semantic chunking, entity richness, and Q&A content.`;
+    return `Treść jest dobrze ustrukturyzowana pod cytowanie przez AI — dobry chunking semantyczny, bogactwo encji i treści Q&A.`;
   const missing: string[] = [];
-  if (!hasTldr && !["product", "product-listing"].includes(pageType)) missing.push("TL;DR summary");
-  if (!hasFaq) missing.push("FAQ section");
-  if (wordCount < 300) missing.push("more content");
+  if (!hasTldr && !["product", "product-listing"].includes(pageType)) missing.push("podsumowanie TL;DR");
+  if (!hasFaq) missing.push("sekcja FAQ");
+  if (wordCount < 300) missing.push("więcej treści");
   if (missing.length > 0)
-    return `Missing key GEO elements for this ${typeLabel}: ${missing.join(", ")}.`;
-  return `Content structure score: ${score}/100. Focus on semantic chunking, entity richness, and passage optimization.`;
+    return `Brakuje kluczowych elementów GEO dla tej ${typeLabel}: ${missing.join(", ")}.`;
+  return `Wynik struktury treści: ${score}/100. Skup się na chunkingu semantycznym, bogactwie encji i optymalizacji fragmentów.`;
 }

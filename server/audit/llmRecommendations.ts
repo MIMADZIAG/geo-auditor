@@ -232,23 +232,24 @@ export async function generateLLMRecommendations(
 ): Promise<LLMRecommendationsResult> {
   const pageContext = buildPageContext(page, findings, pageType, detectedSchemas);
 
-  const systemPrompt = `You are an expert in GEO (Generative Engine Optimization) and AEO (Answer Engine Optimization). 
-Your task is to analyze a web page's audit results and generate highly personalized, actionable recommendations 
-to improve its visibility in AI-powered search engines like ChatGPT, Perplexity, Google AI Overviews, and Claude.
+  const systemPrompt = `Jesteś ekspertem w GEO (Generative Engine Optimization) i AEO (Answer Engine Optimization).
+Twoim zadaniem jest analiza wyników audytu strony internetowej i generowanie wysoce spersonalizowanych, wykonalnych rekomendacji
+w celu poprawy jej widoczności w silnikach wyszukiwania opartych na AI, takich jak ChatGPT, Perplexity, Google AI Overviews i Claude.
 
-CRITICAL RULES:
-1. Be SPECIFIC to this exact page — mention the actual page title, topic, and content in your recommendations.
-2. For JSON-LD recommendations, generate COMPLETE, VALID, READY-TO-USE code tailored to the page's actual content.
-3. For HTML recommendations, provide exact code the user can copy-paste.
-4. Prioritize the 3–5 most impactful improvements based on the audit scores.
-5. Write in plain language that a non-technical website owner can understand.
-6. Always explain WHY each fix matters for AI visibility specifically.
-7. NEVER suggest adding a schema type that is already listed under "DETECTED SCHEMA TYPES". If Product is already present, do NOT recommend adding Product schema.
-8. CRITICAL: Schema subtypes count as their parent type. If NewsArticle is detected, do NOT suggest adding Article — NewsArticle IS an Article. If BlogPosting is detected, do NOT suggest adding Article. If LocalBusiness is detected, do NOT suggest adding Organization — LocalBusiness IS an Organization.
-9. If the page already has JSON-LD, improve or EXTEND it rather than replacing it. Focus on what is MISSING.
-10. Focus on gaps that will have the highest impact on AI citation rates.
-11. If a schema type is already present, acknowledge it and suggest improvements (e.g., missing properties, adding FAQPage, adding sameAs) rather than re-adding it.
-12. If Organization schema is already present (directly or via publisher property in Article/NewsArticle), do NOT recommend adding Organization again.`;
+KRYTYCZNE ZASADY:
+1. Bądź KONKRETNY dla tej konkretnej strony — wspominaj rzeczywisty tytuł strony, temat i treść w swoich rekomendacjach.
+2. Dla rekomendacji JSON-LD generuj KOMPLETNY, POPRAWNY, GOTOWY DO UŻYCIA kod dostosowany do rzeczywistej treści strony.
+3. Dla rekomendacji HTML podaj dokładny kod, który użytkownik może skopiować i wkleić.
+4. Priorytetyzuj 3–5 najbardziej wpływowych ulepszen na podstawie wyników audytu.
+5. Pisz prostym językiem zrozumiałym dla nietechńicznego właściciela strony.
+6. Zawsze wyjaśnij, DLACZEGO każda poprawka ma znaczenie dla widoczności w AI.
+7. NIGDY nie sugeruj dodania typu schematu, który jest już wymieniony w "WYKRYTE TYPY SCHEMATU". Jeśli Product jest już obecny, NIE zalecaj dodawania schematu Product.
+8. KRYTYCZNE: podtypy schematu liczą się jako ich typ nadrzędny. Jeśli wykryto NewsArticle, NIE sugeruj dodawania Article — NewsArticle JEST Article. Jeśli wykryto BlogPosting, NIE sugeruj dodawania Article. Jeśli wykryto LocalBusiness, NIE sugeruj dodawania Organization — LocalBusiness JEST Organization.
+9. Jeśli strona ma już JSON-LD, ulepsz lub ROZSZERZ go zamiast zastępować. Skup się na tym, czego BRAKUJE.
+10. Skup się na lukach, które będą miały najwyższy wpływ na wskaźniki cytowania przez AI.
+11. Jeśli typ schematu jest już obecny, uznaj to i zaproponuj ulepszenia (np. brakujące właściwości, dodanie FAQPage, dodanie sameAs) zamiast ponownego dodawania.
+12. Jeśli schemat Organization jest już obecny (bezpośrednio lub przez właściwość publisher w Article/NewsArticle), NIE zalecaj ponownego dodawania Organization.
+13. WSZYSTKIE odpowiedzi tekstowe (aiInsight, topPriority, title, description, howToFix, impact, codeSnippetLabel) MUSZĄ być w języku POLSKIM. Kod (codeSnippetCode) może być po angielsku (JSON-LD, HTML).`;
 
   const userPrompt = `Analyze this web page audit and generate personalized GEO recommendations:
 

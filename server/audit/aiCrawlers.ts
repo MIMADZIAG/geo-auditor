@@ -28,16 +28,16 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     id: "gptbot",
     name: "GPTBot",
     userAgent: "GPTBot",
-    engine: "ChatGPT / OpenAI (Training only)",
-    description: "OpenAI's crawler used exclusively to train GPT models. Blocking this prevents future GPT model training on your content but does NOT affect ChatGPT Search citations — that is handled by OAI-SearchBot.",
+    engine: "ChatGPT / OpenAI (tylko trening)",
+    description: "Crawler OpenAI używany wyłącznie do trenowania modeli GPT. Zablokowanie go uniemożliwia przyszłe trenowanie modeli GPT na Twojej treści, ale NIE wpływa na cytowania w ChatGPT Search — tym zajmuje się OAI-SearchBot.",
     priority: "medium",
   },
   {
     id: "oai_searchbot",
     name: "OAI-SearchBot",
     userAgent: "OAI-SearchBot",
-    engine: "ChatGPT Search (Live)",
-    description: "OpenAI's live search crawler for ChatGPT's real-time web search feature. Distinct from GPTBot training crawler.",
+    engine: "ChatGPT Search (na żywo)",
+    description: "Crawler OpenAI do wyszukiwania w czasie rzeczywistym w ChatGPT Search. Odrębny od crawlera treningowego GPTBot.",
     priority: "critical",
   },
   {
@@ -45,7 +45,7 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     name: "PerplexityBot",
     userAgent: "PerplexityBot",
     engine: "Perplexity AI",
-    description: "Perplexity's crawler for real-time search and AI answer generation.",
+    description: "Crawler Perplexity do wyszukiwania w czasie rzeczywistym i generowania odpowiedzi AI.",
     priority: "critical",
   },
   {
@@ -53,15 +53,15 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     name: "ClaudeBot",
     userAgent: "ClaudeBot",
     engine: "Anthropic Claude",
-    description: "Anthropic's crawler used for Claude AI model training and browsing.",
+    description: "Crawler Anthropic używany do trenowania modeli Claude AI i przeglądania stron.",
     priority: "high",
   },
   {
     id: "google_extended",
     name: "Google-Extended",
     userAgent: "Google-Extended",
-    engine: "Google Gemini Training (NOT AI Overviews)",
-    description: "Google's opt-out token for AI model training (Gemini, Vertex AI). Blocking this prevents your content from being used to train Google AI models but does NOT affect Google AI Overviews or regular Search — those use Googlebot, which is separate.",
+    engine: "Google Gemini (trening, NIE AI Overviews)",
+    description: "Token rezygnacji Google z trenowania modeli AI (Gemini, Vertex AI). Zablokowanie go uniemożliwia używanie Twojej treści do trenowania modeli Google AI, ale NIE wpływa na Google AI Overviews ani zwykłe wyniki wyszukiwania — te obsługuje Googlebot.",
     priority: "medium",
   },
   {
@@ -69,7 +69,7 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     name: "anthropic-ai",
     userAgent: "anthropic-ai",
     engine: "Anthropic",
-    description: "Anthropic's secondary crawler identifier.",
+    description: "Dodatkowy identyfikator crawlera Anthropic.",
     priority: "high",
   },
   {
@@ -77,7 +77,7 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     name: "YouBot",
     userAgent: "YouBot",
     engine: "You.com AI Search",
-    description: "You.com's AI search crawler for their generative search engine.",
+    description: "Crawler AI wyszukiwarki You.com do generatywnego wyszukiwania.",
     priority: "medium",
   },
   {
@@ -85,7 +85,7 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     name: "Bytespider",
     userAgent: "Bytespider",
     engine: "ByteDance / TikTok AI",
-    description: "ByteDance's crawler used for TikTok's AI features and search products.",
+    description: "Crawler ByteDance używany do funkcji AI TikTok i produktów wyszukiwania.",
     priority: "medium",
   },
   {
@@ -93,7 +93,7 @@ const AI_CRAWLERS: CrawlerInfo[] = [
     name: "cohere-ai",
     userAgent: "cohere-ai",
     engine: "Cohere",
-    description: "Cohere's AI crawler for training and retrieval.",
+    description: "Crawler AI Cohere do trenowania i wyszukiwania.",
     priority: "medium",
   },
 ];
@@ -165,12 +165,12 @@ export function analyzeAICrawlers(page: ScrapedPage): CategoryResult & {
       label: `${crawler.name} (${crawler.engine})`,
       status: blocked ? "fail" : partiallyBlocked ? "warning" : "pass",
       description: blocked
-        ? `${crawler.name} is fully blocked in robots.txt (Disallow: /). Your content is completely invisible to ${crawler.engine}.`
+        ? `${crawler.name} jest całkowicie zablokowany w robots.txt (Disallow: /). Twoja treść jest całkowicie niewidoczna dla ${crawler.engine}.`
         : partiallyBlocked
-        ? `${crawler.name} has partial restrictions in robots.txt. Some sections of your site are blocked from ${crawler.engine}.`
+        ? `${crawler.name} ma częściowe ograniczenia w robots.txt. Niektóre sekcje Twojej strony są zablokowane dla ${crawler.engine}.`
         : robotsTxtMissing
-        ? `No robots.txt found — ${crawler.name} access is unrestricted by default.`
-        : `${crawler.name} has full access to crawl your content for ${crawler.engine}.`,
+        ? `Nie znaleziono robots.txt — dostęp ${crawler.name} jest domyślnie nieograniczony.`
+        : `${crawler.name} ma pełny dostęp do indeksowania Twojej treści dla ${crawler.engine}.`,
       impact: crawler.priority === "critical" ? "high" : crawler.priority === "high" ? "medium" : "low",
       value: !blocked,
     });
@@ -183,7 +183,7 @@ export function analyzeAICrawlers(page: ScrapedPage): CategoryResult & {
 
   checks.push({
     id: "all_ai_crawlers",
-    label: "All Major AI Crawlers Accessible",
+    label: "Dostęp wszystkich głównych crawlerów AI",
     status:
       blockedCritical > 0
         ? "fail"
@@ -192,50 +192,46 @@ export function analyzeAICrawlers(page: ScrapedPage): CategoryResult & {
         : "pass",
     description:
       blockedCritical > 0
-        ? `${blockedCritical} critical AI crawler${blockedCritical > 1 ? "s are" : " is"} blocked (GPTBot, OAI-SearchBot, PerplexityBot, or Google-Extended). This severely limits your visibility in AI-powered search.`
+        ? `${blockedCritical} krytycz${blockedCritical > 1 ? "ne crawlery AI są zablokowane" : "ny crawler AI jest zablokowany"} (GPTBot, OAI-SearchBot, PerplexityBot lub Google-Extended). Poważnie ogranicza to widoczność w wyszukiwarkach AI.`
         : blockedTotal > 0
-        ? `${blockedTotal} secondary AI crawler${blockedTotal > 1 ? "s are" : " is"} blocked. Consider allowing access to maximize AI search visibility.`
-        : "All major AI crawlers have access to your content.",
+        ? `${blockedTotal} drugorzędn${blockedTotal > 1 ? "e crawlery AI są zablokowane" : "y crawler AI jest zablokowany"}. Rozważ zezwolenie na dostęp, aby zmaksymalizować widoczność w AI Search.`
+        : "Wszystkie główne crawlery AI mają dostęp do Twojej treści.",
     impact: "high",
     value: blockedTotal === 0,
   });
 
   // ── llms.txt detection (iPullRank Ch.11 — experimental, not yet standard) ──
-  // Note: iPullRank explicitly states llms.txt is "not standard or widely referenced"
-  // We flag it as informational — neither required nor harmful
   const hasLlmsTxt = page.robotsTxt !== null
     ? /llms\.txt/i.test(page.robotsTxt)
     : false;
 
-  // Try to detect from HTML (some sites reference it)
   const llmsTxtInHtml = /llms\.txt/i.test(page.html ?? "");
 
   checks.push({
     id: "llms_txt",
-    label: "llms.txt File (Experimental)",
+    label: "Plik llms.txt (eksperymentalny)",
     status: hasLlmsTxt || llmsTxtInHtml ? "pass" : "info",
     description: hasLlmsTxt || llmsTxtInHtml
-      ? "llms.txt reference detected. Note: this is an experimental standard not yet widely adopted by major AI systems (per iPullRank AI Search Manual Ch.11). Focus on conventional robots.txt and structured data as primary signals."
-      : "No llms.txt file detected. This is an experimental AI-specific directive not yet standardized or widely referenced by major AI systems. Conventional robots.txt and structured data are more impactful.",
+      ? "Wykryto odwołanie do llms.txt. Uwaga: to eksperymentalny standard, jeszcze nie powszechnie stosowany przez główne systemy AI (wg iPullRank AI Search Manual rozdz. 11). Skup się na robots.txt i danych strukturalnych jako głównych sygnałach."
+      : "Nie wykryto pliku llms.txt. To eksperymentalna dyrektywa AI, jeszcze niestandardowa ani szeroko stosowana przez główne systemy AI. Robots.txt i dane strukturalne mają większy wpływ.",
     impact: "low",
     value: hasLlmsTxt || llmsTxtInHtml,
   });
 
   // ── XML Sitemap accessibility ──────────────────────────────────────────────
-  // iPullRank Ch.11: XML sitemaps help AI crawlers discover all indexable URLs
   const hasSitemapInRobots = page.robotsTxt
     ? /^sitemap:/im.test(page.robotsTxt)
     : false;
 
   checks.push({
     id: "sitemap_for_crawlers",
-    label: "Sitemap Accessible to AI Crawlers",
+    label: "Mapa strony dostępna dla crawlerów AI",
     status: hasSitemapInRobots ? "pass" : page.robotsTxt !== null ? "warning" : "info",
     description: hasSitemapInRobots
-      ? "Sitemap URL declared in robots.txt — AI crawlers can discover all indexable pages."
+      ? "URL mapy strony zadeklarowany w robots.txt — crawlery AI mogą odkryć wszystkie indeksowalne podstrony."
       : page.robotsTxt !== null
-      ? "robots.txt exists but no Sitemap directive found. Add 'Sitemap: https://yourdomain.com/sitemap.xml' to help AI crawlers discover your full content inventory."
-      : "No robots.txt found, so no Sitemap directive. Add a robots.txt with a Sitemap reference to help AI crawlers index your full site.",
+      ? "Plik robots.txt istnieje, ale nie znaleziono dyrektywy Sitemap. Dodaj 'Sitemap: https://twojadomena.pl/sitemap.xml', aby pomóc crawlerom AI odkryć całą zawartość."
+      : "Brak robots.txt, więc brak dyrektywy Sitemap. Dodaj robots.txt z odwołaniem do mapy strony, aby crawlery AI mogły indeksować całą witrynę.",
     impact: "medium",
     value: hasSitemapInRobots,
   });
@@ -256,8 +252,6 @@ function computeScore(
   blockedCritical: number,
   blockedTotal: number
 ): number {
-  // Critical crawlers blocked = heavy penalty (25 each)
-  // Non-critical crawlers blocked = lighter penalty (10 each)
   const criticalPenalty = blockedCritical * 25;
   const nonCriticalBlocked = blockedTotal - blockedCritical;
   const nonCriticalPenalty = nonCriticalBlocked * 10;
@@ -271,10 +265,10 @@ function buildSummary(
   robotsTxtMissing: boolean
 ): string {
   if (robotsTxtMissing)
-    return "No robots.txt found — AI crawlers have unrestricted access by default. Add robots.txt with a Sitemap directive.";
+    return "Nie znaleziono robots.txt — crawlery AI mają domyślnie nieograniczony dostęp. Dodaj robots.txt z dyrektywą Sitemap.";
   if (blockedCritical > 0)
-    return `${blockedCritical} critical AI crawler${blockedCritical > 1 ? "s are" : " is"} blocked — your content is invisible to those AI engines. Remove Disallow: / for GPTBot, OAI-SearchBot, PerplexityBot, and Google-Extended.`;
+    return `${blockedCritical} krytycz${blockedCritical > 1 ? "ne crawlery AI są zablokowane" : "ny crawler AI jest zablokowany"} — Twoja treść jest niewidoczna dla tych silników AI. Usuń Disallow: / dla GPTBot, OAI-SearchBot, PerplexityBot i Google-Extended.`;
   if (blockedTotal > 0)
-    return `${blockedTotal} secondary AI crawler${blockedTotal > 1 ? "s are" : " is"} blocked. All critical crawlers (GPTBot, OAI-SearchBot, PerplexityBot, Google-Extended) have access.`;
-  return "All major AI crawlers (GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot, Google-Extended) have full access.";
+    return `${blockedTotal} drugorzędn${blockedTotal > 1 ? "e crawlery AI są zablokowane" : "y crawler AI jest zablokowany"}. Wszystkie krytyczne crawlery (GPTBot, OAI-SearchBot, PerplexityBot, Google-Extended) mają dostęp.`;
+  return "Wszystkie główne crawlery AI (GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot, Google-Extended) mają pełny dostęp.";
 }

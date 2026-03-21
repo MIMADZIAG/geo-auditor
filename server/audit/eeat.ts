@@ -21,30 +21,30 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
   const authorAdaptive = (() => {
     if (["article", "service"].includes(pageType)) {
       return {
-        label: "Author Byline",
+        label: "Podpis autora",
         status: (hasAuthor ? "pass" : "fail") as AuditCheck["status"],
         description: hasAuthor
-          ? "Author byline detected — strong E-E-A-T signal for AI engines."
-          : "No author byline found. Named authorship is a critical trust signal for articles and guides. Add an author name with credentials and link to an author profile page.",
+          ? "Wykryto podpis autora — silny sygnał E-E-A-T dla silników AI."
+          : "Brak podpisu autora. Autorstwo z imieniem i nazwiskiem to krytyczny sygnał zaufania dla artykułów i poradników. Dodaj imię i nazwisko autora z kwalifikacjami i link do profilu autora.",
         impact: "high" as const,
       };
     } else if (["homepage", "landing"].includes(pageType)) {
       return {
-        label: "Team / Brand Attribution",
+        label: "Atrybucja zespołu / marki",
         status: (hasAuthor ? "pass" : "warning") as AuditCheck["status"],
         description: hasAuthor
-          ? "Author or team attribution detected."
-          : "No team attribution found. Consider adding a 'Meet the Team' or 'About Us' section.",
+          ? "Wykryto atrybucję autora lub zespołu."
+          : "Brak atrybucji zespołu. Rozważ dodanie sekcji 'Nasz zespół' lub 'O nas'.",
         impact: "medium" as const,
       };
     } else {
       // product, product-listing, generic — author not expected
       return {
-        label: "Seller / Brand Attribution",
+        label: "Atrybucja sprzedawcy / marki",
         status: (hasAuthor ? "pass" : "info") as AuditCheck["status"],
         description: hasAuthor
-          ? "Brand attribution detected."
-          : "No author byline — not required for this page type. Focus on seller information and trust badges instead.",
+          ? "Wykryto atrybucję marki."
+          : "Brak podpisu autora — nie jest wymagany dla tego typu strony. Skup się na informacjach o sprzedawcy i badge'ach zaufania.",
         impact: "low" as const,
       };
     }
@@ -85,11 +85,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
   checks.push({
     id: "about_page",
-    label: "About Page Link",
+    label: "Link do strony O nas",
     status: hasAboutLink ? "pass" : "warning",
     description: hasAboutLink
-      ? "About page link found — helps AI engines establish entity identity."
-      : "No 'About Us' link found. An About page is a key E-E-A-T signal that helps AI engines understand who is behind this website.",
+      ? "Znaleziono link do strony O nas — pomaga silnikom AI ustalić tożsamość podmiotu."
+      : "Brak linku 'O nas'. Strona O nas to kluczowy sygnał E-E-A-T, który pomaga silnikom AI zrozumieć, kto stoi za tą witryną.",
     impact: "medium",
     value: hasAboutLink,
   });
@@ -123,11 +123,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
   checks.push({
     id: "contact_info",
-    label: "Contact Information",
+    label: "Dane kontaktowe",
     status: hasContactInfo ? "pass" : "fail",
     description: hasContactInfo
-      ? "Contact information or link found — important trust signal."
-      : "No contact information found. Contact details (email, phone, or contact page link) are required for E-E-A-T compliance and AI engine trust.",
+      ? "Znaleziono dane kontaktowe lub link — ważny sygnał zaufania."
+      : "Brak danych kontaktowych. Dane kontaktowe (email, telefon lub link do strony kontaktowej) są wymagane dla zgodności E-E-A-T i zaufania silników AI.",
     impact: "high",
     value: hasContactInfo,
   });
@@ -187,16 +187,16 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
   checks.push({
     id: "legal_pages",
-    label: "Privacy Policy & Terms",
+    label: "Polityka prywatności i regulamin",
     status: hasPrivacy && hasTerms ? "pass" : hasPrivacy || hasTerms ? "warning" : "fail",
     description:
       hasPrivacy && hasTerms
-        ? "Privacy Policy and Terms/Regulamin links found — full legal compliance signals."
+        ? "Znaleziono linki do polityki prywatności i regulaminu — pełne sygnały zgodności prawnej."
         : hasPrivacy
-        ? "Privacy Policy found but no Terms/Regulamin link. Add a Terms page for full legal compliance."
+        ? "Znaleziono politykę prywatności, ale brak linku do regulaminu. Dodaj stronę z regulaminem dla pełnej zgodności prawnej."
         : hasTerms
-        ? "Terms/Regulamin found but no Privacy Policy link. Add a Privacy Policy for GDPR compliance."
-        : "No Privacy Policy or Terms links found. These are required for E-E-A-T compliance and user trust.",
+        ? "Znaleziono regulamin, ale brak linku do polityki prywatności. Dodaj politykę prywatności dla zgodności z RODO."
+        : "Brak linków do polityki prywatności i regulaminu. Są one wymagane dla zgodności E-E-A-T i zaufania użytkowników.",
     impact: "medium",
     value: `privacy:${hasPrivacy},terms:${hasTerms}`,
   });
@@ -214,7 +214,7 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
   const citationsRequired = ["article", "service"].includes(pageType);
   checks.push({
     id: "external_citations",
-    label: "External Citations",
+    label: "Cytowania zewnętrzne",
     status:
       externalLinkCount >= 3 ? "pass"
       : externalLinkCount >= 1 ? "warning"
@@ -222,12 +222,12 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
       : "info",
     description:
       externalLinkCount >= 3
-        ? `${externalLinkCount} external links found — good citation signals.`
+        ? `Znaleziono ${externalLinkCount} linków zewnętrznych — dobre sygnały cytowania.`
         : externalLinkCount >= 1
-        ? `Only ${externalLinkCount} external link. Add 3–5 links to authoritative sources.`
+        ? `Tylko ${externalLinkCount} link zewnętrzny. Dodaj 3–5 linków do autorytatywnych źródeł.`
         : citationsRequired
-        ? "No external citations found. Linking to authoritative sources is a critical E-E-A-T signal for this page type."
-        : "No external links found. Consider citing sources where relevant.",
+        ? "Brak cytowań zewnętrznych. Linkowanie do autorytatywnych źródeł to krytyczny sygnał E-E-A-T dla tego typu strony."
+        : "Brak linków zewnętrznych. Rozważ cytowanie źródeł tam, gdzie jest to zasadne.",
     impact: citationsRequired ? "high" : "medium",
     value: externalLinkCount,
   });
@@ -240,11 +240,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
     checks.push({
       id: "review_signals",
-      label: "Customer Reviews / Ratings",
+      label: "Opinie i oceny klientów",
       status: hasReviews ? "pass" : "warning",
       description: hasReviews
-        ? "Customer reviews or ratings detected — strong trust signal for e-commerce."
-        : "No customer reviews or ratings found. Adding product reviews with star ratings is a key trust signal for AI engines.",
+        ? "Wykryto opinie lub oceny klientów — silny sygnał zaufania dla e-commerce."
+        : "Brak opinii lub ocen klientów. Dodanie recenzji produktów z ocenami gwiazdkowymi to kluczowy sygnał zaufania dla silników AI.",
       impact: "high",
       value: hasReviews,
     });
@@ -255,11 +255,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
     checks.push({
       id: "trust_signals",
-      label: "Return Policy / Guarantee",
+      label: "Polityka zwrotów / gwarancja",
       status: hasReturnPolicy ? "pass" : "warning",
       description: hasReturnPolicy
-        ? "Return policy or guarantee information found — builds buyer trust."
-        : "No return policy or guarantee information found. E-commerce pages should clearly state return/refund policies.",
+        ? "Znaleziono informacje o polityce zwrotów lub gwarancji — buduje zaufanie kupujących."
+        : "Brak informacji o polityce zwrotów lub gwarancji. Strony e-commerce powinny wyraźnie określać zasady zwrotów/refundacji.",
       impact: "medium",
       value: hasReturnPolicy,
     });
@@ -272,11 +272,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
     checks.push({
       id: "company_identity",
-      label: "Company / Team Identity",
+      label: "Tożsamość firmy / zespołu",
       status: hasTeamInfo ? "pass" : "warning",
       description: hasTeamInfo
-        ? "Company or team information detected — helps AI engines identify the organization."
-        : "No company or team information found. Add an 'About Us' section to establish entity identity.",
+        ? "Wykryto informacje o firmie lub zespole — pomaga silnikom AI zidentyfikować organizację."
+        : "Brak informacji o firmie lub zespole. Dodaj sekcję 'O nas', aby ustalić tożsamość podmiotu.",
       impact: "high",
       value: hasTeamInfo,
     });
@@ -290,11 +290,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
     checks.push({
       id: "publication_date",
-      label: "Publication / Update Date",
+      label: "Data publikacji / aktualizacji",
       status: hasDate ? "pass" : "warning",
       description: hasDate
-        ? "Publication or update date detected — helps AI engines assess content freshness."
-        : "No publication date found. Show when content was published/updated for freshness signals.",
+        ? "Wykryto datę publikacji lub aktualizacji — pomaga silnikom AI ocenić świeżość treści."
+        : "Brak daty publikacji. Pokaż, kiedy treść została opublikowana/zaktualizowana dla sygnałów świeżości.",
       impact: "medium",
       value: hasDate,
     });
@@ -320,17 +320,17 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
   const experienceRelevant = ["article", "service", "homepage"].includes(pageType);
   checks.push({
     id: "experience_signals",
-    label: "First-Person Experience Signals",
+    label: "Sygnały doświadczenia własnego",
     status: hasExperienceSignals
       ? "pass"
       : experienceRelevant
       ? "warning"
       : "info",
     description: hasExperienceSignals
-      ? "First-person experience or case study signals detected — the 'Experience' component of E-E-A-T. AI engines use this to distinguish expert content from generic aggregated content."
+      ? "Wykryto sygnały doświadczenia własnego lub case study — składnik 'Doświadczenie' E-E-A-T. Silniki AI używają tego do odróżnienia treści eksperckich od generycznych."
       : experienceRelevant
-      ? "No first-person experience signals found. The first 'E' in E-E-A-T stands for Experience — add personal insights, test results, case studies, or 'I tested this' language to demonstrate direct experience with the topic."
-      : "No first-person experience signals. Consider adding real-world examples or results.",
+      ? "Brak sygnałów doświadczenia własnego. Pierwsze 'E' w E-E-A-T oznacza Doświadczenie — dodaj osobiste spostrzeżenia, wyniki testów, case studies lub język 'przetestowałem', aby zademonstrować bezpośrednie doświadczenie z tematem."
+      : "Brak sygnałów doświadczenia własnego. Rozważ dodanie przykładów lub wyników z rzeczywistego świata.",
     impact: experienceRelevant ? "high" : "low",
     value: hasExperienceSignals,
   });
@@ -348,13 +348,13 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
 
   checks.push({
     id: "expertise_signals",
-    label: "Expertise & Credentials",
+    label: "Ekspertyza i kwalifikacje",
     status: hasExpertiseSignals ? "pass" : ["article", "service"].includes(pageType) ? "warning" : "info",
     description: hasExpertiseSignals
-      ? "Expertise signals detected (credentials, qualifications, or professional background) — strong E-E-A-T signal for AI engines."
+      ? "Wykryto sygnały ekspertyzy (kwalifikacje, certyfikaty lub tło zawodowe) — silny sygnał E-E-A-T dla silników AI."
       : ["article", "service"].includes(pageType)
-      ? "No expertise signals found. Add author credentials, professional qualifications, or industry experience to strengthen the 'Expertise' component of E-E-A-T. AI engines use expertise signals to assess content trustworthiness."
-      : "No explicit expertise signals. Consider adding credentials where relevant.",
+      ? "Brak sygnałów ekspertyzy. Dodaj kwalifikacje autora, certyfikaty zawodowe lub doświadczenie branżowe, aby wzmocnić składnik 'Ekspertyza' E-E-A-T. Silniki AI używają sygnałów ekspertyzy do oceny wiarygodności treści."
+      : "Brak wyraźnych sygnałów ekspertyzy. Rozważ dodanie kwalifikacji tam, gdzie jest to zasadne.",
     impact: ["article", "service"].includes(pageType) ? "medium" : "low",
     value: hasExpertiseSignals,
   });
@@ -429,8 +429,8 @@ function buildSummary(score: number, checks: AuditCheck[], pageType: PageType): 
     : pageType === "homepage" ? "homepage"
     : "page";
 
-  if (score >= 80) return `Strong E-E-A-T signals for this ${typeContext} — good trust and authority indicators.`;
-  if (fails > 0) return `${fails} critical E-E-A-T issue${fails > 1 ? "s" : ""} found that reduce AI engine trust for this ${typeContext}.`;
-  if (warnings > 0) return `${warnings} E-E-A-T improvement${warnings > 1 ? "s" : ""} recommended to strengthen trust signals.`;
-  return `E-E-A-T score: ${score}/100.`;
+  if (score >= 80) return `Silne sygnały E-E-A-T dla tej ${typeContext} — dobre wskaźniki zaufania i autorytetu.`;
+  if (fails > 0) return `${fails} krytycz${fails > 1 ? "ne problemy E-E-A-T zmniejszają" : "ny problem E-E-A-T zmniejsza"} zaufanie silników AI do tej ${typeContext}.`;
+  if (warnings > 0) return `${warnings} usprawnie${warnings > 1 ? "nia E-E-A-T zalecane" : "nie E-E-A-T zalecane"} w celu wzmocnienia sygnałów zaufania.`;
+  return `Wynik E-E-A-T: ${score}/100.`;
 }

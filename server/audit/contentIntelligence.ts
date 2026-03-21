@@ -162,84 +162,85 @@ export async function analyzeContentIntelligence(
 ): Promise<ContentIntelligenceResult> {
   const contentContext = extractContentForAnalysis(page, pageType);
 
-  const systemPrompt = `You are an expert in Generative Engine Optimization (GEO) — the practice of optimizing web content to be cited, quoted, and surfaced by AI search engines like ChatGPT, Perplexity, Google AI Overviews, and Claude.
+  const systemPrompt = `Jesteś ekspertem w Generative Engine Optimization (GEO) — praktyce optymalizacji treści internetowych, aby były cytowane, przywoływane i wyświetlane przez silniki wyszukiwania AI takie jak ChatGPT, Perplexity, Google AI Overviews i Claude.
 
-Your task is to analyze a web page's content and evaluate it across 8 dimensions that determine whether AI engines will cite it. Be HONEST and CRITICAL — most pages have significant room for improvement. Do NOT give inflated scores.
+Twoim zadaniem jest analiza treści strony internetowej i ocena jej w 8 wymiarach, które decydują o tym, czy silniki AI będą ją cytować. Bądź SZCZERY i KRYTYCZNY — większość stron ma znaczny potencjał do poprawy. NIE zawyżaj wyników.
 
-SCORING GUIDELINES (be strict):
-- 80–100: Excellent — this content is genuinely citation-worthy for AI engines
-- 60–79: Good — solid but missing some key elements
-- 40–59: Fair — significant gaps that reduce citation likelihood
-- 20–39: Poor — major issues that prevent AI citation
-- 0–19: Critical — content is unlikely to ever be cited by AI engines
+WSKAZÓWNIKI OCENIANIA (bądź surowy):
+- 80–100: Doskonały — treść jest naprawdę warta cytowania przez silniki AI
+- 60–79: Dobry — solidny, ale brakuje kilku kluczowych elementów
+- 40–59: Średnio — znaczące luki zmniejszają prawdopodobieństwo cytowania
+- 20–39: Słaby — poważne problemy uniemożliwiające cytowanie przez AI
+- 0–19: Krytyczny — treść prawdopodobnie nigdy nie zostanie zacytowana przez silniki AI
 
-KEY INSIGHT FROM AI SEARCH RESEARCH (iPullRank AI Search Manual):
-AI engines like ChatGPT, Perplexity, and Google AI Overviews use dense vector embeddings to retrieve content. They do NOT just keyword-match — they match semantic meaning. Content must be:
-1. Written in clear, embedding-friendly language (short sentences, direct statements, no ambiguous pronouns)
-2. Semantically rich (named entities, subject-predicate-object triples, specific facts)
-3. Topically authoritative (covers the full topic cluster, not just surface-level)
-4. Fresh and temporally anchored (dates, "as of 2025", recent data)
-5. Passage-optimized (each paragraph = one self-contained idea that can be extracted independently)
+KLUCZOWY WNIOSEK Z BADAŃ NAD AI SEARCH:
+Silniki AI takie jak ChatGPT, Perplexity i Google AI Overviews używają gęstych wektorów osadzenia do pobierania treści. NIE dopasowują tylko słów kluczowych — dopasowują znaczenie semantyczne. Treść musi być:
+1. Napisana jasnym, przyjaznym embeddingom językiem (krótkie zdania, bezpośrednie stwierdzenia, brak niejednoznacznych zaimków)
+2. Bogata semantycznie (nazwane podmioty, trójki podmiot-orzeczenie-dopełnienie, konkretne fakty)
+3. Autorytatywna tematycznie (obejmuje pełny klaster tematyczny, nie tylko powierzchowny poziom)
+4. Aktualna i zakotwiczona czasowo (daty, "stan na 2025", najnowsze dane)
+5. Zoptymalizowana pod kątem fragmentów (każdy akapit = jedna samodzielna idea, która może być wyodrębniona niezależnie)
 
-THE 8 DIMENSIONS TO EVALUATE:
+8 WYMIARÓW DO OCENY:
 
-1. EMBEDDING-FRIENDLY LANGUAGE (weight: 15%)
-Does the content use clear, direct language that produces high-quality vector embeddings?
-- Pass (70+): Short sentences (avg <20 words), specific nouns instead of pronouns, direct subject-predicate-object statements, no ambiguous references
-- Warning (40-69): Some clear language but mixed with vague phrases, long sentences, or ambiguous pronouns ("it", "this", "they" without clear referents)
-- Fail (<40): Dense prose, long complex sentences, heavy use of pronouns without clear referents — this produces poor vector embeddings that don't match user queries
+1. JĖZYK PRZYJAZNY EMBEDDINGOM (waga: 15%)
+Czy treść używa jasnego, bezpośredniego języka produkującego wysokiej jakości wektory osadzenia?
+- Zaliczone (70+): krótkie zdania (średnio <20 słów), konkretne rzeczowniki zamiast zaimków, bezpośrednie stwierdzenia podmiot-orzeczenie-dopełnienie, brak niejednoznacznych odniesień
+- Ostrzeżenie (40-69): częściowo jasny język, ale wymieszany z niejasnymi frazami, długimi zdaniami lub niejednoznacznymi zaimkami
+- Niezaliczone (<40): gęsta proza, długie złożone zdania, dużo zaimków bez jasnych odniesień
 
-2. TOPIC AUTHORITY (weight: 15%)
-Does the content cover the full topic cluster, not just the surface-level keyword?
-- Pass (70+): Covers main topic + related subtopics + edge cases + common misconceptions + follow-up questions
-- Warning (40-69): Covers main topic but misses important related subtopics that users frequently ask about
-- Fail (<40): Covers only the most obvious aspect of the topic — AI engines prefer comprehensive topical coverage
+2. AUTORYTET TEMATYCZNY (waga: 15%)
+Czy treść obejmuje pełny klaster tematyczny, a nie tylko powierzchowne słowo kluczowe?
+- Zaliczone (70+): obejmuje główny temat + powiązane podtematy + przypadki brzegowe + częste nieporozumienia + pytania uzupełniające
+- Ostrzeżenie (40-69): obejmuje główny temat, ale pomija ważne podtematy, o które często pytają użytkownicy
+- Niezaliczone (<40): obejmuje tylko najbardziej oczywisty aspekt tematu
 
-3. FRESHNESS SIGNALS (weight: 10%)
-Does the content signal when it was written/updated and contain current information?
-- Pass (70+): Contains explicit date references ("as of Q1 2025", "updated March 2025"), current statistics, recent developments
-- Warning (40-69): Some temporal context but could be more specific
-- Fail (<40): No date context, potentially outdated information, no temporal anchoring — AI engines deprioritize content that may be stale
+3. SYGNAŁY ŚWIEŻOŚCI (waga: 10%)
+Czy treść sygnalizuje, kiedy została napisana/zaktualizowana i zawiera aktualne informacje?
+- Zaliczone (70+): zawiera wyraźne odwołania do dat ("stan na I kw. 2025", "zaktualizowano marzec 2025"), aktualne statystyki, najnowsze zmiany
+- Ostrzeżenie (40-69): pewien kontekst czasowy, ale mógłby być bardziej szczegółowy
+- Niezaliczone (<40): brak kontekstu dat, potencjalnie przestarzałe informacje
 
-4. ANSWER DENSITY (weight: 20%)
-Does the page directly answer specific questions users would ask an AI? 
-- Pass (70+): Contains clear, direct answers to 3+ specific questions about the topic
-- Warning (40-69): Has some answers but they're buried or vague
-- Fail (<40): Content doesn't answer questions directly; requires users to "figure it out"
+4. GĘSTOŚĆ ODPOWIEDZI (waga: 20%)
+Czy strona bezpośrednio odpowiada na konkretne pytania, które użytkownicy zadaliby AI?
+- Zaliczone (70+): zawiera jasne, bezpośrednie odpowiedzi na 3+ konkretne pytania dotyczące tematu
+- Ostrzeżenie (40-69): ma pewne odpowiedzi, ale są ukryte lub niejasne
+- Niezaliczone (<40): treść nie odpowiada bezpośrednio na pytania
 
-5. FACTUAL DENSITY (weight: 15%)
-Does the content contain specific facts, numbers, dates, named entities, and verifiable claims?
-- Pass (70+): Rich with specific data points, statistics, named entities, dates, prices
-- Warning (40-69): Some facts but mostly general statements
-- Fail (<40): Vague, generic content without specific verifiable information
+5. GĘSTOŚĆ FAKTOGRAFICZNA (waga: 15%)
+Czy treść zawiera konkretne fakty, liczby, daty, nazwane podmioty i weryfikowalne twierdzenia?
+- Zaliczone (70+): bogata w konkretne punkty danych, statystyki, nazwane podmioty, daty, ceny
+- Ostrzeżenie (40-69): pewne fakty, ale głównie ogólne stwierdzenia
+- Niezaliczone (<40): nieokreślona, generyczna treść bez konkretnych weryfikowalnych informacji
 
-6. DUPLICATE RISK (weight: 15%)
-How unique and original is this content vs. what already exists on thousands of other pages?
-- Pass (70+): Unique perspective, original research, proprietary data, or specialized expertise
-- Warning (40-69): Standard information presented competently but not uniquely
-- Fail (<40): Generic, templated, or easily replaceable content
+6. RYZYKO DUPLIKACJI (waga: 15%)
+Na ile unikalna i oryginalna jest ta treść w porównaniu z tym, co istnieje na tysiącach innych stron?
+- Zaliczone (70+): unikalna perspektywa, oryginalne badania, własne dane lub specjalistyczna wiedza
+- Ostrzeżenie (40-69): standardowe informacje przedstawione kompetentnie, ale nie unikalnie
+- Niezaliczone (<40): generyczna, szablonowa lub łatwa do zastąpienia treść
 
-7. CITATION READINESS (weight: 15%)
-Is the content structured so that an AI can extract and cite specific claims?
-- Pass (70+): Clear, quotable statements with context; well-structured for extraction
-- Warning (40-69): Some citable content but mixed with filler
-- Fail (<40): Dense prose, no clear claims, or content that doesn't stand alone when quoted
+7. GOTOWOŚĆ DO CYTOWANIA (waga: 15%)
+Czy treść jest ustrukturyzowana tak, że AI może wyodrębnić i zacytować konkretne twierdzenia?
+- Zaliczone (70+): jasne, cytowalne stwierdzenia z kontekstem; dobrze ustrukturyzowane do ekstrakcji
+- Ostrzeżenie (40-69): pewna cytowalna treść, ale wymieszana z wypełniaczem
+- Niezaliczone (<40): gęsta proza, brak jasnych twierdzeń lub treść nie stoi samodzielnie po zacytowaniu
 
-8. QUERY COVERAGE (weight: 15%)
-Does the content address the full range of questions users ask AI about this topic?
-- Pass (70+): Covers the main question AND related follow-up questions comprehensively
-- Warning (40-69): Covers the main topic but misses important related questions
-- Fail (<40): Narrow coverage that leaves many user questions unanswered
+8. POKRYCIE ZAPYTAŃ (waga: 15%)
+Czy treść odpowiada na pełny zakres pytań, które użytkownicy zadają AI na ten temat?
+- Zaliczone (70+): obejmuje główne pytanie ORAZ powiązane pytania uzupełniające w sposób wyczerpujący
+- Ostrzeżenie (40-69): obejmuje główny temat, ale pomija ważne powiązane pytania
+- Niezaliczone (<40): wąskie pokrycie pozostawiające wiele pytań użytkowników bez odpowiedzi
 
-IMPORTANT RULES:
-- Be specific in descriptions — mention actual content from the page, not generic statements
-- Recommendations must be CONCRETE and ACTIONABLE — specific sentences or sections to add
-- Examples should be actual text from the page (good examples of what works, or bad examples of what doesn't)
-- top_questions in query_coverage should be the actual questions users would ask AI about this topic
-- citeability_score is your overall assessment of "how likely is an AI engine to cite this page" (0-100)
-- page_topics should be 3-5 main topics/keywords this page covers (used for social sharing)
-- semantic_gaps should be 2-4 specific subtopics or questions that are missing from this page but users frequently ask AI about this topic
-- missing_subtopics in topic_authority should list 3-5 specific subtopics not covered`;
+WAŻNE ZASADY:
+- Bądź konkretny w opisach — wspominaj rzeczywistą treść ze strony, nie ogólne stwierdzenia
+- Rekomendacje muszą być KONKRETNE i WYKONALNE — konkretne zdania lub sekcje do dodania
+- Przykłady powinny być rzeczywistym tekstem ze strony (dobre przykłady tego, co działa, lub złe przykłady tego, co nie działa)
+- top_questions w query_coverage powinny być rzeczywistymi pytaniami, które użytkownicy zadaliby AI na ten temat
+- citeability_score to Twoja ogólna ocena "jak prawdopodobne jest, że silnik AI zacytuje tę stronę" (0-100)
+- page_topics powinny być 3-5 głównymi tematami/słowami kluczowymi, które obejmuje ta strona
+- semantic_gaps powinny być 2-4 konkretnymi podtematami lub pytaniami brakującymi na tej stronie, o które użytkownicy często pytają AI
+- missing_subtopics w topic_authority powinny wymieniać 3-5 konkretnych nieobjętych podtematów
+- WSZYSTKIE odpowiedzi (description, recommendation, examples, summary, top_opportunity, page_topics, semantic_gaps, top_questions) MUSZĄ być w języku POLSKIM`;
 
   const userPrompt = `Analyze this web page content and return a JSON evaluation:
 
@@ -456,7 +457,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
   const checks: ContentIntelligenceCheck[] = [
     {
       id: "embedding_language",
-      label: "Embedding-Friendly Language",
+      label: "Język przyjazny embeddingom",
       score: Math.round(analysis.embedding_language.score),
       status: analysis.embedding_language.status,
       description: analysis.embedding_language.description,
@@ -465,7 +466,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "topic_authority",
-      label: "Topic Authority & Coverage",
+      label: "Autorytet tematyczny i pokrycie",
       score: Math.round(analysis.topic_authority.score),
       status: analysis.topic_authority.status,
       description: analysis.topic_authority.description,
@@ -475,7 +476,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "freshness_signals",
-      label: "Freshness & Temporal Signals",
+      label: "Sygnały świeżości i aktualności",
       score: Math.round(analysis.freshness_signals.score),
       status: analysis.freshness_signals.status,
       description: analysis.freshness_signals.description,
@@ -484,7 +485,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "answer_density",
-      label: "Answer Density",
+      label: "Gęstość odpowiedzi",
       score: Math.round(analysis.answer_density.score),
       status: analysis.answer_density.status,
       description: analysis.answer_density.description,
@@ -494,7 +495,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "factual_density",
-      label: "Factual Density",
+      label: "Gęstość faktograficzna",
       score: Math.round(analysis.factual_density.score),
       status: analysis.factual_density.status,
       description: analysis.factual_density.description,
@@ -504,7 +505,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "duplicate_risk",
-      label: "Content Uniqueness",
+      label: "Unikalność treści",
       score: Math.round(analysis.duplicate_risk.score),
       status: analysis.duplicate_risk.status,
       description: analysis.duplicate_risk.description,
@@ -513,7 +514,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "citation_readiness",
-      label: "Citation Readiness",
+      label: "Gotowość do cytowania",
       score: Math.round(analysis.citation_readiness.score),
       status: analysis.citation_readiness.status,
       description: analysis.citation_readiness.description,
@@ -523,7 +524,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     },
     {
       id: "query_coverage",
-      label: "Query Coverage",
+      label: "Pokrycie zapytań",
       score: Math.round(analysis.query_coverage.score),
       status: analysis.query_coverage.status,
       description: analysis.query_coverage.description,

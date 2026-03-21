@@ -97,17 +97,17 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "brand_consistency",
-    label: "Brand Name Consistency",
+    label: "Spójność nazwy marki",
     status: brandName
       ? (consistencyScore >= 2 ? "pass" : consistencyScore === 1 ? "warning" : "fail")
       : "fail",
     description: !brandName
-      ? "Brand name could not be detected. Ensure your brand name appears in the page title, OG site_name meta tag, and schema.org markup."
+      ? "Nie udało się wykryć nazwy marki. Upewnij się, że nazwa marki pojawia się w tytule strony, meta tagu OG site_name i znacznikach schema.org."
       : consistencyScore >= 2
-      ? `Brand name "${brandName}" is consistently used across title, OG tags, and schema — strong identity signal for AI engines.`
+      ? `Nazwa marki "${brandName}" jest spójnie używana w tytule, tagach OG i schema — silny sygnał tożsamości dla silników AI.`
       : consistencyScore === 1
-      ? `Brand name "${brandName}" is only partially consistent. Add it to OG site_name and schema.org Organization/WebSite markup.`
-      : `Brand name detected but not consistently used across meta tags and schema. AI engines use brand consistency to establish entity identity.`,
+      ? `Nazwa marki "${brandName}" jest tylko częściowo spójna. Dodaj ją do OG site_name i znaczników schema.org Organization/WebSite.`
+      : `Wykryto nazwę marki, ale nie jest spójnie używana w meta tagach i schema. Silniki AI używają spójności marki do ustalania tożsamości encji.`,
     impact: "high",
     value: brandName,
   });
@@ -137,11 +137,11 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "knowledge_panel",
-    label: "Knowledge Panel Readiness",
+    label: "Gotowość do Knowledge Panel",
     status: knowledgePanelReady ? "pass" : "warning",
     description: knowledgePanelReady
-      ? "Wikipedia reference or schema sameAs links detected — strong signal for AI engines to identify this brand as a known entity."
-      : "No Wikipedia link or schema sameAs property found. Adding sameAs links (Wikipedia, Wikidata, official social profiles) to your Organization schema helps AI engines recognize your brand as a known entity.",
+      ? "Wykryto odwołanie do Wikipedii lub linki sameAs w schema — silny sygnał dla silników AI do identyfikacji marki jako znana encja."
+      : "Nie znaleziono linku do Wikipedii ani właściwości schema sameAs. Dodanie linków sameAs (Wikipedia, Wikidata, oficjalne profile społecznościowe) do schematu Organization pomoże silnikom AI rozpoznać Twoją markę jako znaną encję.",
     impact: "medium",
     value: knowledgePanelReady,
   });
@@ -173,13 +173,13 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "media_presence",
-    label: "Media & Press Presence",
+    label: "Obecność w mediach i prasie",
     status: hasMediaLinks ? "pass" : hasPressPage ? "warning" : "info",
     description: hasMediaLinks
-      ? "Links to established media outlets detected — strong authority signal. AI engines use media citations to assess brand credibility."
+      ? "Wykryto linki do uznanych mediów — silny sygnał autorytetu. Silniki AI używają cytowań medialnych do oceny wiarygodności marki."
       : hasPressPage
-      ? "Press or media page found. Consider adding links to actual media coverage to strengthen authority signals."
-      : "No media mentions or press page found. Brands cited in established media are significantly more likely to appear in AI search answers. Consider building a press page with media coverage.",
+      ? "Znaleziono stronę prasową lub medialną. Rozważ dodanie linków do rzeczywistych artykułów medialnych, aby wzmocnić sygnały autorytetu."
+      : "Nie znaleziono wzmianek medialnych ani strony prasowej. Marki cytowane w uznanych mediach są znacznie częściej cytowane w odpowiedziach AI Search. Rozważ stworzenie strony prasowej z relacjami medialnymi.",
     impact: "medium",
     value: hasMediaMentions,
   });
@@ -203,11 +203,11 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "industry_credentials",
-    label: "Industry Credentials & Awards",
+    label: "Certyfikaty i nagrody branżowe",
     status: hasCredentials ? "pass" : "info",
     description: hasCredentials
-      ? "Industry credentials, awards, or certifications detected — strong authority signals for AI engines."
-      : "No industry credentials or awards found. Displaying certifications, awards, and industry memberships increases brand authority signals that AI engines use to assess expertise.",
+      ? "Wykryto certyfikaty branżowe, nagrody lub akredytacje — silne sygnały autorytetu dla silników AI."
+      : "Nie znaleziono certyfikatów ani nagród branżowych. Wyświetlanie certyfikatów, nagród i członkostwa w organizacjach branżowych zwiększa sygnały autorytetu, które silniki AI używają do oceny ekspertyzy.",
     impact: "medium",
     value: hasCredentials,
   });
@@ -234,13 +234,13 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "social_proof",
-    label: "Social Proof & Community Signals",
+    label: "Dowód społeczny i sygnały społecznościowe",
     status: (hasTestimonials || hasSocialProofText) ? "pass" : hasSocialLinks ? "warning" : "info",
     description: (hasTestimonials || hasSocialProofText)
-      ? "Social proof signals detected (reviews, testimonials, or customer counts) — AI engines use these to assess brand credibility."
+      ? "Wykryto sygnały dowodu społecznego (recenzje, opinie klientów lub liczby użytkowników) — silniki AI używają ich do oceny wiarygodności marki."
       : hasSocialLinks
-      ? "Social media links found but no testimonials or customer counts. Adding quantified social proof (e.g., '10,000+ customers') strengthens authority signals."
-      : "No social proof signals found. Customer testimonials, review counts, and follower numbers help AI engines assess brand authority.",
+      ? "Znaleziono linki do mediow społecznościowych, ale brak opinii lub liczby klientów. Dodanie skwantyfikowanego dowodu społecznego (np. '10 000+ klientów') wzmacnia sygnały autorytetu."
+      : "Nie znaleziono sygnałów dowodu społecznego. Opinie klientów, liczby recenzji i obserwujących pomagają silnikom AI ocenić autorytet marki.",
     impact: "medium",
     value: hasSocialProof,
   });
@@ -270,11 +270,11 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "niche_authority",
-    label: "Domain Specialization",
+    label: "Specjalizacja domenowa",
     status: (hasNicheSignals || hasSpecialtyKeywords) ? "pass" : "warning",
     description: (hasNicheSignals || hasSpecialtyKeywords)
-      ? "Domain specialization signals detected — focused expertise is a strong AI citation factor."
-      : "No clear domain specialization signals. AI engines prefer citing sources that demonstrate focused expertise in a specific area. Use schema.org types specific to your industry (e.g., MedicalOrganization, LegalService, FinancialService) and clearly state your area of expertise.",
+      ? "Wykryto sygnały specjalizacji domenowej — skoncentrowana ekspertyza to silny czynnik cytowania przez AI."
+      : "Brak wyraźnych sygnałów specjalizacji domenowej. Silniki AI preferują cytowanie źródeł wykazujących skoncentrowaną ekspertyzę w konkretnym obszarze. Użyj typów schema.org specyficznych dla Twojej branży (np. MedicalOrganization, LegalService, FinancialService) i wyraźnie określ swoją dziedzinę ekspertyzy.",
     impact: "high",
     value: hasNicheSignals || hasSpecialtyKeywords,
   });
@@ -338,15 +338,15 @@ function buildSummary(
   tier: BrandAuthorityResult["authorityTier"],
   brandName: string | null
 ): string {
-  const name = brandName ? `"${brandName}"` : "This domain";
+  const name = brandName ? `"${brandName}"` : "Ta domena";
   if (tier === "established") {
-    return `${name} shows strong brand authority signals — high probability of AI citation for relevant queries.`;
+    return `${name} wykazuje silne sygnały autorytetu marki — wysokie prawdopodobieństwo cytowania przez AI dla odpowiednich zapytań.`;
   }
   if (tier === "growing") {
-    return `${name} has moderate brand authority. Strengthening media presence and social proof will increase AI citation probability.`;
+    return `${name} ma umiarkowany autorytet marki. Wzmocnienie obecności medialnej i dowodu społecznego zwiększy prawdopodobieństwo cytowania przez AI.`;
   }
   if (tier === "emerging") {
-    return `${name} is an emerging brand with limited authority signals. Focus on brand consistency, credentials, and media presence to improve AI visibility.`;
+    return `${name} to rozwijająca się marka z ograniczonymi sygnałami autorytetu. Skup się na spójności marki, certyfikatach i obecności medialnej, aby poprawić widoczność w AI.`;
   }
-  return `${name} has minimal brand authority signals. AI engines are unlikely to cite this domain without stronger entity identity and credibility markers.`;
+  return `${name} ma minimalne sygnały autorytetu marki. Silniki AI raczej nie będą cytować tej domeny bez silniejszej tożsamości encji i wskaźników wiarygodności.`;
 }

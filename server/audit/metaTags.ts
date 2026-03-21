@@ -6,10 +6,8 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
   const $ = page.$;
 
   // 1. Title tag
-  // Use Unicode code points (spread) instead of .length to correctly handle
-  // multi-byte characters such as emoji (e.g. 💸 counts as 2 in .length but 1 code point)
   const title = $("title").first().text().trim();
-  const titleLen = Array.from(title).length; // code-point-aware length (handles emoji correctly)
+  const titleLen = Array.from(title).length;
   const titleStatus =
     titleLen >= 30 && titleLen <= 65
       ? "pass"
@@ -18,16 +16,16 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
       : "fail";
   checks.push({
     id: "title_tag",
-    label: "Title Tag",
+    label: "Tag tytułu strony",
     status: titleStatus,
     description:
       titleLen === 0
-        ? "No title tag found. The title is critical for AI engines to understand page topic."
+        ? "Brak tagu tytułu. Tytuł jest kluczowy dla silników AI do zrozumienia tematu strony."
         : titleLen < 30
-        ? `Title is too short (${titleLen} chars): \"${title}\". Aim for 50–65 characters.`
+        ? `Tytuł jest za krótki (${titleLen} znaków): \"${title}\". Celuj w 50–65 znaków.`
         : titleLen > 65
-        ? `Title is too long (${titleLen} chars): \"${Array.from(title).slice(0, 65).join('')}...\". Keep under 65 characters.`
-        : `Title tag: \"${title}\" (${titleLen} chars)`,
+        ? `Tytuł jest za długi (${titleLen} znaków): \"${Array.from(title).slice(0, 65).join('')}...\". Skróć do 65 znaków.`
+        : `Tag tytułu: \"${title}\" (${titleLen} znaków)`,
     impact: "high",
     value: title || null,
   });
@@ -44,16 +42,16 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
       : "fail";
   checks.push({
     id: "meta_description",
-    label: "Meta Description",
+    label: "Meta opis strony",
     status: descStatus,
     description:
       descLen === 0
-        ? "No meta description found. Add a compelling 150–160 character description."
+        ? "Brak meta opisu. Dodaj przekonujący opis o długości 150–160 znaków."
         : descLen < 120
-        ? `Meta description is short (${descLen} chars). Aim for 150–160 characters.`
+        ? `Meta opis jest za krótki (${descLen} znaków). Celuj w 150–160 znaków.`
         : descLen > 165
-        ? `Meta description is too long (${descLen} chars). Keep under 165 characters.`
-        : `Meta description (${descLen} chars): "${description.slice(0, 80)}..."`,
+        ? `Meta opis jest za długi (${descLen} znaków). Skróć do 165 znaków.`
+        : `Meta opis (${descLen} znaków): "${description.slice(0, 80)}..."`,
     impact: "medium",
     value: description || null,
   });
@@ -62,11 +60,11 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
   const ogTitle = $('meta[property="og:title"]').attr("content")?.trim() ?? "";
   checks.push({
     id: "og_title",
-    label: "Open Graph Title",
+    label: "Tytuł Open Graph",
     status: ogTitle ? "pass" : "warning",
     description: ogTitle
-      ? `OG title: "${ogTitle}"`
-      : "No og:title found. Open Graph tags improve how AI engines and social platforms display your content.",
+      ? `Tytuł OG: "${ogTitle}"`
+      : "Brak og:title. Tagi Open Graph poprawiają sposób wyświetlania treści przez silniki AI i platformy społecznościowe.",
     impact: "medium",
     value: ogTitle || null,
   });
@@ -76,11 +74,11 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
     $('meta[property="og:description"]').attr("content")?.trim() ?? "";
   checks.push({
     id: "og_description",
-    label: "Open Graph Description",
+    label: "Opis Open Graph",
     status: ogDesc ? "pass" : "warning",
     description: ogDesc
-      ? `OG description found (${ogDesc.length} chars).`
-      : "No og:description found. Add Open Graph description for better AI and social sharing.",
+      ? `Opis OG znaleziony (${ogDesc.length} znaków).`
+      : "Brak og:description. Dodaj opis Open Graph dla lepszego udostępniania przez AI i media społecznościowe.",
     impact: "medium",
     value: ogDesc || null,
   });
@@ -90,11 +88,11 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
     $('meta[property="og:image"]').attr("content")?.trim() ?? "";
   checks.push({
     id: "og_image",
-    label: "Open Graph Image",
+    label: "Grafika Open Graph",
     status: ogImage ? "pass" : "info",
     description: ogImage
-      ? "OG image found — content will display well when shared."
-      : "No og:image found. Add an OG image for better visual representation.",
+      ? "Grafika OG znaleziona — treść będzie dobrze wyglądać przy udostępnianiu."
+      : "Brak og:image. Dodaj grafikę OG dla lepszej reprezentacji wizualnej.",
     impact: "low",
     value: ogImage || null,
   });
@@ -107,8 +105,8 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
     label: "Twitter Card",
     status: twitterCard ? "pass" : "info",
     description: twitterCard
-      ? `Twitter Card type: ${twitterCard}`
-      : "No Twitter Card meta tags found.",
+      ? `Typ Twitter Card: ${twitterCard}`
+      : "Brak meta tagów Twitter Card.",
     impact: "low",
     value: twitterCard || null,
   });
@@ -117,11 +115,11 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
   const lang = $("html").attr("lang") ?? "";
   checks.push({
     id: "lang_attribute",
-    label: "Language Declaration",
+    label: "Deklaracja języka strony",
     status: lang ? "pass" : "warning",
     description: lang
-      ? `Language declared: "${lang}" — helps AI engines serve content to the right audience.`
-      : "No lang attribute on <html>. Add lang attribute to help AI engines identify content language.",
+      ? `Zadeklarowany język: "${lang}" — pomaga silnikom AI serwować treść właściwej grupie odbiorców.`
+      : "Brak atrybutu lang na <html>. Dodaj atrybut lang, aby pomóc silnikom AI zidentyfikować język treści.",
     impact: "medium",
     value: lang || null,
   });
@@ -133,11 +131,11 @@ export function analyzeMetaTags(page: ScrapedPage): CategoryResult {
     "";
   checks.push({
     id: "charset",
-    label: "Character Encoding",
+    label: "Kodowanie znaków",
     status: charset ? "pass" : "warning",
     description: charset
-      ? `Character encoding declared: ${charset}`
-      : "No charset meta tag found. Add <meta charset='UTF-8'>.",
+      ? `Zadeklarowane kodowanie znaków: ${charset}`
+      : "Brak meta tagu charset. Dodaj <meta charset='UTF-8'>.",
     impact: "low",
     value: charset || null,
   });
@@ -183,8 +181,8 @@ function buildSummary(
   title: string,
   description: string
 ): string {
-  if (!title) return "Missing title tag — this is the most critical meta tag for AI visibility.";
-  if (!description) return "Title found but meta description is missing. Add a compelling description.";
-  if (score >= 80) return "Meta tags are well-optimized with title, description, and Open Graph tags.";
-  return "Basic meta tags present but Open Graph and social tags need improvement.";
+  if (!title) return "Brak tagu tytułu — to najważniejszy meta tag dla widoczności w AI.";
+  if (!description) return "Tytuł znaleziony, ale brak meta opisu. Dodaj przekonujący opis.";
+  if (score >= 80) return "Meta tagi są dobrze zoptymalizowane — tytuł, opis i tagi Open Graph są obecne.";
+  return "Podstawowe meta tagi są obecne, ale tagi Open Graph i społecznościowe wymagają poprawy.";
 }
