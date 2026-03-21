@@ -120,7 +120,11 @@ export default function Results() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const auditId = parseInt(params.id ?? "0");
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  // hasPaidPlan: true if user is logged in AND has a paid plan (starter/pro/business/agency)
+  // Used to hide upsell boxes for paying customers
+  const userPlan = (user as any)?.plan ?? "free";
+  const hasPaidPlan = isAuthenticated && userPlan !== "free" && !!userPlan;
   // Competitor URLs from AI Citations — passed to WhatIfSection for Full Rewrite AI
   const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
 
@@ -251,7 +255,8 @@ export default function Results() {
           recommendations={recommendations}
         />
         {/* ── 4b. Monitor CTA — contextual after seeing issues ── */}
-        <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />
+        {/* Hidden for paying users — they already have monitoring in their plan */}
+        {!hasPaidPlan && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
 
         {/* ── 5. Content Intelligence — Citeability deep-dive ── */}
         <ContentIntelligencePanel
@@ -267,7 +272,8 @@ export default function Results() {
         <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
 
         {/* ── 8. Competitor Analysis Teaser (Pro) ── */}
-        <CompetitorAnalysisTeaser navigate={navigate} />
+        {/* Hidden for paying users — they already have access or can upgrade within dashboard */}
+        {!hasPaidPlan && <CompetitorAnalysisTeaser navigate={navigate} />}
 
         {/* ── 8b. What's Working ── */}
         {findings && <PassingChecks findings={findings} />}
@@ -279,7 +285,8 @@ export default function Results() {
         {!isAuthenticated && <ScoreHistoryTeaser />}
 
         {/* ── 10. PLG Upgrade Banner ── */}
-        <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />
+        {/* Hidden for paying users — they already have a paid plan */}
+        {!hasPaidPlan && <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />}
 
       </main>
     </div>

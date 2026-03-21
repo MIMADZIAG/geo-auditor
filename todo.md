@@ -770,3 +770,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Wstrzyknięcie do pipeline Full Rewrite (server-side, po odpowiedzi LLM, Krok 5)
 - [x] Wstrzyknięcie do pipeline AI Content Creator (server-side, po odpowiedzi LLM)
 - [x] TypeScript: 0 błędów, 108 testów passing (20 nowych testów dla modułu normalizacji)
+
+## Warunkowe wyświetlanie upsellów w Results.tsx (2026-03-21)
+- [x] Zlokalizuj: MonitorCTA, CompetitorAnalysisTeaser, PLGUpgradeBanner w Results.tsx
+- [x] Pobierz plan użytkownika przez useAuth().user.plan
+- [x] Ukryj 3 boxy jeśli user jest zalogowany i ma plan płatny (starter/pro/business/agency)
+- [x] Zachowaj boxy dla: niezalogowanych, free, bez planu
+- [x] TypeScript: 0 błędów, 108 testów passing
