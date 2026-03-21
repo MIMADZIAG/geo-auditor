@@ -70,48 +70,48 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 80) return "High";
-  if (score >= 60) return "Moderate";
-  if (score >= 40) return "Low";
-  return "Very Low";
+  if (score >= 80) return "Wysoki";
+  if (score >= 60) return "Umiarkowany";
+  if (score >= 40) return "Niski";
+  return "Bardzo niski";
 }
 
 function getScoreSublabel(score: number): string {
-  if (score >= 80) return "Your page is well-positioned for AI search visibility.";
-  if (score >= 60) return "Your page has decent visibility — a few fixes will make a big difference.";
-  if (score >= 40) return "AI search engines may struggle to find and cite your content.";
-  return "Your page has significant barriers preventing AI search visibility.";
+  if (score >= 80) return "Twoja strona jest dobrze widoczna dla wyszukiwarek AI.";
+  if (score >= 60) return "Twoja strona ma przyzwoitą widoczność — kilka poprawek zrobi dużą różnicę.";
+  if (score >= 40) return "Wyszukiwarki AI mogą mieć trudności ze znalezieniem i cytowaniem Twojej treści.";
+  return "Twoja strona ma poważne bariery uniemożliwiające widoczność w AI Search.";
 }
 
 const CATEGORY_META = [
-  { key: "technical", label: "Technical Access", icon: Shield },
-  { key: "structuredData", label: "Structured Data", icon: Code2 },
-  { key: "contentStructure", label: "Content Structure", icon: FileText },
-  { key: "eeat", label: "Trust & Authority", icon: Zap },
-  { key: "aiCrawlers", label: "AI Crawler Access", icon: Bot },
-  { key: "metaTags", label: "Meta Tags", icon: BarChart3 },
-  { key: "brandAuthority", label: "Brand Presence", icon: TrendingUp },
+  { key: "technical", label: "Dostęp techniczny", icon: Shield },
+  { key: "structuredData", label: "Dane strukturalne", icon: Code2 },
+  { key: "contentStructure", label: "Struktura treści", icon: FileText },
+  { key: "eeat", label: "Zaufanie i autorytet", icon: Zap },
+  { key: "aiCrawlers", label: "Dostęp crawlerów AI", icon: Bot },
+  { key: "metaTags", label: "Meta tagi", icon: BarChart3 },
+  { key: "brandAuthority", label: "Obecność marki", icon: TrendingUp },
 ];
 
 const CATEGORY_HUMAN_LABELS: Record<string, string> = {
-  technical: "Technical Access",
-  structuredData: "Structured Data",
-  contentStructure: "Content Structure",
-  eeat: "Trust & Authority",
-  aiCrawlers: "AI Crawler Access",
-  metaTags: "Meta Tags",
-  brandAuthority: "Brand Presence",
+  technical: "Dostęp techniczny",
+  structuredData: "Dane strukturalne",
+  contentStructure: "Struktura treści",
+  eeat: "Zaufanie i autorytet",
+  aiCrawlers: "Dostęp crawlerów AI",
+  metaTags: "Meta tagi",
+  brandAuthority: "Obecność marki",
 };
 
 // Human-readable descriptions for non-technical users
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  technical: "Whether AI crawlers can access and read your page without technical barriers.",
-  structuredData: "Machine-readable labels that help AI understand what your page is about.",
-  contentStructure: "How well your content is organized for AI to extract and cite answers.",
-  eeat: "Signals that tell AI your content is trustworthy and written by an expert.",
-  aiCrawlers: "Whether specific AI bots (ChatGPT, Perplexity, Gemini) are allowed to index your page.",
-  metaTags: "Page title and description that AI uses to understand your content at a glance.",
-  brandAuthority: "How strongly your brand is recognized as an authority in its field by AI search engines.",
+  technical: "Czy crawlery AI mogą uzyskać dostęp do Twojej strony bez barier technicznych.",
+  structuredData: "Etykiety czytelne maszynowo, które pomagają AI zrozumieć, o czym jest Twoja strona.",
+  contentStructure: "Jak dobrze Twoja treść jest zorganizowana, aby AI mogło wyciągać i cytować odpowiedzi.",
+  eeat: "Sygnały mówiące AI, że Twoja treść jest godna zaufania i napisana przez eksperta.",
+  aiCrawlers: "Czy konkretne boty AI (ChatGPT, Perplexity, Gemini) mogą indeksować Twoją stronę.",
+  metaTags: "Tytuł i opis strony, których AI używa do zrozumienia treści na pierwszy rzut oka.",
+  brandAuthority: "Jak silnie Twoja marka jest rozpoznawana jako autorytet w swojej dziedzinie przez wyszukiwarki AI.",
 };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -136,10 +136,10 @@ export default function Results() {
   );
 
   if (isLoading) return <LoadingState />;
-  if (error || !audit) return <ErrorState message={error?.message ?? "Audit not found."} />;
+  if (error || !audit) return <ErrorState message={error?.message ?? "Audyt nie został znaleziony."} />;
   if (audit.status === "running" || audit.status === "pending") return <LoadingState />;
   if (audit.status === "failed") {
-    return <ErrorState message={audit.errorMessage ?? "Audit failed. Please try again."} />;
+    return <ErrorState message={audit.errorMessage ?? "Audyt nie powiódł się. Spróbuj ponownie."} />;
   }
 
   const findings = audit.findings as unknown as AuditResult["findings"];
@@ -159,12 +159,12 @@ export default function Results() {
       : null;
 
   const handleShare = (platform: "linkedin" | "twitter" | "copy") => {
-    const text = `I checked my page's AI search visibility with GEO-Auditor — scored ${overallScore}/100. See the full report:`;
+    const text = `Sprawdziłem widoczność mojej strony w AI Search z GEO-Auditor — wynik ${overallScore}/100. Zobacz pełny raport:`;
     const encodedText = encodeURIComponent(text);
     const encodedUrl = encodeURIComponent(reportUrl);
     if (platform === "copy") {
       navigator.clipboard.writeText(reportUrl);
-      toast.success("Report link copied!");
+      toast.success("Link do raportu skopiowany!");
       return;
     }
     if (platform === "linkedin") window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, "_blank");
@@ -751,8 +751,8 @@ function CompetitorAnalysisTeaser({ navigate }: { navigate: (path: string) => vo
           ))}
         </div>
         <div className="absolute inset-0 backdrop-blur-sm bg-background/50 flex items-center justify-center">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Lock className="w-3.5 h-3.5" /> Available on Pro plan
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Lock className="w-3.5 h-3.5" /> Dostępne w planie Pro
           </div>
         </div>
       </div>
@@ -764,22 +764,22 @@ function CompetitorAnalysisTeaser({ navigate }: { navigate: (path: string) => vo
 
 const DIFFICULTY_CONFIG = {
   easy: {
-    label: "Easy fix",
-    sublabel: "No developer needed",
+    label: "Łatwa poprawka",
+    sublabel: "Bez programisty",
     color: "text-emerald-400",
     bg: "bg-emerald-500/10 border-emerald-500/20",
     icon: Zap,
   },
   medium: {
-    label: "Medium effort",
-    sublabel: "~30 min with developer",
+    label: "Średni nakład",
+    sublabel: "~30 min z programistą",
     color: "text-amber-400",
     bg: "bg-amber-500/10 border-amber-500/20",
     icon: Code2,
   },
   hard: {
-    label: "Requires dev work",
-    sublabel: "~2h+ with developer",
+    label: "Wymaga pracy dewelopera",
+    sublabel: "~2h+ z programistą",
     color: "text-rose-400",
     bg: "bg-rose-500/10 border-rose-500/20",
     icon: Cpu,
@@ -808,7 +808,7 @@ function TopPriorityBanner({
           <Target className="w-4 h-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Your #1 Priority Fix</div>
+          <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Twoja priorytetowa poprawka #1</div>
           <p className="text-sm font-medium leading-relaxed mb-3">{topPriority}</p>
 
           {/* Quick Win Badges */}
@@ -816,7 +816,7 @@ function TopPriorityBanner({
             {scoreGain != null && scoreGain > 0 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/15 border border-primary/25 text-primary">
                 <TrendingUp className="w-3 h-3" />
-                +{scoreGain} pts potential
+                +{scoreGain} pkt potencjału
               </span>
             )}
             {difficulty && (
@@ -837,7 +837,7 @@ function TopPriorityBanner({
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-3"
               >
                 <Lightbulb className="w-3 h-3" />
-                {showInsight ? "Hide" : "Show"} AI analysis
+                {showInsight ? "Ukryj" : "Pokaż"} analizę AI
                 {showInsight ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
               {showInsight && (
@@ -919,8 +919,8 @@ function IssuesAndFixes({
     return (
       <div className="rounded-2xl bg-card border border-border/50 p-8 text-center">
         <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-        <h3 className="font-semibold mb-1">No issues found</h3>
-        <p className="text-sm text-muted-foreground">This page passes all AI visibility checks.</p>
+        <h3 className="font-semibold mb-1">Brak problemów</h3>
+        <p className="text-sm text-muted-foreground">Ta strona przechodzi wszystkie testy widoczności AI.</p>
       </div>
     );
   }
@@ -932,7 +932,7 @@ function IssuesAndFixes({
   const copyFix = (issue: typeof issues[0]) => {
     const text = issue.llmFix ?? issue.description;
     navigator.clipboard.writeText(text);
-    toast.success("Fix instructions copied!");
+      toast.success("Instrukcja naprawy skopiowana!");
   };
 
   const renderIssue = (issue: typeof issues[0]) => {
@@ -951,7 +951,7 @@ function IssuesAndFixes({
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
               <span className="text-sm font-medium">{issue.label}</span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isCritical ? "bg-red-500/15 text-red-400" : "bg-amber-500/15 text-amber-400"}`}>
-                {isCritical ? "Critical" : issue.impact === "medium" ? "Important" : "Minor"}
+                {isCritical ? "Krytyczne" : issue.impact === "medium" ? "Ważne" : "Drobne"}
               </span>
               <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{issue.category}</span>
             </div>
@@ -966,14 +966,14 @@ function IssuesAndFixes({
             {issue.llmFix && (
               <div>
                 <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
-                  <Lightbulb className="w-3 h-3 text-primary" /> How to fix
+                  <Lightbulb className="w-3 h-3 text-primary" /> Jak naprawić
                 </div>
                 <p className="text-sm leading-relaxed">{issue.llmFix}</p>
               </div>
             )}
             {issue.llmImpact && (
               <div>
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Expected result</div>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Oczekiwany efekt</div>
                 <p className="text-xs text-muted-foreground leading-relaxed">{issue.llmImpact}</p>
               </div>
             )}
@@ -992,7 +992,7 @@ function IssuesAndFixes({
               </div>
             )}
             <Button variant="outline" size="sm" onClick={() => copyFix(issue)} className="gap-2 text-xs h-7">
-              <Copy className="w-3 h-3" /> Copy fix instructions
+              <Copy className="w-3 h-3" /> Kopiuj instrukcję naprawy
             </Button>
           </div>
         )}
@@ -1002,12 +1002,12 @@ function IssuesAndFixes({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-4">Issues & Fixes</h2>
+      <h2 className="text-lg font-semibold mb-4">Problemy i poprawki</h2>
       {critical.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <XCircle className="w-4 h-4 text-red-400" />
-            <span className="text-sm font-medium text-red-400">Critical — fix these first</span>
+            <span className="text-sm font-medium text-red-400">Krytyczne — napraw w pierwszej kolejności</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">{critical.length}</span>
           </div>
           <div className="space-y-2">{critical.map(renderIssue)}</div>
@@ -1017,7 +1017,7 @@ function IssuesAndFixes({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium text-amber-400">Improvements</span>
+            <span className="text-sm font-medium text-amber-400">Do poprawy</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">{others.length}</span>
           </div>
           <div className="space-y-2">{visibleOthers.map(renderIssue)}</div>
@@ -1026,7 +1026,7 @@ function IssuesAndFixes({
               onClick={() => setShowAll(true)}
               className="mt-3 w-full py-2.5 rounded-xl border border-border/50 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors flex items-center justify-center gap-1.5"
             >
-              <ChevronDown className="w-3.5 h-3.5" /> Show {others.length - 4} more
+              <ChevronDown className="w-3.5 h-3.5" /> Pokaż {others.length - 4} więcej
             </button>
           )}
         </div>
@@ -1056,8 +1056,8 @@ function PassingChecks({ findings }: { findings: AuditResult["findings"] }) {
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-left">
-            <div className="text-sm font-semibold">What's already working</div>
-            <div className="text-xs text-muted-foreground">{passes.length} checks passed</div>
+            <div className="text-sm font-semibold">Co już działa poprawnie</div>
+            <div className="text-xs text-muted-foreground">{passes.length} testów zaliczonych</div>
           </div>
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -1090,8 +1090,8 @@ function SharePanel({ score, onShare, reportUrl }: { score: number; onShare: (p:
             <Share2 className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-semibold">Share your AI Visibility Score</div>
-            <div className="text-xs text-muted-foreground">Show your team or clients how your page performs in AI search</div>
+            <div className="text-sm font-semibold">Udostępnij swój AI Visibility Score</div>
+            <div className="text-xs text-muted-foreground">Pokaż zespołowi lub klientom jak Twoja strona wypada w AI Search</div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -1105,7 +1105,7 @@ function SharePanel({ score, onShare, reportUrl }: { score: number; onShare: (p:
           </button>
           <button onClick={handleCopy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/50 text-muted-foreground hover:bg-muted transition-colors border border-border/50">
             <Copy className="w-3.5 h-3.5" />
-            {copied ? "Copied!" : "Copy Link"}
+            {copied ? "Skopiowano!" : "Kopiuj link"}
           </button>
         </div>
       </div>
@@ -1124,13 +1124,13 @@ function ScoreHistoryTeaser() {
             <TrendingUp className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-semibold">Track your progress</div>
-            <div className="text-xs text-muted-foreground">See how your fixes improve AI visibility over time</div>
+            <div className="text-sm font-semibold">Śledź swój postęp</div>
+            <div className="text-xs text-muted-foreground">Obserwuj jak Twoje poprawki poprawiają widoczność AI w czasie</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Lock className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Free account required</span>
+          <span className="text-xs text-muted-foreground">Wymagane bezpłatne konto</span>
         </div>
       </div>
       <div className="relative h-24 mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden">
@@ -1140,9 +1140,9 @@ function ScoreHistoryTeaser() {
           ))}
         </div>
         <div className="absolute inset-0 backdrop-blur-sm bg-background/40 flex flex-col items-center justify-center gap-2">
-          <p className="text-xs text-muted-foreground">Sign in to track improvements</p>
+          <p className="text-xs text-muted-foreground">Zaloguj się, aby śledzić postępy</p>
           <button onClick={() => (window.location.href = getLoginUrl())} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-            <LogIn className="w-3 h-3" /> Sign In — Free
+            <LogIn className="w-3 h-3" /> Zaloguj się — bezpłatnie
           </button>
         </div>
       </div>
@@ -1154,22 +1154,22 @@ function ScoreHistoryTeaser() {
 
 function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: boolean; navigate: (path: string) => void }) {
   const plans = [
-    { name: "Free", price: "$0", features: ["5 audits/month", "1 monitored page", "Full report & CI"], cta: null, highlight: false },
-    { name: "Starter", price: "$39", features: ["50 audits/month", "10 monitored pages", "Weekly alerts", "PDF export"], cta: "Start Starter", highlight: false },
-    { name: "Pro", price: "$99", features: ["200 audits/month", "50 monitored pages", "Competitor analysis", "Advanced CI"], cta: "Go Pro", highlight: true },
+    { name: "Free", price: "0 zł", features: ["5 audytów/mies.", "1 monitorowana strona", "Pełny raport i CI"], cta: null, highlight: false },
+    { name: "Starter", price: "149 zł", features: ["50 audytów/mies.", "10 monitorowanych stron", "Alerty tygodniowe", "Eksport PDF"], cta: "Wybierz Starter", highlight: false },
+    { name: "Pro", price: "399 zł", features: ["200 audytów/mies.", "50 monitorowanych stron", "Analiza konkurencji", "Zaawansowane CI"], cta: "Wybierz Pro", highlight: true },
   ];
   return (
     <div className="rounded-2xl bg-gradient-to-br from-primary/8 via-violet-500/4 to-background border border-primary/20 p-6">
       <div className="text-center mb-6">
-        <h3 className="text-lg font-bold mb-1">Ready to fix these issues — and stay fixed?</h3>
-        <p className="text-sm text-muted-foreground">One-time audits find problems. Monitoring keeps you ahead of AI search changes.</p>
+        <h3 className="text-lg font-bold mb-1">Gotowy, żeby naprawić te problemy — na stałe?</h3>
+        <p className="text-sm text-muted-foreground">Jednorazowe audyty wykrywają problemy. Monitoring utrzymuje Cię o krok przed zmianami AI Search.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {plans.map((plan) => (
           <div key={plan.name} className={`rounded-xl p-4 border ${plan.highlight ? "border-primary/40 bg-primary/8" : "border-border/50 bg-card"}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-bold">{plan.name}</span>
-              <span className="text-sm font-black text-primary">{plan.price}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></span>
+              <span className="text-sm font-black text-primary">{plan.price}<span className="text-[10px] font-normal text-muted-foreground">/mies.</span></span>
             </div>
             <div className="space-y-1 mb-3">
               {plan.features.map((f) => (
@@ -1183,7 +1183,7 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
                 {plan.cta}
               </Button>
             ) : (
-              <div className="text-[10px] text-center text-muted-foreground py-1">{isAuthenticated ? "Your current plan" : "Current plan"}</div>
+              <div className="text-[10px] text-center text-muted-foreground py-1">{isAuthenticated ? "Twój aktualny plan" : "Aktualny plan"}</div>
             )}
           </div>
         ))}
@@ -1191,7 +1191,7 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
       {!isAuthenticated && (
         <div className="text-center">
           <Button onClick={() => (window.location.href = getLoginUrl())} variant="ghost" size="sm" className="text-xs gap-1.5 text-muted-foreground">
-            <LogIn className="w-3 h-3" /> Sign in first — it's free
+            <LogIn className="w-3 h-3" /> Zaloguj się najpierw — bezpłatnie
           </Button>
         </div>
       )}
@@ -1420,7 +1420,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
       setResearchData(null);
       if (meta) setPageMetadata(meta);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to fetch URL");
+      setError(err instanceof Error ? err.message : "Nie udało się pobrać URL");
     } finally {
       setIsLoading(false);
     }
@@ -1487,7 +1487,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
       setActiveResultTab("content");
     } catch (err: unknown) {
       [...timers, ...sectionTimers].forEach(clearTimeout);
-      const msg = err instanceof Error ? err.message : "AI rewrite failed";
+      const msg = err instanceof Error ? err.message : "Rewrite AI nie powiódł się";
       if (msg === "UPGRADE_REQUIRED") {
         setError("Ta funkcja wymaga planu Starter lub wyższego.");
       } else {
@@ -1806,7 +1806,7 @@ function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string)
 
 // ─── Loading / Error ──────────────────────────────────────────────────────────────────────────────────
 function LoadingState() {
-  const steps = ["Checking crawler access", "Analyzing structured data", "Scanning content quality", "Evaluating trust signals", "Running AI analysis"];
+  const steps = ["Sprawdzanie dostępu crawlerów", "Analiza danych strukturalnych", "Skanowanie jakości treści", "Ocena sygnałów zaufania", "Uruchamianie analizy AI"];
   const [activeStep, setActiveStep] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => setActiveStep((s) => (s + 1) % steps.length), 2200);
@@ -1819,7 +1819,7 @@ function LoadingState() {
           <Brain className="w-8 h-8 text-primary animate-pulse" />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">Analyzing your page…</h2>
+          <h2 className="text-xl font-bold mb-2">Analizuję Twoją stronę…</h2>
           <p className="text-muted-foreground text-sm">{steps[activeStep]}</p>
         </div>
         <div className="flex justify-center gap-2">
@@ -1841,11 +1841,11 @@ function ErrorState({ message }: { message: string }) {
           <AlertCircle className="w-8 h-8 text-destructive" />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">Audit Failed</h2>
+          <h2 className="text-xl font-bold mb-2">Audyt nie powiódł się</h2>
           <p className="text-muted-foreground text-sm">{message}</p>
         </div>
         <Button onClick={() => navigate("/")} className="gap-2">
-          <ArrowLeft className="w-4 h-4" /> Try Another URL
+          <ArrowLeft className="w-4 h-4" /> Sprawdź inny URL
         </Button>
       </div>
     </div>
@@ -1874,36 +1874,36 @@ interface AiExposureResult {
 
 const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: string; border: string; icon: React.ElementType; desc: string }> = {
   invisible: {
-    label: "Invisible",
+    label: "Niewidoczny",
     color: "oklch(0.65 0.22 25)",
     bg: "oklch(0.65 0.22 25 / 0.08)",
     border: "oklch(0.65 0.22 25 / 0.25)",
     icon: TrendingDown,
-    desc: "Your domain has virtually no presence in Google AI Overviews.",
+    desc: "Twoja domena praktycznie nie pojawia się w Google AI Overviews.",
   },
   emerging: {
-    label: "Emerging",
+    label: "Wschodzący",
     color: "oklch(0.78 0.18 75)",
     bg: "oklch(0.78 0.18 75 / 0.08)",
     border: "oklch(0.78 0.18 75 / 0.25)",
     icon: Activity,
-    desc: "Your domain is beginning to appear in AI Overviews — growth potential is high.",
+    desc: "Twoja domena zaczyna pojawiać się w AI Overviews — potencjał wzrostu jest wysoki.",
   },
   visible: {
-    label: "Visible",
+    label: "Widoczny",
     color: "oklch(0.72 0.18 160)",
     bg: "oklch(0.72 0.18 160 / 0.08)",
     border: "oklch(0.72 0.18 160 / 0.25)",
     icon: Eye,
-    desc: "Your domain has solid AI Overview presence — keep optimizing to reach Dominant.",
+    desc: "Twoja domena ma solidną obecność w AI Overviews — optymalizuj dalej, aby osiągnąć poziom Dominujący.",
   },
   dominant: {
-    label: "Dominant",
+    label: "Dominujący",
     color: "oklch(0.72 0.18 145)",
     bg: "oklch(0.72 0.18 145 / 0.08)",
     border: "oklch(0.72 0.18 145 / 0.25)",
     icon: Award,
-    desc: "Your domain dominates AI Overviews — you are a top authority in your niche.",
+    desc: "Twoja domena dominuje w AI Overviews — jesteś czołowym autorytetem w swojej niszy.",
   },
 };
 
@@ -1951,12 +1951,12 @@ function AiExposurePanel({ url }: { url: string }) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">AI Search Exposure</h2>
+              <h2 className="text-base font-semibold">Ekspozycja w AI Search</h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
                 Live Intelligence
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">How often your domain appears in Google AI Overviews</p>
+            <p className="text-xs text-muted-foreground">Jak często Twoja domena pojawia się w Google AI Overviews</p>
           </div>
         </div>
         {result && (
@@ -1980,8 +1980,8 @@ function AiExposurePanel({ url }: { url: string }) {
               </div>
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium">Scanning AI Search landscape…</p>
-              <p className="text-xs text-muted-foreground mt-1">Analyzing your domain's presence in Google AI Overviews</p>
+              <p className="text-sm font-medium">Skanuję krajobraz AI Search…</p>
+              <p className="text-xs text-muted-foreground mt-1">Analizuję obecność Twojej domeny w Google AI Overviews</p>
             </div>
           </div>
         )}
@@ -1990,8 +1990,8 @@ function AiExposurePanel({ url }: { url: string }) {
           <div className="py-8 flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mt-4">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-300">AI Exposure data temporarily unavailable</p>
-              <p className="text-xs text-muted-foreground mt-1">We couldn't retrieve AI Overview data for this domain right now. Try again in a moment.</p>
+              <p className="text-sm font-medium text-amber-300">Dane AI Exposure tymczasowo niedostępne</p>
+              <p className="text-xs text-muted-foreground mt-1">Nie udało się pobrać danych AI Overview dla tej domeny. Spróbuj ponownie za chwilę.</p>
             </div>
           </div>
         )}
@@ -2030,18 +2030,18 @@ function AiExposurePanel({ url }: { url: string }) {
               <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
                 <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center">
                   <div className="text-2xl font-black" style={{ color: tier.color }}>{displayCoverage}%</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">AI Overview Coverage</div>
-                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">{result.keywordsWithAiOverview} of {result.totalKeywordsAnalyzed} keywords</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Pokrycie AI Overview</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">{result.keywordsWithAiOverview} z {result.totalKeywordsAnalyzed} słów kluczowych</div>
                 </div>
                 <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center">
                   <div className="text-2xl font-black text-violet-400">{result.keywordsCitedInAiOverview}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Direct Citations</div>
-                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">cited in AI answers</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Bezpośrednie cytowania</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">cytowane w odpowiedziach AI</div>
                 </div>
                 <div className="rounded-xl p-3.5 bg-muted/20 border border-border/30 text-center col-span-2 sm:col-span-1">
                   <div className="text-2xl font-black text-sky-400">{result.totalKeywordsAnalyzed}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Keywords Analyzed</div>
-                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">top organic keywords</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Przeanalizowane słowa kluczowe</div>
+                  <div className="text-[9px] text-muted-foreground/60 mt-0.5">top słowa kluczowe organiczne</div>
                 </div>
               </div>
             </div>
@@ -2056,7 +2056,7 @@ function AiExposurePanel({ url }: { url: string }) {
             {result.insights.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" /> AI Insights
+                  <Sparkles className="w-3.5 h-3.5 text-primary" /> Wnioski AI
                 </h3>
                 <div className="grid gap-2">
                   {result.insights.map((insight, i) => (
@@ -2073,12 +2073,12 @@ function AiExposurePanel({ url }: { url: string }) {
             {(result.topKeywords ?? []).length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <BarChart3 className="w-3.5 h-3.5 text-primary" /> Top Keywords in AI Overviews
+                  <BarChart3 className="w-3.5 h-3.5 text-primary" /> Słowa kluczowe w AI Overviews
                 </h3>
                 <div className="rounded-xl border border-border/30 overflow-hidden">
                   <div className="grid grid-cols-[1fr_auto_auto] text-[10px] text-muted-foreground font-medium px-4 py-2 bg-muted/20 border-b border-border/20">
-                    <span>Keyword</span>
-                    <span className="text-right pr-4">Volume</span>
+                    <span>Słowo kluczowe</span>
+                    <span className="text-right pr-4">Wolumen</span>
                     <span className="text-right">Status</span>
                   </div>
                   {(result.topKeywords ?? []).slice(0, 8).map((kw, i) => (
@@ -2087,11 +2087,11 @@ function AiExposurePanel({ url }: { url: string }) {
                       <span className="text-xs text-muted-foreground text-right pr-4">{kw.volume >= 1000 ? `${(kw.volume / 1000).toFixed(1)}k` : kw.volume}</span>
                       <div className="flex items-center gap-1.5">
                         {kw.isCitedInAiOverview ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>Cited</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>Cytowane</span>
                         ) : kw.hasAiOverview ? (
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-sky-500/10 text-sky-400">AI Overview</span>
                         ) : (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-muted/30 text-muted-foreground">Standard</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-muted/30 text-muted-foreground">Standardowe</span>
                         )}
                       </div>
                     </div>
@@ -2103,14 +2103,14 @@ function AiExposurePanel({ url }: { url: string }) {
             {/* Cache note */}
             {data?.fromCache && (
               <p className="text-[10px] text-muted-foreground/50 text-right">
-                Data refreshed every 24h · Last scan: {new Date(result.analyzedAt).toLocaleString()}
+                Dane odświeżane co 24h · Ostatni skan: {new Date(result.analyzedAt).toLocaleString()}
               </p>
             )}
             {/* Opportunities section */}
             {(result.opportunities ?? []).length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-amber-400" /> Growth Opportunities
+                  <Target className="w-3.5 h-3.5 text-amber-400" /> Szanse wzrostu
                 </h3>
                 <div className="grid gap-1.5">
                   {(result.opportunities ?? []).slice(0, 3).map((kw, i) => (
