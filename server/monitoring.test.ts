@@ -10,10 +10,12 @@ describe("sendMonitoringEmail", () => {
     vi.resetModules();
   });
 
-  it("returns true (dev mode) when SMTP is not configured", async () => {
-    // Ensure SMTP env vars are not set
+  it("returns true (dev mode) when no email provider is configured", async () => {
+    // Ensure all email provider env vars are not set for this test
     const originalSmtpHost = process.env.SMTP_HOST;
+    const originalResendKey = process.env.RESEND_API_KEY;
     delete process.env.SMTP_HOST;
+    delete process.env.RESEND_API_KEY;
 
     const { sendMonitoringEmail } = await import("./monitoring/email");
 
@@ -32,10 +34,13 @@ describe("sendMonitoringEmail", () => {
 
     // Restore
     if (originalSmtpHost) process.env.SMTP_HOST = originalSmtpHost;
+    if (originalResendKey) process.env.RESEND_API_KEY = originalResendKey;
   });
 
-  it("returns true when score is 0 (edge case)", async () => {
+  it("returns true when score is 0 (edge case, dev mode)", async () => {
+    const originalResendKey = process.env.RESEND_API_KEY;
     delete process.env.SMTP_HOST;
+    delete process.env.RESEND_API_KEY;
     const { sendMonitoringEmail } = await import("./monitoring/email");
 
     const result = await sendMonitoringEmail({
@@ -50,6 +55,7 @@ describe("sendMonitoringEmail", () => {
     });
 
     expect(result).toBe(true);
+    if (originalResendKey) process.env.RESEND_API_KEY = originalResendKey;
   });
 });
 
