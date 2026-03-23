@@ -794,3 +794,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Worker uruchamiany w server/_core/index.ts po starcie serwera
 - [x] Testy: 13 nowych testów, 121 łącznie passing
 - [x] TypeScript: 0 błędów
+
+## UI częstotliwości monitoringu + SMTP (2026-03-23)
+- [ ] UI: dropdown zmiany częstotliwości przy monitorowanych stronach (Pro/Business)
+- [ ] UI: lock badge dla Starter (7 dni, niezmienny) z upsell tooltip
+- [ ] UI: wyświetlanie następnego audytu (nextAuditAt) przy każdej stronie
+- [ ] SMTP: konfiguracja przez webdev_request_secrets (SMTP_HOST, PORT, USER, PASS, FROM)
+- [ ] SMTP: weryfikacja wysyłki testowego emaila
+- [ ] TypeScript: 0 błędów, testy passing

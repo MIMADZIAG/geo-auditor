@@ -1,17 +1,16 @@
 /**
  * Monitoring Email Notifications
  *
- * Sends HTML email to users after each cron-triggered monitoring audit.
- * Uses Nodemailer with SMTP (configured via env) or falls back to a
- * console log when SMTP is not configured (dev mode).
+ * Priority order for sending emails:
+ * 1. Resend API (RESEND_API_KEY) — simplest, no SMTP config needed, 3000 free/month
+ * 2. SMTP via Nodemailer (SMTP_HOST + SMTP_USER + SMTP_PASS) — any provider
+ * 3. Dev mode fallback — logs to console when neither is configured
  *
- * Architecture decision: We use Nodemailer (no external SaaS dependency)
- * because it works with any SMTP provider (SendGrid, Mailgun, Brevo, etc.)
- * and keeps the codebase self-contained. SMTP credentials are injected via env.
+ * Architecture decision: Resend is preferred because it requires only one env var
+ * and works reliably in serverless/container environments without SMTP firewall issues.
  */
 
 import nodemailer from "nodemailer";
-import { ENV } from "../_core/env";
 
 export interface MonitoringEmailPayload {
   toEmail: string;
@@ -24,34 +23,12 @@ export interface MonitoringEmailPayload {
   appUrl: string;
 }
 
-// ─── Transporter ─────────────────────────────────────────────────────────────
-
-function createTransporter() {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = parseInt(process.env.SMTP_PORT ?? "587", 10);
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM ?? "GEO-Auditor <noreply@geo-auditor.app>";
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    return null; // SMTP not configured — dev mode
-  }
-
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: { user: smtpUser, pass: smtpPass },
-    from: smtpFrom,
-  });
-}
-
 // ─── Score helpers ────────────────────────────────────────────────────────────
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "#22c55e"; // green
-  if (score >= 60) return "#f59e0b"; // amber
-  return "#ef4444"; // red
+  if (score >= 80) return "#22c55e";
+  if (score >= 60) return "#f59e0b";
+  return "#ef4444";
 }
 
 function scoreTier(score: number): string {
@@ -82,14 +59,14 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
   const pageLabel = p.label ?? p.url;
   const reportUrl = `${p.appUrl}/report/${p.auditId}`;
   const dashboardUrl = `${p.appUrl}/dashboard`;
-  const name = p.toName ?? "Cześć";
+  const name = p.toName ?? "Czesc";
 
   return `<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Raport monitoringu — GEO-Auditor</title>
+  <title>Raport monitoringu - GEO-Auditor</title>
 </head>
 <body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif;color:#e2e8f0;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:32px 16px;">
@@ -121,7 +98,7 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
                 Raport monitoringu gotowy
               </h1>
               <p style="margin:0 0 24px 0;font-size:14px;color:#64748b;">
-                Automatyczny audyt AI Search dla Twojej strony został zakończony.
+                Automatyczny audyt AI Search dla Twojej strony zostal zakonczony.
               </p>
 
               <!-- Page info -->
@@ -145,7 +122,7 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
                     <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;border:1px solid #1e3a5f;">
                       <p style="margin:0 0 4px 0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Zmiana vs poprzedni</p>
                       <p style="margin:0;font-size:28px;font-weight:800;color:${deltaClr};">
-                        ${p.scoreDelta !== null ? (p.scoreDelta >= 0 ? "+" : "") + p.scoreDelta.toFixed(1) : "—"}
+                        ${p.scoreDelta !== null ? (p.scoreDelta >= 0 ? "+" : "") + p.scoreDelta.toFixed(1) : ""}
                       </p>
                       <p style="margin:4px 0 0 0;font-size:12px;color:${deltaClr};">${delta || "Pierwszy audyt"}</p>
                     </div>
@@ -158,12 +135,12 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
                 <tr>
                   <td style="padding-right:8px;" width="50%">
                     <a href="${reportUrl}" style="display:block;background:#7c3aed;color:#fff;text-decoration:none;text-align:center;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:600;">
-                      Zobacz pełny raport
+                      Zobacz pelny raport
                     </a>
                   </td>
                   <td style="padding-left:8px;" width="50%">
                     <a href="${dashboardUrl}" style="display:block;background:#1e293b;color:#a78bfa;text-decoration:none;text-align:center;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:600;border:1px solid #334155;">
-                      Przejdź do panelu
+                      Przejdz do panelu
                     </a>
                   </td>
                 </tr>
@@ -171,8 +148,8 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
 
               <!-- Info note -->
               <p style="margin:0;font-size:12px;color:#475569;text-align:center;line-height:1.6;">
-                Ten raport został wygenerowany automatycznie przez GEO-Auditor.<br/>
-                Możesz zmienić częstotliwość monitoringu w ustawieniach panelu.
+                Ten raport zostal wygenerowany automatycznie przez GEO-Auditor.<br/>
+                Mozesz zmienic czestotliwosc monitoringu w ustawieniach panelu.
               </p>
 
             </td>
@@ -182,7 +159,7 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
           <tr>
             <td style="padding:24px 0 0 0;text-align:center;">
               <p style="margin:0;font-size:12px;color:#334155;">
-                &copy; ${new Date().getFullYear()} GEO-Auditor &mdash; AI Search Visibility Platform
+                GEO-Auditor - AI Search Visibility Platform
               </p>
             </td>
           </tr>
@@ -195,38 +172,111 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
 </html>`;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// ─── Resend API sender ────────────────────────────────────────────────────────
 
-/**
- * Send a monitoring audit result email to the user.
- * Returns true on success, false on failure (non-throwing).
- */
-export async function sendMonitoringEmail(payload: MonitoringEmailPayload): Promise<boolean> {
-  const transporter = createTransporter();
+async function sendViaResend(
+  payload: MonitoringEmailPayload,
+  subject: string,
+  html: string
+): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
 
-  if (!transporter) {
-    // Dev mode: log to console instead of sending
-    console.log(
-      `[MonitoringEmail] SMTP not configured — would send to ${payload.toEmail}:`,
-      `Score ${payload.overallScore}, delta ${payload.scoreDelta ?? "N/A"}, audit #${payload.auditId}`
-    );
-    return true; // treat as success in dev
-  }
-
-  const smtpFrom = process.env.SMTP_FROM ?? "GEO-Auditor <noreply@geo-auditor.app>";
-  const subject = `Raport monitoringu: ${payload.label ?? payload.url} — wynik ${Math.round(payload.overallScore)}/100`;
+  const from = process.env.RESEND_FROM ?? process.env.SMTP_FROM ?? "GEO-Auditor <noreply@geo-auditor.app>";
 
   try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [payload.toEmail],
+        subject,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(`[MonitoringEmail] Resend error ${res.status}: ${detail}`);
+      return false;
+    }
+
+    const data = await res.json().catch(() => ({})) as { id?: string };
+    console.log(`[MonitoringEmail] Resend OK — id=${data.id}, to=${payload.toEmail}, audit=#${payload.auditId}`);
+    return true;
+  } catch (err) {
+    console.error("[MonitoringEmail] Resend exception:", err);
+    return false;
+  }
+}
+
+// ─── SMTP sender ──────────────────────────────────────────────────────────────
+
+async function sendViaSmtp(
+  payload: MonitoringEmailPayload,
+  subject: string,
+  html: string
+): Promise<boolean> {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = parseInt(process.env.SMTP_PORT ?? "587", 10);
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM ?? "GEO-Auditor <noreply@geo-auditor.app>";
+
+  if (!smtpHost || !smtpUser || !smtpPass) return false;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
     await transporter.sendMail({
       from: smtpFrom,
       to: payload.toEmail,
       subject,
-      html: buildHtmlEmail(payload),
+      html,
     });
-    console.log(`[MonitoringEmail] Sent to ${payload.toEmail} for audit #${payload.auditId}`);
+
+    console.log(`[MonitoringEmail] SMTP OK — to=${payload.toEmail}, audit=#${payload.auditId}`);
     return true;
   } catch (err) {
-    console.error(`[MonitoringEmail] Failed to send to ${payload.toEmail}:`, err);
+    console.error("[MonitoringEmail] SMTP exception:", err);
     return false;
   }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Send a monitoring audit result email to the user.
+ * Tries Resend first, then SMTP, then falls back to console log.
+ * Returns true on success, false on failure (non-throwing).
+ */
+export async function sendMonitoringEmail(payload: MonitoringEmailPayload): Promise<boolean> {
+  const subject = `Raport monitoringu: ${payload.label ?? payload.url} - wynik ${Math.round(payload.overallScore)}/100`;
+  const html = buildHtmlEmail(payload);
+
+  // 1. Try Resend API
+  if (process.env.RESEND_API_KEY) {
+    return sendViaResend(payload, subject, html);
+  }
+
+  // 2. Try SMTP
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return sendViaSmtp(payload, subject, html);
+  }
+
+  // 3. Dev mode fallback
+  console.log(
+    `[MonitoringEmail] No email provider configured (set RESEND_API_KEY or SMTP_HOST+SMTP_USER+SMTP_PASS).`,
+    `Would send to ${payload.toEmail}: Score ${payload.overallScore}, delta ${payload.scoreDelta ?? "N/A"}, audit #${payload.auditId}`
+  );
+  return true; // treat as success in dev
 }

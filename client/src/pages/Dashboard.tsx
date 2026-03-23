@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -6,6 +6,8 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   Zap, Eye, Clock, BarChart2, Plus, AlertTriangle, CheckCircle,
@@ -216,53 +218,140 @@ type MonitoredPageItem = {
   lastScore: number | null;
   lastAuditAt: Date | null;
   lastAuditId: number | null;
+  nextAuditAt?: Date | null;
+  scheduleFrequency?: number | null;
 };
 
-function MonitoredPageCard({ page, onRemove }: { page: MonitoredPageItem; onRemove: (id: number) => void }) {
+const FREQUENCY_OPTIONS = [
+  { value: "1", label: "Codziennie", days: 1 },
+  { value: "3", label: "Co 3 dni", days: 3 },
+  { value: "7", label: "Co tydzień", days: 7 },
+  { value: "14", label: "Co 2 tygodnie", days: 14 },
+  { value: "30", label: "Co miesiąc", days: 30 },
+];
+
+function MonitoredPageCard({
+  page,
+  onRemove,
+  isPro,
+  isStarter,
+}: {
+  page: MonitoredPageItem;
+  onRemove: (id: number) => void;
+  isPro: boolean;
+  isStarter: boolean;
+}) {
   const score = page.lastScore;
   const domain = (() => { try { return new URL(page.url).hostname; } catch { return page.url; } })();
   const lastAudit = page.lastAuditAt
     ? new Date(page.lastAuditAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : "Brak danych";
+  const nextAudit = page.nextAuditAt
+    ? new Date(page.nextAuditAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
+    : null;
+  const currentFreq = String(page.scheduleFrequency ?? 7);
+
+  const setFrequency = trpc.monitoring.setFrequency.useMutation({
+    onSuccess: (data) => {
+      const label = FREQUENCY_OPTIONS.find((o) => o.days === data.frequencyDays)?.label ?? `co ${data.frequencyDays} dni`;
+      toast.success(`Częstotliwość zmieniona: ${label}`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleFrequencyChange = useCallback((val: string) => {
+    const days = parseInt(val, 10);
+    if (!isNaN(days)) {
+      setFrequency.mutate({ id: page.id, frequencyDays: days });
+    }
+  }, [page.id, setFrequency]);
+
+  const canChangeFrequency = isPro;
+  const isMonitoringEligible = isPro || isStarter;
 
   return (
-    <div className={`rounded-xl border p-4 bg-card ${
-      score == null ? "border-border" :
-      score >= 75 ? "border-emerald-500/20" :
-      score >= 50 ? "border-amber-500/20" :
-      "border-red-500/20"
-    }`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{page.label || domain}</p>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{page.url}</p>
+    <TooltipProvider>
+      <div className={`rounded-xl border p-4 bg-card ${
+        score == null ? "border-border" :
+        score >= 75 ? "border-emerald-500/20" :
+        score >= 50 ? "border-amber-500/20" :
+        "border-red-500/20"
+      }`}>
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{page.label || domain}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{page.url}</p>
+          </div>
+          <div className={`text-2xl font-bold tabular-nums shrink-0 ${scoreColor(score)}`}>
+            {score != null ? Math.round(score) : "–"}
+          </div>
         </div>
-        <div className={`text-2xl font-bold tabular-nums shrink-0 ${scoreColor(score)}`}>
-          {score != null ? Math.round(score) : "–"}
+
+        {/* Frequency row */}
+        {isMonitoringEligible && (
+          <div className="mt-3 flex items-center gap-2">
+            <RefreshCw className="w-3 h-3 text-muted-foreground shrink-0" />
+            {canChangeFrequency ? (
+              <Select
+                value={currentFreq}
+                onValueChange={handleFrequencyChange}
+                disabled={setFrequency.isPending}
+              >
+                <SelectTrigger className="h-6 text-xs w-36 border-border bg-background">
+                  <SelectValue placeholder="Częstotliwość" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREQUENCY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 cursor-help">
+                    <span className="text-xs text-muted-foreground">Co tydzień</span>
+                    <Lock className="w-3 h-3 text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs max-w-48">
+                  Zmiana częstotliwości dostępna w planie Pro. Starter obsługuje wyłącznie cotygodniowy monitoring.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {nextAudit && (
+              <span className="text-xs text-muted-foreground ml-auto">Następny: {nextAudit}</span>
+            )}
+          </div>
+        )}
+
+        {/* Actions row */}
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3" />
+            <span>Ostatni: {lastAudit}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {page.lastAuditId && (
+              <Link href={`/results/${page.lastAuditId}`}>
+                <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
+              </Link>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              onClick={(e) => { e.preventDefault(); onRemove(page.id); }}
+            >
+              Usuń
+            </Button>
+          </div>
         </div>
       </div>
-      <div className="flex items-center justify-between mt-3">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          <span>{lastAudit}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {page.lastAuditId && (
-            <Link href={`/results/${page.lastAuditId}`}>
-              <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
-            </Link>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            onClick={(e) => { e.preventDefault(); onRemove(page.id); }}
-          >
-            Usuń
-          </Button>
-        </div>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
@@ -745,6 +834,8 @@ export default function Dashboard() {
                   key={page.id}
                   page={page}
                   onRemove={(id) => removeMonitoring.mutate({ id })}
+                  isPro={isPro}
+                  isStarter={plan === "starter"}
                 />
               ))}
             </div>
