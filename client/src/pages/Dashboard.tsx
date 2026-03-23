@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -13,7 +13,7 @@ import {
   Zap, Eye, Clock, BarChart2, Plus, AlertTriangle, CheckCircle,
   Lock, ChevronRight, RefreshCw, Star, Target, Sparkles, Shield,
   Globe, ArrowUpRight, Activity, FileText, Search, Bot, Trophy,
-  Flame, Info, Brain, LogIn,
+  Flame, Info, Brain, LogIn, History, TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -209,6 +209,44 @@ function AuditRow({ audit }: { audit: AuditItem }) {
   );
 }
 
+// ─── Sparkline ───────────────────────────────────────────────────────────────
+
+function Sparkline({ values, width = 120, height = 32 }: { values: number[]; width?: number; height?: number }) {
+  const pts = useMemo(() => {
+    if (values.length < 2) return null;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const step = width / (values.length - 1);
+    return values.map((v, i) => {
+      const x = i * step;
+      const y = height - ((v - min) / range) * (height - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  }, [values, width, height]);
+
+  if (!pts) return null;
+
+  const lastVal = values[values.length - 1];
+  const color = lastVal >= 75 ? "#34d399" : lastVal >= 50 ? "#fbbf24" : "#f87171";
+  const lastPt = pts.split(" ").pop()!.split(",");
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.8"
+      />
+      <circle cx={lastPt[0]} cy={lastPt[1]} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
 // ─── Monitored Page Card ──────────────────────────────────────────────────────
 
 type MonitoredPageItem = {
@@ -241,8 +279,19 @@ function MonitoredPageCard({
   isPro: boolean;
   isStarter: boolean;
 }) {
+  const [showHistory, setShowHistory] = useState(false);
   const score = page.lastScore;
   const domain = (() => { try { return new URL(page.url).hostname; } catch { return page.url; } })();
+
+  const historyQuery = trpc.monitoring.getRunHistory.useQuery(
+    { monitoredPageId: page.id, limit: 10 },
+    { enabled: showHistory }
+  );
+  const runs = historyQuery.data ?? [];
+  const sparklineValues = useMemo(
+    () => [...runs].reverse().map((r) => r.overallScore ?? 0).filter((v) => v > 0),
+    [runs]
+  );
   const lastAudit = page.lastAuditAt
     ? new Date(page.lastAuditAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : "Brak danych";
@@ -335,6 +384,17 @@ function MonitoredPageCard({
             <span>Ostatni: {lastAudit}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className={`h-6 text-xs gap-1 ${
+                showHistory ? "text-violet-400 bg-violet-500/10" : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setShowHistory((v) => !v)}
+            >
+              <History className="w-3 h-3" />
+              Historia
+            </Button>
             {page.lastAuditId && (
               <Link href={`/results/${page.lastAuditId}`}>
                 <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
@@ -350,6 +410,100 @@ function MonitoredPageCard({
             </Button>
           </div>
         </div>
+
+        {/* History panel */}
+        {showHistory && (
+          <div className="mt-3 border-t border-border pt-3">
+            {historyQuery.isLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Ładowanie historii…</span>
+              </div>
+            ) : runs.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">
+                Brak historii audytów. Pierwszy audyt zostanie wykonany automatycznie.
+              </p>
+            ) : (
+              <>
+                {sparklineValues.length >= 2 && (
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Trend score</p>
+                      <Sparkline values={sparklineValues} width={140} height={36} />
+                    </div>
+                    <div className="text-right">
+                      {(() => {
+                        const delta = sparklineValues[sparklineValues.length - 1] - sparklineValues[0];
+                        const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+                        const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
+                        return (
+                          <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
+                            <Icon className="w-3.5 h-3.5" />
+                            <span>{delta > 0 ? "+" : ""}{delta.toFixed(0)} pkt</span>
+                          </div>
+                        );
+                      })()}
+                      <p className="text-xs text-muted-foreground mt-0.5">{sparklineValues.length} audytów</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  {runs.map((run) => {
+                    const runDate = new Date(run.createdAt).toLocaleDateString("pl-PL", {
+                      day: "numeric", month: "short", year: "numeric",
+                    });
+                    const runTime = new Date(run.createdAt).toLocaleTimeString("pl-PL", {
+                      hour: "2-digit", minute: "2-digit",
+                    });
+                    const s = run.overallScore;
+                    const delta = run.scoreDelta;
+                    return (
+                      <div key={run.id} className="flex items-center justify-between gap-2 py-1 px-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            run.status === "failed" ? "bg-red-500" :
+                            s != null && s >= 75 ? "bg-emerald-500" :
+                            s != null && s >= 50 ? "bg-amber-500" : "bg-red-500"
+                          }`} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium">{runDate}</p>
+                            <p className="text-xs text-muted-foreground">{runTime}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          {run.status === "failed" ? (
+                            <span className="text-xs text-red-400">Błąd</span>
+                          ) : (
+                            <>
+                              {delta != null && delta !== 0 && (
+                                <span className={`text-xs ${
+                                  delta > 0 ? "text-emerald-400" : "text-red-400"
+                                }`}>
+                                  {delta > 0 ? "+" : ""}{delta.toFixed(0)}
+                                </span>
+                              )}
+                              <span className={`text-sm font-bold tabular-nums ${scoreColor(s)}`}>
+                                {s != null ? Math.round(s) : "–"}
+                              </span>
+                            </>
+                          )}
+                          {run.auditId && (
+                            <Link href={`/results/${run.auditId}`}>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground">
+                                <ChevronRight className="w-3 h-3" />
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );

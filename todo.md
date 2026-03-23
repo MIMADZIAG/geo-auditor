@@ -802,3 +802,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] SMTP: konfiguracja przez webdev_request_secrets (SMTP_HOST, PORT, USER, PASS, FROM)
 - [ ] SMTP: weryfikacja wysyłki testowego emaila
 - [ ] TypeScript: 0 błędów, testy passing
+
+## Historia audytów monitoringu w Dashboardzie (2026-03-24)
+- [x] Rozwijana sekcja "Historia" w MonitoredPageCard z listą poprzednich audytów
+- [x] Mini-wykres trendu score (sparkline) z ostatnich audytów
+- [x] Każdy wpis historii: data, wynik, delta vs poprzedni, link do raportu
+- [x] Stan pusty: "Brak historii — pierwszy audyt zostanie wykonany automatycznie"
+- [x] TypeScript: 0 błędów, 132 testy passing

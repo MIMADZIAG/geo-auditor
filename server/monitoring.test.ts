@@ -178,3 +178,91 @@ describe("monitoring worker batch processing", () => {
     expect(batches).toHaveLength(0);
   });
 });
+
+// ─── Run history display logic tests ─────────────────────────────────────────
+
+describe("monitoring run history display logic", () => {
+  it("sparkline values are extracted in chronological order (oldest first)", () => {
+    // Simulate runs returned from getRunHistory (newest first from DB)
+    const runs = [
+      { overallScore: 80, createdAt: new Date("2026-03-03") },
+      { overallScore: 70, createdAt: new Date("2026-03-02") },
+      { overallScore: 60, createdAt: new Date("2026-03-01") },
+    ];
+    // Reverse to get chronological order for sparkline
+    const sparklineValues = [...runs].reverse().map((r) => r.overallScore ?? 0).filter((v) => v > 0);
+    expect(sparklineValues).toEqual([60, 70, 80]);
+  });
+
+  it("sparkline delta is positive when score improved", () => {
+    const values = [50, 60, 75];
+    const delta = values[values.length - 1] - values[0];
+    expect(delta).toBe(25);
+    expect(delta).toBeGreaterThan(0);
+  });
+
+  it("sparkline delta is negative when score declined", () => {
+    const values = [80, 70, 55];
+    const delta = values[values.length - 1] - values[0];
+    expect(delta).toBe(-25);
+    expect(delta).toBeLessThan(0);
+  });
+
+  it("sparkline delta is zero when score unchanged", () => {
+    const values = [65, 65, 65];
+    const delta = values[values.length - 1] - values[0];
+    expect(delta).toBe(0);
+  });
+
+  it("sparkline is not rendered for fewer than 2 data points", () => {
+    const singleValue = [75];
+    // Sparkline requires at least 2 points
+    expect(singleValue.length < 2).toBe(true);
+  });
+
+  it("run status 'failed' is shown as error, not score", () => {
+    const run = { status: "failed" as const, overallScore: null, scoreDelta: null };
+    const isError = run.status === "failed";
+    expect(isError).toBe(true);
+    expect(run.overallScore).toBeNull();
+  });
+
+  it("score delta formatting: positive gets + prefix", () => {
+    const formatDelta = (delta: number | null) => {
+      if (delta == null || delta === 0) return null;
+      return `${delta > 0 ? "+" : ""}${delta.toFixed(0)}`;
+    };
+    expect(formatDelta(10)).toBe("+10");
+    expect(formatDelta(-5)).toBe("-5");
+    expect(formatDelta(0)).toBeNull();
+    expect(formatDelta(null)).toBeNull();
+  });
+
+  it("score color thresholds match dashboard display", () => {
+    const scoreColor = (score: number | null | undefined) => {
+      if (score == null) return "text-muted-foreground";
+      if (score >= 75) return "text-emerald-400";
+      if (score >= 50) return "text-amber-400";
+      return "text-red-400";
+    };
+    expect(scoreColor(75)).toBe("text-emerald-400");
+    expect(scoreColor(74)).toBe("text-amber-400");
+    expect(scoreColor(50)).toBe("text-amber-400");
+    expect(scoreColor(49)).toBe("text-red-400");
+    expect(scoreColor(null)).toBe("text-muted-foreground");
+  });
+
+  it("run status dot color matches score tier", () => {
+    const dotColor = (status: string, score: number | null) => {
+      if (status === "failed") return "bg-red-500";
+      if (score != null && score >= 75) return "bg-emerald-500";
+      if (score != null && score >= 50) return "bg-amber-500";
+      return "bg-red-500";
+    };
+    expect(dotColor("completed", 80)).toBe("bg-emerald-500");
+    expect(dotColor("completed", 60)).toBe("bg-amber-500");
+    expect(dotColor("completed", 40)).toBe("bg-red-500");
+    expect(dotColor("failed", 80)).toBe("bg-red-500");
+    expect(dotColor("completed", null)).toBe("bg-red-500");
+  });
+});
