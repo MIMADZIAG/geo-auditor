@@ -25,6 +25,7 @@ import {
   addMonitoredPage,
   removeMonitoredPage,
   updateMonitoredPageAfterAudit,
+  updateMonitoredPageFrequency,
   addScoreSnapshot,
   getScoreSnapshots,
   MAX_MONITORING_SLOTS_FREE,
@@ -221,6 +222,63 @@ export const appRouter = router({
         }
         const snapshots = await getScoreSnapshots(input.monitoredPageId, input.limit);
         return snapshots;
+      }),
+
+    // Change monitoring frequency (Pro/Business only for non-weekly)
+    setFrequency: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        frequencyDays: z.number().int().min(1).max(30),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const plan = ctx.user.plan ?? "free";
+        const limits = getPlanLimits(plan);
+
+        // Starter: locked to 7 days (weekly)
+        if (plan === "starter" && input.frequencyDays !== 7) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Plan Starter obsługuje wyłącznie cotygodniowy monitoring. Przejdź na plan Pro, aby zmienić częstotliwość.",
+          });
+        }
+        // Free: no monitoring
+        if (plan === "free") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Automatyczny monitoring jest dostępny od planu Starter.",
+          });
+        }
+
+        // Verify ownership
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.id);
+        if (!owned) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Monitorowana strona nie została znaleziona." });
+        }
+
+        await updateMonitoredPageFrequency(input.id, ctx.user.id, input.frequencyDays);
+        return { success: true, frequencyDays: input.frequencyDays };
+      }),
+
+    // Get monitor audit run history for a page
+    getRunHistory: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number(), limit: z.number().default(10) }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Monitorowana strona nie została znaleziona." });
+        }
+        const db = await (await import("./db")).getDb();
+        if (!db) return [];
+        const { monitorAuditRuns } = await import("../drizzle/schema");
+        const { desc: descOrd } = await import("drizzle-orm");
+        return db
+          .select()
+          .from(monitorAuditRuns)
+          .where((await import("drizzle-orm")).eq(monitorAuditRuns.monitoredPageId, input.monitoredPageId))
+          .orderBy(descOrd(monitorAuditRuns.createdAt))
+          .limit(input.limit);
       }),
    }),
   leads: router({

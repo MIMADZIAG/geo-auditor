@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, url, JSON_EXTRACT(contentIntelligence, '$.top_questions') as top_questions, JSON_EXTRACT(contentIntelligence, '$.semantic_gaps') as semantic_gaps FROM audits WHERE id = 2730001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, url, JSON_EXTRACT(contentIntelligence, '$.top_questions') as top_questions, JSON_EXTRACT(contentIntelligence, '$.semantic_gaps') as semantic_gaps FROM audits WHERE id = 2730001;",
+  "rows": [
+    {
+      "id": "2730001",
+      "url": "https://rot24.pl/27-dewalt",
+      "top_questions": "NULL",
+      "semantic_gaps": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\turl\ttop_questions\tsemantic_gaps\n2730001\thttps://rot24.pl/27-dewalt\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

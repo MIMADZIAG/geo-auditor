@@ -784,3 +784,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Przetłumaczono system prompt llmRecommendations.ts (LLM generuje rekomendacje po polsku)
 - [x] Przetłumaczono etykiety checków w contentIntelligence.ts (8 etykiet)
 - [x] TypeScript: 0 błędów, 108 testów passing
+
+## Automatyczny monitoring cykliczny (2026-03-23)
+- [x] DB: scheduleFrequency w monitoredPages + tabela monitorAuditRuns (migracja 0017)
+- [x] Worker cron: setInterval co 1h, batch 3 strony równolegle, obsługa błędów, plan guards (Starter/Pro/Business)
+- [x] Email: HTML email z wynikami audytu (Nodemailer, fallback dev mode bez SMTP)
+- [x] tRPC: setFrequency (Pro/Business), getRunHistory, plan guards (Starter locked to 7 days)
+- [x] DB helper: updateMonitoredPageFrequency, updateMonitoredPageAfterAudit z frequencyDays
+- [x] Worker uruchamiany w server/_core/index.ts po starcie serwera
+- [x] Testy: 13 nowych testów, 121 łącznie passing
+- [x] TypeScript: 0 błędów

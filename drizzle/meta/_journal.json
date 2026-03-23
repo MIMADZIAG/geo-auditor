@@ -120,6 +120,13 @@
       "when": 1773949453192,
       "tag": "0016_milky_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1774303597182,
+      "tag": "0017_daily_mathemanic",
+      "breakpoints": true
     }
   ]
 }

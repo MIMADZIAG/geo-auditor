@@ -73,12 +73,32 @@ export const monitoredPages = mysqlTable("monitored_pages", {
   lastScore: float("lastScore"),
   lastAuditAt: timestamp("lastAuditAt"),
   nextAuditAt: timestamp("nextAuditAt"),
+  // scheduleFrequency in days: 1, 2, 3, 7 (default weekly), 14, 30
+  // Starter: locked to 7. Pro: 1/2/3/7/14/30. Business: any.
+  scheduleFrequency: int("scheduleFrequency").default(7).notNull(),
   isActive: mysqlEnum("isActive", ["yes", "no"]).default("yes").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type MonitoredPage = typeof monitoredPages.$inferSelect;
 export type InsertMonitoredPage = typeof monitoredPages.$inferInsert;
+
+// Monitor audit runs — one row per cron-triggered audit for a monitored page
+export const monitorAuditRuns = mysqlTable("monitor_audit_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  monitoredPageId: int("monitoredPageId").notNull(),
+  auditId: int("auditId").notNull(),
+  userId: int("userId").notNull(),
+  overallScore: float("overallScore"),
+  scoreDelta: float("scoreDelta"),           // diff vs previous run (positive = improved)
+  status: mysqlEnum("status", ["completed", "failed"]).default("completed").notNull(),
+  emailSent: boolean("emailSent").default(false).notNull(),
+  triggeredBy: mysqlEnum("triggeredBy", ["cron", "manual"]).default("cron").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MonitorAuditRun = typeof monitorAuditRuns.$inferSelect;
+export type InsertMonitorAuditRun = typeof monitorAuditRuns.$inferInsert;
 
 // Score snapshots — one row per completed audit for a monitored page (for history chart)
 export const scoreSnapshots = mysqlTable("score_snapshots", {

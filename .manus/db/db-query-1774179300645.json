@@ -1,0 +1,13 @@
+{
+  "query": "SELECT JSON_EXTRACT(contentIntelligence, '$.query_coverage') as query_coverage FROM audits WHERE id = 2730001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT JSON_EXTRACT(contentIntelligence, '$.query_coverage') as query_coverage FROM audits WHERE id = 2730001;",
+  "rows": [
+    {
+      "query_coverage": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "query_coverage\nNULL\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

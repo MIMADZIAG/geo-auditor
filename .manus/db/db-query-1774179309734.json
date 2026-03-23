@@ -1,0 +1,13 @@
+{
+  "query": "SELECT JSON_EXTRACT(contentIntelligence, '$.checks[7]') as check8 FROM audits WHERE id = 2730001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT JSON_EXTRACT(contentIntelligence, '$.checks[7]') as check8 FROM audits WHERE id = 2730001;",
+  "rows": [
+    {
+      "check8": "{\"description\": \"The page primarily covers 'what DeWalt tools are available' and 'why buy DeWalt tools'. It misses a wide range of common user queries related to specific tool performance, comparisons, troubleshooting, or how-to guides.\", \"examples\": [\"Which DeWalt drill is best for home use?\", \"How long does a DeWalt 18V 5.0Ah battery last?\", \"What are the differences between DeWalt XR and FlexVolt tools?\", \"How to troubleshoot a DeWalt impact driver?\", \"Where can I find DeWalt service centers in Poland?\"], \"id\": \"query_coverage\", \"impact\": \"medium\", \"label\": \"Query Coverage\", \"recommendation\": \"Expand content to address a broader spectrum of user queries. This includes adding sections for specific product comparisons, usage tips, maintenance, and common problems. Consider creating content around 'best DeWalt tools for X task' or 'how to choose a DeWalt drill.'\", \"score\": 40, \"status\": \"fail\"}"
+    }
+  ],
+  "messages": [],
+  "stdout": "check8\n{\"description\": \"The page primarily covers 'what DeWalt tools are available' and 'why buy DeWalt tools'. It misses a wide range of common user queries related to specific tool performance, comparisons, troubleshooting, or how-to guides.\", \"examples\": [\"Which DeWalt drill is best for home use?\", \"How long does a DeWalt 18V 5.0Ah battery last?\", \"What are the differences between DeWalt XR and FlexVolt tools?\", \"How to troubleshoot a DeWalt impact driver?\", \"Where can I find DeWalt service centers in Poland?\"], \"id\": \"query_coverage\", \"impact\": \"medium\", \"label\": \"Query Coverage\", \"recommendation\": \"Expand content to address a broader spectrum of user queries. This includes adding sections for specific product comparisons, usage tips, maintenance, and common problems. Consider creating content around 'best DeWalt tools for X task' or 'how to choose a DeWalt drill.'\", \"score\": 40, \"status\": \"fail\"}\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}

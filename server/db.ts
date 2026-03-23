@@ -206,15 +206,35 @@ export async function removeMonitoredPage(id: number, userId: number) {
 export async function updateMonitoredPageAfterAudit(
   id: number,
   auditId: number,
-  score: number
+  score: number,
+  frequencyDays: number = 7
 ) {
   const db = await getDb();
   if (!db) return;
-  const nextAuditAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const nextAuditAt = new Date(Date.now() + frequencyDays * 24 * 60 * 60 * 1000);
   await db
     .update(monitoredPages)
     .set({ lastAuditId: auditId, lastScore: score, lastAuditAt: new Date(), nextAuditAt })
     .where(eq(monitoredPages.id, id));
+}
+
+export async function updateMonitoredPageFrequency(
+  id: number,
+  userId: number,
+  frequencyDays: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  const rows = await db.select().from(monitoredPages).where(
+    and(eq(monitoredPages.id, id), eq(monitoredPages.userId, userId))
+  ).limit(1);
+  if (!rows[0]) return;
+  const base = rows[0].lastAuditAt ?? new Date();
+  const nextAuditAt = new Date(base.getTime() + frequencyDays * 24 * 60 * 60 * 1000);
+  await db
+    .update(monitoredPages)
+    .set({ scheduleFrequency: frequencyDays, nextAuditAt })
+    .where(and(eq(monitoredPages.id, id), eq(monitoredPages.userId, userId)));
 }
 
 export async function getMonitoredPagesDueForAudit() {

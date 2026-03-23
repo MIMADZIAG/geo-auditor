@@ -11,6 +11,7 @@ import { runAndCacheHealthCheck } from "../citation/selectorHealth";
 import { handleStripeWebhook } from "../stripe/handler";
 import { generateAuditPDF } from "../pdf/reportGenerator";
 import { getAuditById } from "../db";
+import { startMonitoringWorker } from "../monitoring/worker";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -140,3 +141,8 @@ setInterval(() => {
 }, SELECTOR_HEALTH_INTERVAL_MS);
 
 console.log("[SelectorHealth] Selector monitoring active — checks every 6h, initial check in 2min.");
+
+// ─── Monitoring Worker ─────────────────────────────────────────────────────────────────────────────────
+// Runs every hour. Triggers full audits for monitored pages whose nextAuditAt <= now.
+// Sends email notification to user after each completed audit.
+startMonitoringWorker();
