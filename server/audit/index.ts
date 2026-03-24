@@ -25,6 +25,7 @@ export interface AuditResult {
   llmResult?: LLMRecommendationsResult;
   contentIntelligence?: ContentIntelligenceResult;
   responseTimeMs: number;
+  wafBlocked?: boolean;
   error?: string;
 }
 
@@ -165,6 +166,7 @@ export async function runAudit(url: string): Promise<AuditResult> {
     llmResult,
     contentIntelligence,
     responseTimeMs: page.responseTimeMs,
+    wafBlocked: page.wafBlocked,
   };
 }
 

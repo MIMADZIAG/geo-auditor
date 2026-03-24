@@ -107,6 +107,7 @@ export const appRouter = router({
             contentIntelligenceScore: result.contentIntelligence?.overallScore ?? null,
             citeabilityScore: result.contentIntelligence?.citeabilityScore ?? null,
             pageTitle: result.pageTitle,
+            wafBlocked: result.wafBlocked ?? false,
             errorMessage: result.error ?? null,
             completedAt: new Date(),
           });

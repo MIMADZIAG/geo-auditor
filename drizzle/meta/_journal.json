@@ -127,6 +127,13 @@
       "when": 1774303597182,
       "tag": "0017_daily_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1774382383242,
+      "tag": "0018_jittery_raza",
+      "breakpoints": true
     }
   ]
 }

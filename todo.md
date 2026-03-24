@@ -816,3 +816,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Dodano obsługę gzip/deflate/brotli w fetchRobotsTxtNative
 - [x] Dodano 9 testów jednostkowych dla logiki robots.txt (141 testów passing)
 - [x] TypeScript: 0 błędów
+
+## 3 usprawnienia po bug fix robots.txt (2026-03-24)
+- [x] Fallback na natywny https gdy fetchWithRetry zwróci 449/403 (fetchHtmlNative + wafBlocked flag w ScrapedPage)
+- [x] WAF/CDN notice w Results.tsx gdy wafBlocked=true (amber banner z Shield icon)
+- [x] Rozszerzony SUBTYPE_MAP w llmRecommendations.ts (wszystkie typy z PARENT_MAP) + expandedSchemaTypes w LLM context
+- [x] DB schema: wafBlocked boolean w tabeli audits, migracja 0018 zastosowana
+- [x] TypeScript: 0 błędów, 141 testów passing

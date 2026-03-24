@@ -231,6 +231,17 @@ export default function Results() {
           citeabilityScore={contentIntelligence?.citeabilityScore}
         />
 
+        {/* ── WAF/CDN notice — shown when server blocked automated requests ── */}
+        {(audit as unknown as { wafBlocked?: boolean }).wafBlocked && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <p className="text-amber-200">
+              <span className="font-semibold">Uwaga: serwer chroniony WAF/CDN.</span>{" "}
+              Automatyczne żądania zostały zablokowane — część danych technicznych mogła być niedostępna podczas tego audytu. Wyniki mogą być niepełne. Spróbuj ponownie za kilka minut lub skontaktuj się z nami.
+            </p>
+          </div>
+        )}
+
         {/* ── 2. #1 Priority Fix — natychmiastowa wartość, "aha moment" ── */}
         {llmResult?.topPriority && (
           <TopPriorityBanner

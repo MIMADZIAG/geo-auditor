@@ -118,6 +118,7 @@ export interface ScrapedPage {
   title: string;
   error?: string;
   retryCount?: number;
+  wafBlocked?: boolean;
 }
 
 const FETCH_TIMEOUT_MS = 15000;
@@ -305,6 +306,74 @@ async function fetchRobotsTxtNative(url: string, timeoutMs: number): Promise<str
   });
 }
 
+/**
+ * Fetch HTML using Node.js native https/http module as a WAF bypass fallback.
+ * Used when undici (built-in fetch) returns 449/403 due to TLS fingerprinting.
+ * Handles redirects (up to 5) and gzip/deflate decompression.
+ */
+async function fetchHtmlNative(
+  url: string,
+  timeoutMs: number,
+  maxRedirects = 5
+): Promise<{ html: string; statusCode: number; finalUrl: string; headers: Record<string, string> } | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val: { html: string; statusCode: number; finalUrl: string; headers: Record<string, string> } | null) => {
+      if (!settled) { settled = true; resolve(val); }
+    };
+
+    function doRequest(currentUrl: string, redirectsLeft: number) {
+      const parsed = new URL(currentUrl);
+      const mod = parsed.protocol === "https:" ? nodeHttps : nodeHttp;
+      const req = (mod as typeof nodeHttps).request(
+        {
+          hostname: parsed.hostname,
+          port: parsed.port ? parseInt(parsed.port, 10) : parsed.protocol === "https:" ? 443 : 80,
+          path: parsed.pathname + (parsed.search ?? ""),
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate",
+            "Accept-Language": "pl-PL,pl;q=0.9,en;q=0.7",
+          },
+          timeout: timeoutMs,
+        },
+        (res) => {
+          const code = res.statusCode ?? 0;
+          // Follow redirects
+          if ([301, 302, 303, 307, 308].includes(code) && res.headers.location && redirectsLeft > 0) {
+            res.resume();
+            const loc = new URL(res.headers.location, currentUrl).href;
+            doRequest(loc, redirectsLeft - 1);
+            return;
+          }
+          const enc = (res.headers["content-encoding"] ?? "").toLowerCase();
+          let stream: NodeJS.ReadableStream = res;
+          if (enc === "gzip") stream = res.pipe(zlib.createGunzip());
+          else if (enc === "deflate") stream = res.pipe(zlib.createInflate());
+          else if (enc === "br") stream = res.pipe(zlib.createBrotliDecompress());
+          const chunks: Buffer[] = [];
+          stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+          stream.on("end", () => {
+            const respHeaders: Record<string, string> = {};
+            for (const [k, v] of Object.entries(res.headers)) {
+              if (typeof v === "string") respHeaders[k.toLowerCase()] = v;
+              else if (Array.isArray(v)) respHeaders[k.toLowerCase()] = v.join(", ");
+            }
+            done({ html: Buffer.concat(chunks).toString("utf-8"), statusCode: code, finalUrl: currentUrl, headers: respHeaders });
+          });
+          stream.on("error", () => done(null));
+        }
+      );
+      req.on("timeout", () => { req.destroy(); done(null); });
+      req.on("error", () => done(null));
+      req.end();
+    }
+    doRequest(url, maxRedirects);
+  });
+}
+
 export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
   const start = Date.now();
 
@@ -325,6 +394,7 @@ export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
   let finalUrl = url;
   let title = "";
   let retryCount = 0;
+  let wafBlocked = false;
 
   try {
     const { response, retryCount: rc } = await fetchWithRetry(url, FETCH_TIMEOUT_MS);
@@ -335,6 +405,21 @@ export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
       headers[k.toLowerCase()] = v;
     });
     html = await response.text();
+    // If undici returned 449/403 after all retries, try native https fallback
+    if ((statusCode === 449 || statusCode === 403) && html.length < 1000) {
+      console.log(`[Scraper] undici got HTTP ${statusCode} for ${url} — trying native https fallback`);
+      const nativeResult = await fetchHtmlNative(url, FETCH_TIMEOUT_MS);
+      if (nativeResult && nativeResult.statusCode >= 200 && nativeResult.statusCode < 300) {
+        html = nativeResult.html;
+        statusCode = nativeResult.statusCode;
+        finalUrl = nativeResult.finalUrl;
+        Object.assign(headers, nativeResult.headers);
+        console.log(`[Scraper] Native https fallback succeeded for ${url} (HTTP ${statusCode})`);
+      } else {
+        wafBlocked = true;
+        console.warn(`[Scraper] Native https fallback also failed for ${url} — WAF blocked`);
+      }
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return {
@@ -408,5 +493,6 @@ export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
     responseTimeMs: Date.now() - start,
     title,
     retryCount,
+    wafBlocked,
   };
 }

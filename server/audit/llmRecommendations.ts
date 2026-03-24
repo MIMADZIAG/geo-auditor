@@ -71,18 +71,45 @@ function buildPageContext(
   const detectedSchemaTypes: string[] = Array.from(new Set(rawSchemas.map((s) => s.type)));
 
   // Build a subtype-aware display: NewsArticle → Article (NewsArticle), etc.
+  // Mirrors PARENT_MAP in structuredData.ts — keep in sync.
   const SUBTYPE_MAP: Record<string, string> = {
     NewsArticle: "Article (NewsArticle)",
     BlogPosting: "Article (BlogPosting)",
     TechArticle: "Article (TechArticle)",
+    SatiricalArticle: "Article (SatiricalArticle)",
+    ScholarlyArticle: "Article (ScholarlyArticle)",
+    LocalBusiness: "Organization (LocalBusiness)",
+    Corporation: "Organization (Corporation)",
+    NGO: "Organization (NGO)",
+    GovernmentOrganization: "Organization (GovernmentOrganization)",
+    MedicalOrganization: "Organization (MedicalOrganization)",
+    SportsOrganization: "Organization (SportsOrganization)",
+    EducationalOrganization: "Organization (EducationalOrganization)",
     MedicalWebPage: "WebPage (MedicalWebPage)",
     AboutPage: "WebPage (AboutPage)",
     ContactPage: "WebPage (ContactPage)",
     ItemPage: "WebPage (ItemPage)",
     CollectionPage: "WebPage (CollectionPage)",
     SearchResultsPage: "WebPage (SearchResultsPage)",
+    HowToStep: "HowTo (HowToStep)",
+    HowToSection: "HowTo (HowToSection)",
   };
   const displaySchemaTypes = detectedSchemaTypes.map((t) => SUBTYPE_MAP[t] ?? t);
+  // Compute parent types so LLM knows Article is covered when NewsArticle is present
+  const PARENT_MAP: Record<string, string> = {
+    NewsArticle: "Article", BlogPosting: "Article", TechArticle: "Article",
+    SatiricalArticle: "Article", ScholarlyArticle: "Article",
+    LocalBusiness: "Organization", Corporation: "Organization", NGO: "Organization",
+    GovernmentOrganization: "Organization", MedicalOrganization: "Organization",
+    SportsOrganization: "Organization", EducationalOrganization: "Organization",
+    ItemPage: "WebPage", AboutPage: "WebPage", ContactPage: "WebPage",
+    CollectionPage: "WebPage", MedicalWebPage: "WebPage", SearchResultsPage: "WebPage",
+    HowToStep: "HowTo", HowToSection: "HowTo",
+  };
+  const expandedSchemaTypes = Array.from(new Set([
+    ...detectedSchemaTypes,
+    ...detectedSchemaTypes.map((t) => PARENT_MAP[t]).filter(Boolean) as string[],
+  ]));
 
   // Extract meta description
   const metaDesc =
@@ -112,7 +139,7 @@ ${headings.slice(0, 15).join("\n") || "(no headings found)"}
 
 --- DETECTED SCHEMA TYPES (already present on page — DO NOT suggest adding these) ---
 ${displaySchemaTypes.length > 0 ? displaySchemaTypes.join(", ") : "(none found)"}
-Raw types: ${detectedSchemaTypes.length > 0 ? detectedSchemaTypes.join(", ") : "(none found)"}
+All covered types (including parent types): ${expandedSchemaTypes.length > 0 ? expandedSchemaTypes.join(", ") : "(none found)"}
 
 --- EXISTING JSON-LD RAW (first 500 chars per block) ---
 ${jsonldBlocks.length > 0 ? jsonldBlocks.join("\n---\n") : "(none found)"}
