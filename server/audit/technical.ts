@@ -191,22 +191,41 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     value: hasSecurityHeaders,
   });
 
-  // 11. Hreflang / language targeting
-  const hasHreflang = $("link[rel='alternate'][hreflang]").length > 0;
+  // 11. Deklaracja języka (lang attr) — zawsze sprawdzamy
+  const hreflangLinks = $("link[rel='alternate'][hreflang]");
+  const hasHreflang = hreflangLinks.length > 0;
   const langAttr = $("html").attr("lang") ?? "";
   const hasLangDeclaration = !!langAttr;
   checks.push({
     id: "hreflang",
-    label: "Deklaracja języka",
-    status: hasLangDeclaration ? (hasHreflang ? "pass" : "warning") : "fail",
-    description: !hasLangDeclaration
-      ? "Brak atrybutu lang na <html>. Silniki AI używają sygnałów językowych do dopasowania treści do zapytań użytkowników w odpowiednim języku."
-      : hasHreflang
-      ? `Zadeklarowany język (lang='${langAttr}') z linkami hreflang — silny sygnał międzynarodowy.`
-      : `Zadeklarowany język (lang='${langAttr}'), ale brak linków hreflang. Jeśli kierujesz do wielu regionów, dodaj tagi hreflang.`,
+    label: "Deklaracja języka (lang)",
+    status: hasLangDeclaration ? "pass" : "fail",
+    description: hasLangDeclaration
+      ? `Atrybut lang='${langAttr}' obecny na <html> — silniki AI poprawnie rozpoznają język strony.`
+      : "Brak atrybutu lang na <html>. Silniki AI używają sygnałów językowych do dopasowania treści do zapytań użytkowników w odpowiednim języku.",
     impact: "medium",
     value: langAttr || null,
   });
+  // 11b. Hreflang — sprawdzamy TYLKO gdy tagi hreflang są obecne w HTML
+  if (hasHreflang) {
+    const hreflangValues = hreflangLinks.map((_, el) => $(el).attr("hreflang") ?? "").get();
+    const hasSelfOrDefault = hreflangValues.includes(langAttr) || hreflangValues.includes("x-default");
+    const hasDuplicates = hreflangValues.length !== new Set(hreflangValues).size;
+    const hreflangStatus = hasSelfOrDefault && !hasDuplicates ? "pass" : "warning";
+    const issues: string[] = [];
+    if (!hasSelfOrDefault) issues.push(`brak tagu hreflang='${langAttr}' lub 'x-default'`);
+    if (hasDuplicates) issues.push("zduplikowane wartości hreflang");
+    checks.push({
+      id: "hreflang_validity",
+      label: "Poprawność tagów hreflang",
+      status: hreflangStatus,
+      description: hreflangStatus === "pass"
+        ? `Znaleziono ${hreflangValues.length} tagów hreflang — konfiguracja wygląda poprawnie.`
+        : `Znaleziono ${hreflangValues.length} tagów hreflang, ale wykryto problemy: ${issues.join("; ")}.`,
+      impact: "medium",
+      value: hreflangValues.length,
+    });
+  }
 
   // 12. Sitemap reference in robots.txt
   const hasSitemapInRobots = page.robotsTxt
@@ -367,6 +386,7 @@ function computeScore(checks: AuditCheck[]): number {
     viewport: 4,
     security_headers: 2,
     hreflang: 5,
+    hreflang_validity: 4,
     sitemap_reference: 5,
     url_depth: 3,
     page_size: 3,

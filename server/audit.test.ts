@@ -1063,3 +1063,60 @@ describe("fetchRobotsTxtNative logic contract", () => {
     expect(sitemapCheck?.status).toBe("warning");
   });
 });
+
+// ─── Hreflang fix tests ───────────────────────────────────────────────────────
+describe("hreflang check (fixed behavior)", () => {
+  it("passes lang check and does NOT add hreflang_validity when no hreflang tags present", () => {
+    const page = mockPage(`<html lang="pl"><head><title>Test</title></head><body><p>Content</p></body></html>`);
+    const result = analyzeTechnical(page);
+    const hreflang = result.checks.find(c => c.id === "hreflang");
+    const hreflangValidity = result.checks.find(c => c.id === "hreflang_validity");
+    expect(hreflang?.status).toBe("pass");
+    expect(hreflangValidity).toBeUndefined(); // must NOT appear when no hreflang tags
+  });
+
+  it("adds hreflang_validity pass when hreflang tags are correct", () => {
+    const html = `<html lang="pl"><head>
+      <link rel="alternate" hreflang="pl" href="https://example.com/pl/"/>
+      <link rel="alternate" hreflang="x-default" href="https://example.com/"/>
+    </head><body><p>Content</p></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeTechnical(page);
+    const hreflangValidity = result.checks.find(c => c.id === "hreflang_validity");
+    expect(hreflangValidity).toBeDefined();
+    expect(hreflangValidity?.status).toBe("pass");
+  });
+
+  it("hreflang_validity warns when self-referencing hreflang is missing", () => {
+    const html = `<html lang="pl"><head>
+      <link rel="alternate" hreflang="en" href="https://example.com/en/"/>
+    </head><body><p>Content</p></body></html>`;
+    const page = mockPage(html);
+    const result = analyzeTechnical(page);
+    const hreflangValidity = result.checks.find(c => c.id === "hreflang_validity");
+    expect(hreflangValidity?.status).toBe("warning");
+  });
+
+  it("fails lang check when no lang attribute on html element", () => {
+    const page = mockPage(`<html><head><title>Test</title></head><body></body></html>`);
+    const result = analyzeTechnical(page);
+    const hreflang = result.checks.find(c => c.id === "hreflang");
+    expect(hreflang?.status).toBe("fail");
+  });
+});
+
+// ─── Welcome email tests ──────────────────────────────────────────────────────
+describe("sendWelcomeEmail", () => {
+  it("does not throw when RESEND_API_KEY is not set", async () => {
+    const original = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+    const { sendWelcomeEmail } = await import("./welcome-email");
+    await expect(sendWelcomeEmail("test@example.com", "Test User")).resolves.toBeUndefined();
+    if (original !== undefined) process.env.RESEND_API_KEY = original;
+  });
+
+  it("does not throw when email is empty string", async () => {
+    const { sendWelcomeEmail } = await import("./welcome-email");
+    await expect(sendWelcomeEmail("", "Test User")).resolves.toBeUndefined();
+  });
+});

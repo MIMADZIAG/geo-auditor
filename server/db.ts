@@ -21,13 +21,13 @@ export async function getDb() {
   return _db;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
+export async function upsertUser(user: InsertUser): Promise<{ isNew: boolean }> {
   if (!user.openId) throw new Error("User openId is required for upsert");
 
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert user: database not available");
-    return;
+    return { isNew: false };
   }
 
   try {
@@ -62,7 +62,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (!values.lastSignedIn) values.lastSignedIn = new Date();
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    // MySQL: INSERT ... ON DUPLICATE KEY UPDATE returns insertId > 0 for new rows, 0 for updates
+    const result = await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    const [res] = result as unknown as [{ insertId: number }];
+    return { isNew: (res?.insertId ?? 0) > 0 };
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;

@@ -823,3 +823,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Rozszerzony SUBTYPE_MAP w llmRecommendations.ts (wszystkie typy z PARENT_MAP) + expandedSchemaTypes w LLM context
 - [x] DB schema: wafBlocked boolean w tabeli audits, migracja 0018 zastosowana
 - [x] TypeScript: 0 błędów, 141 testów passing
+
+## 4 zadania (2026-03-24)
+- [x] Fix structuredData.ts: parsowanie wielu JSON-LD bloków + subtype mapping — potwierdzono że extractSchemas().each() już iteruje wszystkie bloki; PARENT_MAP i SUBTYPE_MAP rozszerzone w poprzednim sprincie
+- [x] Fix technical.ts: hreflang — check "Deklaracja języka" zawsze pass/fail dla lang attr; hreflang_validity TYLKO gdy tagi hreflang obecne w HTML
+- [x] Page Type Detector: potwierdzono że pageTypeDetector.ts istnieje i jest w pełni zintegrowany z audytem (article, product, product-listing, homepage, landing, service, generic)
+- [x] Email powitalny po rejestracji: sendWelcomeEmail() w welcome-email.ts, trigger w oauth.ts gdy isNew=true, upsertUser() zwraca {isNew}
+- [x] TypeScript: 0 błędów, 147 testów passing (+6 nowych)
