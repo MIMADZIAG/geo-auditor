@@ -1,5 +1,8 @@
 import * as cheerio from "cheerio";
 import puppeteer from "puppeteer-core";
+import * as nodeHttps from "https";
+import * as nodeHttp from "http";
+import * as zlib from "zlib";
 
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH ?? "/usr/bin/chromium-browser";
 const JS_FALLBACK_THRESHOLD = 500; // chars of visible text below which we try JS rendering
@@ -240,6 +243,68 @@ async function fetchWithRetry(
   return { response: lastResponse!, retryCount: MAX_RETRIES - 1 };
 }
 
+/**
+ * Fetch robots.txt using Node.js native https/http module instead of the built-in
+ * fetch() API (undici). This is necessary because undici automatically injects
+ * `sec-fetch-mode: cors` and uses a distinct TLS fingerprint that causes some
+ * WAF-protected servers (e.g. nginx on totalmoney.pl) to return HTTP 449
+ * ("Retry With"), which would incorrectly mark robots.txt as absent.
+ *
+ * The native https module sends a clean, minimal HTTP/1.1 request that passes
+ * WAF checks and correctly retrieves robots.txt on all tested servers.
+ * Handles gzip/deflate decompression transparently.
+ */
+async function fetchRobotsTxtNative(url: string, timeoutMs: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val: string | null) => {
+      if (!settled) { settled = true; resolve(val); }
+    };
+
+    const parsed = new URL(url);
+    const mod = parsed.protocol === "https:" ? nodeHttps : nodeHttp;
+    const req = (mod as typeof nodeHttps).request(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port
+          ? parseInt(parsed.port, 10)
+          : parsed.protocol === "https:"
+          ? 443
+          : 80,
+        path: parsed.pathname + (parsed.search ?? ""),
+        method: "GET",
+        headers: {
+          "User-Agent": "GEO-Auditor/1.0 (+https://geo-auditor.app)",
+          Accept: "text/plain, */*",
+          "Accept-Encoding": "gzip, deflate",
+        },
+        timeout: timeoutMs,
+      },
+      (res) => {
+        // Treat any non-2xx as "not found" (best-effort)
+        if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+          res.resume();
+          done(null);
+          return;
+        }
+        const enc = (res.headers["content-encoding"] ?? "").toLowerCase();
+        let stream: NodeJS.ReadableStream = res;
+        if (enc === "gzip") stream = res.pipe(zlib.createGunzip());
+        else if (enc === "deflate") stream = res.pipe(zlib.createInflate());
+        else if (enc === "br") stream = res.pipe(zlib.createBrotliDecompress());
+
+        const chunks: Buffer[] = [];
+        stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+        stream.on("end", () => done(Buffer.concat(chunks).toString("utf-8")));
+        stream.on("error", () => done(null));
+      }
+    );
+    req.on("timeout", () => { req.destroy(); done(null); });
+    req.on("error", () => done(null));
+    req.end();
+  });
+}
+
 export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
   const start = Date.now();
 
@@ -318,13 +383,14 @@ export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
     console.log(`[Scraper] Using JS-rendered HTML for ${url} (title: ${title})`);
   }
 
-  // Fetch robots.txt (best-effort, don't fail if unavailable)
+  // Fetch robots.txt using native Node.js https module.
+  // Reason: Node.js built-in fetch (undici) sends `sec-fetch-mode: cors` and has a
+  // different TLS fingerprint that causes some WAFs (e.g. nginx on totalmoney.pl) to
+  // respond with HTTP 449 (Retry With), making robots.txt appear absent even when it
+  // exists. Using the native https module avoids this fingerprinting issue entirely.
   let robotsTxt: string | null = null;
   try {
-    const robotsRes = await fetchWithTimeout(robotsTxtUrl, 5000, randomUserAgent());
-    if (robotsRes.ok) {
-      robotsTxt = await robotsRes.text();
-    }
+    robotsTxt = await fetchRobotsTxtNative(robotsTxtUrl, 5000);
   } catch {
     // robots.txt not available — that's fine
   }

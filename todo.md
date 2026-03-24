@@ -809,3 +809,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Każdy wpis historii: data, wynik, delta vs poprzedni, link do raportu
 - [x] Stan pusty: "Brak historii — pierwszy audyt zostanie wykonany automatycznie"
 - [x] TypeScript: 0 błędów, 132 testy passing
+
+## Bug Fix: Fałszywy brak robots.txt (2026-03-24)
+- [x] Zdiagnozowano przyczynę: Node.js fetch (undici) wysyła `sec-fetch-mode: cors` i ma inny fingerprint TLS — WAF totalmoney.pl odpowiada 449
+- [x] Naprawiono: zastąpiono fetch() dedykowaną funkcją fetchRobotsTxtNative() opartą na natywnym moduł https Node.js
+- [x] Dodano obsługę gzip/deflate/brotli w fetchRobotsTxtNative
+- [x] Dodano 9 testów jednostkowych dla logiki robots.txt (141 testów passing)
+- [x] TypeScript: 0 błędów

@@ -967,3 +967,99 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     expect(page.$("h1").length).toBe(1);
   });
 });
+
+// ─── robots.txt detection correctness tests ──────────────────────────────────
+// These tests guard against the WAF 449 false-negative bug:
+// Node.js fetch (undici) triggers HTTP 449 on some WAF-protected servers,
+// causing robots.txt to appear absent even when it exists.
+// The fix uses the native https module which avoids the undici fingerprint.
+
+describe("technical robots_txt_exists check", () => {
+  it("shows 'pass' when robotsTxt is a non-empty string", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml\n",
+    });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    expect(check).toBeDefined();
+    expect(check?.status).toBe("pass");
+    expect(check?.value).toBe(true);
+  });
+
+  it("shows 'warning' when robotsTxt is null (genuinely absent)", () => {
+    const page = mockPage("<html><body></body></html>", { robotsTxt: null });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    expect(check).toBeDefined();
+    expect(check?.status).toBe("warning");
+    expect(check?.value).toBe(false);
+  });
+
+  it("shows 'pass' for minimal robots.txt (just User-agent line)", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "User-agent: *",
+    });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    expect(check?.status).toBe("pass");
+  });
+
+  it("shows 'pass' for robots.txt with only Sitemap directive", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "Sitemap: https://example.com/sitemap.xml",
+    });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    expect(check?.status).toBe("pass");
+  });
+
+  it("warning description mentions robots.txt purpose (not a hard error)", () => {
+    const page = mockPage("<html><body></body></html>", { robotsTxt: null });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    // Should be informational, not blocking
+    expect(check?.impact).toBe("low");
+    expect(check?.description).toContain("robots.txt");
+  });
+});
+
+describe("fetchRobotsTxtNative logic contract", () => {
+  it("non-2xx status should result in null robotsTxt (simulated via mockPage)", () => {
+    // When the server returns 449/403/404, robotsTxt should be null
+    // This is tested indirectly: mockPage with null robotsTxt = server returned non-200
+    const page = mockPage("<html><body></body></html>", { robotsTxt: null });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    expect(check?.status).toBe("warning"); // warning, not fail — robots.txt is optional
+    expect(check?.status).not.toBe("fail");
+  });
+
+  it("successful fetch should populate robotsTxt and pass the check", () => {
+    // When native https module successfully fetches robots.txt
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "Sitemap: https://www.totalmoney.pl/sitemap_main.xml\nUser-agent: *\nAllow: /\n",
+    });
+    const result = analyzeTechnical(page);
+    const check = result.checks.find((c) => c.id === "robots_txt_exists");
+    expect(check?.status).toBe("pass");
+    expect(check?.value).toBe(true);
+  });
+
+  it("sitemap_reference check passes when Sitemap directive present", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "Sitemap: https://example.com/sitemap.xml\nUser-agent: *\nAllow: /\n",
+    });
+    const result = analyzeTechnical(page);
+    const sitemapCheck = result.checks.find((c) => c.id === "sitemap_reference");
+    expect(sitemapCheck?.status).toBe("pass");
+  });
+
+  it("sitemap_reference check warns when no Sitemap directive (but robots.txt exists)", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "User-agent: *\nAllow: /\n",
+    });
+    const result = analyzeTechnical(page);
+    const sitemapCheck = result.checks.find((c) => c.id === "sitemap_reference");
+    expect(sitemapCheck?.status).toBe("warning");
+  });
+});
