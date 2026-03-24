@@ -830,3 +830,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Page Type Detector: potwierdzono że pageTypeDetector.ts istnieje i jest w pełni zintegrowany z audytem (article, product, product-listing, homepage, landing, service, generic)
 - [x] Email powitalny po rejestracji: sendWelcomeEmail() w welcome-email.ts, trigger w oauth.ts gdy isNew=true, upsertUser() zwraca {isNew}
 - [x] TypeScript: 0 błędów, 147 testów passing (+6 nowych)
+
+## Homepage Conversion Redesign (2026-03-24)
+- [x] Social proof: sekcja z 3 testimonialami z kartami score przed/po
+- [x] Competitor comparison table: GEO-Auditor vs Semrush vs Ahrefs vs Profound
+- [x] Pricing: toggle miesięcznie/rocznie (-20%), anchor price, money-back 14 dni
+- [x] Footer: usunięto martwe linki (Dokumentacja, O nas, Blog) — zastąpiono Funkcje/Cennik/Dashboard/FAQ/Kontakt
+- [x] Copyright: zaktualizowano na 2026
+- [x] TypeScript: 0 błędów, 147 testów passing

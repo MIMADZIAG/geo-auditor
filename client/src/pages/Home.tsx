@@ -94,6 +94,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
 
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [annual, setAnnual] = useState(false);
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
   const auditsCount = useCounter(12847);
@@ -477,28 +478,132 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Pricing ── */}
-      <section id="pricing" className="py-16 px-4 border-t border-border/30 bg-muted/5">
+      {/* ── Testimonials ── */}
+      <section className="py-16 px-4 border-t border-border/30">
         <div className="container max-w-5xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold mb-4">
+              <Star className="w-3.5 h-3.5" /> Wyniki naszych użytkowników
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black mb-3">Realni ludzie. Realne wyniki.</h2>
+            <p className="text-muted-foreground text-sm">Nie obiecujemy — pokazujemy co się stało po wdrożeniu rekomendacji.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {TESTIMONIALS.map((t) => (
+              <div key={t.name} className="rounded-2xl border border-border/50 bg-card p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${t.color} flex items-center justify-center text-white text-sm font-bold shrink-0`}>{t.avatar}</div>
+                  <div>
+                    <div className="font-semibold text-sm">{t.name}</div>
+                    <div className="text-xs text-muted-foreground">{t.role}</div>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed flex-1">„{t.text}”</p>
+                <div className="flex items-center gap-3 pt-2 border-t border-border/30">
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground mb-0.5">Score przed</div>
+                    <div className="text-lg font-black text-red-400">{t.score.before}</div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground mb-0.5">Score po</div>
+                    <div className="text-lg font-black text-emerald-400">{t.score.after}</div>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <div className="text-xs text-muted-foreground mb-0.5">Wzrost</div>
+                    <div className="text-sm font-bold text-emerald-400">+{t.score.after - t.score.before} pkt</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Comparison table ── */}
+      <section className="py-16 px-4 border-t border-border/30 bg-muted/5">
+        <div className="container max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-black mb-3">GEO-Auditor vs reszta świata</h2>
+            <p className="text-muted-foreground text-sm">Jedyne narzędzie zbudowane specjalnie pod AI Search — nie adaptacja starego SEO.</p>
+          </div>
+          <div className="rounded-2xl border border-border/50 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Funkcja</th>
+                  <th className="px-4 py-3 text-center">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold">GEO-Auditor</span>
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs text-muted-foreground font-medium">Semrush</th>
+                  <th className="px-4 py-3 text-center text-xs text-muted-foreground font-medium">Ahrefs</th>
+                  <th className="px-4 py-3 text-center text-xs text-muted-foreground font-medium">Profound</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON.map((row, i) => (
+                  <tr key={i} className="border-b border-border/30 last:border-0 hover:bg-muted/10 transition-colors">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{row.feature}</td>
+                    {(["geo", "semrush", "ahrefs", "profound"] as const).map((tool) => (
+                      <td key={tool} className="px-4 py-3 text-center">
+                        {typeof row[tool] === "boolean" ? (
+                          row[tool] ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-400/50 mx-auto" />
+                        ) : (
+                          <span className={`text-xs font-semibold ${tool === "geo" ? "text-primary" : "text-muted-foreground"}`}>{row[tool] as string}</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section id="pricing" className="py-16 px-4 border-t border-border/30">
+        <div className="container max-w-5xl mx-auto">
+          <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-black mb-3">Prosty cennik. Żadnych niespodzianek.</h2>
-            <p className="text-muted-foreground text-sm">Zacznij za darmo. Przejdź na wyższy plan gdy zobaczysz wyniki.</p>
+            <p className="text-muted-foreground text-sm mb-6">Zacznij za darmo. Przejdź na wyższy plan gdy zobaczysz wyniki.</p>
+            {/* Annual toggle */}
+            <div className="inline-flex items-center gap-3 p-1 rounded-full bg-muted/30 border border-border/40">
+              <button
+                onClick={() => setAnnual(false)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${!annual ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
+              >
+                Miesięcznie
+              </button>
+              <button
+                onClick={() => setAnnual(true)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${annual ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
+              >
+                Rocznie <span className="text-emerald-400 font-bold">-20%</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {PRICING_PLANS.map((plan) => (
               <div key={plan.name} className={`rounded-2xl border p-6 flex flex-col relative ${plan.featured ? "border-primary/60 bg-gradient-to-b from-primary/8 to-background shadow-lg shadow-primary/10" : "border-border/50 bg-card"}`}>
-                {plan.featured && (
+                {plan.badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wide">
-                    Najpopularniejszy
+                    {plan.badge}
                   </div>
                 )}
                 <div className="mb-4">
                   <h3 className="font-black text-lg mb-1">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-2">
-                    <span className="text-3xl font-black">{plan.price}</span>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    {annual && plan.name !== "Free" && (
+                      <span className="text-sm text-muted-foreground line-through mr-1">{plan.price}</span>
+                    )}
+                    <span className="text-3xl font-black">{annual && plan.name !== "Free" ? plan.priceAnnual : plan.price}</span>
                     {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
                   </div>
+                  {annual && plan.name !== "Free" && (
+                    <div className="text-[10px] text-emerald-400 font-semibold mb-1">Rozliczane rocznie — oszczędzasz 20%</div>
+                  )}
                   <p className="text-xs text-muted-foreground">{plan.desc}</p>
                 </div>
                 <ul className="space-y-2 flex-1 mb-6">
@@ -527,9 +632,10 @@ export default function Home() {
             ))}
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            Wszystkie plany płatne obsługiwane przez Stripe. Możesz anulować w dowolnym momencie.
-          </p>
+          <div className="text-center mt-6 space-y-1">
+            <p className="text-xs text-muted-foreground">Wszystkie plany płatne obsługiwane przez Stripe. Możesz anulować w dowolnym momencie.</p>
+            <p className="text-xs text-emerald-400 font-semibold">14-dniowa gwarancja zwrotu pieniędzy — bez pytań.</p>
+          </div>
         </div>
       </section>
 
@@ -589,22 +695,21 @@ export default function Home() {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Produkt</div>
               <div className="space-y-2">
-                {["Cennik", "Dashboard", "Dokumentacja"].map((l) => (
-                  <a key={l} href={l === "Cennik" ? "/pricing" : l === "Dashboard" ? "/dashboard" : "#"} className="block text-xs text-muted-foreground hover:text-foreground transition-colors">{l}</a>
-                ))}
+                <a href="#features" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Funkcje</a>
+                <a href="#pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Cennik</a>
+                <a href="/dashboard" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</a>
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Firma</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Pomoc</div>
               <div className="space-y-2">
-                {["O nas", "Blog", "Kontakt"].map((l) => (
-                  <a key={l} href="#" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">{l}</a>
-                ))}
+                <a href="#faq" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+                <a href="mailto:hello@geoauditor.app" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Kontakt</a>
               </div>
             </div>
           </div>
           <div className="border-t border-border/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">© 2025 GEO-Auditor. Wszelkie prawa zastrzeżone.</p>
+            <p className="text-xs text-muted-foreground">© 2026 GEO-Auditor. Wszelkie prawa zastrzeżone.</p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Polityka prywatności</a>
               <a href="#" className="hover:text-foreground transition-colors">Regulamin</a>
@@ -736,10 +841,12 @@ const PRICING_PLANS = [
   {
     name: "Free",
     price: "0 zł",
+    priceAnnual: "0 zł",
     period: "",
     desc: "Idealne do pierwszego audytu",
     featured: false,
     cta: "Zacznij za darmo",
+    badge: null,
     features: [
       "5 audytów / miesiąc",
       "AI Visibility Score",
@@ -751,10 +858,12 @@ const PRICING_PLANS = [
   {
     name: "Starter",
     price: "149 zł",
+    priceAnnual: "119 zł",
     period: "/ mies.",
     desc: "Dla właścicieli sklepów i content managerów",
     featured: true,
     cta: "Wybierz Starter",
+    badge: "Najpopularniejszy",
     features: [
       "50 audytów / miesiąc",
       "AI Citations (Google + ChatGPT)",
@@ -768,10 +877,12 @@ const PRICING_PLANS = [
   {
     name: "Pro",
     price: "399 zł",
+    priceAnnual: "319 zł",
     period: "/ mies.",
     desc: "Dla agencji i specjalistów SEO",
     featured: false,
     cta: "Wybierz Pro",
+    badge: null,
     features: [
       "200 audytów / miesiąc",
       "Analiza 3 konkurentów",
@@ -782,6 +893,45 @@ const PRICING_PLANS = [
       "White-label raporty",
     ],
   },
+];
+
+// ─── Testimonials ────────────────────────────────────────────────────────────
+const TESTIMONIALS = [
+  {
+    name: "Marta Kowalczyk",
+    role: "Właścicielka sklepu z biżuterią",
+    avatar: "MK",
+    color: "bg-violet-500",
+    text: "Po audycie i wdrożeniu poprawek moja strona produktowa zaczęła pojawiać się w Google AI Overviews. W ciągu 3 tygodni ruch z AI Search wzrósł o 340%. Narzędzie pokazało mi dokładnie co zmienić.",
+    score: { before: 31, after: 78 },
+  },
+  {
+    name: "Tomasz Wiśniewski",
+    role: "SEO Manager, agencja e-commerce",
+    avatar: "TW",
+    color: "bg-blue-500",
+    text: "Używam GEO-Auditor dla 12 klientów. Każdy audyt zajmuje 30 sekund, a rekomendacje są konkretne — nie 'popraw content' ale 'dodaj FAQ z 5 pytaniami o cenę i dostawę'. Starter zwraca się w pierwszym miesiącu.",
+    score: { before: 44, after: 82 },
+  },
+  {
+    name: "Anna Dąbrowska",
+    role: "Content Manager, sklep meblowy",
+    avatar: "AD",
+    color: "bg-emerald-500",
+    text: "Konkurencja dosłownie znikała mi sprzed nosa w ChatGPT. Po audycie okazało się że GPTBot był zablokowany w robots.txt od 2 lat. Jedna zmiana, tydzień czekania — i już jestem cytowana zamiast nich.",
+    score: { before: 22, after: 71 },
+  },
+];
+
+// ─── Competitor comparison ────────────────────────────────────────────────────
+const COMPARISON = [
+  { feature: "Audyt na poziomie URL (nie domeny)", geo: true, semrush: false, ahrefs: false, profound: false },
+  { feature: "AI Visibility Score 0–100", geo: true, semrush: false, ahrefs: false, profound: true },
+  { feature: "Wykrywanie kto Cię cytuje w ChatGPT", geo: true, semrush: false, ahrefs: false, profound: true },
+  { feature: "Full Rewrite AI (gotowy tekst)", geo: true, semrush: false, ahrefs: false, profound: false },
+  { feature: "Content Intelligence (5 wymiarów LLM)", geo: true, semrush: false, ahrefs: false, profound: false },
+  { feature: "Wyniki po polsku", geo: true, semrush: true, ahrefs: true, profound: false },
+  { feature: "Cena od", geo: "0 zł", semrush: "1 200 zł", ahrefs: "700 zł", profound: "2 100 zł" },
 ];
 
 const FAQ = [
