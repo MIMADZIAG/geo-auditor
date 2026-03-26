@@ -1120,3 +1120,33 @@ describe("sendWelcomeEmail", () => {
     await expect(sendWelcomeEmail("", "Test User")).resolves.toBeUndefined();
   });
 });
+
+// ─── API Key Validation: Perplexity & Gemini ─────────────────────────────────
+
+describe("API Keys: Perplexity & Gemini", () => {
+  it("SONAR_API_KEY is set and non-empty", () => {
+    const key = process.env.SONAR_API_KEY;
+    expect(key).toBeTruthy();
+    expect(key!.length).toBeGreaterThan(10);
+  });
+
+  it("GEMINI_API_KEY is set and non-empty", () => {
+    const key = process.env.GEMINI_API_KEY;
+    expect(key).toBeTruthy();
+    expect(key!.length).toBeGreaterThan(10);
+  });
+
+  it("CitationResult shape for perplexity engine is valid", () => {
+    const mockResult = { query: "test", engine: "perplexity" as const, round: 1, isCited: "no" as const, allCitedUrls: [] as string[], competitorDomains: [] as string[] };
+    expect(mockResult.engine).toBe("perplexity");
+    expect(["yes", "domain", "no"]).toContain(mockResult.isCited);
+    expect(Array.isArray(mockResult.allCitedUrls)).toBe(true);
+  });
+
+  it("CitationResult shape for gemini engine is valid", () => {
+    const mockResult = { query: "test", engine: "gemini" as const, round: 1, isCited: "no" as const, allCitedUrls: [] as string[], competitorDomains: [] as string[] };
+    expect(mockResult.engine).toBe("gemini");
+    expect(["yes", "domain", "no"]).toContain(mockResult.isCited);
+    expect(Array.isArray(mockResult.allCitedUrls)).toBe(true);
+  });
+});

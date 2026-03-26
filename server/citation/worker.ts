@@ -27,7 +27,7 @@ import { eq } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CitationEngine = "chatgpt" | "google";
+export type CitationEngine = "chatgpt" | "google" | "perplexity" | "gemini";
 
 export interface CitationResult {
   query: string;
@@ -63,6 +63,8 @@ export interface CitationJobResult {
   summary: {
     chatgpt: { cited: number; domainCited: number; total: number; queriesWithAI: number };
     google: { cited: number; domainCited: number; total: number; queriesWithAI: number };
+    perplexity: { cited: number; domainCited: number; total: number; queriesWithAI: number };
+    gemini: { cited: number; domainCited: number; total: number; queriesWithAI: number };
   };
   allCompetitorDomains: { domain: string; count: number }[]; // ranked by frequency
 }
@@ -710,6 +712,125 @@ async function checkGoogleAIOverview(
   }
 }
 
+// ─── Engine 3: Perplexity Sonar ─────────────────────────────────────────────
+
+async function checkPerplexity(query: string, targetUrl: string, round: number): Promise<CitationResult> {
+  const apiKey = process.env.SONAR_API_KEY;
+  if (!apiKey) {
+    return { query, engine: "perplexity", round, isCited: "no", allCitedUrls: [], competitorDomains: [], snippet: "Perplexity API key not configured" };
+  }
+  const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
+  const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
+  try {
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "sonar-pro",
+        messages: [{ role: "user", content: query }],
+        return_citations: true,
+        return_related_questions: false,
+        search_recency_filter: "month",
+      }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      console.warn(`[Citation/Perplexity] API error ${response.status}: ${err.slice(0, 200)}`);
+      return { query, engine: "perplexity", round, isCited: "no", allCitedUrls: [], competitorDomains: [] };
+    }
+    const data = await response.json();
+    const message = data.choices?.[0]?.message;
+    const responseText: string = message?.content ?? "";
+    // Perplexity returns citations as array of URLs in data.citations
+    const rawCitations: string[] = Array.isArray(data.citations) ? data.citations : [];
+    const allCitedUrls: string[] = rawCitations
+      .filter((u: string) => typeof u === "string" && u.startsWith("http"))
+      .map((u: string) => u.split("#")[0].replace(/\/$/, ""))
+      .filter((u: string, i: number, arr: string[]) => arr.indexOf(u) === i);
+    const competitorDomains = extractCompetitorDomains(allCitedUrls, targetDomain);
+    const exactCitation = allCitedUrls.find((u) => {
+      try {
+        const cu = new URL(u);
+        return cu.hostname.replace("www.", "") === targetDomain && cu.pathname.replace(/\/$/, "") === targetPath;
+      } catch { return false; }
+    });
+    if (exactCitation) {
+      return { query, engine: "perplexity", round, isCited: "yes", citedUrl: exactCitation, allCitedUrls, competitorDomains, hasAIOverview: true, snippet: extractSnippet(responseText, targetDomain), responseText: responseText.slice(0, 1500) };
+    }
+    const domainCitation = allCitedUrls.find((u) => { try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; } });
+    if (domainCitation) {
+      return { query, engine: "perplexity", round, isCited: "domain", domainCitedUrl: domainCitation, allCitedUrls, competitorDomains, hasAIOverview: true, snippet: extractSnippet(responseText, targetDomain), responseText: responseText.slice(0, 1500) };
+    }
+    return { query, engine: "perplexity", round, isCited: "no", allCitedUrls, competitorDomains, hasAIOverview: allCitedUrls.length > 0, responseText: responseText.slice(0, 800) };
+  } catch (e) {
+    console.warn("[Citation/Perplexity] Error:", e);
+    return { query, engine: "perplexity", round, isCited: "no", allCitedUrls: [], competitorDomains: [] };
+  }
+}
+
+// ─── Engine 4: Google Gemini (grounding) ─────────────────────────────────────
+
+async function checkGemini(query: string, targetUrl: string, round: number): Promise<CitationResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { query, engine: "gemini", round, isCited: "no", allCitedUrls: [], competitorDomains: [], snippet: "Gemini API key not configured" };
+  }
+  const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
+  const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: query }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+        }),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.text();
+      console.warn(`[Citation/Gemini] API error ${response.status}: ${err.slice(0, 200)}`);
+      return { query, engine: "gemini", round, isCited: "no", allCitedUrls: [], competitorDomains: [] };
+    }
+    const data = await response.json();
+    const candidate = data.candidates?.[0];
+    const responseText: string = candidate?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
+    // Extract grounding sources from groundingMetadata
+    const groundingChunks: Array<{ web?: { uri?: string } }> = candidate?.groundingMetadata?.groundingChunks ?? [];
+    const searchEntryPoint = candidate?.groundingMetadata?.searchEntryPoint;
+    const allCitedUrls: string[] = [];
+    for (const chunk of groundingChunks) {
+      const uri = chunk.web?.uri;
+      if (uri && uri.startsWith("http")) {
+        const clean = uri.split("#")[0].replace(/\/$/, "");
+        if (!allCitedUrls.includes(clean)) allCitedUrls.push(clean);
+      }
+    }
+    const hasGrounding = allCitedUrls.length > 0 || !!searchEntryPoint;
+    const competitorDomains = extractCompetitorDomains(allCitedUrls, targetDomain);
+    const exactCitation = allCitedUrls.find((u) => {
+      try {
+        const cu = new URL(u);
+        return cu.hostname.replace("www.", "") === targetDomain && cu.pathname.replace(/\/$/, "") === targetPath;
+      } catch { return false; }
+    });
+    if (exactCitation) {
+      return { query, engine: "gemini", round, isCited: "yes", citedUrl: exactCitation, allCitedUrls, competitorDomains, hasAIOverview: true, snippet: extractSnippet(responseText, targetDomain), responseText: responseText.slice(0, 1500) };
+    }
+    const domainCitation = allCitedUrls.find((u) => { try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; } });
+    if (domainCitation) {
+      return { query, engine: "gemini", round, isCited: "domain", domainCitedUrl: domainCitation, allCitedUrls, competitorDomains, hasAIOverview: true, snippet: extractSnippet(responseText, targetDomain), responseText: responseText.slice(0, 1500) };
+    }
+    return { query, engine: "gemini", round, isCited: "no", allCitedUrls, competitorDomains, hasAIOverview: hasGrounding, responseText: responseText.slice(0, 800) };
+  } catch (e) {
+    console.warn("[Citation/Gemini] Error:", e);
+    return { query, engine: "gemini", round, isCited: "no", allCitedUrls: [], competitorDomains: [] };
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function extractSnippet(text: string, domain: string): string {
@@ -804,6 +925,36 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
           }
           roundResults.push(chatgptResult);
           allResults.push(chatgptResult);
+
+          // Perplexity Sonar — round 1 only (cost control)
+          const perplexityCacheKey = makeCacheKey(query, "perplexity");
+          const perplexityCached = await getCachedResult(perplexityCacheKey);
+          let perplexityResult: CitationResult;
+          if (perplexityCached) {
+            console.log(`[Citation] Cache hit: perplexity / "${query.slice(0, 40)}"`);
+            perplexityResult = { ...perplexityCached, round };
+          } else {
+            perplexityResult = await checkPerplexity(query, job.url, round);
+            await saveResult(jobId, job.auditId, perplexityResult, perplexityCacheKey);
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+          roundResults.push(perplexityResult);
+          allResults.push(perplexityResult);
+
+          // Gemini grounding — round 1 only (cost control)
+          const geminiCacheKey = makeCacheKey(query, "gemini");
+          const geminiCached = await getCachedResult(geminiCacheKey);
+          let geminiResult: CitationResult;
+          if (geminiCached) {
+            console.log(`[Citation] Cache hit: gemini / "${query.slice(0, 40)}"`);
+            geminiResult = { ...geminiCached, round };
+          } else {
+            geminiResult = await checkGemini(query, job.url, round);
+            await saveResult(jobId, job.auditId, geminiResult, geminiCacheKey);
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+          roundResults.push(geminiResult);
+          allResults.push(geminiResult);
         }
       }
 
@@ -827,9 +978,11 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
     const summary = {
       chatgpt: { cited: 0, domainCited: 0, total: 0, queriesWithAI: 0 },
       google: { cited: 0, domainCited: 0, total: 0, queriesWithAI: 0 },
+      perplexity: { cited: 0, domainCited: 0, total: 0, queriesWithAI: 0 },
+      gemini: { cited: 0, domainCited: 0, total: 0, queriesWithAI: 0 },
     };
     for (const r of allResults) {
-      const eng = r.engine as "chatgpt" | "google";
+      const eng = r.engine as "chatgpt" | "google" | "perplexity" | "gemini";
       summary[eng].total++;
       if (r.isCited === "yes") summary[eng].cited++;
       if (r.isCited === "domain") summary[eng].domainCited++;

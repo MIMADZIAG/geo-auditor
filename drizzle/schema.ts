@@ -153,7 +153,7 @@ export const citationChecks = mysqlTable("citation_checks", {
   jobId: int("jobId").notNull(),
   auditId: int("auditId").notNull(),
   query: text("query").notNull(),
-  engine: mysqlEnum("engine", ["chatgpt", "google"]).notNull(),
+  engine: mysqlEnum("engine", ["chatgpt", "google", "perplexity", "gemini"]).notNull(),
   isCited: mysqlEnum("isCited", ["yes", "no", "domain"]).default("no").notNull(),
   // Exact URL that was found in citations
   citedUrl: text("citedUrl"),

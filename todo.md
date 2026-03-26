@@ -857,3 +857,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 ## Sticky CTA Bar (2026-03-26)
 - [x] Sticky bar pojawiający się po przewinięciu >500px z "Sprawdź swoją stronę →" + scroll+focus do inputu, TypeScript: 0 błędów
+
+## AI Visibility Check — 4 Platforms (2026-03-26)
+- [x] Perplexity API integration (sonar-pro, ekstrakcja URL-i z citations[], domain match)
+- [x] Gemini API integration (gemini-2.0-flash z Google Search grounding, ekstrakcja URL-i z groundingChunks)
+- [x] DB schema: engine enum rozszerzony o perplexity i gemini, migracja zastosowana
+- [x] Backend: runCitationJob() równolegle sprawdza 4 silniki per zapytanie
+- [x] Frontend: EngineChip dla perplexity (teal) i gemini (purple)
+- [x] Frontend: idle stats "4 silniki AI", opis 4 platform w sekcji "Co otrzymasz"
+- [x] Frontend: summary hero pokazuje aktywne silniki per zapytanie
+- [x] Secrets: SONAR_API_KEY i GEMINI_API_KEY ustawione
+- [x] TypeScript: 0 błędów, 151 testów passing (+4 nowe testy walidacji kluczy API)

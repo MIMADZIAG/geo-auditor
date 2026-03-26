@@ -1,0 +1,1 @@
+ALTER TABLE `citation_checks` MODIFY COLUMN `engine` enum('chatgpt','google','perplexity','gemini') NOT NULL;

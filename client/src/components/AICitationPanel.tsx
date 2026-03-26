@@ -23,7 +23,7 @@ import { Link } from "wouter";
 interface CitationCheck {
   id: number;
   query: string;
-  engine: "chatgpt" | "google";
+  engine: "chatgpt" | "google" | "perplexity" | "gemini";
   round: number;
   isCited: "yes" | "domain" | "no";
   citedUrl?: string | null;
@@ -148,11 +148,23 @@ function StatusBadge({ status, small }: { status: "yes" | "domain" | "no"; small
 
 // ─── Engine Icon ──────────────────────────────────────────────────────────────
 
-function EngineChip({ engine }: { engine: "chatgpt" | "google" }) {
+function EngineChip({ engine }: { engine: "chatgpt" | "google" | "perplexity" | "gemini" }) {
   if (engine === "chatgpt") return (
     <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[#10a37f]/15 text-[#10a37f] border border-[#10a37f]/20 font-medium">
       <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-[#10a37f]"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.403-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
       ChatGPT
+    </span>
+  );
+  if (engine === "perplexity") return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[#20b2aa]/15 text-[#20b2aa] border border-[#20b2aa]/20 font-medium">
+      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="currentColor"><path d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10zm-10 6a6 6 0 100-12 6 6 0 000 12zm0-2a4 4 0 110-8 4 4 0 010 8zm0-2a2 2 0 100-4 2 2 0 000 4z"/></svg>
+      Perplexity
+    </span>
+  );
+  if (engine === "gemini") return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/20 font-medium">
+      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="currentColor"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+      Gemini
     </span>
   );
   return (
@@ -180,6 +192,8 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
   const status = getQueryStatus(checks);
   const googleCheck = checks.find(c => c.engine === "google");
   const chatgptCheck = checks.find(c => c.engine === "chatgpt");
+  const perplexityCheck = checks.find(c => c.engine === "perplexity");
+  const geminiCheck = checks.find(c => c.engine === "gemini");
   const allCitedUrls = Array.from(new Set(checks.flatMap(c => c.allCitedUrls ?? [])));
   const competitors = allCitedUrls
     .filter(u => {
@@ -227,6 +241,8 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
             <StatusBadge status={status} small />
             {googleCheck && <EngineChip engine="google" />}
             {chatgptCheck && <EngineChip engine="chatgpt" />}
+            {perplexityCheck && <EngineChip engine="perplexity" />}
+            {geminiCheck && <EngineChip engine="gemini" />}
             {googleCheck?.hasAIOverview === false && (
               <span className="text-[10px] text-zinc-600">brak AI Overview</span>
             )}
@@ -643,7 +659,7 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
             <div>
               <h2 className="text-base font-bold text-white">AI Visibility Check</h2>
               <p className="text-sm text-zinc-400 mt-1">
-                Sprawdź, czy Twoja strona pojawia się w odpowiedziach ChatGPT Search i Google AI Overview — i kto jest cytowany zamiast Ciebie.
+                Sprawdź, czy Twoja strona pojawia się w odpowiedziach ChatGPT, Google AI Overviews, Perplexity i Gemini — i kto jest cytowany zamiast Ciebie.
               </p>
             </div>
           </div>
@@ -655,7 +671,7 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
             {[
               { val: "5", label: "rund max" },
               { val: "25", label: "zapytań max" },
-              { val: "2", label: "silniki AI" },
+              { val: "4", label: "silniki AI" },
             ].map(({ val, label }) => (
               <div key={label} className="bg-zinc-800/50 border border-white/6 rounded-xl p-3">
                 <p className="text-xl font-bold text-white">{val}</p>
@@ -666,7 +682,7 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
 
           <div className="bg-zinc-800/30 border border-white/6 rounded-xl p-4 text-xs text-zinc-400 space-y-1.5">
             <p className="font-semibold text-zinc-300">Co otrzymasz:</p>
-            <p>✓ Pełne zapytania użyte do sprawdzenia (widoczne w wynikach)</p>
+            <p>✓ Sprawdzenie w 4 silnikach AI: ChatGPT, Google AI Overviews, Perplexity, Gemini</p>
             <p>✓ Status cytowania dla każdego zapytania (dokładny URL / inna podstrona / brak)</p>
             <p>✓ Lista domen cytowanych zamiast Ciebie (plan Pro)</p>
             <p>✓ Fragmenty odpowiedzi AI z Twoją domeną</p>
@@ -799,9 +815,9 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
           </div>
           <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
             <p className="text-sm font-bold text-white">
-              {checks.filter(c => c.engine === "google" && c.hasAIOverview).length}
+              {["chatgpt","google","perplexity","gemini"].filter(e => checks.some(c => c.engine === e)).length}
             </p>
-            <p className="text-xs text-zinc-500">AI Overviews</p>
+            <p className="text-xs text-zinc-500">silniki AI</p>
           </div>
           <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
             <p className="text-sm font-bold text-white">
