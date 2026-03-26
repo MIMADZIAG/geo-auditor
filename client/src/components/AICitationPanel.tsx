@@ -430,16 +430,36 @@ function RoundSection({ round, checks, isPro, isLast }: {
   );
 }
 
+// ─── Competitor Engine Badges ─────────────────────────────────────────────────
+// For each competitor domain, find which engines cited it
+function getEnginesForDomain(checks: CitationCheck[], domain: string): ("chatgpt" | "google" | "perplexity" | "gemini")[] {
+  const engines = new Set<"chatgpt" | "google" | "perplexity" | "gemini">();
+  for (const c of checks) {
+    for (const u of (c.allCitedUrls ?? [])) {
+      try {
+        const h = new URL(u).hostname.replace("www.", "");
+        if (h === domain) engines.add(c.engine);
+      } catch {}
+    }
+  }
+  return Array.from(engines);
+}
+
 // ─── Global Competitor Summary ────────────────────────────────────────────────
+
+const TOP_N = 5;
 
 function CompetitorSummary({ checks, targetDomain, isPro }: {
   checks: CitationCheck[];
   targetDomain: string;
   isPro: boolean;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const competitors = rankCompetitors(checks, targetDomain);
   if (competitors.length === 0) return null;
   const maxCount = competitors[0]?.count ?? 1;
+  const visible = showAll ? competitors : competitors.slice(0, TOP_N);
+  const hidden = competitors.length - TOP_N;
 
   return (
     <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
@@ -462,9 +482,9 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
 
       {!isPro ? (
         <div className="relative">
-          {/* Blurred preview */}
+          {/* Blurred preview — always show top 5 rows */}
           <div className="blur-sm pointer-events-none select-none space-y-2" aria-hidden>
-            {competitors.slice(0, 6).map((d) => (
+            {competitors.slice(0, TOP_N).map((d) => (
               <div key={d.domain} className="flex items-center gap-3">
                 <span className="text-xs text-zinc-300 flex-1 truncate">{d.domain}</span>
                 <div className="h-1.5 bg-purple-500/50 rounded-full" style={{ width: `${Math.round((d.count / maxCount) * 100)}px` }} />
@@ -490,30 +510,64 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {competitors.map((d, i) => (
-            <div key={d.domain} className="flex items-center gap-3">
-              <span className="text-xs text-zinc-600 w-4 text-right">{i + 1}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <div className="flex flex-col min-w-0 flex-1 mr-2">
-                    <a href={d.url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-zinc-300 hover:text-white font-medium transition-colors truncate"
-                      title={d.url}>
-                      {d.url}
-                    </a>
+        <div>
+          <div className="space-y-2">
+            {visible.map((d, i) => {
+              const engines = getEnginesForDomain(checks, d.domain);
+              return (
+                <div key={d.domain} className="flex items-start gap-3 py-1.5 border-b border-white/4 last:border-0">
+                  {/* Rank */}
+                  <span className="text-xs text-zinc-600 w-4 text-right flex-shrink-0 mt-0.5">{i + 1}</span>
+                  {/* Main content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Domain + count */}
+                    <div className="flex items-center justify-between mb-1">
+                      <a href={d.url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-zinc-200 hover:text-white font-semibold transition-colors truncate mr-2"
+                        title={d.url}>
+                        {d.domain}
+                      </a>
+                      <span className="text-xs text-zinc-500 flex-shrink-0 font-mono">{d.count}×</span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden mb-1.5">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all"
+                        style={{ width: `${Math.round((d.count / maxCount) * 100)}%` }}
+                      />
+                    </div>
+                    {/* Engine badges — which AI cited this domain */}
+                    {engines.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[9px] text-zinc-600 mr-0.5">cytowane przez:</span>
+                        {engines.map(e => <EngineChip key={e} engine={e} />)}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-xs text-zinc-500 flex-shrink-0">{d.count}×</span>
                 </div>
-                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full"
-                    style={{ width: `${Math.round((d.count / maxCount) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
+
+          {/* Show more / less toggle */}
+          {hidden > 0 && (
+            <button
+              onClick={() => setShowAll(v => !v)}
+              className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors py-2 rounded-lg hover:bg-white/4 border border-dashed border-white/10 hover:border-white/20"
+            >
+              {showAll ? (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                  Zwiń listę
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  Pokaż {hidden} więcej {hidden === 1 ? "domenę" : hidden < 5 ? "domeny" : "domen"}
+                </>
+              )}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -994,37 +1048,73 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
   return (
     <div className="space-y-4">
       {/* Summary hero */}
-      <div className={`bg-zinc-900/40 border rounded-2xl p-5 ${
-        foundCitation ? "border-emerald-500/30" : "border-red-500/20"
-      }`}>
-        <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            foundCitation ? "bg-emerald-500/20 border border-emerald-500/30" : "bg-red-500/15 border border-red-500/25"
+      {(() => {
+        // Collect which engines cited the target (exact or domain)
+        const citingEngines = Array.from(
+          new Set(
+            checks
+              .filter(c => c.isCited === "yes" || c.isCited === "domain")
+              .map(c => c.engine)
+          )
+        ) as ("chatgpt" | "google" | "perplexity" | "gemini")[];
+
+        // Build a human-readable sentence: "Google AI Overviews i Perplexity cytują Twoją stronę"
+        const engineLabels: Record<string, string> = {
+          google: "Google AI Overviews",
+          perplexity: "Perplexity",
+          gemini: "Gemini",
+          chatgpt: "ChatGPT",
+        };
+        const citingNames = citingEngines.map(e => engineLabels[e]);
+        const citingSentence = citingNames.length === 1
+          ? `${citingNames[0]} cytuje Twoją stronę`
+          : citingNames.length === 2
+          ? `${citingNames[0]} i ${citingNames[1]} cytują Twoją stronę`
+          : `${citingNames.slice(0, -1).join(", ")} i ${citingNames[citingNames.length - 1]} cytują Twoją stronę`;
+
+        return (
+          <div className={`bg-zinc-900/40 border rounded-2xl p-5 ${
+            foundCitation ? "border-emerald-500/30" : "border-red-500/20"
           }`}>
-            {foundCitation ? (
-              <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            )}
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                foundCitation ? "bg-emerald-500/20 border border-emerald-500/30" : "bg-red-500/15 border border-red-500/25"
+              }`}>
+                {foundCitation ? (
+                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-base font-bold text-white">
+                  {foundCitation
+                    ? "Twoja strona jest widoczna w AI Search ✅"
+                    : "Twoja strona nie jest widoczna w AI Search ❌"}
+                </h2>
+                {foundCitation && citingEngines.length > 0 ? (
+                  <>
+                    <p className="text-sm text-zinc-400 mt-1">{citingSentence}.</p>
+                    {/* Engine badges row */}
+                    <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                      <span className="text-[10px] text-zinc-600 mr-0.5">Wykryto w:</span>
+                      {citingEngines.map(e => <EngineChip key={e} engine={e} />)}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-zinc-400 mt-1">
+                    Sprawdziliśmy Twoją stronę w 4 silnikach AI. Twoja domena nie pojawiła się w żadnej z przeanalizowanych odpowiedzi.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-bold text-white">
-              {foundCitation
-                ? "Twoja strona jest widoczna w AI Search ✅"
-                : "Twoja strona nie jest widoczna w AI Search ❌"}
-            </h2>
-            <p className="text-sm text-zinc-400 mt-1">
-              {foundCitation
-                ? "Co najmniej jeden silnik AI cytuje Twoją stronę w odpowiedziach na pytania użytkowników."
-                : "Sprawdziliśmy Twoją stronę w 4 silnikach AI. Twoja domena nie pojawiła się w żadnej z przeanalizowanych odpowiedzi."}
-            </p>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Queries checked — global list without round breakdown */}
       <QueriesCheckedPanel checks={checks} isPro={isPro} />

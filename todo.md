@@ -916,3 +916,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Integracja w generateEngineQueries(): warianty jako dodatkowe zapytania per engine
 - [x] Deduplikacja + limit (max 8 zapytań per engine per runda)
 - [x] Testy jednostkowe: 27 testów (178 łącznie), 100% passing
+
+## AI Visibility: Top5 competitors + engine badge (2026-03-27)
+- [x] CompetitorSummary: top 5 widoczne, reszta za przyciskiem "Pokaż X więcej domen" + "Zwiń listę"
+- [x] Per-competitor: engine badges "cytowane przez: [Google AI] [Perplexity]"
+- [x] Summary hero: zdanie + engine badges "Wykryto w: [Google AI] [ChatGPT]" gdy cytowanie znalezione
