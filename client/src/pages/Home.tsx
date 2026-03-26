@@ -115,8 +115,44 @@ export default function Home() {
 
   const isLoading = auditMutation.isPending;
 
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowStickyBar(window.scrollY > 500);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => document.querySelector<HTMLInputElement>("input[type='text']")?.focus(), 500);
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+
+      {/* ── Sticky CTA Bar ── */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
+          showStickyBar ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="bg-background/95 backdrop-blur-xl border-t border-border/50 shadow-2xl shadow-black/20">
+          <div className="container max-w-4xl mx-auto py-3 px-4 flex items-center justify-between gap-4">
+            <p className="text-sm font-semibold hidden sm:block">
+              Sprawdź, czy AI Cię cytuje —{" "}
+              <span className="text-muted-foreground font-normal">bezpłatnie, bez rejestracji</span>
+            </p>
+            <Button
+              onClick={scrollToTop}
+              size="sm"
+              className="gap-2 shrink-0 font-bold px-6"
+            >
+              <Search className="w-4 h-4" />
+              Sprawdź swoją stronę →
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* ── Navigation ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/85 backdrop-blur-xl">

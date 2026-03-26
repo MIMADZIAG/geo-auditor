@@ -854,3 +854,6 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Stats section zastąpiony 3-kolumnowym Persuasion Strip (AI Search zmienia zasady / Audyt na poziomie URL / Konkretne kroki)
 - [x] Hero copy przepisany: nowy headline "AI odpowiada na pytania Twoich klientów. Bez Ciebie.", nowy subheadline i body
 - [x] TypeScript: 0 błędów
+
+## Sticky CTA Bar (2026-03-26)
+- [x] Sticky bar pojawiający się po przewinięciu >500px z "Sprawdź swoją stronę →" + scroll+focus do inputu, TypeScript: 0 błędów
