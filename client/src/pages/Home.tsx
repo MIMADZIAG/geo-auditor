@@ -159,7 +159,7 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-semibold mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                94% stron jest niewidocznych dla AI — sprawdź czy Twoja też
+                Twoja strona może być niewidoczna dla AI — sprawdź to teraz
               </div>
 
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-[1.06]">
@@ -168,11 +168,11 @@ export default function Home() {
               </h1>
 
               <p className="text-lg text-muted-foreground/90 font-medium mb-3 leading-snug max-w-lg">
-                ChatGPT i Google AI ignorują Cię i cytują konkurencję.
+                ChatGPT, Gemini i Perplexity ignorują Cię i cytują konkurencję.
               </p>
 
               <p className="text-sm text-muted-foreground mb-8 leading-relaxed max-w-lg">
-                Wklej URL podstrony. W 30 sekund dowiesz się kto pojawia się zamiast Ciebie — i dostaniesz gotowy tekst, który to zmieni.
+                Wklej URL podstrony. Dowiesz się kto pojawia się zamiast Ciebie — i dostaniesz gotowy tekst, który to zmieni.
               </p>
 
               {/* URL Input */}
@@ -183,7 +183,7 @@ export default function Home() {
                   </div>
                   <Input
                     type="text"
-                    placeholder="https://twojasklepinternetowy.pl/produkt"
+                    placeholder="https://twojadomena.pl/strona"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/50"
@@ -198,7 +198,7 @@ export default function Home() {
                   </Button>
                 </div>
                 <div className="flex items-center gap-4 mt-3">
-                  <p className="text-xs text-muted-foreground">✓ Bezpłatnie · ✓ Bez rejestracji · ✓ Wynik w 30 sekund</p>
+                  <p className="text-xs text-muted-foreground">✓ Bezpłatnie · ✓ Bez rejestracji · ✓ Wynik w kilkadziesiąt sekund</p>
                 </div>
               </form>
 
@@ -221,7 +221,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <BadgeCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>ChatGPT · Perplexity · Google AI</span>
+                  <span>ChatGPT · Perplexity · Gemini · Claude</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <BadgeCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -240,7 +240,7 @@ export default function Home() {
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">twojasklep.pl/produkt-xyz</span>
+                  <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">twojadomena.pl/strona</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">Gotowe</span>
                 </div>
 
@@ -665,7 +665,7 @@ export default function Home() {
             <span className="text-primary">Ty możesz wiedzieć za darmo.</span>
           </h2>
           <p className="text-muted-foreground mb-8 leading-relaxed">
-            Jeden URL. 30 sekund. Pełna analiza — bez rejestracji, bez karty.<br />
+            Jeden URL. Kilkadziesiąt sekund. Pełna analiza — bez rejestracji, bez karty.<br />
             Dowiedz się, dlaczego AI Cię ignoruje i co konkretnie zmienić.
           </p>
           <Button size="lg" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => document.querySelector("input")?.focus(), 400); }} className="gap-2 px-10 h-12 text-base font-bold">
@@ -738,9 +738,9 @@ const MOCK_HERO_ISSUES = [
 ];
 
 const MOCK_COMPETITORS = [
-  { url: "z500.pl/domy-parterowe", count: 7 },
-  { url: "extradom.pl/projekty-parterowe", count: 5 },
-  { url: "murator.pl/projekty", count: 4 },
+  { url: "strona-1.pl/kategoria", count: 7 },
+  { url: "strona-2.pl/produkty", count: 5 },
+  { url: "strona-3.pl/oferta", count: 4 },
 ];
 
 const FEATURES = [
@@ -816,11 +816,11 @@ const HOW_IT_WORKS = [
   {
     icon: Link2,
     title: "Wklej URL",
-    description: "Dowolna podstrona — produkt, blog, landing page, kategoria. Bez rejestracji.",
+    description: "Dowolna podstrona — produkt, blog, landing page, kategoria. Bez rejestracji, bez karty.",
   },
   {
     icon: Cpu,
-    title: "40+ checks w 30 sekund",
+    title: "40+ checks w kilkadziesiąt sekund",
     description: "Silnik skanuje każdy znany powód dla którego AI ignoruje lub cytuje strony — technicznie i contentowo.",
   },
   {
@@ -902,7 +902,7 @@ const TESTIMONIALS = [
     role: "Właścicielka sklepu z biżuterią",
     avatar: "MK",
     color: "bg-violet-500",
-    text: "Po audycie i wdrożeniu poprawek moja strona produktowa zaczęła pojawiać się w Google AI Overviews. W ciągu 3 tygodni ruch z AI Search wzrósł o 340%. Narzędzie pokazało mi dokładnie co zmienić.",
+    text: "Po audycie i wdrożeniu poprawek moja strona produktowa zaczęła pojawiać się w Google AI Overviews. Narzędzie pokazało mi dokładnie co zmienić — konkretne punkty, nie ogólniki.",
     score: { before: 31, after: 78 },
   },
   {
@@ -910,7 +910,7 @@ const TESTIMONIALS = [
     role: "SEO Manager, agencja e-commerce",
     avatar: "TW",
     color: "bg-blue-500",
-    text: "Używam GEO-Auditor dla 12 klientów. Każdy audyt zajmuje 30 sekund, a rekomendacje są konkretne — nie 'popraw content' ale 'dodaj FAQ z 5 pytaniami o cenę i dostawę'. Starter zwraca się w pierwszym miesiącu.",
+    text: "Używam GEO-Auditor dla kilkunastu klientów. Rekomendacje są konkretne — nie 'popraw content' ale 'dodaj FAQ z 5 pytaniami o cenę i dostawę'. Starter zwraca się w pierwszym miesiącu.",
     score: { before: 44, after: 82 },
   },
   {
@@ -930,18 +930,18 @@ const COMPARISON = [
   { feature: "Wykrywanie kto Cię cytuje w ChatGPT", geo: true, semrush: false, ahrefs: false, profound: true },
   { feature: "Full Rewrite AI (gotowy tekst)", geo: true, semrush: false, ahrefs: false, profound: false },
   { feature: "Content Intelligence (5 wymiarów LLM)", geo: true, semrush: false, ahrefs: false, profound: false },
-  { feature: "Wyniki po polsku", geo: true, semrush: true, ahrefs: true, profound: false },
+  { feature: "Wyniki po polsku", geo: true, semrush: true, ahrefs: false, profound: false },
   { feature: "Cena od", geo: "0 zł", semrush: "1 200 zł", ahrefs: "700 zł", profound: "2 100 zł" },
 ];
 
 const FAQ = [
   {
     q: "Czym różni się GEO-Auditor od narzędzi SEO takich jak Semrush czy Ahrefs?",
-    a: "Semrush i Ahrefs analizują widoczność w tradycyjnych wynikach Google (blue links). GEO-Auditor skupia się wyłącznie na widoczności w odpowiedziach AI — ChatGPT, Perplexity i Google AI Overviews. To zupełnie inne algorytmy i inne kryteria. Możesz mieć świetne SEO i być całkowicie niewidoczny dla AI Search.",
+    a: "Semrush i Ahrefs analizują widoczność w tradycyjnych wynikach Google (blue links). GEO-Auditor skupia się wyłącznie na widoczności w odpowiedziach AI — ChatGPT, Perplexity, Gemini i Google AI Overviews. To zupełnie inne algorytmy i inne kryteria. Możesz mieć świetne SEO i być całkowicie niewidoczny dla AI Search.",
   },
   {
     q: "Jak działa AI Citations — czy naprawdę sprawdza Google AI Overviews?",
-    a: "Tak. Używamy SerpApi z parametrami zoptymalizowanymi pod polskie wyniki (lokalizacja Warszawa, urządzenie mobilne) do pobierania rzeczywistych odpowiedzi Google AI Overviews. Dla ChatGPT używamy oficjalnego API z włączonym web search. Wyniki odzwierciedlają to co widzi realny użytkownik.",
+    a: "Tak. Używamy SerpApi z parametrami zoptymalizowanymi pod polskie wyniki (lokalizacja Warszawa, urządzenie mobilne) do pobierania rzeczywistych odpowiedzi Google AI Overviews. Dla ChatGPT używamy oficjalnego API z włączonym web search. Wyniki odzwierciedlają to co widzi realny użytkownik w danym momencie — AI Search jest dynamiczny i może się różnić między sesjami.",
   },
   {
     q: "Czy Full Rewrite AI naprawdę pisze lepszy tekst od oryginału?",

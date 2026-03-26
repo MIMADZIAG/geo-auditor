@@ -838,3 +838,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Footer: usunięto martwe linki (Dokumentacja, O nas, Blog) — zastąpiono Funkcje/Cennik/Dashboard/FAQ/Kontakt
 - [x] Copyright: zaktualizowano na 2026
 - [x] TypeScript: 0 błędów, 147 testów passing
+
+## Content Fixes Homepage (2026-03-26)
+- [x] Claim "94%" zastąpiony neutralnym "Twoja strona może być niewidoczna dla AI — sprawdź to teraz"
+- [x] Etykiety pod inputem: "30 sekund" → "kilkadziesiąt sekund", "Google AI" → "Gemini · Claude"
+- [x] Placeholder: "twojasklepinternetowy.pl/produkt" → "twojadomena.pl/strona"
+- [x] Przykładowe URL-e: extradom/z500/murator → strona-1.pl, strona-2.pl, strona-3.pl
+- [x] Testimoniale: usunięto konkretne liczby procentowe (340%) z cytatów
+- [x] FAQ: zaktualizowano odpowiedź o ChatGPT/Gemini
+- [x] TypeScript: 0 błędów
