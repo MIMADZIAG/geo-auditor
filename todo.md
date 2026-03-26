@@ -900,3 +900,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Widok "Running": usunięto "Runda X/5", zastąpiono krokami procesu (analiza → frazy → sprawdzanie)
 - [x] Etykieta per-engine: "Cytowane zamiast Ciebie" → "[Nazwa silnika] zacytowało:"
 - [x] TypeScript: 0 błędów, 151 testów passing
+
+## AI Visibility Check: Cleanup idle screen + usuń EngineBreakdownTable (2026-03-26)
+- [x] Usunięto EngineBreakdownTable z widoku wyników
+- [x] Przeprojektowano idle screen: 3 karty benefit-first (Analiza jak LLM / 4 silniki AI / Konkretny wynik) zamiast siatki liczb
+- [x] TypeScript: 0 błędów, 151 testów passing

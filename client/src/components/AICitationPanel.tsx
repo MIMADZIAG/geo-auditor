@@ -854,26 +854,47 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 text-center">
+          {/* Value propositions — no raw numbers, benefit-first */}
+          <div className="space-y-2.5">
             {[
-              { val: "5", label: "rund max" },
-              { val: "25", label: "zapytań max" },
-              { val: "4", label: "silniki AI" },
-            ].map(({ val, label }) => (
-              <div key={label} className="bg-zinc-800/50 border border-white/6 rounded-xl p-3">
-                <p className="text-xl font-bold text-white">{val}</p>
-                <p className="text-xs text-zinc-500">{label}</p>
+              {
+                icon: (
+                  <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                ),
+                title: "Analiza jak LLM",
+                desc: "Przetwarzamy treść Twojej strony tak samo jak ChatGPT i Gemini — wyodrębniamy tematy i pytania, które zadają Twoi klienci.",
+              },
+              {
+                icon: (
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ),
+                title: "Sprawdzenie w 4 silnikach AI",
+                desc: "ChatGPT, Google AI Overviews, Perplexity i Gemini — dowiesz się, gdzie jesteś cytowany, a gdzie Twój konkurent Cię wyprzedza.",
+              },
+              {
+                icon: (
+                  <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                ),
+                title: "Konkretny wynik, nie tylko dane",
+                desc: "Jeden jasny werdykt: widoczny lub niewidoczny w AI Search. Plus lista fraz, na które Cię sprawdziliśmy.",
+              },
+            ].map(({ icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-3 bg-zinc-800/30 border border-white/5 rounded-xl p-3.5">
+                <div className="w-7 h-7 rounded-lg bg-zinc-700/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  {icon}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-200">{title}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{desc}</p>
+                </div>
               </div>
             ))}
-          </div>
-
-          <div className="bg-zinc-800/30 border border-white/6 rounded-xl p-4 text-xs text-zinc-400 space-y-1.5">
-            <p className="font-semibold text-zinc-300">Co otrzymasz:</p>
-            <p>✓ Sprawdzenie w 4 silnikach AI: ChatGPT, Google AI Overviews, Perplexity, Gemini</p>
-            <p>✓ Status cytowania dla każdego zapytania (dokładny URL / inna podstrona / brak)</p>
-            <p>✓ Lista domen cytowanych zamiast Ciebie (plan Pro)</p>
-            <p>✓ Fragmenty odpowiedzi AI z Twoją domeną</p>
           </div>
 
           {!user ? (
@@ -1008,8 +1029,7 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
       {/* Queries checked — global list without round breakdown */}
       <QueriesCheckedPanel checks={checks} isPro={isPro} />
 
-      {/* Per-engine breakdown */}
-      <EngineBreakdownTable checks={checks} />
+
 
       {/* Global competitor summary */}
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
