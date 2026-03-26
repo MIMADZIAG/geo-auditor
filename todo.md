@@ -847,3 +847,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Testimoniale: usunięto konkretne liczby procentowe (340%) z cytatów
 - [x] FAQ: zaktualizowano odpowiedź o ChatGPT/Gemini
 - [x] TypeScript: 0 błędów
+
+## Homepage Copy & Section Cleanup (2026-03-26)
+- [x] Ukryto sekcję Testimonials (display:none, kod zachowany)
+- [x] Ukryto sekcję Comparison table (display:none, kod zachowany)
+- [x] Stats section zastąpiony 3-kolumnowym Persuasion Strip (AI Search zmienia zasady / Audyt na poziomie URL / Konkretne kroki)
+- [x] Hero copy przepisany: nowy headline "AI odpowiada na pytania Twoich klientów. Bez Ciebie.", nowy subheadline i body
+- [x] TypeScript: 0 błędów

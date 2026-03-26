@@ -157,22 +157,23 @@ export default function Home() {
 
             {/* Left: copy + form */}
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-semibold mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                Twoja strona może być niewidoczna dla AI — sprawdź to teraz
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary font-semibold mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Nowa era wyszukiwania. Czy Twoja strona jest na nią gotowa?
               </div>
 
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-[1.06]">
-                Zrozum, dlaczego AI<br />
-                <span className="text-primary">ignoruje Twoją stronę.</span>
+                AI odpowiada na pytania<br />
+                <span className="text-primary">Twoich klientów.</span><br />
+                Bez Ciebie.
               </h1>
 
               <p className="text-lg text-muted-foreground/90 font-medium mb-3 leading-snug max-w-lg">
-                ChatGPT, Gemini i Perplexity ignorują Cię i cytują konkurencję.
+                ChatGPT, Gemini i Perplexity cytują źródła, które spełniają ich kryteria. Większość stron ich nie spełnia — i nigdy się o tym nie dowiaduje.
               </p>
 
               <p className="text-sm text-muted-foreground mb-8 leading-relaxed max-w-lg">
-                Wklej URL podstrony. Dowiesz się kto pojawia się zamiast Ciebie — i dostaniesz gotowy tekst, który to zmieni.
+                Wklej adres dowolnej podstrony. GEO-Auditor przeanalizuje ją pod kątem 40+ czynników widoczności w AI Search i pokaże — punkt po punkcie — co zmienić, żeby AI zaczął Cię cytować.
               </p>
 
               {/* URL Input */}
@@ -294,19 +295,31 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Social proof numbers ── */}
+      {/* ── Persuasion strip ── */}
       <section className="py-10 px-4 border-y border-border/30 bg-muted/10">
         <div className="container max-w-4xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
             {[
-              { value: `${auditsCount.toLocaleString("pl-PL")}+`, label: "Wykonanych audytów" },
-              { value: "3", label: "Silniki AI objęte analizą" },
-              { value: "40+", label: "Sprawdzanych parametrów" },
-              { value: `${pagesCount}%`, label: "Stron ma krytyczne błędy" },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-2xl sm:text-3xl font-black text-foreground mb-1">{stat.value}</div>
-                <div className="text-xs text-muted-foreground">{stat.label}</div>
+              {
+                icon: "🧠",
+                headline: "AI Search zmienia zasady",
+                body: "ChatGPT, Gemini i Perplexity nie indeksują stron jak Google. Mają własne kryteria cytowania — i większość stron ich nie zna.",
+              },
+              {
+                icon: "🔍",
+                headline: "Audyt na poziomie URL",
+                body: "Nie domena, nie ogólna widoczność — konkretna podstrona. Produkt, artykuł, landing. Dokładnie tam, gdzie tracisz klientów.",
+              },
+              {
+                icon: "⚡",
+                headline: "Konkretne kroki, nie ogólniki",
+                body: "Nie \"popraw content\". Dostaniesz listę zadań: co dodać, co zmienić, co usunąć — razem z gotowym tekstem po poprawkach.",
+              },
+            ].map((item) => (
+              <div key={item.headline} className="flex flex-col items-center gap-2 px-4">
+                <div className="text-3xl mb-1">{item.icon}</div>
+                <div className="font-bold text-sm text-foreground">{item.headline}</div>
+                <div className="text-xs text-muted-foreground leading-relaxed">{item.body}</div>
               </div>
             ))}
           </div>
@@ -478,8 +491,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="py-16 px-4 border-t border-border/30">
+      {/* ── Testimonials (hidden until real reviews collected) ── */}
+      <section className="py-16 px-4 border-t border-border/30" style={{ display: "none" }}>
         <div className="container max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold mb-4">
@@ -520,8 +533,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Comparison table ── */}
-      <section className="py-16 px-4 border-t border-border/30 bg-muted/5">
+      {/* ── Comparison table (hidden until product is mature) ── */}
+      <section className="py-16 px-4 border-t border-border/30 bg-muted/5" style={{ display: "none" }}>
         <div className="container max-w-4xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-black mb-3">GEO-Auditor vs reszta świata</h2>
