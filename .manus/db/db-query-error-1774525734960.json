@@ -1,0 +1,10 @@
+{
+  "query": "\nSELECT a.url FROM audits a WHERE a.id = 2940004 LIMIT 1;\nSELECT cj.id, cj.status FROM citation_jobs cj WHERE cj.audit_id = 2940004 LIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT a.url FROM audits a WHERE a.id = 2940004 LIMIT 1;\nSELECT cj.id, cj.status FROM citation_jobs cj WHERE cj.audit_id = 2940004 LIMIT 5;\n",
+  "returncode": 1,
+  "logs": [
+    "url",
+    "https://punkta.pl/akademia/ranking/najtansze-oc/",
+    "ERROR 1054 (42S22) at line 3: Unknown column 'cj.audit_id' in 'where clause'"
+  ]
+}

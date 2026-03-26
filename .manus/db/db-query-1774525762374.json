@@ -1,0 +1,40 @@
+{
+  "query": "SELECT cc.engine, cc.isCited, cc.query, cc.allCitedUrls FROM citation_checks cc JOIN citation_jobs cj ON cc.jobId = cj.id WHERE cj.auditId = 2940004 AND cc.engine = 'google' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT cc.engine, cc.isCited, cc.query, cc.allCitedUrls FROM citation_checks cc JOIN citation_jobs cj ON cc.jobId = cj.id WHERE cj.auditId = 2940004 AND cc.engine = 'google' LIMIT 10;",
+  "rows": [
+    {
+      "engine": "google",
+      "isCited": "no",
+      "query": "najlepsze OC 2026",
+      "allCitedUrls": "[\"https://rankomat.pl/ranking-oc\", \"https://rankomat.pl/tanie-oc\", \"https://mubi.pl/najtansze-oc\", \"https://exprespolisy.pl/najtansze-oc-w-2026\", \"https://kalkulator-oc-ac.auto.pl/ranking-ubezpieczen-samochodowych\", \"https://rankomat.pl/samochod/wysokosc-skladek-oc-po-szkodzie\", \"https://mubi.pl\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "query": "jak wybrać tanie OC 2026",
+      "allCitedUrls": "[\"https://rankomat.pl/tanie-oc\", \"https://mubi.pl/poradniki/7-sposobow-na-obnizenie-ceny-ubezpieczenia-oc\", \"https://wypowiadamoc.pl/zdradzamy-sposoby-na-tansze-oc\", \"https://dobrypieniadz.pl/jak-obnizyc-koszt-ubezpieczenia-samochodu-w-2026\", \"https://www.uniqa.pl/porady-komunikacja/uzyskaj-znizki-porady-komunikacja\", \"https://rankomat.pl/samochod/ubezpieczenie-dzien-przed-terminem\", \"https://tuz.pl/ekspert-radzi/ubezpieczenie-samochodu-ile-kosztuje-oc-i-ac\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "query": "ranking OC 2026",
+      "allCitedUrls": "[]"
+    },
+    {
+      "engine": "google",
+      "isCited": "yes",
+      "query": "porównanie cen OC marzec 2026",
+      "allCitedUrls": "[\"https://mubi.pl/poradniki/oc-dla-mlodych-kierowcow\", \"https://rankomat.pl/tanie-oc\", \"https://mubi.pl/najtansze-oc\", \"https://punkta.pl\", \"https://tuz.pl/ekspert-radzi/ubezpieczenie-samochodu-ile-kosztuje-oc-i-ac\", \"https://rankomat.pl/samochod/wplyw-pojemnosc-silnika-na-ubezpieczenie\", \"https://mubi.pl/poradniki/ceny-oc-w-wojewodztwach\", \"https://punkta.pl/akademia/ranking/najtansze-oc\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "query": "co to jest najtańsze OC",
+      "allCitedUrls": "[\"https://rankomat.pl/tanie-oc\", \"https://rankomat.pl\", \"https://menworld.pl/tanie-ubezpieczenie-oc-ile-mozesz-zaoszczedzic-i-co-za-to-kupic-do-samochodu\", \"https://mubi.pl/poradniki/marka-samochodu-a-cena-ubezpieczenia-oc\", \"https://mubi.pl/poradniki/7-sposobow-na-obnizenie-ceny-ubezpieczenia-oc\", \"https://www.ekonomiadlamlodziezy.pl/artykul/gdzie-znalezc-najtansze-ubezpieczenie-oc-792482\", \"https://rankomat.pl/samochod/znizki-w-towarzystwach-ubezpieczeniowych\", \"https://wypowiadamoc.pl/zdradzamy-sposoby-na-tansze-oc\"]"
+    }
+  ],
+  "messages": [],
+  "stdout": "engine\tisCited\tquery\tallCitedUrls\ngoogle\tno\tnajlepsze OC 2026\t[\"https://rankomat.pl/ranking-oc\", \"https://rankomat.pl/tanie-oc\", \"https://mubi.pl/najtansze-oc\", \"https://exprespolisy.pl/najtansze-oc-w-2026\", \"https://kalkulator-oc-ac.auto.pl/ranking-ubezpieczen-samochodowych\", \"https://rankomat.pl/samochod/wysokosc-skladek-oc-po-szkodzie\", \"https://mubi.pl\"]\ngoogle\tno\tjak wybrać tanie OC 2026\t[\"https://rankomat.pl/tanie-oc\", \"https://mubi.pl/poradniki/7-sposobow-na-obnizenie-ceny-ubezpieczenia-oc\", \"https://wypowiadamoc.pl/zdradzamy-sposoby-na-tansze-oc\", \"https://dobrypieniadz.pl/jak-obnizyc-koszt-ubezpieczenia-samochodu-w-2026\", \"https://www.uniqa.pl/porady-komunikacja/uzyskaj-znizki-porady-komunikacja\", \"https://rankomat.pl/samochod/ubezpieczenie-dzien-przed-terminem\", \"https://tuz.pl/ekspert-radzi/ubezpieczenie-samochodu-ile-kosztuje-oc-i-ac\"]\ngoogle\tno\tranking OC 2026\t[]\ngoogle\tyes\tporównanie cen OC marzec 2026\t[\"https://mubi.pl/poradniki/oc-dla-mlodych-kierowcow\", \"https://rankomat.pl/tanie-oc\", \"https://mubi.pl/najtansze-oc\", \"https://punkta.pl\", \"https://tuz.pl/ekspert-radzi/ubezpieczenie-samochodu-ile-kosztuje-oc-i-ac\", \"https://rankomat.pl/samochod/wplyw-pojemnosc-silnika-na-ubezpieczenie\", \"https://mubi.pl/poradniki/ceny-oc-w-wojewodztwach\", \"https://punkta.pl/akademia/ranking/najtansze-oc\"]\ngoogle\tno\tco to jest najtańsze OC\t[\"https://rankomat.pl/tanie-oc\", \"https://rankomat.pl\", \"https://menworld.pl/tanie-ubezpieczenie-oc-ile-mozesz-zaoszczedzic-i-co-za-to-kupic-do-samochodu\", \"https://mubi.pl/poradniki/marka-samochodu-a-cena-ubezpieczenia-oc\", \"https://mubi.pl/poradniki/7-sposobow-na-obnizenie-ceny-ubezpieczenia-oc\", \"https://www.ekonomiadlamlodziezy.pl/artykul/gdzie-znalezc-najtansze-ubezpieczenie-oc-792482\", \"https://rankomat.pl/samochod/znizki-w-towarzystwach-ubezpieczeniowych\", \"https://wypowiadamoc.pl/zdradzamy-sposoby-na-tansze-oc\"]\n",
+  "stderr": "",
+  "execution_time_ms": 350
+}

@@ -877,3 +877,16 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] runCitationJob(): 4 silniki generują frazy równolegle (Promise.all), każdy z własnym profilem
 - [x] buildFallbackQueries(): engine-aware fallback z mods per silnik
 - [x] TypeScript: 0 błędów, 151 testów passing
+
+## Bug Fix: Google AI Overviews domain matching (2026-03-26)
+- [ ] Diagnoza: dlaczego domena była cytowana ale system zwrócił "nie znaleziono"
+- [ ] Naprawa: rozszerzona ekstrakcja URL-i z SerpApi response (sources, inline_links, organic)
+- [ ] Naprawa: robust domain matching (www/non-www, subdomain, path-agnostic)
+- [ ] TypeScript: 0 błędów, testy passing
+
+## AI Visibility Check: Disclaimer + Per-Engine Breakdown + Live Counter (2026-03-26)
+- [x] Disclaimer metodologiczny w AICitationPanel: Google AI Overviews vs AI Mode, zmienność wyników
+- [x] Nowa sekcja "Wyniki per silnik AI" (EngineBreakdownTable): per-silnik stats + lista sprawdzonych zapytań
+- [x] Zastąpiono hardcoded 12847 prawdziwym licznikiem z DB (trpc.audit.getGlobalStats, publicProcedure)
+- [x] Fallback: "Bądź wśród pierwszych użytkowników GEO-Auditor" gdy 0 audytów w DB
+- [x] TypeScript: 0 błędów, 151 testów passing

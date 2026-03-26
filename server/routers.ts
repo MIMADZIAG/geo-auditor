@@ -11,8 +11,8 @@ import { getLastHealthReport, runAndCacheHealthCheck } from "./citation/selector
 import { createCheckoutSession, createBillingPortalSession } from "./stripe/handler";
 import { PLANS, getPlanLimits } from "./stripe/products";
 import { getDb } from "./db";
-import { users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { users, audits } from "../drizzle/schema";
+import { eq, sql } from "drizzle-orm";
 import {
   createAudit,
   updateAudit,
@@ -164,6 +164,14 @@ export const appRouter = router({
       }),
     getUsageStats: protectedProcedure.query(async ({ ctx }) => {
       return getAuditUsageStats(ctx.user.id);
+    }),
+
+    getGlobalStats: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { totalAudits: 0 };
+      const result = await db.select({ count: sql`COUNT(*)` }).from(audits);
+      const count = Number(result[0]?.count ?? 0);
+      return { totalAudits: count };
     }),
   }),
 

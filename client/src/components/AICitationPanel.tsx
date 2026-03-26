@@ -578,6 +578,114 @@ function PLGUpsell({ url }: { url?: string }) {
   );
 }
 
+// ─── Per-Engine Breakdown Table ─────────────────────────────────────────────
+
+type EngineKey = "chatgpt" | "google" | "perplexity" | "gemini";
+
+function EngineBreakdownTable({ checks }: { checks: CitationCheck[] }) {
+  const engines: EngineKey[] = ["google", "perplexity", "gemini", "chatgpt"];
+
+  const engineLabels: Record<EngineKey, string> = {
+    google: "Google AI Overviews",
+    perplexity: "Perplexity",
+    gemini: "Gemini",
+    chatgpt: "ChatGPT",
+  };
+
+  const stats = engines.map(engine => {
+    const engineChecks = checks.filter(c => c.engine === engine);
+    const total = engineChecks.length;
+    const withAI = engineChecks.filter(c => c.hasAIOverview !== false && (c.allCitedUrls?.length ?? 0) > 0).length;
+    const cited = engineChecks.filter(c => c.isCited === "yes").length;
+    const domainCited = engineChecks.filter(c => c.isCited === "domain").length;
+    const queries = Array.from(new Set(engineChecks.map(c => c.query)));
+    return { engine, total, withAI, cited, domainCited, queries };
+  }).filter(s => s.total > 0);
+
+  if (stats.length === 0) return null;
+
+  return (
+    <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
+          <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-white">Wyniki per silnik AI</h3>
+          <p className="text-xs text-zinc-500">Podsumowanie sprawdzonych zapytań dla każdej platformy</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {stats.map(({ engine, total, withAI, cited, domainCited, queries }) => {
+          const hasCit = cited > 0 || domainCited > 0;
+          return (
+            <div key={engine} className={`rounded-xl border p-3.5 ${
+              hasCit ? "border-emerald-500/25 bg-emerald-500/4" : "border-white/6 bg-zinc-800/30"
+            }`}>
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <EngineChip engine={engine as EngineKey} />
+                  <span className="text-xs text-zinc-400 font-medium">{engineLabels[engine as EngineKey]}</span>
+                </div>
+                {hasCit ? (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold">
+                    {cited > 0 ? `${cited} cytowanie${cited > 1 ? "" : ""}` : "Inna podstrona"}
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-600">Brak cytowania</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-2.5">
+                <div className="text-center">
+                  <p className="text-sm font-bold text-white tabular-nums">{total}</p>
+                  <p className="text-[10px] text-zinc-600">zapytań</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-white tabular-nums">{withAI}</p>
+                  <p className="text-[10px] text-zinc-600">z odpowiedzią AI</p>
+                </div>
+                <div className="text-center">
+                  <p className={`text-sm font-bold tabular-nums ${hasCit ? "text-emerald-400" : "text-zinc-600"}`}>
+                    {cited + domainCited}
+                  </p>
+                  <p className="text-[10px] text-zinc-600">cytowań</p>
+                </div>
+              </div>
+
+              {/* Checked queries list */}
+              <div className="border-t border-white/6 pt-2.5">
+                <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-wide mb-1.5">Sprawdzone zapytania:</p>
+                <div className="space-y-1">
+                  {queries.slice(0, 6).map((q, i) => {
+                    const qCheck = checks.find(c => c.engine === engine && c.query === q);
+                    const qStatus = qCheck?.isCited ?? "no";
+                    return (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                          qStatus === "yes" ? "bg-emerald-400" :
+                          qStatus === "domain" ? "bg-amber-400" : "bg-zinc-700"
+                        }`} />
+                        <span className="text-[11px] text-zinc-400 leading-relaxed">„{q}"</span>
+                      </div>
+                    );
+                  })}
+                  {queries.length > 6 && (
+                    <p className="text-[10px] text-zinc-600 pl-3">+{queries.length - 6} więcej zapytań</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) {
@@ -828,6 +936,16 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
         </div>
       </div>
 
+      {/* Methodology disclaimer */}
+      <div className="bg-zinc-800/30 border border-white/6 rounded-xl px-4 py-3 flex gap-3">
+        <svg className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-xs text-zinc-500 leading-relaxed">
+          Wyniki dotyczą <span className="text-zinc-400 font-medium">Google AI Overviews</span> (standardowe wyniki wyszukiwania), nie Google AI Mode. Sprawdzamy zapytania wygenerowane na podstawie treści Twojej strony — wyniki mogą się różnić przy innych frazach lub w innych momentach. Brak cytowania nie wyklucza widoczności na frazy, których nie sprawdzaliśmy.
+        </p>
+      </div>
+
       {/* Round-by-round results */}
       <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -860,6 +978,9 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
           ))}
         </div>
       </div>
+
+      {/* Per-engine breakdown */}
+      <EngineBreakdownTable checks={checks} />
 
       {/* Global competitor summary */}
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />

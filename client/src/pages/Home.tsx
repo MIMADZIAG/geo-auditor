@@ -97,7 +97,10 @@ export default function Home() {
   const [annual, setAnnual] = useState(false);
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
-  const auditsCount = useCounter(12847);
+  const globalStats = trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  const realAuditsCount = globalStats.data?.totalAudits ?? 0;
+  // Use real count if available, otherwise fall back to animated counter seeded at a plausible base
+  const auditsCount = useCounter(realAuditsCount > 0 ? realAuditsCount : 0);
   const pagesCount = useCounter(94);
 
   const auditMutation = trpc.audit.run.useMutation({
@@ -721,7 +724,10 @@ export default function Home() {
             <Search className="w-5 h-5" /> Sprawdź swoją stronę teraz
           </Button>
           <p className="text-xs text-muted-foreground mt-4">
-            Dołącz do {auditsCount.toLocaleString("pl-PL")}+ audytów już wykonanych
+            {realAuditsCount > 0
+              ? `Dołącz do ${auditsCount.toLocaleString("pl-PL")}+ audytów już wykonanych`
+              : "Bądź wśród pierwszych użytkowników GEO-Auditor"
+            }
           </p>
         </div>
       </section>
