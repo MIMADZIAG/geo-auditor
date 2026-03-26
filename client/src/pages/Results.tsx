@@ -1219,10 +1219,10 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
 
 // ─── Rewrite Progress Indicator ─────────────────────────────────────────────
 const REWRITE_STEPS = [
-  { id: 1, label: "Pobieranie treści strony", icon: "🔍", detail: "Analizuję HTML, nagłówki i strukturę" },
-  { id: 2, label: "Crawl konkurencji z AI Citations", icon: "🕷️", detail: "Pobieram treści cytowanych stron" },
-  { id: 3, label: "Generowanie tekstu", icon: "✍️", detail: "GPT-5.4 pisze sekcję po sekcji" },
-  { id: 4, label: "Weryfikacja E-E-A-T", icon: "🎯", detail: "Sprawdzam jakość i poprawiam jeśli potrzeba" },
+  { id: 1, label: "Głęboka analiza Twojej strony", icon: "🔍", detail: "Mapuję strukturę, treść, encje i sygnały semantyczne" },
+  { id: 2, label: "Analiza wzorców AI Search", icon: "🧠", detail: "Badamy, jakie formaty i treści AI aktualnie cytuje i rekomenduje" },
+  { id: 3, label: "Tworzenie treści przez zespół AI Agentów", icon: "✨", detail: "Zaawansowane modele AI piszą sekcję po sekcji, dążąc do perfekcji" },
+  { id: 4, label: "Weryfikacja jakości — E-E-A-T & Helpful Content", icon: "🎯", detail: "Wielopoziomowa kontrola: wiarygodność, użyteczność, zgodność z algorytmami Google" },
 ];
 
 function RewriteProgressIndicator({
@@ -1297,8 +1297,8 @@ const AI_COPILOT_MODES = [
 function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
   const BENEFITS = [
     { icon: "✨", title: "Pełny rewrite AI", desc: "AI przepisuje całą stronę zgodnie z zasadami Helpful Content" },
-    { icon: "🥇", title: "Dane z AI Citations", desc: "Rewrite oparty na analizie cytowanych konkurentów" },
-    { icon: "🛡️", title: "Weryfikacja E-E-A-T", desc: "Automatyczna kontrola jakości i wiarygodności treści" },
+    { icon: "🧠", title: "Analiza wzorców AI Search", desc: "Rewrite oparty na tym, co AI aktualnie cytuje i rekomenduje" },
+    { icon: "🛡️", title: "Weryfikacja E-E-A-T & Helpful Content", desc: "Wielopoziomowa kontrola jakości, wiarygodności i zgodności z algorytmami" },
     { icon: "📊", title: "5 trybów optymalizacji", desc: "Full Rewrite, Answer First, FAQ, Statystyki, Struktura" },
   ];
   return (
@@ -1560,7 +1560,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
           {isLoading && (
             <div className="flex items-center justify-center gap-3 py-12">
               <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-zinc-400">Pobieranie treści strony...</span>
+              <span className="text-sm text-zinc-400">Analiza strony w toku...</span>
             </div>
           )}
           {error && (

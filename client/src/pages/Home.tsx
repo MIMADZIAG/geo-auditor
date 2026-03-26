@@ -510,7 +510,7 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <div className="h-px flex-1 bg-border/30" />
-                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-violet-400" /> GPT-5.4 + dane konkurencji + E-E-A-T</span>
+                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-violet-400" /> Zaawansowane AI Agenty + analiza AI Search + E-E-A-T</span>
                 <div className="h-px flex-1 bg-border/30" />
               </div>
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-4">
@@ -773,7 +773,7 @@ export default function Home() {
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const SCAN_STEPS = [
-  "Pobieranie treści strony…",
+  "Głęboka analiza strony…",
   "Sprawdzanie dostępu crawlerów AI…",
   "Analiza danych strukturalnych…",
   "Ocena jakości contentu…",
@@ -831,10 +831,10 @@ const FEATURES = [
     iconBg: "bg-violet-500/15",
     iconColor: "text-violet-400",
     title: "Full Rewrite AI",
-    badge: "GPT-5.4",
+    badge: "AI Agents",
     badgeStyle: "bg-violet-500/20 text-violet-400",
     featured: false,
-    desc: "Crawluje konkurencję z AI Citations, wyciąga fakty i encje, pisze nowy tekst zgodny z Helpful Content — gotowy do wdrożenia.",
+    desc: "Analizuje wzorce AI Search, tworzy nowy tekst przez zespół AI Agentów i weryfikuje jakość E-E-A-T & Helpful Content — gotowy do wdrożenia.",
     bullets: null,
   },
   {
@@ -880,7 +880,7 @@ const HOW_IT_WORKS = [
 ];
 
 const REWRITE_BULLETS = [
-  { icon: Globe, label: "Crawl konkurencji", desc: "3–6 stron cytowanych przez AI" },
+  { icon: Globe, label: "Analiza wzorców AI Search", desc: "Co AI aktualnie cytuje i dlaczego" },
   { icon: Brain, label: "Ekstrakcja wiedzy", desc: "Fakty, liczby, encje z Knowledge Graph" },
   { icon: BadgeCheck, label: "Weryfikacja E-E-A-T", desc: "Auto-rewizja gdy jakość < 7.5/10" },
   { icon: Sparkles, label: "Helpful Content", desc: "Tekst lepszy od oryginału, gotowy do wdrożenia" },
@@ -994,7 +994,7 @@ const FAQ = [
   },
   {
     q: "Czy Full Rewrite AI naprawdę pisze lepszy tekst od oryginału?",
-    a: "Full Rewrite używa GPT-5.4 z 4-etapowym procesem: crawl konkurencji cytowanych przez AI → ekstrakcja faktów i encji → generowanie sekcja po sekcji → weryfikacja E-E-A-T z auto-rewizją. Każdy tekst musi uzyskać minimum 7.5/10 w ocenie E-E-A-T. Nie gwarantujemy wyników, ale tekst jest zawsze bogatszy w fakty i lepiej ustrukturyzowany niż oryginał.",
+    a: "Full Rewrite AI działa w 4 etapach: głęboka analiza Twojej strony → analiza wzorców AI Search (co AI aktualnie cytuje) → tworzenie treści przez zespół AI Agentów sekcja po sekcji → wielopoziomowa weryfikacja E-E-A-T & Helpful Content. Każdy tekst musi uzyskać minimum 7.5/10 w ocenie jakości. Nie gwarantujemy wyników, ale tekst jest zawsze bogatszy w fakty i lepiej ustrukturyzowany niż oryginał.",
   },
   {
     q: "Ile kosztuje i czy mogę anulować?",
