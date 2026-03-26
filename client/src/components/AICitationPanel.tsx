@@ -264,11 +264,18 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
       {open && (
         <div className="px-3.5 pb-3.5 pt-2 border-t border-white/6 space-y-3">
           {/* Per-engine results */}
-          {checks.map(check => (
+          {checks.map(check => {
+            const engineName = check.engine === "google" ? "Google AI Overviews" :
+              check.engine === "chatgpt" ? "ChatGPT" :
+              check.engine === "perplexity" ? "Perplexity" : "Gemini";
+            return (
             <div key={check.id} className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <EngineChip engine={check.engine} />
-                <StatusBadge status={check.isCited} small />
+                {check.isCited !== "no" && (
+                  <span className="text-[10px] text-zinc-400 font-medium">{engineName} zacytowało:</span>
+                )}
+                {check.isCited === "no" && <StatusBadge status={check.isCited} small />}
                 {check.fromCache && <span className="text-[10px] text-zinc-600">cache</span>}
               </div>
 
@@ -307,7 +314,8 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
                 </p>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {/* Competitor domains for this query */}
           {competitors.length > 0 && (
@@ -335,7 +343,7 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
               ) : (
                 <div>
                   <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide mb-1.5">
-                    Cytowane zamiast Ciebie:
+                    Cytowane przez AI:
                   </p>
                   <div className="flex flex-col gap-1">
                     {competitors.map((u, i) => (
@@ -578,6 +586,99 @@ function PLGUpsell({ url }: { url?: string }) {
   );
 }
 
+// ─── Queries Checked Panel ───────────────────────────────────────────────────────
+
+function QueriesCheckedPanel({ checks, isPro }: { checks: CitationCheck[]; isPro: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Deduplicate queries globally (same query may appear across multiple engines/rounds)
+  const uniqueQueries = Array.from(
+    new Map(checks.map(c => [c.query, c])).values()
+  ).map(c => c.query);
+
+  if (uniqueQueries.length === 0) return null;
+
+  // Aggregate status per query across all engines
+  const queryStatus = (q: string): "yes" | "domain" | "no" => {
+    const qChecks = checks.filter(c => c.query === q);
+    return getQueryStatus(qChecks);
+  };
+
+  const citedCount = uniqueQueries.filter(q => queryStatus(q) === "yes").length;
+  const domainCount = uniqueQueries.filter(q => queryStatus(q) === "domain").length;
+
+  return (
+    <div className="bg-zinc-900/40 border border-white/8 rounded-2xl overflow-hidden">
+      {/* Header with copywriting */}
+      <div className="p-5 border-b border-white/6">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-white">Jak AI widzi Twoją stronę?</h3>
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+              Przeanalizowaliśmy treść Twojej strony tak samo, jak robią to duże modele językowe — wyodrębniając tematy, intencje i pytania, które Twoi odbiorcy zadają AI. Następnie sprawdziliśmy każde z nich w 4 silnikach AI, żeby zobaczyć, czy Twoja strona pojawia się w odpowiedziach.
+            </p>
+          </div>
+        </div>
+
+        {/* Quick stats */}
+        <div className="flex items-center gap-3 mt-3 text-xs">
+          <span className="text-zinc-500">{uniqueQueries.length} fraz sprawdzonych</span>
+          {citedCount > 0 && (
+            <span className="flex items-center gap-1 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {citedCount} z cytowaniem
+            </span>
+          )}
+          {domainCount > 0 && (
+            <span className="flex items-center gap-1 text-amber-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              {domainCount} inna podstrona
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Collapsible list */}
+      <div className="p-5">
+        <div className={`space-y-1.5 ${!expanded ? "max-h-[200px] overflow-hidden relative" : ""}`}>
+          {uniqueQueries.map((q, i) => {
+            const st = queryStatus(q);
+            return (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  st === "yes" ? "bg-emerald-400" :
+                  st === "domain" ? "bg-amber-400" : "bg-zinc-700"
+                }`} />
+                <span className="text-xs text-zinc-300 leading-relaxed">„{q}"</span>
+              </div>
+            );
+          })}
+          {!expanded && uniqueQueries.length > 6 && (
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-zinc-900/90 to-transparent pointer-events-none" />
+          )}
+        </div>
+
+        {uniqueQueries.length > 6 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="mt-3 flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            {expanded ? "Zwiń" : `Pokaż wszystkie ${uniqueQueries.length} frazy`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Per-Engine Breakdown Table ─────────────────────────────────────────────
 
 type EngineKey = "chatgpt" | "google" | "perplexity" | "gemini";
@@ -656,28 +757,7 @@ function EngineBreakdownTable({ checks }: { checks: CitationCheck[] }) {
                 </div>
               </div>
 
-              {/* Checked queries list */}
-              <div className="border-t border-white/6 pt-2.5">
-                <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-wide mb-1.5">Sprawdzone zapytania:</p>
-                <div className="space-y-1">
-                  {queries.slice(0, 6).map((q, i) => {
-                    const qCheck = checks.find(c => c.engine === engine && c.query === q);
-                    const qStatus = qCheck?.isCited ?? "no";
-                    return (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          qStatus === "yes" ? "bg-emerald-400" :
-                          qStatus === "domain" ? "bg-amber-400" : "bg-zinc-700"
-                        }`} />
-                        <span className="text-[11px] text-zinc-400 leading-relaxed">„{q}"</span>
-                      </div>
-                    );
-                  })}
-                  {queries.length > 6 && (
-                    <p className="text-[10px] text-zinc-600 pl-3">+{queries.length - 6} więcej zapytań</p>
-                  )}
-                </div>
-              </div>
+
             </div>
           );
         })}
@@ -825,45 +905,58 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
     );
   }
 
-  // ── Running ───────────────────────────────────────────────────────────────────
+  // ── Running ─────────────────────────────────────────────────────────────────────────────────
   if (isRunning || startCheck.isPending) {
     const completedQueries = new Set(checks.map(c => c.query)).size;
-    const currentRound = checks.length > 0 ? Math.max(...checks.map(c => c.round ?? 1)) : 1;
     return (
       <div className="bg-zinc-900/40 border border-indigo-500/20 rounded-2xl p-6">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Sprawdzam widoczność w AI…</h2>
+            <h2 className="text-base font-bold text-white">Analizuję Twoją stronę w AI Search…</h2>
             <p className="text-sm text-zinc-400 mt-0.5">
-              Runda {currentRound}/5 — sprawdzono {completedQueries} zapytań
+              Przetwarzam treść strony i sprawdzam widoczność w 4 silnikach AI
+              {completedQueries > 0 ? ` — sprawdzono ${completedQueries} fraz` : ""}
             </p>
           </div>
         </div>
 
-        {checks.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-zinc-500 mb-2">Ostatnie sprawdzenia:</p>
-            {checks.slice(-5).map(c => (
-              <div key={c.id} className="flex items-center gap-2 text-xs">
-                <EngineChip engine={c.engine} />
-                <span className="text-zinc-400 truncate flex-1">„{c.query}"</span>
-                <StatusBadge status={c.isCited} small />
-              </div>
-            ))}
+        {/* Progress steps */}
+        <div className="space-y-2 bg-zinc-800/30 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
+              <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            </span>
+            <span className="text-zinc-400">Analiza treści strony</span>
           </div>
-        )}
-        <p className="text-xs text-zinc-600 mt-4">Strona odświeży się automatycznie co 4 sekundy</p>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
+              <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            </span>
+            <span className="text-zinc-400">Generowanie fraz wyszukiwania</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="w-4 h-4 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center flex-shrink-0">
+              <svg className="w-2.5 h-2.5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            </span>
+            <span className="text-zinc-300 font-medium">Sprawdzanie w ChatGPT, Google AI, Perplexity, Gemini…</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-600 mt-3">To może potrwać kilka minut. Strona odświeży się automatycznie.</p>
       </div>
     );
   }
 
-  // ── Failed ────────────────────────────────────────────────────────────────────
+  // ── Failed ────────────────────────────────────────────────────────────────────────────
   if (isFailed) {
     return (
       <div className="bg-zinc-900/40 border border-red-500/20 rounded-2xl p-6 text-center">
@@ -901,83 +994,19 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
             <h2 className="text-base font-bold text-white">
               {foundCitation
                 ? "Twoja strona jest widoczna w AI Search ✅"
-                : `Brak widoczności po ${totalQueries} zapytaniach ❌`}
+                : "Twoja strona nie jest widoczna w AI Search ❌"}
             </h2>
             <p className="text-sm text-zinc-400 mt-1">
               {foundCitation
-                ? `Znaleziono cytowanie w ${rounds.length} ${rounds.length === 1 ? "rundzie" : "rundach"} spośród ${totalQueries} sprawdzonych zapytań.`
-                : `Sprawdzono ${totalQueries} zapytań w ${rounds.length} rundach. Twoja domena nie pojawia się w odpowiedziach AI Search.`}
+                ? "Co najmniej jeden silnik AI cytuje Twoją stronę w odpowiedziach na pytania użytkowników."
+                : "Sprawdziliśmy Twoją stronę w 4 silnikach AI. Twoja domena nie pojawiła się w żadnej z przeanalizowanych odpowiedzi."}
             </p>
-          </div>
-          {/* Stats */}
-          <div className="flex-shrink-0 text-right">
-            <div className="text-2xl font-bold text-white tabular-nums">{totalQueries}</div>
-            <div className="text-xs text-zinc-600">zapytań</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
-            <p className="text-sm font-bold text-white">{rounds.length}</p>
-            <p className="text-xs text-zinc-500">rundy</p>
-          </div>
-          <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
-            <p className="text-sm font-bold text-white">
-              {["chatgpt","google","perplexity","gemini"].filter(e => checks.some(c => c.engine === e)).length}
-            </p>
-            <p className="text-xs text-zinc-500">silniki AI</p>
-          </div>
-          <div className="p-2 rounded-lg bg-zinc-800/60 text-center">
-            <p className="text-sm font-bold text-white">
-              {rankCompetitors(checks, targetDomain).length}
-            </p>
-            <p className="text-xs text-zinc-500">konkurentów</p>
           </div>
         </div>
       </div>
 
-      {/* Methodology disclaimer */}
-      <div className="bg-zinc-800/30 border border-white/6 rounded-xl px-4 py-3 flex gap-3">
-        <svg className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p className="text-xs text-zinc-500 leading-relaxed">
-          Wyniki dotyczą <span className="text-zinc-400 font-medium">Google AI Overviews</span> (standardowe wyniki wyszukiwania), nie Google AI Mode. Sprawdzamy zapytania wygenerowane na podstawie treści Twojej strony — wyniki mogą się różnić przy innych frazach lub w innych momentach. Brak cytowania nie wyklucza widoczności na frazy, których nie sprawdzaliśmy.
-        </p>
-      </div>
-
-      {/* Round-by-round results */}
-      <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Szczegóły sprawdzania — {rounds.length} {rounds.length === 1 ? "runda" : "rundy"}
-          </h3>
-          <button
-            onClick={() => resultsQuery.refetch()}
-            className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Odśwież
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {rounds.map((round, idx) => (
-            <RoundSection
-              key={round}
-              round={round}
-              checks={byRound.get(round) ?? []}
-              isPro={isPro}
-              isLast={idx === rounds.length - 1 && !foundCitation}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Queries checked — global list without round breakdown */}
+      <QueriesCheckedPanel checks={checks} isPro={isPro} />
 
       {/* Per-engine breakdown */}
       <EngineBreakdownTable checks={checks} />
@@ -985,7 +1014,15 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
       {/* Global competitor summary */}
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
 
-      {/* PLG upsell removed — What-IF/Sandbox promo hidden */}
+      {/* Methodology disclaimer — at the bottom, after all results */}
+      <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">
+        <svg className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-[11px] text-zinc-600 leading-relaxed">
+          Wyniki dotyczą <span className="text-zinc-500">Google AI Overviews</span> (standardowe wyniki wyszukiwania), nie Google AI Mode. Sprawdzamy zapytania wygenerowane na podstawie treści Twojej strony — wyniki mogą się różnić przy innych frazach lub w innych momentach. Brak cytowania nie wyklucza widoczności na frazy, których nie sprawdzaliśmy.
+        </p>
+      </div>
     </div>
   );
 }

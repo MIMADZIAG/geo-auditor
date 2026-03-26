@@ -890,3 +890,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Zastąpiono hardcoded 12847 prawdziwym licznikiem z DB (trpc.audit.getGlobalStats, publicProcedure)
 - [x] Fallback: "Bądź wśród pierwszych użytkowników GEO-Auditor" gdy 0 audytów w DB
 - [x] TypeScript: 0 błędów, 151 testów passing
+
+## AI Visibility Check: UI Refactor (2026-03-26)
+- [x] Disclaimer przeniesiony na koniec modułu (po "Kto dominuje zamiast Ciebie")
+- [x] Usunięto listę zapytań z sekcji "Wyniki per silnik AI" (EngineBreakdownTable)
+- [x] Usunięto podział na rundy w widoku szczegółów — zastąpiono globalną listą fraz (QueriesCheckedPanel)
+- [x] QueriesCheckedPanel: copywriting "Jak AI widzi Twoją stronę?" + opis metodologii + rozwijana lista fraz
+- [x] Uproszczone summary hero: tylko wynik (widoczny/niewidoczny), bez siatki rundy/silniki/konkurenci
+- [x] Widok "Running": usunięto "Runda X/5", zastąpiono krokami procesu (analiza → frazy → sprawdzanie)
+- [x] Etykieta per-engine: "Cytowane zamiast Ciebie" → "[Nazwa silnika] zacytowało:"
+- [x] TypeScript: 0 błędów, 151 testów passing
