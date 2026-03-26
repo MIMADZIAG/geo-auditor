@@ -24,6 +24,7 @@ import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
 import { citationChecks, citationJobs, audits } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { expandQueriesWithVariants } from "./morphologicalVariants";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,46 @@ Return ONLY a JSON object: { "queries": ["query1", "query2", "query3", "query4",
           .slice(0, 5)
       : [];
 
-    return queries.length >= 3 ? queries : buildFallbackQueries(content, url, round, engine);
+    if (queries.length < 3) return buildFallbackQueries(content, url, round, engine);
+
+    // ── Morphological expansion ──────────────────────────────────────────────
+    // Generate 2 semantic/morphological variants per base query (rules + LLM).
+    // Variants are appended after the base queries so originals always run first.
+    // Total cap: 8 queries per engine per round to control API cost.
+    const MAX_QUERIES_PER_ENGINE = 8;
+    const slotsAvailable = MAX_QUERIES_PER_ENGINE - queries.length;
+
+    if (slotsAvailable > 0) {
+      try {
+        // Only expand the top-3 base queries to keep variant quality high
+        const seedQueries = queries.slice(0, 3);
+        const { variants } = await expandQueriesWithVariants(
+          seedQueries,
+          content.language,
+          2 // max variants per seed query
+        );
+
+        // Deduplicate against already-used queries (from previous rounds)
+        const usedNorm = new Set(previousQueries.map(q => q.toLowerCase().trim()));
+        const baseNorm = new Set(queries.map(q => q.toLowerCase().trim()));
+        const freshVariants = variants
+          .filter(v => {
+            const norm = v.toLowerCase().trim();
+            return !usedNorm.has(norm) && !baseNorm.has(norm);
+          })
+          .slice(0, slotsAvailable);
+
+        if (freshVariants.length > 0) {
+          console.log(`[Citation] Morphological variants for ${engine} round ${round}: +${freshVariants.length} (${freshVariants.join(" | ")})`);
+          queries.push(...freshVariants);
+        }
+      } catch (e) {
+        console.warn(`[Citation] Morphological expansion failed for ${engine} round ${round}:`, e);
+        // Non-fatal — proceed with base queries only
+      }
+    }
+
+    return queries;
   } catch (e) {
     console.warn(`[Citation] generateEngineQueries ${engine} round ${round} failed:`, e);
     return buildFallbackQueries(content, url, round, engine);

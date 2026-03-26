@@ -910,3 +910,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Zmień copy pod paskiem adresu: ✓ Bezpłatnie · ✓ Jeden klik — zaloguj się kontem Google · ✓ Wynik w 60 sekund
 - [x] Zastąpiono statyczny blok animowanym pasem logotypów AI (fade-in z opóźnieniem per silnik)
 - [x] Usunięto "Wyniki po polsku" z trust badges
+
+## Morfologiczne warianty fraz — AI Visibility Check (2026-03-26)
+- [x] Nowy moduł server/citation/morphologicalVariants.ts: 5 transformacji semantycznych + LLM
+- [x] Integracja w generateEngineQueries(): warianty jako dodatkowe zapytania per engine
+- [x] Deduplikacja + limit (max 8 zapytań per engine per runda)
+- [x] Testy jednostkowe: 27 testów (178 łącznie), 100% passing
