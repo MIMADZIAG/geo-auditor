@@ -1897,7 +1897,7 @@ const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: stri
     bg: "oklch(0.65 0.22 25 / 0.08)",
     border: "oklch(0.65 0.22 25 / 0.25)",
     icon: TrendingDown,
-    desc: "Twoja domena praktycznie nie pojawia się w Google AI Overviews.",
+    desc: "Twoja domena nie jest jeszcze widoczna w Google AI Overviews. Silna widoczność organiczna w Google to fundament, który otwiera drzwi do AI Search — warto zacząć od niej.",
   },
   emerging: {
     label: "Wschodzący",
@@ -1905,7 +1905,7 @@ const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: stri
     bg: "oklch(0.78 0.18 75 / 0.08)",
     border: "oklch(0.78 0.18 75 / 0.25)",
     icon: Activity,
-    desc: "Twoja domena zaczyna pojawiać się w AI Overviews — potencjał wzrostu jest wysoki.",
+    desc: "Twoja domena zaczyna pojawiać się w Google AI Overviews. To sygnał, że Google zaczyna traktować Cię jako autorytet — rozwijaj treści eksperckie, by przyspieszyć wzrost widoczności w AI Search.",
   },
   visible: {
     label: "Widoczny",
@@ -1913,7 +1913,7 @@ const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: stri
     bg: "oklch(0.72 0.18 160 / 0.08)",
     border: "oklch(0.72 0.18 160 / 0.25)",
     icon: Eye,
-    desc: "Twoja domena ma solidną obecność w AI Overviews — optymalizuj dalej, aby osiągnąć poziom Dominujący.",
+    desc: "Twoja domena ma solidną pozycję w Google AI Overviews. Algorytmy AI Search coraz częściej wybierają Cię jako źródło odpowiedzi — optymalizuj strukturę treści i schema.org, by wejść na poziom dominacji.",
   },
   dominant: {
     label: "Dominujący",
@@ -1921,7 +1921,7 @@ const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: stri
     bg: "oklch(0.72 0.18 145 / 0.08)",
     border: "oklch(0.72 0.18 145 / 0.25)",
     icon: Award,
-    desc: "Twoja domena dominuje w AI Overviews — jesteś czołowym autorytetem w swojej niszy.",
+    desc: "Twoja domena dominuje w Google AI Overviews — jesteś rozpoznawanym autorytetem w swojej niszy. Algorytmy AI Search aktywnie cytują Cię jako wiarygodne źródło odpowiedzi dla użytkowników.",
   },
 };
 
@@ -1968,13 +1968,13 @@ function AiExposurePanel({ url }: { url: string }) {
             <Globe className="w-5 h-5" style={{ color: tier?.color ?? "oklch(0.6 0.1 250)" }} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">Ekspozycja w AI Search</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
-                Live Intelligence
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-semibold">Widoczność domeny w Google AI Overviews</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: "oklch(0.6 0.15 260 / 0.18)", color: "oklch(0.75 0.15 260)" }}>
+                Bonus: Kontekst domenowy
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">Jak często Twoja domena pojawia się w Google AI Overviews</p>
+            <p className="text-xs text-muted-foreground">Dodatkowy rzut na całą domenę — jak Google AI Overviews postrzega Twój autorytet organiczny</p>
           </div>
         </div>
         {result && (
@@ -1998,8 +1998,8 @@ function AiExposurePanel({ url }: { url: string }) {
               </div>
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium">Skanuję krajobraz AI Search…</p>
-              <p className="text-xs text-muted-foreground mt-1">Analizuję obecność Twojej domeny w Google AI Overviews</p>
+              <p className="text-sm font-medium">Analizuję autorytet domeny w Google AI Overviews…</p>
+              <p className="text-xs text-muted-foreground mt-1">Sprawdzam, jak Google AI postrzega Twoją domenę na tle słów kluczowych organicznych</p>
             </div>
           </div>
         )}
@@ -2117,6 +2117,19 @@ function AiExposurePanel({ url }: { url: string }) {
                 </div>
               </div>
             )}
+
+            {/* SEO ↔ AI Search insight card */}
+            <div className="rounded-xl p-4 flex items-start gap-3 bg-sky-500/5 border border-sky-500/15">
+              <svg className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-xs font-semibold text-sky-300 mb-1">Dlaczego SEO ma znaczenie dla AI Search?</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Wysoka widoczność organiczna w Google to jeden z kluczowych sygnałów autorytetu, które ChatGPT, Perplexity i Google AI Overviews biorą pod uwagę przy wyborze źródeł cytowań. Domeny z silną pozycją w wynikach organicznych są statystycznie częściej wybierane przez algorytmy AI jako wiarygodne odpowiedzi na pytania użytkowników.
+                </p>
+              </div>
+            </div>
 
             {/* Cache note */}
             {data?.fromCache && (

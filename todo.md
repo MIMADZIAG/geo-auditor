@@ -921,3 +921,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] CompetitorSummary: top 5 widoczne, reszta za przyciskiem "Pokaż X więcej domen" + "Zwiń listę"
 - [x] Per-competitor: engine badges "cytowane przez: [Google AI] [Perplexity]"
 - [x] Summary hero: zdanie + engine badges "Wykryto w: [Google AI] [ChatGPT]" gdy cytowanie znalezione
+
+## AI Exposure: copy rewrite + SEO↔AI insight (2026-03-27)
+- [x] Nowy nagłówek sekcji: "Widoczność domeny w Google AI Overviews" + badge "Bonus: Kontekst domenowy"
+- [x] Nowy podtytuł: "Dodatkowy rzut na całą domenę — jak Google AI Overviews postrzega Twój autorytet organiczny"
+- [x] Tier descriptions: przepisane na język korzyści + powiązanie SEO↔AI dla każdego poziomu
+- [x] Insight SEO↔AI: nowa karta "Dlaczego SEO ma znaczenie dla AI Search?" z wyjaśnieniem korelacji
+- [x] Loading copy: zaktualizowane na spójne z nowym framingiem
