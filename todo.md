@@ -905,3 +905,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Usunięto EngineBreakdownTable z widoku wyników
 - [x] Przeprojektowano idle screen: 3 karty benefit-first (Analiza jak LLM / 4 silniki AI / Konkretny wynik) zamiast siatki liczb
 - [x] TypeScript: 0 błędów, 151 testów passing
+
+## Home.tsx: copy + animowany pas silników AI (2026-03-26)
+- [x] Zmień copy pod paskiem adresu: ✓ Bezpłatnie · ✓ Jeden klik — zaloguj się kontem Google · ✓ Wynik w 60 sekund
+- [x] Zastąpiono statyczny blok animowanym pasem logotypów AI (fade-in z opóźnieniem per silnik)
+- [x] Usunięto "Wyniki po polsku" z trust badges
