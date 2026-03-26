@@ -135,95 +135,141 @@ export async function extractPageContent(url: string, ciData?: any): Promise<Pag
 
 // ─── Query Generation ─────────────────────────────────────────────────────────
 
-function buildFallbackQueries(content: PageContent, url: string, round: number): string[] {
-  const base = content.h1 || content.title || new URL(url).hostname;
-  const lang = content.language;
-  const isPolish = lang === "pl";
+/**
+ * Per-engine citation patterns (reverse-engineered from AI search behavior):
+ * - Google AI Overviews: informational/comparative intent, "how to", "best", "ranking"
+ * - Perplexity: question-first intent, deep research, "What is", "How does", "Why"
+ * - Gemini: conversational + comparative, "X vs Y", "Should I", "Explain"
+ * - ChatGPT: task-oriented, "Help me choose", "Give me a list of", "What are the best"
+ */
+const ENGINE_QUERY_PROFILES: Record<CitationEngine, {
+  description: string;
+  polishModifiers: string[];
+  englishModifiers: string[];
+  intentNote: string;
+}> = {
+  google: {
+    description: "Google AI Overviews",
+    polishModifiers: ["najlepszy", "jak wybrać", "co to jest", "ranking", "porównanie", "poradnik", "wady zalety", "czy warto", "tanie"],
+    englishModifiers: ["best", "how to choose", "what is", "guide", "top", "comparison", "pros cons", "worth it", "review"],
+    intentNote: "Google AI Overviews trigger on informational/comparative queries with clear modifiers. Bare noun queries rarely trigger AI Overviews — ALWAYS add a modifier. Focus on 'how to', 'best', 'ranking', 'comparison' intents.",
+  },
+  perplexity: {
+    description: "Perplexity AI",
+    polishModifiers: ["jaki jest najlepszy", "jak działa", "dlaczego", "kiedy warto", "co to znaczy", "jak wybrać", "ile kosztuje", "jakie są zalety"],
+    englishModifiers: ["what is the best", "how does", "why should I", "when to use", "what does mean", "how to choose", "how much does cost", "what are the benefits of"],
+    intentNote: "Perplexity favors question-first, research-oriented queries. Users type full questions. Start queries with question words (Jaki/Jak/Dlaczego or What/How/Why). Perplexity excels at deep-research and factual queries.",
+  },
+  gemini: {
+    description: "Google Gemini",
+    polishModifiers: ["vs", "czy warto", "wyjaśnij", "porównaj", "pomóż mi wybrać", "jakie są różnice", "co lepsze", "alternatywy dla"],
+    englishModifiers: ["vs", "should I", "explain", "compare", "help me choose", "what are the differences", "which is better", "alternatives to"],
+    intentNote: "Gemini favors conversational and comparative queries. Use 'X vs Y' patterns, 'Should I use X or Y?', 'Explain X in simple terms'. Gemini is strong at nuanced comparisons and conversational follow-ups.",
+  },
+  chatgpt: {
+    description: "ChatGPT Search",
+    polishModifiers: ["pomóż mi", "daj mi listę", "jakie są najlepsze", "napisz mi", "stwórz", "wyjaśnij mi", "co polecasz", "jak mogę"],
+    englishModifiers: ["help me", "give me a list of", "what are the best", "write me", "create", "explain to me", "what do you recommend", "how can I"],
+    intentNote: "ChatGPT Search favors task-oriented, action-driven queries. Users ask ChatGPT to DO something. Use imperative or 'help me' framing. ChatGPT cites sources when answering research or recommendation queries.",
+  },
+};
 
-  // Use modifiers proven to trigger AI Overviews (informational/comparative intent)
+function buildFallbackQueries(content: PageContent, url: string, round: number, engine: CitationEngine = "google"): string[] {
+  const base = content.h1 || content.title || new URL(url).hostname;
+  const isPolish = content.language === "pl";
+  const profile = ENGINE_QUERY_PROFILES[engine];
+  const mods = isPolish ? profile.polishModifiers : profile.englishModifiers;
+
+  // Build engine-specific fallback sets
   const sets: string[][] = isPolish
     ? [
-        [`najlepszy ${base}`, `jak wybrać ${base}`, `${base} ranking`, `co to jest ${base}`, `${base} porównanie`],
-        [`${base} 2025`, `tanie ${base}`, `${base} opinie`, `${base} nowoczesne`, `${base} z garażem`],
-        [`jak wybrać ${base}`, `${base} krok po kroku`, `${base} poradnik`, `${base} przykład`, `${base} wady zalety`],
-        [`${base} dla małych działek`, `${base} online`, `${base} gotowe`, `${base} bezpieczny`, `${base} recenzja`],
-        [`${base} alternatywy`, `zamiast ${base}`, `${base} czy warto`, `${base} doświadczenia`, `${base} opłacalność`],
+        [`${mods[0]} ${base}`, `${mods[1]} ${base}`, `${base} ${mods[2] ?? "ranking"}`, `${mods[3] ?? "co to jest"} ${base}`, `${base} ${mods[4] ?? "porównanie"}`],
+        [`${base} 2025`, `${mods[1]} ${base}`, `${base} opinie`, `${mods[5] ?? "poradnik"} ${base}`, `${base} ${mods[6] ?? "wady zalety"}`],
+        [`${mods[1]} ${base}`, `${base} krok po kroku`, `${base} poradnik`, `${base} przykład`, `${base} ${mods[6] ?? "wady zalety"}`],
+        [`${base} dla początkujących`, `${base} online`, `${base} gotowe`, `${mods[7] ?? "czy warto"} ${base}`, `${base} recenzja`],
+        [`${base} alternatywy`, `zamiast ${base}`, `${mods[7] ?? "czy warto"} ${base}`, `${base} doświadczenia`, `${base} opłacalność`],
       ]
     : [
-        [`best ${base}`, `how to choose ${base}`, `${base} guide`, `what is ${base}`, `${base} comparison`],
-        [`top ${base} 2025`, `cheap ${base}`, `${base} reviews`, `modern ${base}`, `${base} with garage`],
-        [`${base} step by step`, `${base} tips`, `${base} examples`, `${base} pros cons`, `${base} explained`],
-        [`${base} for small lots`, `${base} online`, `${base} ready made`, `${base} safe`, `${base} worth it`],
+        [`${mods[0]} ${base}`, `${mods[1]} ${base}`, `${base} ${mods[2] ?? "guide"}`, `${mods[3] ?? "what is"} ${base}`, `${base} ${mods[4] ?? "comparison"}`],
+        [`top ${base} 2025`, `${mods[1]} ${base}`, `${base} reviews`, `${mods[5] ?? "guide"} ${base}`, `${base} ${mods[6] ?? "pros cons"}`],
+        [`${base} step by step`, `${base} tips`, `${base} examples`, `${base} ${mods[6] ?? "pros cons"}`, `${base} explained`],
+        [`${base} for beginners`, `${base} online`, `${base} ready made`, `${mods[7] ?? "worth it"} ${base}`, `${base} ${mods[4] ?? "comparison"}`],
         [`${base} alternatives`, `instead of ${base}`, `${base} experience`, `${base} ranking`, `${base} advice`],
       ];
 
   return (sets[round - 1] ?? sets[0]).slice(0, 5);
 }
 
-async function generateRoundQueries(
+async function generateEngineQueries(
   content: PageContent,
   url: string,
+  engine: CitationEngine,
   round: number,
   previousQueries: string[]
 ): Promise<string[]> {
   const { title, h1, h2s, metaDescription, language, ciKeywords, ciTopQuestions, ciTopics } = content;
+  const profile = ENGINE_QUERY_PROFILES[engine];
 
   const langNote = language === "pl"
     ? "Generate ALL queries in POLISH (język polski). Use natural Polish phrasing."
     : `Generate ALL queries in the same language as the page (${language}).`;
 
+  // Rich CI context — the more signals, the better the queries
   const pageSignals = [
     title && `Title: ${title}`,
     h1 && `H1: ${h1}`,
-    h2s.length > 0 && `H2s: ${h2s.slice(0, 4).join(" | ")}`,
+    h2s.length > 0 && `H2s: ${h2s.slice(0, 5).join(" | ")}`,
     metaDescription && `Meta description: ${metaDescription}`,
-    ciTopics.length > 0 && `Page topics (from AI analysis): ${ciTopics.join(", ")}`,
-    ciTopQuestions.length > 0 && `Top questions users ask about this topic: ${ciTopQuestions.slice(0, 5).join(" | ")}`,
-    ciKeywords.length > 0 && `Missing topics (semantic gaps): ${ciKeywords.join(", ")}`,
+    ciTopics.length > 0 && `Page topics (Content Intelligence): ${ciTopics.join(", ")}`,
+    ciTopQuestions.length > 0 && `Questions users ask about this topic: ${ciTopQuestions.slice(0, 6).join(" | ")}`,
+    ciKeywords.length > 0 && `Semantic gaps / missing topics: ${ciKeywords.join(", ")}`,
   ].filter(Boolean).join("\n");
 
   const avoidNote = previousQueries.length > 0
-    ? `\n\nIMPORTANT: Do NOT repeat any of these already-used queries:\n${previousQueries.map(q => `- "${q}"`).join("\n")}`
+    ? `\n\nDo NOT repeat these already-used queries:\n${previousQueries.map(q => `- "${q}"`).join("\n")}`
     : "";
 
   const roundContext = round === 1
-    ? "Generate the MOST LIKELY queries users would type into Google or ChatGPT to find this page."
+    ? `Generate the 5 MOST LIKELY queries a user would type into ${profile.description} to find content like this page.`
     : round === 2
-    ? "The previous queries found no citations. Try BROADER, more general queries about the main topic."
+    ? `Previous queries found no citations. Try BROADER queries about the main topic on ${profile.description}.`
     : round === 3
-    ? "Still no citations found. Try queries focused on SPECIFIC subtopics, features, or use cases mentioned on the page."
+    ? `Still no citations. Try queries about SPECIFIC subtopics, features, or use cases for ${profile.description}.`
     : round === 4
-    ? "Try queries using DIFFERENT ANGLES: comparisons, alternatives, how-to, or question-format queries."
-    : "Final attempt. Try the most GENERIC queries about the domain's industry or niche.";
+    ? `Try DIFFERENT ANGLES for ${profile.description}: comparisons, alternatives, how-to, or question-format.`
+    : `Final attempt. Try the most GENERIC queries about the domain's industry or niche on ${profile.description}.`;
 
   try {
     const result = await invokeLLM({
-      // gpt-4.1: cheap auxiliary task (query generation); supports json_schema
       model: "gpt-4.1",
       messages: [
         {
           role: "system",
-          content: `You are an expert in AI search behavior and GEO (Generative Engine Optimization).
+          content: `You are a world-class GEO (Generative Engine Optimization) expert specializing in reverse-engineering how ${profile.description} selects and cites content.
 
-Your task: Generate exactly 5 search queries that are HIGHLY LIKELY to trigger a Google AI Overview (AI-generated summary block) for the topic of this webpage.
+Your task: Generate exactly 5 search queries optimized for ${profile.description}'s citation algorithm.
 
+## ${profile.description} Citation Behavior
+${profile.intentNote}
+
+## Round Context
 ${roundContext}
 
-CRITICAL RULES for triggering AI Overviews:
-- ${langNote}
-- ALWAYS add informational/comparative modifiers that trigger AI Overviews:
-  * Polish: "najlepszy", "jak wybrać", "co to jest", "ranking", "tanie", "porównanie", "poradnik", "wady zalety", "czy warto"
-  * English: "best", "how to choose", "what is", "guide", "top", "comparison", "pros cons", "worth it"
-- Bare noun queries (e.g. just "projekty domów parterowych") rarely trigger AI Overviews — ALWAYS add a modifier
-- Do NOT include the domain name or URL in queries
-- Each query should be distinct and cover a different angle
-- Queries should be 3-10 words long${avoidNote}
+## Language Rule
+${langNote}
 
-Return ONLY a JSON object with a "queries" array of exactly 5 strings.`,
+## Query Requirements
+- Each query must match the natural intent pattern of ${profile.description} users
+- Use these proven modifiers for this engine (${language === "pl" ? "Polish" : "English"}): ${(language === "pl" ? profile.polishModifiers : profile.englishModifiers).slice(0, 5).join(", ")}
+- Do NOT include the domain name or URL in queries
+- Each query covers a DIFFERENT angle (topic, intent, specificity)
+- Query length: 4-12 words${avoidNote}
+
+Return ONLY a JSON object: { "queries": ["query1", "query2", "query3", "query4", "query5"] }`,
         },
         {
           role: "user",
-          content: `Page signals:\n${pageSignals}\n\nURL: ${url}\nRound: ${round}/5`,
+          content: `Page signals:\n${pageSignals}\n\nURL: ${url}\nEngine: ${profile.description}\nRound: ${round}/5`,
         },
       ],
       response_format: {
@@ -233,9 +279,7 @@ Return ONLY a JSON object with a "queries" array of exactly 5 strings.`,
           strict: true,
           schema: {
             type: "object",
-            properties: {
-              queries: { type: "array", items: { type: "string" } },
-            },
+            properties: { queries: { type: "array", items: { type: "string" } } },
             required: ["queries"],
             additionalProperties: false,
           },
@@ -244,7 +288,7 @@ Return ONLY a JSON object with a "queries" array of exactly 5 strings.`,
     });
 
     const text = result.choices[0]?.message?.content;
-    if (!text) return buildFallbackQueries(content, url, round);
+    if (!text) return buildFallbackQueries(content, url, round, engine);
 
     const parsed = JSON.parse(typeof text === "string" ? text : JSON.stringify(text));
     const queries: string[] = Array.isArray(parsed.queries)
@@ -254,11 +298,21 @@ Return ONLY a JSON object with a "queries" array of exactly 5 strings.`,
           .slice(0, 5)
       : [];
 
-    return queries.length >= 3 ? queries : buildFallbackQueries(content, url, round);
+    return queries.length >= 3 ? queries : buildFallbackQueries(content, url, round, engine);
   } catch (e) {
-    console.warn(`[Citation] generateRoundQueries round ${round} failed:`, e);
-    return buildFallbackQueries(content, url, round);
+    console.warn(`[Citation] generateEngineQueries ${engine} round ${round} failed:`, e);
+    return buildFallbackQueries(content, url, round, engine);
   }
+}
+
+/** Shared query generation for backward-compat (Google-optimized) */
+async function generateRoundQueries(
+  content: PageContent,
+  url: string,
+  round: number,
+  previousQueries: string[]
+): Promise<string[]> {
+  return generateEngineQueries(content, url, "google", round, previousQueries);
 }
 
 // ─── Competitor Domain Extraction ─────────────────────────────────────────────
@@ -885,83 +939,90 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       console.log(`[Citation] Job ${jobId}: Round ${round}/${MAX_ROUNDS}`);
 
-      // Generate queries for this round
-      const queries = await generateRoundQueries(pageContent, job.url, round, usedQueries);
-      usedQueries.push(...queries);
+      // Generate per-engine queries in parallel — each engine gets queries optimized for its citation algorithm
+      const [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
+        generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
+        round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
+        round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
+        round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
+      ]);
+
+      // Track all queries used (deduplicated) for avoid-repetition in next rounds
+      const allRoundQueries = Array.from(new Set([...googleQueries, ...chatgptQueries, ...perplexityQueries, ...geminiQueries]));
+      usedQueries.push(...allRoundQueries);
+
+      console.log(`[Citation] Job ${jobId}: Round ${round} queries — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length}`);
 
       const roundResults: CitationResult[] = [];
 
-      for (const query of queries) {
-        // Google AI Overview — run in ALL rounds via SerpApi
-        const googleCacheKey = makeCacheKey(query, "google");
-        const googleCached = await getCachedResult(googleCacheKey);
-        let googleResult: CitationResult;
-
-        if (googleCached) {
-          console.log(`[Citation] Cache hit: google / "${query.slice(0, 40)}"`);
-          googleResult = { ...googleCached, round };
+      // Google AI Overview — run in ALL rounds with Google-optimized queries
+      for (const query of googleQueries) {
+        const cacheKey = makeCacheKey(query, "google");
+        const cached = await getCachedResult(cacheKey);
+        let result: CitationResult;
+        if (cached) {
+          result = { ...cached, round };
         } else {
-          googleResult = await checkGoogleAIOverview(query, job.url, language, round);
-          await saveResult(jobId, job.auditId, googleResult, googleCacheKey);
-          // Small delay to respect SerpApi rate limits
-          await new Promise((r) => setTimeout(r, 1000));
+          result = await checkGoogleAIOverview(query, job.url, language, round);
+          await saveResult(jobId, job.auditId, result, cacheKey);
+          await new Promise((r) => setTimeout(r, 800));
         }
-        roundResults.push(googleResult);
-        allResults.push(googleResult);
+        roundResults.push(result);
+        allResults.push(result);
+      }
 
-        // ChatGPT Search — only in round 1 (cost control)
-        if (round === 1) {
-          const chatgptCacheKey = makeCacheKey(query, "chatgpt");
-          const chatgptCached = await getCachedResult(chatgptCacheKey);
-          let chatgptResult: CitationResult;
-
-          if (chatgptCached) {
-            console.log(`[Citation] Cache hit: chatgpt / "${query.slice(0, 40)}"`);
-            chatgptResult = { ...chatgptCached, round };
+      // ChatGPT, Perplexity, Gemini — round 1 only, each with engine-optimized queries
+      if (round === 1) {
+        for (const query of chatgptQueries) {
+          const cacheKey = makeCacheKey(query, "chatgpt");
+          const cached = await getCachedResult(cacheKey);
+          let result: CitationResult;
+          if (cached) {
+            result = { ...cached, round };
           } else {
-            chatgptResult = await checkChatGPT(query, job.url, round);
-            await saveResult(jobId, job.auditId, chatgptResult, chatgptCacheKey);
-            await new Promise((r) => setTimeout(r, 1000));
+            result = await checkChatGPT(query, job.url, round);
+            await saveResult(jobId, job.auditId, result, cacheKey);
+            await new Promise((r) => setTimeout(r, 800));
           }
-          roundResults.push(chatgptResult);
-          allResults.push(chatgptResult);
+          roundResults.push(result);
+          allResults.push(result);
+        }
 
-          // Perplexity Sonar — round 1 only (cost control)
-          const perplexityCacheKey = makeCacheKey(query, "perplexity");
-          const perplexityCached = await getCachedResult(perplexityCacheKey);
-          let perplexityResult: CitationResult;
-          if (perplexityCached) {
-            console.log(`[Citation] Cache hit: perplexity / "${query.slice(0, 40)}"`);
-            perplexityResult = { ...perplexityCached, round };
+        for (const query of perplexityQueries) {
+          const cacheKey = makeCacheKey(query, "perplexity");
+          const cached = await getCachedResult(cacheKey);
+          let result: CitationResult;
+          if (cached) {
+            result = { ...cached, round };
           } else {
-            perplexityResult = await checkPerplexity(query, job.url, round);
-            await saveResult(jobId, job.auditId, perplexityResult, perplexityCacheKey);
-            await new Promise((r) => setTimeout(r, 1000));
+            result = await checkPerplexity(query, job.url, round);
+            await saveResult(jobId, job.auditId, result, cacheKey);
+            await new Promise((r) => setTimeout(r, 800));
           }
-          roundResults.push(perplexityResult);
-          allResults.push(perplexityResult);
+          roundResults.push(result);
+          allResults.push(result);
+        }
 
-          // Gemini grounding — round 1 only (cost control)
-          const geminiCacheKey = makeCacheKey(query, "gemini");
-          const geminiCached = await getCachedResult(geminiCacheKey);
-          let geminiResult: CitationResult;
-          if (geminiCached) {
-            console.log(`[Citation] Cache hit: gemini / "${query.slice(0, 40)}"`);
-            geminiResult = { ...geminiCached, round };
+        for (const query of geminiQueries) {
+          const cacheKey = makeCacheKey(query, "gemini");
+          const cached = await getCachedResult(cacheKey);
+          let result: CitationResult;
+          if (cached) {
+            result = { ...cached, round };
           } else {
-            geminiResult = await checkGemini(query, job.url, round);
-            await saveResult(jobId, job.auditId, geminiResult, geminiCacheKey);
-            await new Promise((r) => setTimeout(r, 1000));
+            result = await checkGemini(query, job.url, round);
+            await saveResult(jobId, job.auditId, result, cacheKey);
+            await new Promise((r) => setTimeout(r, 800));
           }
-          roundResults.push(geminiResult);
-          allResults.push(geminiResult);
+          roundResults.push(result);
+          allResults.push(result);
         }
       }
 
       const roundFoundCitation = hasCitation(roundResults);
       rounds.push({
         round,
-        queries,
+        queries: allRoundQueries, // store all engine queries for this round
         results: roundResults,
         foundCitation: roundFoundCitation,
       });

@@ -868,3 +868,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Frontend: summary hero pokazuje aktywne silniki per zapytanie
 - [x] Secrets: SONAR_API_KEY i GEMINI_API_KEY ustawione
 - [x] TypeScript: 0 błędów, 151 testów passing (+4 nowe testy walidacji kluczy API)
+
+## AI Visibility Check — Smart Query Generator (2026-03-26)
+- [x] Analiza aktualnego generatora fraz w citation/worker.ts
+- [x] Budowa ENGINE_QUERY_PROFILES: per-engine citation patterns (Google/Perplexity/Gemini/ChatGPT)
+- [x] generateEngineQueries(): LLM-powered, per-engine, z pełnym CI context (ciTopics/ciTopQuestions/ciKeywords)
+- [x] Inżynieria wsteczna: Google=informational, Perplexity=question-first, Gemini=conversational, ChatGPT=task-oriented
+- [x] runCitationJob(): 4 silniki generują frazy równolegle (Promise.all), każdy z własnym profilem
+- [x] buildFallbackQueries(): engine-aware fallback z mods per silnik
+- [x] TypeScript: 0 błędów, 151 testów passing
