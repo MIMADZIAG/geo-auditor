@@ -928,3 +928,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Tier descriptions: przepisane na język korzyści + powiązanie SEO↔AI dla każdego poziomu
 - [x] Insight SEO↔AI: nowa karta "Dlaczego SEO ma znaczenie dla AI Search?" z wyjaśnieniem korelacji
 - [x] Loading copy: zaktualizowane na spójne z nowym framingiem
+
+## AIEnginesStrip: oficjalne loga + Google AI Overviews badge (2026-03-27)
+- [x] Pobrano i zaimplementowano oficjalne SVG: Perplexity (asterisk), Gemini (4-pointed star z gradientem), Claude (6-line starburst)
+- [x] Zastąpiono nieprawidłowe loga oficjalnymi SVG inline
+- [x] Dodano "Google AI Overviews" jako osobny badge (zastąpił "Google AI")
+- [x] TypeScript: 0 błędów, 178 testów passing
