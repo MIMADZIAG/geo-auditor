@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, PENDING_AUDIT_KEY } from "@/const";
+import { usePendingAudit } from "@/hooks/usePendingAudit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -205,6 +206,8 @@ export default function Home() {
   const [annual, setAnnual] = useState(false);
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
+  // Auto-run pending audit after OAuth login
+  const { isPending: isPendingAudit } = usePendingAudit(isAuthenticated);
   const globalStats = trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const realAuditsCount = globalStats.data?.totalAudits ?? 0;
   // Use real count if available, otherwise fall back to animated counter seeded at a plausible base
@@ -221,10 +224,20 @@ export default function Home() {
     if (!url.trim()) { toast.error("Wklej URL strony do audytu."); return; }
     let normalized = url.trim();
     if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) normalized = "https://" + normalized;
+
+    if (!isAuthenticated) {
+      // Save the pending audit URL so usePendingAudit can auto-run it after login
+      sessionStorage.setItem(PENDING_AUDIT_KEY, normalized);
+      toast.info("Zaloguj się kontem Google — jeden klik i wrócimy do audytu.", { duration: 4000 });
+      // Small delay so the toast is visible before redirect
+      setTimeout(() => { window.location.href = getLoginUrl(); }, 600);
+      return;
+    }
+
     auditMutation.mutate({ url: normalized });
   };
 
-  const isLoading = auditMutation.isPending;
+  const isLoading = auditMutation.isPending || isPendingAudit;
 
   const [showStickyBar, setShowStickyBar] = useState(false);
   useEffect(() => {
@@ -251,7 +264,7 @@ export default function Home() {
           <div className="container max-w-4xl mx-auto py-3 px-4 flex items-center justify-between gap-4">
             <p className="text-sm font-semibold hidden sm:block">
               Sprawdź, czy AI Cię cytuje —{" "}
-              <span className="text-muted-foreground font-normal">bezpłatnie, bez rejestracji</span>
+              <span className="text-muted-foreground font-normal">bezpłatnie, jeden klik Google</span>
             </p>
             <Button
               onClick={scrollToTop}

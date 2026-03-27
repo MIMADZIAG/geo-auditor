@@ -10,6 +10,23 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+/**
+ * Parse the OAuth state payload.
+ * Format (base64-encoded): "<redirectUri>" or "<redirectUri>|<returnPath>"
+ * Returns the frontend origin for the post-login redirect.
+ */
+function parseStateOrigin(state: string): string {
+  try {
+    const decoded = Buffer.from(state, "base64").toString("utf-8");
+    // The redirectUri is always the first segment (before optional "|")
+    const redirectUri = decoded.split("|")[0];
+    const url = new URL(redirectUri);
+    return url.origin;
+  } catch {
+    return "/";
+  }
+}
+
 export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
@@ -36,6 +53,7 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+
       // Send welcome email to brand-new users (non-blocking, best-effort)
       if (isNew && userInfo.email) {
         sendWelcomeEmail(userInfo.email, userInfo.name ?? "").catch(() => {});
@@ -49,7 +67,10 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      // Redirect to the frontend origin (always "/") — the pending audit URL
+      // is stored in sessionStorage client-side and handled by usePendingAudit hook.
+      const origin = parseStateOrigin(state);
+      res.redirect(302, `${origin}/`);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });

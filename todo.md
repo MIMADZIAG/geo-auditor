@@ -934,3 +934,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Zastąpiono nieprawidłowe loga oficjalnymi SVG inline
 - [x] Dodano "Google AI Overviews" jako osobny badge (zastąpił "Google AI")
 - [x] TypeScript: 0 błędów, 178 testów passing
+
+## Wymuszona rejestracja Google przed audytem (2026-03-27)
+- [x] getLoginUrl() przyjmuje opcjonalny returnPath (state payload: base64(redirectUri|returnPath))
+- [x] OAuth callback parseStateOrigin() — wyodrębnia origin z state, przekierowuje na origin/
+- [x] Home.tsx handleSubmit: gate na auth → sessionStorage.setItem + toast + redirect do OAuth
+- [x] Hook usePendingAudit: po zalogowaniu odczytuje sessionStorage, mutuje audit, czyści storage
+- [x] Sticky bar copy: "bez rejestracji" → "jeden klik Google"
+- [x] Testy: 11 nowych testów (189 łącznie), 0 błędów TypeScript
