@@ -871,9 +871,11 @@ async function checkGemini(query: string, targetUrl: string, round: number): Pro
   }
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
   const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
+  // gemini-2.5-flash-lite: free-tier quota available; gemini-2.0-flash quota exhausted
+  const GEMINI_MODEL = "gemini-2.5-flash-lite";
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -893,18 +895,32 @@ async function checkGemini(query: string, targetUrl: string, round: number): Pro
     const candidate = data.candidates?.[0];
     const responseText: string = candidate?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
     // Extract grounding sources from groundingMetadata
-    const groundingChunks: Array<{ web?: { uri?: string } }> = candidate?.groundingMetadata?.groundingChunks ?? [];
+    // NOTE: Gemini grounding API returns redirect URLs (vertexaisearch.cloud.google.com/grounding-api-redirect/...)
+    // instead of real URLs. The actual domain is available in chunk.web.title (e.g. "ocar.pl").
+    // We reconstruct a canonical URL from the title so domain-matching works correctly.
+    const groundingChunks: Array<{ web?: { uri?: string; title?: string } }> = candidate?.groundingMetadata?.groundingChunks ?? [];
     const searchEntryPoint = candidate?.groundingMetadata?.searchEntryPoint;
     const allCitedUrls: string[] = [];
     for (const chunk of groundingChunks) {
-      const uri = chunk.web?.uri;
-      if (uri && uri.startsWith("http")) {
+      const uri = chunk.web?.uri ?? "";
+      const title = chunk.web?.title ?? "";
+      // Prefer real URL if not a redirect wrapper; otherwise derive from title
+      const isRedirect = uri.includes("grounding-api-redirect") || uri.includes("vertexaisearch");
+      if (!isRedirect && uri.startsWith("http")) {
         const clean = uri.split("#")[0].replace(/\/$/, "");
         if (!allCitedUrls.includes(clean)) allCitedUrls.push(clean);
+      } else if (title) {
+        // title is typically the bare hostname (e.g. "ocar.pl") or "site.com - Page Title"
+        const rawHost = title.split(" ")[0].replace(/[^a-zA-Z0-9.-]/g, "").toLowerCase();
+        if (rawHost && rawHost.includes(".")) {
+          const canonical = `https://${rawHost}`;
+          if (!allCitedUrls.includes(canonical)) allCitedUrls.push(canonical);
+        }
       }
     }
     const hasGrounding = allCitedUrls.length > 0 || !!searchEntryPoint;
     const competitorDomains = extractCompetitorDomains(allCitedUrls, targetDomain);
+    // Exact URL match
     const exactCitation = allCitedUrls.find((u) => {
       try {
         const cu = new URL(u);
@@ -914,6 +930,7 @@ async function checkGemini(query: string, targetUrl: string, round: number): Pro
     if (exactCitation) {
       return { query, engine: "gemini", round, isCited: "yes", citedUrl: exactCitation, allCitedUrls, competitorDomains, hasAIOverview: true, snippet: extractSnippet(responseText, targetDomain), responseText: responseText.slice(0, 1500) };
     }
+    // Domain-level match
     const domainCitation = allCitedUrls.find((u) => { try { return new URL(u).hostname.replace("www.", "") === targetDomain; } catch { return false; } });
     if (domainCitation) {
       return { query, engine: "gemini", round, isCited: "domain", domainCitedUrl: domainCitation, allCitedUrls, competitorDomains, hasAIOverview: true, snippet: extractSnippet(responseText, targetDomain), responseText: responseText.slice(0, 1500) };
