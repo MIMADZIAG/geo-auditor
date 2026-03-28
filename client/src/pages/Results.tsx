@@ -109,7 +109,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   structuredData: "Etykiety czytelne maszynowo, które pomagają AI zrozumieć, o czym jest Twoja strona.",
   contentStructure: "Jak dobrze Twoja treść jest zorganizowana, aby AI mogło wyciągać i cytować odpowiedzi.",
   eeat: "Sygnały mówiące AI, że Twoja treść jest godna zaufania i napisana przez eksperta.",
-  aiCrawlers: "Czy konkretne boty AI (ChatGPT, Perplexity, Gemini) mogą indeksować Twoją stronę.",
+  aiCrawlers: "Czy audytowana podstrona jest dostępna dla crawlerów AI Search oraz czy robots.txt nie blokuje całkowicie żadnego silnika AI.",
   metaTags: "Tytuł i opis strony, których AI używa do zrozumienia treści na pierwszy rzut oka.",
   brandAuthority: "Jak silnie Twoja marka jest rozpoznawana jako autorytet w swojej dziedzinie przez wyszukiwarki AI.",
 };

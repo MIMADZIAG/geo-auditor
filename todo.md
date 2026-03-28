@@ -942,3 +942,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Hook usePendingAudit: po zalogowaniu odczytuje sessionStorage, mutuje audit, czyści storage
 - [x] Sticky bar copy: "bez rejestracji" → "jeden klik Google"
 - [x] Testy: 11 nowych testów (189 łącznie), 0 błędów TypeScript
+
+## robots.txt: precyzyjna interpretacja (2026-03-28)
+- [x] Znaleziono i przepisano server/audit/aiCrawlers.ts (v3)
+- [x] Nowa logika: 3 precyzyjne sprawdzenia (audytowana URL, pełny blok AI search, boty treningowe jako info)
+- [x] Usunięto fałszywe alarmy: częściowe wykluczenia (/admin/, /cart/) NIE są flagowane
+- [x] Boty treningowe (GPTBot, ClaudeBot, Google-Extended) zawsze info, nigdy fail/warning
+- [x] Zaktualizowano opis kategorii w Results.tsx
+- [x] 213 testów passing (24 nowych), TypeScript: 0 błędów

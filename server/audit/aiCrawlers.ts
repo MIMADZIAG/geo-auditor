@@ -1,274 +1,309 @@
 /**
- * AI Crawlers Module — v2 (iPullRank AI Search Manual aligned)
+ * AI Crawlers Module — v3
  *
- * Key upgrades based on iPullRank Chapters 7, 9, 11:
- *  - Added OAI-SearchBot (OpenAI's live search crawler, distinct from GPTBot training)
- *  - Added YouBot (You.com AI search)
- *  - Added Bytespider (ByteDance/TikTok AI)
- *  - Added PerplexityBot/PerplexityBot-User distinction
- *  - Improved robots.txt analysis: checks for path-specific blocks, not just full disallow
- *  - Added llms.txt detection (experimental — iPullRank Ch.11 notes it's not standard yet)
- *  - Added XML sitemap accessibility check
+ * Precyzyjna interpretacja robots.txt: zamiast flagować każde częściowe
+ * wykluczenie jako problem (co wprowadza użytkownika w błąd), wykonujemy
+ * 3 konkretne, wartościowe sprawdzenia:
+ *
+ * 1. AUDYTOWANA PODSTRONA — czy konkretny URL jest zablokowany dla jakiegokolwiek
+ *    bota AI search (pełny blok lub path-specific blok obejmujący ten URL)?
+ *
+ * 2. PEŁNY BLOK AI SEARCH — czy któryś z botów AI search (PerplexityBot,
+ *    OAI-SearchBot, Googlebot) ma Disallow: / (całkowity zakaz)?
+ *
+ * 3. BOTY TRENINGOWE — czy boty treningowe AI (GPTBot, Google-Extended,
+ *    ClaudeBot, anthropic-ai, CCBot) mają Disallow: /? To jest ŚWIADOMA
+ *    decyzja właściciela — informujemy, nie alarmujemy.
+ *
+ * Częściowe wykluczenia (np. /admin/, /cart/, /search/) są NORMALNE i POŻĄDANE
+ * — nie są pokazywane jako problemy.
  */
 
 import type { ScrapedPage } from "./scraper";
 import type { AuditCheck, CategoryResult } from "./types";
 
-interface CrawlerInfo {
-  id: string;
-  name: string;
-  userAgent: string;
-  engine: string;
-  description: string;
-  priority: "critical" | "high" | "medium";
-}
+// ─── Crawler classification ───────────────────────────────────────────────────
 
-const AI_CRAWLERS: CrawlerInfo[] = [
-  {
-    id: "gptbot",
-    name: "GPTBot",
-    userAgent: "GPTBot",
-    engine: "ChatGPT / OpenAI (tylko trening)",
-    description: "Crawler OpenAI używany wyłącznie do trenowania modeli GPT. Zablokowanie go uniemożliwia przyszłe trenowanie modeli GPT na Twojej treści, ale NIE wpływa na cytowania w ChatGPT Search — tym zajmuje się OAI-SearchBot.",
-    priority: "medium",
-  },
-  {
-    id: "oai_searchbot",
-    name: "OAI-SearchBot",
-    userAgent: "OAI-SearchBot",
-    engine: "ChatGPT Search (na żywo)",
-    description: "Crawler OpenAI do wyszukiwania w czasie rzeczywistym w ChatGPT Search. Odrębny od crawlera treningowego GPTBot.",
-    priority: "critical",
-  },
-  {
-    id: "perplexitybot",
-    name: "PerplexityBot",
-    userAgent: "PerplexityBot",
-    engine: "Perplexity AI",
-    description: "Crawler Perplexity do wyszukiwania w czasie rzeczywistym i generowania odpowiedzi AI.",
-    priority: "critical",
-  },
-  {
-    id: "claudebot",
-    name: "ClaudeBot",
-    userAgent: "ClaudeBot",
-    engine: "Anthropic Claude",
-    description: "Crawler Anthropic używany do trenowania modeli Claude AI i przeglądania stron.",
-    priority: "high",
-  },
-  {
-    id: "google_extended",
-    name: "Google-Extended",
-    userAgent: "Google-Extended",
-    engine: "Google Gemini (trening, NIE AI Overviews)",
-    description: "Token rezygnacji Google z trenowania modeli AI (Gemini, Vertex AI). Zablokowanie go uniemożliwia używanie Twojej treści do trenowania modeli Google AI, ale NIE wpływa na Google AI Overviews ani zwykłe wyniki wyszukiwania — te obsługuje Googlebot.",
-    priority: "medium",
-  },
-  {
-    id: "anthropic_ai",
-    name: "anthropic-ai",
-    userAgent: "anthropic-ai",
-    engine: "Anthropic",
-    description: "Dodatkowy identyfikator crawlera Anthropic.",
-    priority: "high",
-  },
-  {
-    id: "youbot",
-    name: "YouBot",
-    userAgent: "YouBot",
-    engine: "You.com AI Search",
-    description: "Crawler AI wyszukiwarki You.com do generatywnego wyszukiwania.",
-    priority: "medium",
-  },
-  {
-    id: "bytespider",
-    name: "Bytespider",
-    userAgent: "Bytespider",
-    engine: "ByteDance / TikTok AI",
-    description: "Crawler ByteDance używany do funkcji AI TikTok i produktów wyszukiwania.",
-    priority: "medium",
-  },
-  {
-    id: "cohere_ai",
-    name: "cohere-ai",
-    userAgent: "cohere-ai",
-    engine: "Cohere",
-    description: "Crawler AI Cohere do trenowania i wyszukiwania.",
-    priority: "medium",
-  },
+/** Boty używane do WYSZUKIWANIA w czasie rzeczywistym (AI Search) */
+const AI_SEARCH_BOTS = [
+  { ua: "PerplexityBot", name: "Perplexity AI" },
+  { ua: "OAI-SearchBot", name: "ChatGPT Search" },
+  { ua: "Googlebot", name: "Google (AI Overviews)" },
+  { ua: "Bingbot", name: "Bing / Copilot" },
+  { ua: "YouBot", name: "You.com AI Search" },
 ];
 
-/**
- * Check if a specific crawler is blocked in robots.txt.
- * Handles: full disallow (/), wildcard (*), and path-specific blocks.
- * Returns: 'full' | 'partial' | 'none'
- */
-function getCrawlerBlockStatus(robotsTxt: string, userAgent: string): "full" | "partial" | "none" {
-  const lines = robotsTxt.split("\n").map((l) => l.trim());
-  let inRelevantBlock = false;
-  let inAllBlock = false;
-  let fullBlock = false;
-  let partialBlock = false;
+/** Boty używane WYŁĄCZNIE do trenowania modeli AI */
+const AI_TRAINING_BOTS = [
+  { ua: "GPTBot", name: "OpenAI (trening GPT)" },
+  { ua: "Google-Extended", name: "Google (trening Gemini)" },
+  { ua: "ClaudeBot", name: "Anthropic Claude" },
+  { ua: "anthropic-ai", name: "Anthropic" },
+  { ua: "CCBot", name: "Common Crawl" },
+  { ua: "Bytespider", name: "ByteDance / TikTok AI" },
+  { ua: "cohere-ai", name: "Cohere AI" },
+];
 
-  for (const line of lines) {
-    if (line.toLowerCase().startsWith("user-agent:")) {
-      const ua = line.substring("user-agent:".length).trim();
-      inRelevantBlock = ua.toLowerCase() === userAgent.toLowerCase();
-      inAllBlock = ua === "*";
+// ─── Core parsing logic ───────────────────────────────────────────────────────
+
+/**
+ * Represents a single User-agent block in robots.txt with its disallow rules.
+ */
+interface RobotsBlock {
+  userAgents: string[];
+  disallowPaths: string[];
+  isFullBlock: boolean; // has Disallow: /
+}
+
+/**
+ * Parse robots.txt into structured blocks.
+ * Handles multiple User-agent lines per block and comment stripping.
+ */
+function parseRobotsTxt(robotsTxt: string): RobotsBlock[] {
+  const blocks: RobotsBlock[] = [];
+  let currentBlock: RobotsBlock | null = null;
+
+  for (const rawLine of robotsTxt.split("\n")) {
+    const line = rawLine.split("#")[0].trim(); // strip inline comments
+    if (!line) {
+      // Empty line = end of block
+      if (currentBlock && currentBlock.userAgents.length > 0) {
+        blocks.push(currentBlock);
+        currentBlock = null;
+      }
+      continue;
     }
 
-    if ((inRelevantBlock || inAllBlock) && line.toLowerCase().startsWith("disallow:")) {
-      const path = line.substring("disallow:".length).trim();
-      if (path === "/" || path === "*") {
-        fullBlock = true;
-      } else if (path.length > 0) {
-        partialBlock = true;
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) continue;
+
+    const directive = line.substring(0, colonIdx).trim().toLowerCase();
+    const value = line.substring(colonIdx + 1).trim();
+
+    if (directive === "user-agent") {
+      if (!currentBlock) {
+        currentBlock = { userAgents: [], disallowPaths: [], isFullBlock: false };
       }
+      currentBlock.userAgents.push(value.toLowerCase());
+    } else if (directive === "disallow" && currentBlock) {
+      if (value === "/" || value === "*") {
+        currentBlock.isFullBlock = true;
+      } else if (value.length > 0) {
+        currentBlock.disallowPaths.push(value);
+      }
+      // Disallow: (empty) = allow all — intentionally ignored
     }
   }
 
-  if (fullBlock) return "full";
-  if (partialBlock) return "partial";
-  return "none";
+  // Flush last block if file doesn't end with blank line
+  if (currentBlock && currentBlock.userAgents.length > 0) {
+    blocks.push(currentBlock);
+  }
+
+  return blocks;
 }
+
+/**
+ * Find all blocks that apply to a given User-Agent string.
+ * Matches both exact UA and wildcard (*).
+ */
+function getApplicableBlocks(blocks: RobotsBlock[], userAgent: string): RobotsBlock[] {
+  const uaLower = userAgent.toLowerCase();
+  return blocks.filter(
+    (b) => b.userAgents.includes(uaLower) || b.userAgents.includes("*")
+  );
+}
+
+/**
+ * Check if a specific path is disallowed for a given User-Agent.
+ * Uses longest-match prefix rule (standard robots.txt spec).
+ */
+function isPathDisallowed(blocks: RobotsBlock[], userAgent: string, urlPath: string): boolean {
+  const applicable = getApplicableBlocks(blocks, userAgent);
+  for (const block of applicable) {
+    if (block.isFullBlock) return true;
+    for (const disallowedPath of block.disallowPaths) {
+      if (urlPath.startsWith(disallowedPath)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check if a bot has a FULL block (Disallow: /) — not just partial exclusions.
+ */
+function hasTotalBlock(blocks: RobotsBlock[], userAgent: string): boolean {
+  const applicable = getApplicableBlocks(blocks, userAgent);
+  return applicable.some((b) => b.isFullBlock);
+}
+
+/**
+ * Extract the path component from a URL string.
+ * Returns "/" for invalid URLs.
+ */
+function extractPath(url: string): string {
+  try {
+    return new URL(url).pathname || "/";
+  } catch {
+    return "/";
+  }
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
 
 export function analyzeAICrawlers(page: ScrapedPage): CategoryResult & {
   crawlerStatuses: Array<{
-    crawler: CrawlerInfo;
+    crawler: { id: string; name: string; userAgent: string; engine: string; priority: string };
     blocked: boolean;
     partiallyBlocked: boolean;
     robotsTxtMissing: boolean;
   }>;
 } {
   const checks: AuditCheck[] = [];
-  const crawlerStatuses: Array<{
-    crawler: CrawlerInfo;
-    blocked: boolean;
-    partiallyBlocked: boolean;
-    robotsTxtMissing: boolean;
-  }> = [];
-
   const robotsTxtMissing = page.robotsTxt === null;
 
-  for (const crawler of AI_CRAWLERS) {
-    const blockStatus = robotsTxtMissing
-      ? "none"
-      : getCrawlerBlockStatus(page.robotsTxt!, crawler.userAgent);
+  // Parse once, reuse
+  const blocks = robotsTxtMissing ? [] : parseRobotsTxt(page.robotsTxt!);
+  const auditedPath = page.url ? extractPath(page.url) : "/";
 
-    const blocked = blockStatus === "full";
-    const partiallyBlocked = blockStatus === "partial";
+  // ── Check 1: Is the audited URL blocked for AI search bots? ─────────────────
+  const blockedSearchBots = robotsTxtMissing
+    ? []
+    : AI_SEARCH_BOTS.filter((bot) => isPathDisallowed(blocks, bot.ua, auditedPath));
 
-    crawlerStatuses.push({ crawler, blocked, partiallyBlocked, robotsTxtMissing });
-
-    checks.push({
-      id: crawler.id,
-      label: `${crawler.name} (${crawler.engine})`,
-      status: blocked ? "fail" : partiallyBlocked ? "warning" : "pass",
-      description: blocked
-        ? `${crawler.name} jest całkowicie zablokowany w robots.txt (Disallow: /). Twoja treść jest całkowicie niewidoczna dla ${crawler.engine}.`
-        : partiallyBlocked
-        ? `${crawler.name} ma częściowe ograniczenia w robots.txt. Niektóre sekcje Twojej strony są zablokowane dla ${crawler.engine}.`
-        : robotsTxtMissing
-        ? `Nie znaleziono robots.txt — dostęp ${crawler.name} jest domyślnie nieograniczony.`
-        : `${crawler.name} ma pełny dostęp do indeksowania Twojej treści dla ${crawler.engine}.`,
-      impact: crawler.priority === "critical" ? "high" : crawler.priority === "high" ? "medium" : "low",
-      value: !blocked,
-    });
-  }
-
-  // ── Overall AI crawler accessibility ──────────────────────────────────────
-  const criticalCrawlers = crawlerStatuses.filter(s => s.crawler.priority === "critical");
-  const blockedCritical = criticalCrawlers.filter((s) => s.blocked).length;
-  const blockedTotal = crawlerStatuses.filter((s) => s.blocked).length;
+  const auditedUrlBlocked = blockedSearchBots.length > 0;
 
   checks.push({
-    id: "all_ai_crawlers",
-    label: "Dostęp wszystkich głównych crawlerów AI",
-    status:
-      blockedCritical > 0
-        ? "fail"
-        : blockedTotal > 0
-        ? "warning"
-        : "pass",
-    description:
-      blockedCritical > 0
-        ? `${blockedCritical} krytycz${blockedCritical > 1 ? "ne crawlery AI są zablokowane" : "ny crawler AI jest zablokowany"} (GPTBot, OAI-SearchBot, PerplexityBot lub Google-Extended). Poważnie ogranicza to widoczność w wyszukiwarkach AI.`
-        : blockedTotal > 0
-        ? `${blockedTotal} drugorzędn${blockedTotal > 1 ? "e crawlery AI są zablokowane" : "y crawler AI jest zablokowany"}. Rozważ zezwolenie na dostęp, aby zmaksymalizować widoczność w AI Search.`
-        : "Wszystkie główne crawlery AI mają dostęp do Twojej treści.",
+    id: "audited_url_access",
+    label: "Dostęp do audytowanej podstrony",
+    status: auditedUrlBlocked ? "fail" : "pass",
+    description: auditedUrlBlocked
+      ? `Audytowana podstrona (${auditedPath}) jest zablokowana dla: ${blockedSearchBots.map((b) => b.name).join(", ")}. Crawlery AI nie mogą jej indeksować — to bezpośrednio blokuje cytowania.`
+      : robotsTxtMissing
+      ? "Brak robots.txt — dostęp do podstrony jest domyślnie nieograniczony dla wszystkich crawlerów."
+      : `Audytowana podstrona (${auditedPath}) jest dostępna dla wszystkich głównych crawlerów AI Search.`,
     impact: "high",
-    value: blockedTotal === 0,
+    value: !auditedUrlBlocked,
   });
 
-  // ── llms.txt detection (iPullRank Ch.11 — experimental, not yet standard) ──
-  const hasLlmsTxt = page.robotsTxt !== null
-    ? /llms\.txt/i.test(page.robotsTxt)
-    : false;
+  // ── Check 2: Full block on AI search bots (Disallow: /) ─────────────────────
+  const fullyBlockedSearchBots = robotsTxtMissing
+    ? []
+    : AI_SEARCH_BOTS.filter((bot) => hasTotalBlock(blocks, bot.ua));
 
-  const llmsTxtInHtml = /llms\.txt/i.test(page.html ?? "");
+  const hasFullSearchBlock = fullyBlockedSearchBots.length > 0;
 
   checks.push({
-    id: "llms_txt",
-    label: "Plik llms.txt (eksperymentalny)",
-    status: hasLlmsTxt || llmsTxtInHtml ? "pass" : "info",
-    description: hasLlmsTxt || llmsTxtInHtml
-      ? "Wykryto odwołanie do llms.txt. Uwaga: to eksperymentalny standard, jeszcze nie powszechnie stosowany przez główne systemy AI (wg iPullRank AI Search Manual rozdz. 11). Skup się na robots.txt i danych strukturalnych jako głównych sygnałach."
-      : "Nie wykryto pliku llms.txt. To eksperymentalna dyrektywa AI, jeszcze niestandardowa ani szeroko stosowana przez główne systemy AI. Robots.txt i dane strukturalne mają większy wpływ.",
-    impact: "low",
-    value: hasLlmsTxt || llmsTxtInHtml,
+    id: "ai_search_full_block",
+    label: "Dostęp crawlerów AI Search",
+    status: hasFullSearchBlock ? "fail" : "pass",
+    description: hasFullSearchBlock
+      ? `Całkowity zakaz dostępu (Disallow: /) dla: ${fullyBlockedSearchBots.map((b) => b.name).join(", ")}. Te silniki AI nie mogą indeksować żadnej strony w Twojej domenie.`
+      : robotsTxtMissing
+      ? "Brak robots.txt — crawlery AI Search mają domyślnie pełny dostęp."
+      : "Żaden crawler AI Search nie ma całkowitego zakazu dostępu. Częściowe wykluczenia (np. /admin/, /cart/) są normalne i nie wpływają na widoczność treści.",
+    impact: "high",
+    value: !hasFullSearchBlock,
   });
 
-  // ── XML Sitemap accessibility ──────────────────────────────────────────────
+  // ── Check 3: Training bots — informational only ──────────────────────────────
+  const fullyBlockedTrainingBots = robotsTxtMissing
+    ? []
+    : AI_TRAINING_BOTS.filter((bot) => hasTotalBlock(blocks, bot.ua));
+
+  const hasTrainingBlock = fullyBlockedTrainingBots.length > 0;
+
+  // Training bot blocks are a CONSCIOUS decision — show as info, not warning/fail
+  checks.push({
+    id: "ai_training_bots",
+    label: "Boty treningowe AI",
+    status: "info",
+    description: hasTrainingBlock
+      ? `Zablokowane boty treningowe: ${fullyBlockedTrainingBots.map((b) => b.name).join(", ")}. To świadoma decyzja — blokowanie botów treningowych NIE wpływa na cytowania w AI Search (wyszukiwanie w czasie rzeczywistym). Dotyczy tylko przyszłego trenowania modeli AI na Twojej treści.`
+      : robotsTxtMissing
+      ? "Brak robots.txt — boty treningowe AI mają domyślnie dostęp do treści. Możesz je zablokować dyrektywą Disallow: / dla GPTBot, Google-Extended, ClaudeBot, jeśli nie chcesz, aby Twoja treść była używana do trenowania modeli AI."
+      : "Boty treningowe AI mają dostęp do Twojej treści. Jeśli nie chcesz, aby była używana do trenowania modeli AI, możesz je zablokować — nie wpłynie to na cytowania w AI Search.",
+    impact: "low",
+    value: true, // always neutral — not a problem either way
+  });
+
+  // ── Check 4: Sitemap declaration ─────────────────────────────────────────────
   const hasSitemapInRobots = page.robotsTxt
     ? /^sitemap:/im.test(page.robotsTxt)
     : false;
 
   checks.push({
     id: "sitemap_for_crawlers",
-    label: "Mapa strony dostępna dla crawlerów AI",
+    label: "Mapa strony w robots.txt",
     status: hasSitemapInRobots ? "pass" : page.robotsTxt !== null ? "warning" : "info",
     description: hasSitemapInRobots
       ? "URL mapy strony zadeklarowany w robots.txt — crawlery AI mogą odkryć wszystkie indeksowalne podstrony."
       : page.robotsTxt !== null
-      ? "Plik robots.txt istnieje, ale nie znaleziono dyrektywy Sitemap. Dodaj 'Sitemap: https://twojadomena.pl/sitemap.xml', aby pomóc crawlerom AI odkryć całą zawartość."
-      : "Brak robots.txt, więc brak dyrektywy Sitemap. Dodaj robots.txt z odwołaniem do mapy strony, aby crawlery AI mogły indeksować całą witrynę.",
+      ? "Plik robots.txt istnieje, ale nie zawiera dyrektywy Sitemap. Dodaj 'Sitemap: https://twojadomena.pl/sitemap.xml', aby pomóc crawlerom AI odkryć całą zawartość."
+      : "Brak robots.txt — dodaj go z odwołaniem do mapy strony, aby crawlery AI mogły efektywnie indeksować witrynę.",
     impact: "medium",
     value: hasSitemapInRobots,
   });
 
-  const score = computeScore(crawlerStatuses, blockedCritical, blockedTotal);
+  // ── Check 5: llms.txt (experimental) ─────────────────────────────────────────
+  const hasLlmsTxt =
+    (page.robotsTxt !== null && /llms\.txt/i.test(page.robotsTxt)) ||
+    /llms\.txt/i.test(page.html ?? "");
+
+  checks.push({
+    id: "llms_txt",
+    label: "Plik llms.txt (eksperymentalny)",
+    status: hasLlmsTxt ? "pass" : "info",
+    description: hasLlmsTxt
+      ? "Wykryto odwołanie do llms.txt — eksperymentalny standard opisujący treść strony dla modeli językowych."
+      : "Brak pliku llms.txt. To eksperymentalny standard, jeszcze nie stosowany przez główne systemy AI. Robots.txt i dane strukturalne mają znacznie większy wpływ na widoczność.",
+    impact: "low",
+    value: hasLlmsTxt,
+  });
+
+  // ── Score computation ─────────────────────────────────────────────────────────
+  let score = 100;
+  if (auditedUrlBlocked) score -= 40; // direct block on audited URL — critical
+  if (hasFullSearchBlock) score -= 35; // full domain block for AI search — critical
+  if (!hasSitemapInRobots && page.robotsTxt !== null) score -= 10;
+  score = Math.max(0, Math.min(100, score));
+
+  // ── crawlerStatuses (legacy shape — used by AICitationPanel engine badges) ───
+  const crawlerStatuses = [
+    ...AI_SEARCH_BOTS.map((bot) => ({
+      crawler: { id: bot.ua.toLowerCase(), name: bot.ua, userAgent: bot.ua, engine: bot.name, priority: "critical" },
+      blocked: robotsTxtMissing ? false : hasTotalBlock(blocks, bot.ua),
+      partiallyBlocked: false, // no longer used for display
+      robotsTxtMissing,
+    })),
+    ...AI_TRAINING_BOTS.map((bot) => ({
+      crawler: { id: bot.ua.toLowerCase(), name: bot.ua, userAgent: bot.ua, engine: bot.name, priority: "medium" },
+      blocked: robotsTxtMissing ? false : hasTotalBlock(blocks, bot.ua),
+      partiallyBlocked: false,
+      robotsTxtMissing,
+    })),
+  ];
 
   return {
     score,
     maxScore: 100,
     checks,
     crawlerStatuses,
-    summary: buildSummary(score, blockedCritical, blockedTotal, robotsTxtMissing),
+    summary: buildSummary(score, auditedUrlBlocked, hasFullSearchBlock, robotsTxtMissing),
   };
-}
-
-function computeScore(
-  crawlerStatuses: Array<{ crawler: CrawlerInfo; blocked: boolean; partiallyBlocked: boolean }>,
-  blockedCritical: number,
-  blockedTotal: number
-): number {
-  const criticalPenalty = blockedCritical * 25;
-  const nonCriticalBlocked = blockedTotal - blockedCritical;
-  const nonCriticalPenalty = nonCriticalBlocked * 10;
-  return Math.max(0, Math.min(100, 100 - criticalPenalty - nonCriticalPenalty));
 }
 
 function buildSummary(
   score: number,
-  blockedCritical: number,
-  blockedTotal: number,
+  auditedUrlBlocked: boolean,
+  hasFullSearchBlock: boolean,
   robotsTxtMissing: boolean
 ): string {
   if (robotsTxtMissing)
-    return "Nie znaleziono robots.txt — crawlery AI mają domyślnie nieograniczony dostęp. Dodaj robots.txt z dyrektywą Sitemap.";
-  if (blockedCritical > 0)
-    return `${blockedCritical} krytycz${blockedCritical > 1 ? "ne crawlery AI są zablokowane" : "ny crawler AI jest zablokowany"} — Twoja treść jest niewidoczna dla tych silników AI. Usuń Disallow: / dla GPTBot, OAI-SearchBot, PerplexityBot i Google-Extended.`;
-  if (blockedTotal > 0)
-    return `${blockedTotal} drugorzędn${blockedTotal > 1 ? "e crawlery AI są zablokowane" : "y crawler AI jest zablokowany"}. Wszystkie krytyczne crawlery (GPTBot, OAI-SearchBot, PerplexityBot, Google-Extended) mają dostęp.`;
-  return "Wszystkie główne crawlery AI (GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot, Google-Extended) mają pełny dostęp.";
+    return "Nie znaleziono robots.txt — crawlery AI mają domyślnie pełny dostęp. Rozważ dodanie robots.txt z dyrektywą Sitemap.";
+  if (auditedUrlBlocked)
+    return "Audytowana podstrona jest zablokowana dla crawlerów AI Search — bezpośrednio blokuje cytowania. Usuń Disallow dla tej ścieżki.";
+  if (hasFullSearchBlock)
+    return "Jeden lub więcej crawlerów AI Search ma całkowity zakaz dostępu (Disallow: /). Usuń blokadę, aby umożliwić indeksowanie.";
+  return "Konfiguracja robots.txt jest prawidłowa. Crawlery AI Search mają dostęp do treści. Częściowe wykluczenia (admin, koszyk itp.) są normalne.";
 }

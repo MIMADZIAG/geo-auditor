@@ -387,37 +387,59 @@ describe("analyzeContentStructure", () => {
 describe("analyzeAICrawlers", () => {
   it("passes when robots.txt allows all crawlers", () => {
     const page = mockPage("<html><body></body></html>", {
-      robotsTxt: "User-agent: *\nAllow: /\n",
+      robotsTxt: "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml\n",
     });
     const result = analyzeAICrawlers(page);
-    const allCheck = result.checks.find((c) => c.id === "all_ai_crawlers");
+    // v3: check id is ai_search_full_block (not all_ai_crawlers)
+    const allCheck = result.checks.find((c) => c.id === "ai_search_full_block");
     expect(allCheck?.status).toBe("pass");
   });
 
-  it("fails when GPTBot is blocked", () => {
+  it("fails when PerplexityBot (AI search) is fully blocked", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "User-agent: PerplexityBot\nDisallow: /\n",
+    });
+    const result = analyzeAICrawlers(page);
+    // v3: training bots (GPTBot) are info only; AI search full block is the check
+    const searchCheck = result.checks.find((c) => c.id === "ai_search_full_block");
+    expect(searchCheck?.status).toBe("fail");
+  });
+
+  it("training bot block (GPTBot) produces info, not fail", () => {
     const page = mockPage("<html><body></body></html>", {
       robotsTxt: "User-agent: GPTBot\nDisallow: /\n",
     });
     const result = analyzeAICrawlers(page);
-    const gptCheck = result.checks.find((c) => c.id === "gptbot");
-    expect(gptCheck?.status).toBe("fail");
+    const trainingCheck = result.checks.find((c) => c.id === "ai_training_bots");
+    expect(trainingCheck?.status).toBe("info");
   });
 
   it("handles missing robots.txt gracefully", () => {
     const page = mockPage("<html><body></body></html>", { robotsTxt: null });
     const result = analyzeAICrawlers(page);
     expect(result.score).toBeGreaterThanOrEqual(0);
-    // All crawlers should pass (unrestricted access)
-    const gptCheck = result.checks.find((c) => c.id === "gptbot");
-    expect(gptCheck?.status).toBe("pass");
+    // All checks should be pass or info (no fail/warning)
+    const problematic = result.checks.filter((c) => c.status === "fail" || c.status === "warning");
+    expect(problematic).toHaveLength(0);
   });
 
   it("returns score of 100 when no crawlers are blocked", () => {
     const page = mockPage("<html><body></body></html>", {
-      robotsTxt: "User-agent: *\nAllow: /\n",
+      robotsTxt: "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml\n",
     });
     const result = analyzeAICrawlers(page);
     expect(result.score).toBe(100);
+  });
+
+  it("partial exclusions (admin, cart) do NOT produce warnings", () => {
+    const page = mockPage("<html><body></body></html>", {
+      robotsTxt: "User-agent: *\nDisallow: /admin/\nDisallow: /cart/\nSitemap: https://example.com/sitemap.xml\n",
+    });
+    const result = analyzeAICrawlers(page);
+    const problematic = result.checks.filter(
+      (c) => (c.status === "fail" || c.status === "warning") && c.id !== "sitemap_for_crawlers"
+    );
+    expect(problematic).toHaveLength(0);
   });
 });
 
