@@ -146,6 +146,7 @@ async function auditMonitoredPage(page: {
       contentIntelligenceScore: result.contentIntelligence?.overallScore ?? null,
       citeabilityScore: result.contentIntelligence?.citeabilityScore ?? null,
       pageTitle: result.pageTitle ?? null,
+      pageType: result.pageType ?? null,
       completedAt: new Date(),
     });
 
