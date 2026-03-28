@@ -53,8 +53,11 @@ describe("computeOverallScore", () => {
       aiCrawlers: { score: 0, maxScore: 100, checks: [], summary: "" },
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
     };
-    // technical weight = 12 out of 80 (base weights sum without brandAuthority, absent from test data), normalized: round(12/80*100) = 15
-    expect(computeOverallScore(findings)).toBe(15);
+    // v4 weights (base, no brandAuthority in test data):
+    // technical=11, structuredData=20, contentStructure=24, eeat=14, aiCrawlers=8, metaTags=5 → sum=82
+    // raw = (100/100 * 11) / 82 * 100 = 13.41 → round = 13
+    // calibrated: 13 is between breakpoints [0,0] and [30,22] → t=13/30=0.433 → 22*0.433 = 9.5 → round = 10
+    expect(computeOverallScore(findings)).toBe(10);
   });
 
   it("returns a value between 0 and 100 for mixed scores", () => {
@@ -66,21 +69,25 @@ describe("computeOverallScore", () => {
 });
 
 describe("getScoreLabel", () => {
-  it("returns Excellent for 85+", () => {
-    expect(getScoreLabel(85)).toBe("Excellent");
-    expect(getScoreLabel(100)).toBe("Excellent");
+  it("returns Dominujący for 83+", () => {
+    expect(getScoreLabel(83)).toBe("Dominujący");
+    expect(getScoreLabel(100)).toBe("Dominujący");
   });
-  it("returns Good for 65-84", () => {
-    expect(getScoreLabel(65)).toBe("Good");
-    expect(getScoreLabel(84)).toBe("Good");
+  it("returns Widoczny for 70-82", () => {
+    expect(getScoreLabel(70)).toBe("Widoczny");
+    expect(getScoreLabel(82)).toBe("Widoczny");
   });
-  it("returns Fair for 45-64", () => {
-    expect(getScoreLabel(45)).toBe("Fair");
-    expect(getScoreLabel(64)).toBe("Fair");
+  it("returns Rozwijający się for 55-69", () => {
+    expect(getScoreLabel(55)).toBe("Rozwijający się");
+    expect(getScoreLabel(69)).toBe("Rozwijający się");
   });
-  it("returns Poor for below 45", () => {
-    expect(getScoreLabel(0)).toBe("Poor");
-    expect(getScoreLabel(44)).toBe("Poor");
+  it("returns Startujący for 36-54", () => {
+    expect(getScoreLabel(36)).toBe("Startujący");
+    expect(getScoreLabel(54)).toBe("Startujący");
+  });
+  it("returns Niewidoczny for below 36", () => {
+    expect(getScoreLabel(0)).toBe("Niewidoczny");
+    expect(getScoreLabel(35)).toBe("Niewidoczny");
   });
 });
 
@@ -770,9 +777,12 @@ describe("ContentIntelligenceResult type contract", () => {
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
       contentIntelligence: { overallScore: 0 },
     };
-    // With CI present: technical weight = 9 out of 84 (WITH_CI sum without brandAuthority), normalized: round(9/84*100) = 11
+    // v4 WITH_CI weights (no brandAuthority in test data):
+    // technical=8, structuredData=14, contentStructure=17, eeat=10, aiCrawlers=6, metaTags=4, CI=28 → sum=87
+    // raw = (100/100 * 8) / 87 * 100 = 9.2 → round = 9
+    // calibrated: 9 is between [0,0] and [30,22] → t=9/30=0.3 → 22*0.3 = 6.6 → round = 7
     const score = computeOverallScore(findings as AuditFindings);
-    expect(score).toBe(11);
+    expect(score).toBe(7);
   });
 
   it("computeOverallScore includes CI score when CI is present", () => {
@@ -785,9 +795,11 @@ describe("ContentIntelligenceResult type contract", () => {
       metaTags: { score: 0, maxScore: 100, checks: [], summary: "" },
       contentIntelligence: { overallScore: 100 },
     };
-    // Only CI scores 100, weight 25 out of 84 (WITH_CI sum without brandAuthority, absent from test data) → 30
+    // v4 WITH_CI weights (no brandAuthority in test data):
+    // Only CI scores 100, weight 28 out of 87 → raw = 28/87*100 = 32.2 → round = 32
+    // calibrated: 32 is between [30,22] and [50,38] → t=(32-30)/(50-30)=0.1 → 22 + 0.1*(38-22) = 23.6 → round = 24
     const score = computeOverallScore(findings as AuditFindings);
-    expect(score).toBe(30);
+    expect(score).toBe(24);
   });
 });
 

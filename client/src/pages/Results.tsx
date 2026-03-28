@@ -70,17 +70,27 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 80) return "Wysoki";
-  if (score >= 60) return "Umiarkowany";
-  if (score >= 40) return "Niski";
-  return "Bardzo niski";
+  if (score >= 83) return "Dominujący";
+  if (score >= 70) return "Widoczny";
+  if (score >= 55) return "Rozwijający się";
+  if (score >= 36) return "Startujący";
+  return "Niewidoczny";
+}
+
+function getNextLevelMessage(score: number): { points: number; action: string } | null {
+  if (score >= 83) return null;
+  if (score >= 70) return { points: 83 - score, action: "Dodaj analizę treści AI" };
+  if (score >= 55) return { points: 70 - score, action: "Dodaj FAQ + dane strukturalne" };
+  if (score >= 36) return { points: 55 - score, action: "Dodaj TL;DR, nagłówki i FAQ" };
+  return { points: 36 - score, action: "Napraw dostęp techniczny i meta tagi" };
 }
 
 function getScoreSublabel(score: number): string {
-  if (score >= 80) return "Twoja strona jest dobrze widoczna dla wyszukiwarek AI.";
-  if (score >= 60) return "Twoja strona ma przyzwoitą widoczność — kilka poprawek zrobi dużą różnicę.";
-  if (score >= 40) return "Wyszukiwarki AI mogą mieć trudności ze znalezieniem i cytowaniem Twojej treści.";
-  return "Twoja strona ma poważne bariery uniemożliwiające widoczność w AI Search.";
+  if (score >= 83) return "Twoja strona dominuje w AI Search — jesteś w czołówce. Monitoruj pozycję, bo konkurenci mogą Cię gonić.";
+  if (score >= 70) return "Dobra widoczność w AI Search. Kilka precyzyjnych poprawek (FAQ, dane strukturalne, TL;DR) może wynieść Cię do poziomu Dominującego.";
+  if (score >= 55) return "Twoja strona jest zauważalna przez AI, ale traci cytowania na rzecz konkurentów. Masz solidne podstawy — czas na optymalizację treści.";
+  if (score >= 36) return "Wyszukiwarki AI rzadko cytują Twoją stronę. Brakuje kluczowych sygnałów GEO — ale to właśnie te zmiany dają największy skok widoczności.";
+  return "Twoja strona jest praktycznie niewidoczna dla AI Search. Kilka fundamentalnych zmian może radykalnie zmienić sytuację — zacznij od rekomendacji poniżej.";
 }
 
 const CATEGORY_META = [
@@ -414,7 +424,24 @@ function ScoreHero({
           <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center lg:justify-start gap-1 mb-3 min-w-0" style={{wordBreak:'break-all'}}>
             <ExternalLink className="w-3 h-3 shrink-0" />{url}
           </a>
-          <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{scoreSublabel}</p>
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{scoreSublabel}</p>
+
+          {/* Next-level progress nudge */}
+          {(() => {
+            const next = getNextLevelMessage(score);
+            if (!next) return null;
+            return (
+              <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-lg bg-primary/8 border border-primary/20">
+                <div className="shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-[10px] font-black" style={{ color: scoreColor }}>+{next.points}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">{next.points} pkt do następnego poziomu</span>
+                  {" — "}{next.action}
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Category mini-scores */}
           {findings && (

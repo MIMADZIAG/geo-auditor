@@ -91,7 +91,7 @@ export interface AuditResult {
   pageType: PageType;
   pageTypeLabel: string;
   overallScore: number;
-  scoreLabel: "Excellent" | "Good" | "Fair" | "Poor";
+  scoreLabel: "Dominujący" | "Widoczny" | "Rozwijający się" | "Startujący" | "Niewidoczny";
   findings: AuditFindings;
   recommendations: Recommendation[];
   llmResult?: LLMRecommendationsResult;

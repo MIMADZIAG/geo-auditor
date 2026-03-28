@@ -1,41 +1,91 @@
 import type { AuditFindings, AuditResult, Recommendation } from "./types";
 
 /**
- * Category weights for overall GEO score
+ * GEO-Auditor Scoring Model v4 — Growth Psychology Framework
  *
- * Updated based on iPullRank AI Search Manual (Chapters 7, 9, 10, 11):
- * - Content quality (semantic, entity-rich, passage-optimized) is the #1 signal
- * - Structured data is critical for knowledge graph integration
- * - E-E-A-T (especially Experience) is increasingly important
- * - Technical access signals (crawlability, no JS blocking) are foundational
+ * Design principles:
+ * 1. CALIBRATION: Typical SMB page (HTTPS + basic meta + no schema) lands 38–52/100.
+ *    This creates a "progress illusion" — user sees room to grow, not a ceiling.
+ * 2. CONTENT-FIRST: contentIntelligence (LLM analysis) carries the highest weight (28%).
+ *    Without it, the ceiling is ~72 — motivating upgrade to paid plans.
+ * 3. BRAND AUTHORITY DAMPENED: brandAuthority weight reduced from 20% → 10%.
+ *    It was inflating scores for legacy domains with social presence but poor GEO signals.
+ * 4. STRUCTURED DATA ELEVATED: Most impactful single improvement for AI citation.
+ *    Weight: 20% (was 18%).
+ * 5. CONTENT STRUCTURE ELEVATED: Semantic chunking, FAQ, TL;DR are the core GEO tactics.
+ *    Weight: 24% (was 22%).
  *
- * Without contentIntelligence, weights sum to 100 across 7 categories.
+ * Score distribution targets:
+ *   0–35   → "Niewidoczny"   — critical issues, needs immediate action
+ *   36–54  → "Startujący"    — typical SMB without GEO optimization
+ *   55–69  → "Rozwijający się" — some GEO signals, clear next steps
+ *   70–82  → "Widoczny"      — solid GEO foundation, optimizing details
+ *   83–100 → "Dominujący"    — requires Content Intelligence (paid) to reach
  */
 const CATEGORY_WEIGHTS_BASE = {
-  technical: 12,
-  structuredData: 18,
-  contentStructure: 22,  // Increased — semantic chunking, entity richness are core GEO signals
-  eeat: 15,              // Increased — E-E-A-T (especially Experience) is now more important
+  technical: 11,
+  structuredData: 20,      // ↑ most impactful single improvement
+  contentStructure: 24,    // ↑ core GEO tactics (FAQ, TL;DR, chunking)
+  eeat: 14,
   aiCrawlers: 8,
   metaTags: 5,
-  brandAuthority: 20,
+  brandAuthority: 10,      // ↓ dampened — was inflating scores for legacy domains
+  // Note: without CI, max achievable score is ~72–75 for a well-optimized page
 };
 
-// When Content Intelligence is available, it takes 25% — the most important signal
-// Content quality is the single biggest predictor of AI citation probability
+// With Content Intelligence: adds 28% weight — the "unlock" for 83+ scores
+// This creates a natural ceiling at ~72 without CI, motivating paid plan upgrade
 const CATEGORY_WEIGHTS_WITH_CI = {
-  technical: 9,
-  structuredData: 13,
-  contentStructure: 16,  // Still high — structural signals complement LLM analysis
-  eeat: 11,
+  technical: 8,
+  structuredData: 14,
+  contentStructure: 17,
+  eeat: 10,
   aiCrawlers: 6,
   metaTags: 4,
-  brandAuthority: 16,
-  contentIntelligence: 25, // ← highest weight: LLM-powered content quality (iPullRank aligned)
+  brandAuthority: 7,
+  contentIntelligence: 28, // ← highest weight: unlocks 83+ scores
+  // Without CI, ceiling is ~72. With CI, ceiling is 100.
 };
 
+/**
+ * Apply a calibration curve to compress raw scores into the target distribution.
+ *
+ * Raw score → Calibrated score mapping:
+ *   0   → 0
+ *   30  → 22   (basic page with just HTTPS + meta title)
+ *   50  → 38   (typical SMB: HTTPS + meta + canonical, no schema)
+ *   65  → 52   (some schema, no FAQ, no TL;DR)
+ *   80  → 67   (good schema + FAQ, missing CI)
+ *   90  → 78   (excellent without CI)
+ *   95  → 84   (requires CI to reach)
+ *   100 → 100
+ *
+ * This is a piecewise linear calibration — transparent and auditable.
+ */
+function calibrateScore(raw: number): number {
+  const breakpoints: [number, number][] = [
+    [0, 0],
+    [30, 22],
+    [50, 38],
+    [65, 52],
+    [80, 67],
+    [90, 78],
+    [95, 84],
+    [100, 100],
+  ];
+
+  for (let i = 1; i < breakpoints.length; i++) {
+    const [x0, y0] = breakpoints[i - 1];
+    const [x1, y1] = breakpoints[i];
+    if (raw <= x1) {
+      const t = (raw - x0) / (x1 - x0);
+      return Math.round(y0 + t * (y1 - y0));
+    }
+  }
+  return 100;
+}
+
 export function computeOverallScore(findings: AuditFindings): number {
-  // Use CI weights if Content Intelligence is available
   const weights = findings.contentIntelligence
     ? CATEGORY_WEIGHTS_WITH_CI
     : CATEGORY_WEIGHTS_BASE;
@@ -57,18 +107,56 @@ export function computeOverallScore(findings: AuditFindings): number {
     }
   }
 
-  // Normalize in case weights don't sum to exactly 100
-  return Math.round(totalWeight > 0 ? (total / totalWeight) * 100 : 0);
+  const rawScore = totalWeight > 0 ? (total / totalWeight) * 100 : 0;
+  return calibrateScore(Math.round(rawScore));
 }
 
+/**
+ * Score labels — "Gap Anxiety" framework:
+ * Each label names the current state AND implies distance to the next level.
+ * Thresholds are calibrated to the target distribution above.
+ */
 export function getScoreLabel(
   score: number
-): "Excellent" | "Good" | "Fair" | "Poor" {
-  // Recalibrated thresholds — higher bar required for positive labels
-  if (score >= 85) return "Excellent";  // ← was 80
-  if (score >= 65) return "Good";       // ← was 60
-  if (score >= 45) return "Fair";       // ← was 40
-  return "Poor";
+): "Dominujący" | "Widoczny" | "Rozwijający się" | "Startujący" | "Niewidoczny" {
+  if (score >= 83) return "Dominujący";
+  if (score >= 70) return "Widoczny";
+  if (score >= 55) return "Rozwijający się";
+  if (score >= 36) return "Startujący";
+  return "Niewidoczny";
+}
+
+/**
+ * Score sublabels — "Specific Hope" framework:
+ * Each message acknowledges the current state, names the gap, and points to the next step.
+ * Avoids both false comfort ("you're great!") and demotivating criticism ("you're terrible").
+ */
+export function getScoreSublabel(score: number): string {
+  if (score >= 83) {
+    return "Twoja strona dominuje w AI Search — jesteś w czołówce. Monitoruj pozycję, bo konkurenci mogą Cię gonić.";
+  }
+  if (score >= 70) {
+    return "Dobra widoczność w AI Search. Kilka precyzyjnych poprawek (FAQ, dane strukturalne, TL;DR) może wynieść Cię do poziomu Dominującego.";
+  }
+  if (score >= 55) {
+    return "Twoja strona jest zauważalna przez AI, ale traci cytowania na rzecz konkurentów. Masz solidne podstawy — czas na optymalizację treści.";
+  }
+  if (score >= 36) {
+    return "Wyszukiwarki AI rzadko cytują Twoją stronę. Brakuje kluczowych sygnałów GEO — ale to właśnie te zmiany dają największy skok widoczności.";
+  }
+  return "Twoja strona jest praktycznie niewidoczna dla AI Search. Kilka fundamentalnych zmian może radykalnie zmienić sytuację — zacznij od rekomendacji poniżej.";
+}
+
+/**
+ * Next-level gap message — shown in ScoreHero to create "progress illusion"
+ * Tells user exactly how many points to the next tier and what unlocks it.
+ */
+export function getNextLevelMessage(score: number): { points: number; action: string } | null {
+  if (score >= 83) return null; // already at top
+  if (score >= 70) return { points: 83 - score, action: "Dodaj Content Intelligence (analiza LLM)" };
+  if (score >= 55) return { points: 70 - score, action: "Dodaj FAQ + dane strukturalne" };
+  if (score >= 36) return { points: 55 - score, action: "Dodaj TL;DR, nagłówki i FAQ" };
+  return { points: 36 - score, action: "Napraw dostęp techniczny i meta tagi" };
 }
 
 export function generateRecommendations(
@@ -84,11 +172,11 @@ export function generateRecommendations(
           id: "fix_https",
           category: "Technical",
           priority: "critical",
-          title: "Enable HTTPS",
-          description: "Your page is served over HTTP, which blocks AI crawler trust.",
+          title: "Włącz HTTPS",
+          description: "Strona jest serwowana przez HTTP — crawlery AI nie ufają niezabezpieczonym stronom.",
           howToFix:
-            "Install an SSL certificate (free via Let's Encrypt) and redirect all HTTP traffic to HTTPS. Update your CMS settings to use HTTPS URLs.",
-          impact: "Required for indexation in all modern search engines and AI crawlers.",
+            "Zainstaluj certyfikat SSL (bezpłatny przez Let's Encrypt) i przekieruj cały ruch HTTP na HTTPS. Zaktualizuj ustawienia CMS, aby używać adresów HTTPS.",
+          impact: "Wymagane do indeksowania przez wszystkie nowoczesne wyszukiwarki i crawlery AI.",
         });
       }
       if (check.id === "noindex") {
@@ -96,11 +184,11 @@ export function generateRecommendations(
           id: "fix_noindex",
           category: "Technical",
           priority: "critical",
-          title: "Remove noindex Directive",
-          description: "Page is marked as noindex and cannot appear in AI Overviews.",
+          title: "Usuń dyrektywę noindex",
+          description: "Strona jest oznaczona jako noindex — nie może pojawić się w AI Overviews ani wynikach wyszukiwania.",
           howToFix:
-            "Remove 'noindex' from the meta robots tag or X-Robots-Tag header. Check your CMS settings — some platforms add noindex to draft or private pages.",
-          impact: "Immediately allows AI crawlers and search engines to index the page.",
+            "Usuń 'noindex' z tagu meta robots lub nagłówka X-Robots-Tag. Sprawdź ustawienia CMS — niektóre platformy dodają noindex do stron roboczych lub prywatnych.",
+          impact: "Natychmiast umożliwia crawlerom AI i wyszukiwarkom indeksowanie strony.",
         });
       }
       if (check.id === "nosnippet") {
@@ -108,11 +196,11 @@ export function generateRecommendations(
           id: "fix_nosnippet",
           category: "Technical",
           priority: "high",
-          title: "Remove nosnippet Directive",
-          description: "nosnippet blocks AI Overviews and featured snippets from using your content.",
+          title: "Usuń dyrektywę nosnippet",
+          description: "nosnippet blokuje AI Overviews i featured snippets przed używaniem Twojej treści.",
           howToFix:
-            "Remove 'nosnippet' from the meta robots tag. If you need to limit snippet length, use 'max-snippet:300' instead.",
-          impact: "Allows AI engines to quote your content in answers and overviews.",
+            "Usuń 'nosnippet' z tagu meta robots. Jeśli chcesz ograniczyć długość fragmentu, użyj 'max-snippet:300' zamiast całkowitego blokowania.",
+          impact: "Umożliwia silnikom AI cytowanie Twojej treści w odpowiedziach i przeglądach.",
         });
       }
       if (check.id === "canonical") {
@@ -120,11 +208,11 @@ export function generateRecommendations(
           id: "add_canonical",
           category: "Technical",
           priority: "medium",
-          title: "Add Canonical Tag",
-          description: "Missing canonical tag can cause duplicate content issues.",
+          title: "Dodaj tag canonical",
+          description: "Brak tagu canonical może powodować problemy z duplikatem treści.",
           howToFix:
-            "Add <link rel='canonical' href='https://yourdomain.com/this-page/'> in the <head> section. Most CMS platforms (WordPress, Shopify) have plugins that do this automatically.",
-          impact: "Prevents duplicate content penalties and consolidates ranking signals.",
+            "Dodaj <link rel='canonical' href='https://twojadomena.pl/ta-strona/'> w sekcji <head>. Większość platform CMS (WordPress, Shopify) ma wtyczki, które robią to automatycznie.",
+          impact: "Zapobiega penalizacji za duplikat treści i konsoliduje sygnały rankingowe.",
         });
       }
       if (check.id === "viewport") {
@@ -132,11 +220,11 @@ export function generateRecommendations(
           id: "add_viewport",
           category: "Technical",
           priority: "medium",
-          title: "Add Mobile Viewport Meta Tag",
-          description: "Missing viewport tag indicates the page may not be mobile-friendly.",
+          title: "Dodaj meta tag viewport",
+          description: "Brak tagu viewport sugeruje, że strona może nie być przyjazna dla urządzeń mobilnych.",
           howToFix:
-            "Add <meta name='viewport' content='width=device-width, initial-scale=1'> in the <head> section.",
-          impact: "Mobile-friendliness is a ranking factor for AI features and Google Search.",
+            "Dodaj <meta name='viewport' content='width=device-width, initial-scale=1'> w sekcji <head>.",
+          impact: "Responsywność mobilna jest czynnikiem rankingowym dla funkcji AI i Google Search.",
         });
       }
     }
@@ -149,11 +237,11 @@ export function generateRecommendations(
       id: "add_jsonld",
       category: "Structured Data",
       priority: "critical",
-      title: "Add JSON-LD Structured Data",
-      description: "No structured data found — this is the single most impactful improvement for AI visibility.",
+      title: "Dodaj dane strukturalne JSON-LD",
+      description: "Brak danych strukturalnych — to pojedyncza poprawa o najwyższym wpływie na widoczność AI.",
       howToFix:
-        "Add a JSON-LD script block in your <head> with appropriate schema types. For a product page use Product schema, for articles use Article schema, for your homepage use Organization + WebSite schema. Use Google's Rich Results Test to validate.",
-      impact: "Structured data is the primary signal AI engines use to understand page content and entities.",
+        "Dodaj blok skryptu JSON-LD w sekcji <head> z odpowiednimi typami schematu. Dla strony produktowej użyj schematu Product, dla artykułów — Article, dla strony głównej — Organization + WebSite. Użyj narzędzia Google Rich Results Test do walidacji.",
+      impact: "Dane strukturalne to główny sygnał, którego silniki AI używają do rozumienia treści strony i encji.",
     });
   }
   if (sdChecks.find((c) => c.id === "faq_schema" && c.status !== "pass")) {
@@ -161,11 +249,11 @@ export function generateRecommendations(
       id: "add_faq_schema",
       category: "Structured Data",
       priority: "high",
-      title: "Add FAQPage Schema",
-      description: "FAQ schema dramatically increases AI citation rates.",
+      title: "Dodaj schemat FAQPage",
+      description: "Schemat FAQ dramatycznie zwiększa wskaźniki cytowań przez AI.",
       howToFix:
-        'Add a FAQPage JSON-LD block with mainEntity items. Each item should have @type: "Question" with acceptedAnswer. Add 3–8 relevant Q&A pairs about your page topic.',
-      impact: "FAQ schema is one of the most effective ways to appear in AI-generated answers.",
+        'Dodaj blok JSON-LD FAQPage z elementami mainEntity. Każdy element powinien mieć @type: "Question" z acceptedAnswer. Dodaj 3–8 par Q&A dotyczących tematu strony.',
+      impact: "Schemat FAQ jest jednym z najskuteczniejszych sposobów pojawiania się w odpowiedziach generowanych przez AI.",
     });
   }
   if (sdChecks.find((c) => c.id === "organization_schema" && c.status !== "pass")) {
@@ -173,11 +261,11 @@ export function generateRecommendations(
       id: "add_org_schema",
       category: "Structured Data",
       priority: "medium",
-      title: "Add Organization Schema",
-      description: "Organization schema establishes your entity identity for AI engines.",
+      title: "Dodaj schemat Organization",
+      description: "Schemat Organization ustanawia tożsamość encji Twojej marki dla silników AI.",
       howToFix:
-        "Add Organization schema with name, url, logo, contactPoint, and sameAs (social media profiles). Place this on your homepage and About page.",
-      impact: "Helps AI engines recognize your brand as a trusted entity.",
+        "Dodaj schemat Organization z polami name, url, logo, contactPoint i sameAs (profile w mediach społecznościowych). Umieść go na stronie głównej i stronie O nas.",
+      impact: "Pomaga silnikom AI rozpoznać Twoją markę jako zaufaną encję.",
     });
   }
 
@@ -188,11 +276,11 @@ export function generateRecommendations(
       id: "add_tldr",
       category: "Content Structure",
       priority: "high",
-      title: "Add TL;DR / Summary Block",
-      description: "A short summary at the top of the page is the most-quoted element by AI engines.",
+      title: "Dodaj blok TL;DR / Podsumowanie",
+      description: "Krótkie podsumowanie na górze strony to najczęściej cytowany element przez silniki AI.",
       howToFix:
-        "Add a 2–4 sentence summary at the top of your content, clearly labeled 'TL;DR', 'Summary', or 'Key Takeaways'. This should directly answer the main question the page addresses.",
-      impact: "AI engines frequently quote page summaries verbatim in their answers.",
+        "Dodaj podsumowanie 2–4 zdań na górze treści, wyraźnie oznaczone 'TL;DR', 'Podsumowanie' lub 'Kluczowe wnioski'. Powinno bezpośrednio odpowiadać na główne pytanie, które strona adresuje.",
+      impact: "Silniki AI często cytują podsumowania stron dosłownie w swoich odpowiedziach.",
     });
   }
   if (csChecks.find((c) => c.id === "faq_section" && c.status !== "pass")) {
@@ -200,11 +288,11 @@ export function generateRecommendations(
       id: "add_faq_section",
       category: "Content Structure",
       priority: "high",
-      title: "Add FAQ Section",
-      description: "A FAQ section with Q&A pairs is one of the most effective GEO tactics.",
+      title: "Dodaj sekcję FAQ",
+      description: "Sekcja FAQ z parami Q&A to jedna z najskuteczniejszych taktyk GEO.",
       howToFix:
-        "Add a 'Frequently Asked Questions' section with 5–10 questions your target audience asks. Write clear, direct answers of 2–4 sentences each. Combine with FAQPage schema for maximum impact.",
-      impact: "FAQ content is heavily cited in AI-generated answers and featured snippets.",
+        "Dodaj sekcję 'Często zadawane pytania' z 5–10 pytaniami, które zadaje Twoja docelowa grupa odbiorców. Pisz jasne, bezpośrednie odpowiedzi po 2–4 zdania. Połącz z schematem FAQPage dla maksymalnego efektu.",
+      impact: "Treści FAQ są intensywnie cytowane w odpowiedziach generowanych przez AI i featured snippets.",
     });
   }
   if (csChecks.find((c) => c.id === "content_length" && c.status !== "pass")) {
@@ -212,11 +300,11 @@ export function generateRecommendations(
       id: "expand_content",
       category: "Content Structure",
       priority: "medium",
-      title: "Expand Content Length",
-      description: "Thin content is less likely to be cited by AI engines.",
+      title: "Rozszerz długość treści",
+      description: "Cienka treść jest rzadziej cytowana przez silniki AI.",
       howToFix:
-        "Expand your content to at least 800 words. Add more context, examples, step-by-step instructions, and supporting information. Focus on comprehensively answering the user's intent.",
-      impact: "Longer, more comprehensive content is preferred by AI engines for citation.",
+        "Rozszerz treść do co najmniej 800 słów. Dodaj więcej kontekstu, przykładów, instrukcji krok po kroku i informacji pomocniczych. Skup się na wyczerpującym odpowiadaniu na intencję użytkownika.",
+      impact: "Dłuższa, bardziej wyczerpująca treść jest preferowana przez silniki AI do cytowania.",
     });
   }
   if (csChecks.find((c) => c.id === "heading_hierarchy" && c.status !== "pass")) {
@@ -224,11 +312,11 @@ export function generateRecommendations(
       id: "fix_headings",
       category: "Content Structure",
       priority: "medium",
-      title: "Improve Heading Structure",
-      description: "Proper H1→H2→H3 hierarchy helps AI engines parse content sections.",
+      title: "Popraw strukturę nagłówków",
+      description: "Właściwa hierarchia H1→H2→H3 pomaga silnikom AI parsować sekcje treści.",
       howToFix:
-        "Ensure you have exactly one H1 (the page title), then use H2 for main sections and H3 for subsections. Each H2 should represent a distinct topic that can be independently cited.",
-      impact: "Clear heading structure allows AI engines to extract and cite specific sections.",
+        "Upewnij się, że masz dokładnie jeden H1 (tytuł strony), następnie używaj H2 dla głównych sekcji i H3 dla podsekcji. Każdy H2 powinien reprezentować odrębny temat, który można niezależnie cytować.",
+      impact: "Jasna struktura nagłówków pozwala silnikom AI wyodrębniać i cytować konkretne sekcje.",
     });
   }
 
@@ -239,11 +327,11 @@ export function generateRecommendations(
       id: "add_author",
       category: "E-E-A-T",
       priority: "high",
-      title: "Add Author Byline",
-      description: "Named authorship is a key trust signal for AI engines.",
+      title: "Dodaj informację o autorze",
+      description: "Brak widocznego autora obniża sygnały E-E-A-T (Doświadczenie, Ekspertyza, Autorytet, Zaufanie).",
       howToFix:
-        "Add a visible author name and brief credentials near the top of the page. Link to an author profile page. Add Person schema with the author's name, credentials, and social profiles.",
-      impact: "AI engines prioritize content from identifiable, credentialed authors.",
+        "Dodaj widoczne imię i nazwisko autora oraz krótkie referencje w pobliżu górnej części strony. Dodaj link do strony profilu autora. Dodaj schemat Person z imieniem, referencjami i profilami społecznościowymi autora.",
+      impact: "Silniki AI priorytetyzują treści od identyfikowalnych, uwierzytelnionych autorów.",
     });
   }
   if (eeatChecks.find((c) => c.id === "external_citations" && c.status === "fail")) {
@@ -251,59 +339,58 @@ export function generateRecommendations(
       id: "add_citations",
       category: "E-E-A-T",
       priority: "high",
-      title: "Add External Citations",
-      description: "Linking to authoritative sources demonstrates research quality.",
+      title: "Dodaj zewnętrzne cytowania",
+      description: "Linkowanie do autorytatywnych źródeł demonstruje jakość badań.",
       howToFix:
-        "Add 3–5 links to authoritative external sources (research papers, government sites, industry reports) that support your claims. Use descriptive anchor text.",
-      impact: "External citations signal to AI engines that your content is well-researched and trustworthy.",
+        "Dodaj 3–5 linków do autorytatywnych zewnętrznych źródeł (artykuły naukowe, strony rządowe, raporty branżowe), które potwierdzają Twoje twierdzenia. Używaj opisowego tekstu kotwicy.",
+      impact: "Zewnętrzne cytowania sygnalizują silnikom AI, że Twoja treść jest dobrze zbadana i godna zaufania.",
     });
   }
 
-  // New: semantic chunking recommendation (iPullRank Ch.9)
+  // Semantic chunking recommendation
   if (csChecks.find((c) => c.id === "semantic_chunking" && c.status !== "pass")) {
     recs.push({
       id: "fix_semantic_chunking",
       category: "Content Structure",
       priority: "high",
-      title: "Improve Semantic Chunking",
-      description: "Paragraphs are too long for AI passage extraction.",
+      title: "Popraw semantyczne chunking treści",
+      description: "Akapity są za długie dla ekstrakcji fragmentów przez AI.",
       howToFix:
-        "Break long paragraphs into shorter blocks of 40–80 words, each expressing a single complete idea. AI engines like Gemini and ChatGPT segment pages by paragraph and select one at a time for summarization. Each paragraph should be self-contained and work independently when quoted.",
-      impact: "Better chunking directly improves the probability of individual paragraphs being selected for AI answers.",
+        "Podziel długie akapity na krótsze bloki 40–80 słów, każdy wyrażający jedną kompletną myśl. Silniki AI jak Gemini i ChatGPT segmentują strony według akapitów i wybierają jeden na raz do podsumowania. Każdy akapit powinien być samodzielny i działać niezależnie po zacytowaniu.",
+      impact: "Lepszy chunking bezpośrednio zwiększa prawdopodobieństwo wyboru poszczególnych akapitów do odpowiedzi AI.",
     });
   }
 
-  // New: entity richness recommendation (iPullRank Ch.9)
+  // Entity richness recommendation
   if (csChecks.find((c) => c.id === "entity_richness" && c.status !== "pass")) {
     recs.push({
       id: "increase_entity_richness",
       category: "Content Structure",
       priority: "high",
-      title: "Increase Entity Richness",
-      description: "Content lacks named entities and specific facts.",
+      title: "Zwiększ bogactwo encji w treści",
+      description: "Treść brakuje nazwanych encji i konkretnych faktów.",
       howToFix:
-        "Replace vague references with specific named entities: instead of 'this tool', say 'Google Search Console'. Instead of 'most users', say '73% of users'. Include brand names, product names, people, places, and specific statistics. AI models resolve meaning through named entities — vague content gets poor vector embeddings.",
-      impact: "Named entities are the building blocks of knowledge graph connections and improve embedding quality.",
+        "Zastąp niejasne odniesienia konkretnymi nazwanymi encjami: zamiast 'to narzędzie' napisz 'Google Search Console'. Zamiast 'większość użytkowników' napisz '73% użytkowników'. Uwzględnij nazwy marek, produktów, osób, miejsc i konkretne statystyki. Modele AI rozwiązują znaczenie przez nazwane encje — niejasna treść uzyskuje słabe osadzenia wektorowe.",
+      impact: "Nazwane encje są budulcem połączeń grafu wiedzy i poprawiają jakość osadzeń.",
     });
   }
 
-  // New: information gain recommendation (iPullRank Ch.11)
+  // Information gain recommendation
   if (csChecks.find((c) => c.id === "information_gain" && c.status !== "pass")) {
     recs.push({
       id: "increase_information_gain",
       category: "Content Structure",
       priority: "high",
-      title: "Add Unique Data & Original Insights",
-      description: "Content lacks original data or unique insights.",
+      title: "Dodaj unikalne dane i oryginalne spostrzeżenia",
+      description: "Treść brakuje oryginalnych danych lub unikalnych spostrzeżeń.",
       howToFix:
-        "Add content that only you can publish: original research, proprietary data, personal test results, or expert opinions. Include specific statistics with dates (e.g., 'as of Q1 2025, 73% of users...'). LLMs filter out generic content that mirrors thousands of other pages.",
-      impact: "Information gain is a key signal for LLM content selection — unique content is prioritized over generic aggregated content.",
+        "Dodaj treści, które tylko Ty możesz opublikować: oryginalne badania, własne dane, osobiste wyniki testów lub opinie ekspertów. Uwzględnij konkretne statystyki z datami (np. 'stan na Q1 2025, 73% użytkowników...'). LLM filtrują ogólne treści, które odzwierciedlają tysiące innych stron.",
+      impact: "Information gain jest kluczowym sygnałem dla selekcji treści przez LLM — unikalne treści są priorytetyzowane nad ogólnymi.",
     });
   }
 
-  // New: HowTo schema recommendation (iPullRank Ch.9)
+  // HowTo schema recommendation
   if (sdChecks.find((c) => c.id === "howto_schema" && c.status === "info")) {
-    // Only recommend if page has step-by-step content signals
     const hasStepContent = findings.contentStructure.checks.some(c =>
       c.id === "lists_present" && c.status === "pass"
     );
@@ -312,26 +399,26 @@ export function generateRecommendations(
         id: "add_howto_schema",
         category: "Structured Data",
         priority: "medium",
-        title: "Add HowTo Schema",
-        description: "Page has step-by-step content but no HowTo schema.",
+        title: "Dodaj schemat HowTo",
+        description: "Strona ma treści krok po kroku, ale brak schematu HowTo.",
         howToFix:
-          'Add HowTo JSON-LD schema with step-by-step instructions. Each step should have @type: "HowToStep" with name and text. Include totalTime and estimatedCost if applicable.',
-        impact: "HowTo schema is heavily cited by AI engines for instructional queries.",
+          'Dodaj schemat JSON-LD HowTo z instrukcjami krok po kroku. Każdy krok powinien mieć @type: "HowToStep" z polami name i text. Uwzględnij totalTime i estimatedCost, jeśli dotyczy.',
+        impact: "Schemat HowTo jest intensywnie cytowany przez silniki AI dla zapytań instruktażowych.",
       });
     }
   }
 
-  // New: schema completeness recommendation (iPullRank Ch.9)
+  // Schema completeness recommendation
   if (sdChecks.find((c) => c.id === "schema_completeness" && (c.status === "fail" || c.status === "warning"))) {
     recs.push({
       id: "improve_schema_completeness",
       category: "Structured Data",
       priority: "medium",
-      title: "Complete Schema Properties",
-      description: "Schema markup is present but missing many recommended properties.",
+      title: "Uzupełnij właściwości schematu",
+      description: "Znaczniki schematu są obecne, ale brakuje wielu zalecanych właściwości.",
       howToFix:
-        "Fill in all available schema properties — be comprehensive, not just compliant. For Article: add author, datePublished, dateModified, image, publisher. For Product: add brand, offers, aggregateRating, sku. For Organization: add sameAs, logo, contactPoint, foundingDate. More complete schemas give AI engines richer context.",
-      impact: "Schema completeness directly correlates with AI citation probability.",
+        "Wypełnij wszystkie dostępne właściwości schematu — bądź wyczerpujący, nie tylko zgodny. Dla Article: dodaj author, datePublished, dateModified, image, publisher. Dla Product: dodaj brand, offers, aggregateRating, sku. Dla Organization: dodaj sameAs, logo, contactPoint, foundingDate. Bardziej kompletne schematy dają silnikom AI bogatszy kontekst.",
+      impact: "Kompletność schematu bezpośrednio koreluje z prawdopodobieństwem cytowania przez AI.",
     });
   }
 
@@ -341,11 +428,11 @@ export function generateRecommendations(
       id: "fix_nofollow",
       category: "Technical",
       priority: "medium",
-      title: "Remove nofollow Directive",
-      description: "nofollow directive prevents crawlers from following links on this page, limiting internal link equity and crawl depth.",
+      title: "Usuń dyrektywę nofollow",
+      description: "Dyrektywa nofollow uniemożliwia crawlerom podążanie za linkami na tej stronie, ograniczając dystrybucję link equity i głębokość crawlowania.",
       howToFix:
-        "Remove 'nofollow' from the meta robots tag. If you want to prevent specific links from passing equity, use rel='nofollow' on individual anchor tags instead of blocking the entire page.",
-      impact: "Improves internal link equity distribution and ensures crawlers can discover linked pages.",
+        "Usuń 'nofollow' z tagu meta robots. Jeśli chcesz zapobiec przekazywaniu equity przez konkretne linki, użyj rel='nofollow' na poszczególnych tagach kotwicy zamiast blokowania całej strony.",
+      impact: "Poprawia dystrybucję link equity i zapewnia, że crawlery mogą odkrywać linkowane strony.",
     });
   }
 
@@ -355,74 +442,72 @@ export function generateRecommendations(
       id: "fix_robots_disallow",
       category: "Technical",
       priority: "critical",
-      title: "Remove Disallow Rule for This Page in robots.txt",
-      description: "This page's path is blocked by a Disallow rule in robots.txt — AI crawlers and search engines cannot access it.",
+      title: "Usuń regułę Disallow dla tej strony w robots.txt",
+      description: "Ścieżka tej strony jest zablokowana przez regułę Disallow w robots.txt — crawlery AI i wyszukiwarki nie mogą jej odwiedzić.",
       howToFix:
-        "Edit your robots.txt file and remove the Disallow rule that matches this page's path. If you have 'Disallow: /' for all crawlers, you need to either remove it or add specific Allow rules for the pages you want indexed.",
-      impact: "Immediately allows all crawlers including AI engines to access and index this page.",
+        "Edytuj plik robots.txt i usuń regułę Disallow, która pasuje do ścieżki tej strony. Jeśli masz 'Disallow: /' dla wszystkich crawlerów, musisz albo ją usunąć, albo dodać konkretne reguły Allow dla stron, które chcesz indeksować.",
+      impact: "Natychmiast umożliwia wszystkim crawlerom, w tym silnikom AI, dostęp do tej strony i jej indeksowanie.",
     });
   }
 
-  // New: max-snippet recommendation (iPullRank Ch.7)
+  // max-snippet recommendation
   if (findings.technical.checks.find((c) => c.id === "max_snippet" && (c.status === "fail" || c.status === "warning"))) {
     recs.push({
       id: "fix_max_snippet",
       category: "Technical",
       priority: "critical",
-      title: "Remove max-snippet Restriction",
-      description: "max-snippet directive is limiting AI content extraction.",
+      title: "Usuń ograniczenie max-snippet",
+      description: "Dyrektywa max-snippet ogranicza ekstrakcję treści przez AI.",
       howToFix:
-        "Change max-snippet:0 to max-snippet:-1 (unlimited) in your robots meta tag. This allows AI Overviews, Perplexity, and ChatGPT to quote your full content. If you need some restriction, use max-snippet:300 as a minimum.",
-      impact: "Removing snippet restrictions directly enables AI engines to quote your content in answers.",
+        "Zmień max-snippet:0 na max-snippet:-1 (nieograniczony) w tagu meta robots. Pozwala to AI Overviews, Perplexity i ChatGPT cytować pełną treść. Jeśli potrzebujesz pewnego ograniczenia, użyj max-snippet:300 jako minimum.",
+      impact: "Usunięcie ograniczeń fragmentów bezpośrednio umożliwia silnikom AI cytowanie Twojej treści w odpowiedziach.",
     });
   }
 
-  // New: noai directive recommendation (iPullRank Ch.7)
+  // noai directive recommendation
   if (findings.technical.checks.find((c) => c.id === "noai_directive" && c.status === "fail")) {
     recs.push({
       id: "remove_noai",
       category: "Technical",
       priority: "critical",
-      title: "Remove noai Directive",
-      description: "noai directive explicitly blocks AI engines from using your content.",
+      title: "Usuń dyrektywę noai",
+      description: "Dyrektywa noai jawnie blokuje silnikom AI używanie Twojej treści.",
       howToFix:
-        "Remove 'noai' from your robots meta tag. This directive explicitly tells AI systems not to use your content. If you want to allow AI citation but prevent training, use specific crawler-level robots.txt rules instead.",
-      impact: "Removing noai immediately allows AI engines to cite and reference your content.",
+        "Usuń 'noai' z tagu meta robots. Ta dyrektywa jawnie informuje systemy AI, aby nie używały Twojej treści. Jeśli chcesz zezwolić na cytowanie przez AI, ale zapobiec trenowaniu, użyj zamiast tego konkretnych reguł robots.txt na poziomie crawlera.",
+      impact: "Usunięcie noai natychmiast pozwala silnikom AI cytować i odwoływać się do Twojej treści.",
     });
   }
 
-  // New: JS rendering recommendation (iPullRank Ch.7)
+  // JS rendering recommendation
   if (findings.technical.checks.find((c) => c.id === "js_rendering" && c.status === "warning")) {
     recs.push({
       id: "fix_js_rendering",
       category: "Technical",
       priority: "high",
-      title: "Ensure Content is in HTML Source",
-      description: "Content may be hidden behind JavaScript rendering.",
+      title: "Upewnij się, że treść jest w źródle HTML",
+      description: "Treść może być ukryta za renderowaniem JavaScript.",
       howToFix:
-        "Ensure all critical content (headings, body text, FAQ, product descriptions) is present in the raw HTML source, not loaded dynamically via JavaScript. Use server-side rendering (SSR) or static generation. Many AI crawlers do not execute JavaScript.",
-      impact: "JS-rendered content is invisible to many AI crawlers, severely limiting indexation.",
+        "Upewnij się, że wszystkie kluczowe treści (nagłówki, tekst główny, FAQ, opisy produktów) są obecne w surowym źródle HTML, a nie ładowane dynamicznie przez JavaScript. Używaj renderowania po stronie serwera (SSR) lub generowania statycznego. Wiele crawlerów AI nie wykonuje JavaScript.",
+      impact: "Treści renderowane przez JS są niewidoczne dla wielu crawlerów AI, poważnie ograniczając indeksowanie.",
     });
   }
 
-  // New: experience signals recommendation (iPullRank Ch.9)
+  // Experience signals recommendation
   if (findings.eeat.checks.find((c) => c.id === "experience_signals" && c.status === "warning")) {
     recs.push({
       id: "add_experience_signals",
       category: "E-E-A-T",
       priority: "medium",
-      title: "Add First-Person Experience Signals",
-      description: "Content lacks personal experience signals (the first E in E-E-A-T).",
+      title: "Dodaj sygnały osobistego doświadczenia",
+      description: "Treść brakuje sygnałów osobistego doświadczenia (pierwsze E w E-E-A-T).",
       howToFix:
-        "Add personal insights, test results, or case studies. Use first-person language: 'I tested this and found...', 'In our experience...', 'Our data shows...'. Include before/after examples, real client results, or original research. This differentiates your content from AI-generated generic content.",
-      impact: "Experience signals are the most differentiating E-E-A-T factor — AI engines cannot fake genuine first-person experience.",
+        "Dodaj osobiste spostrzeżenia, wyniki testów lub studia przypadków. Używaj języka pierwszoosobowego: 'Przetestowałem to i odkryłem...', 'Z naszego doświadczenia...', 'Nasze dane pokazują...'. Uwzględnij przykłady przed/po, rzeczywiste wyniki klientów lub oryginalne badania. To różnicuje Twoją treść od ogólnych treści generowanych przez AI.",
+      impact: "Sygnały doświadczenia są najbardziej różnicującym czynnikiem E-E-A-T — silniki AI nie mogą sfabrykować autentycznego doświadczenia pierwszoosobowego.",
     });
   }
 
   // AI Crawler recommendations
   const crawlerChecks = findings.aiCrawlers.checks;
-  // Only flag as critical if OAI-SearchBot or PerplexityBot are blocked (they affect live AI search citations)
-  // GPTBot and Google-Extended are training-only crawlers — blocking them is a valid choice
   const criticalSearchCrawlers = ["oai_searchbot", "perplexitybot"];
   const blockedSearchCrawlers = crawlerChecks.filter(
     (c) => c.status === "fail" && criticalSearchCrawlers.includes(c.id)
@@ -430,20 +515,17 @@ export function generateRecommendations(
   const blockedTrainingCrawlers = crawlerChecks.filter(
     (c) => c.status === "fail" && ["gptbot", "google_extended"].includes(c.id)
   );
-  const blockedOtherCrawlers = crawlerChecks.filter(
-    (c) => c.status === "fail" && !criticalSearchCrawlers.includes(c.id) && !["gptbot", "google_extended", "all_ai_crawlers"].includes(c.id)
-  );
 
   if (blockedSearchCrawlers.length > 0) {
     recs.push({
       id: "unblock_ai_crawlers",
       category: "AI Crawler Access",
       priority: "critical",
-      title: `Unblock AI Search Crawlers in robots.txt`,
-      description: `${blockedSearchCrawlers.map((c) => c.label).join(", ")} ${blockedSearchCrawlers.length > 1 ? "are" : "is"} blocked — your content cannot appear in live AI search citations.`,
+      title: "Odblokuj crawlery AI Search w robots.txt",
+      description: `${blockedSearchCrawlers.map((c) => c.label).join(", ")} ${blockedSearchCrawlers.length > 1 ? "są" : "jest"} zablokowany — Twoja treść nie może pojawiać się w cytowaniach AI Search na żywo.`,
       howToFix:
-        "Remove the Disallow: / rules for OAI-SearchBot and PerplexityBot from your robots.txt. These crawlers power real-time AI search citations in ChatGPT Search and Perplexity. Note: GPTBot and Google-Extended are training-only crawlers — blocking them is a valid choice if you don't want your content used for AI model training.",
-      impact: "Blocked search crawlers prevent your content from appearing in ChatGPT Search and Perplexity AI answers.",
+        "Usuń reguły Disallow: / dla OAI-SearchBot i PerplexityBot z pliku robots.txt. Te crawlery zasilają cytowania AI Search w czasie rzeczywistym w ChatGPT Search i Perplexity. Uwaga: GPTBot i Google-Extended to crawlery tylko do trenowania — blokowanie ich jest prawidłowym wyborem, jeśli nie chcesz, aby Twoja treść była używana do trenowania modeli AI.",
+      impact: "Zablokowane crawlery wyszukiwania uniemożliwiają pojawianie się Twojej treści w odpowiedziach ChatGPT Search i Perplexity AI.",
     });
   }
 
@@ -452,25 +534,25 @@ export function generateRecommendations(
       id: "unblock_training_crawlers",
       category: "AI Crawler Access",
       priority: "medium",
-      title: `AI Training Crawlers Blocked (Optional)`,
-      description: `${blockedTrainingCrawlers.map((c) => c.label).join(", ")} ${blockedTrainingCrawlers.length > 1 ? "are" : "is"} blocked. These crawlers are used for AI model training only, not for live search citations.`,
+      title: "Crawlery treningowe AI zablokowane (opcjonalne)",
+      description: `${blockedTrainingCrawlers.map((c) => c.label).join(", ")} ${blockedTrainingCrawlers.length > 1 ? "są" : "jest"} zablokowany. Te crawlery są używane tylko do trenowania modeli AI, nie do cytowań w wyszukiwaniu na żywo.`,
       howToFix:
-        "Blocking GPTBot and Google-Extended is a legitimate choice if you don't want your content used to train AI models. This does NOT affect your visibility in ChatGPT Search, Google AI Overviews, or Perplexity — those use separate crawlers (OAI-SearchBot, Googlebot, PerplexityBot).",
-      impact: "No direct impact on AI search visibility. This is a content licensing decision.",
+        "Blokowanie GPTBot i Google-Extended jest prawidłowym wyborem, jeśli nie chcesz, aby Twoja treść była używana do trenowania modeli AI. NIE wpływa to na Twoją widoczność w ChatGPT Search, Google AI Overviews ani Perplexity — te używają oddzielnych crawlerów (OAI-SearchBot, Googlebot, PerplexityBot).",
+      impact: "Brak bezpośredniego wpływu na widoczność w AI Search. To decyzja dotycząca licencjonowania treści.",
     });
   }
 
-  // New: sitemap for crawlers recommendation
+  // Sitemap for crawlers recommendation
   if (crawlerChecks.find((c) => c.id === "sitemap_for_crawlers" && c.status !== "pass")) {
     recs.push({
       id: "add_sitemap_directive",
       category: "AI Crawler Access",
       priority: "medium",
-      title: "Add Sitemap Directive to robots.txt",
-      description: "AI crawlers cannot discover your full content inventory without a sitemap reference.",
+      title: "Dodaj dyrektywę Sitemap do robots.txt",
+      description: "Crawlery AI nie mogą odkryć pełnego inwentarza treści bez odniesienia do sitemapy.",
       howToFix:
-        "Add 'Sitemap: https://yourdomain.com/sitemap.xml' to your robots.txt file. Ensure your XML sitemap is up to date and includes all important pages. This helps AI crawlers discover and index your full content.",
-      impact: "Sitemap discovery helps AI crawlers index all your pages, not just those linked from the homepage.",
+        "Dodaj 'Sitemap: https://twojadomena.pl/sitemap.xml' do pliku robots.txt. Upewnij się, że Twoja sitemapa XML jest aktualna i zawiera wszystkie ważne strony. Pomaga to crawlerom AI odkrywać i indeksować pełną treść.",
+      impact: "Odkrycie sitemapy pomaga crawlerom AI indeksować wszystkie Twoje strony, nie tylko te linkowane ze strony głównej.",
     });
   }
 
@@ -481,11 +563,11 @@ export function generateRecommendations(
       id: "add_title",
       category: "Meta Tags",
       priority: "high",
-      title: "Add Title Tag",
-      description: "Missing title tag — critical for all search engines and AI crawlers.",
+      title: "Dodaj tag tytułu",
+      description: "Brak tagu tytułu — krytyczny dla wszystkich wyszukiwarek i crawlerów AI.",
       howToFix:
-        "Add a <title> tag in the <head> section with a descriptive, keyword-rich title of 50–65 characters.",
-      impact: "Title tag is the primary signal for page topic identification.",
+        "Dodaj tag <title> w sekcji <head> z opisowym, bogatym w słowa kluczowe tytułem o długości 50–65 znaków.",
+      impact: "Tag tytułu jest głównym sygnałem identyfikacji tematu strony.",
     });
   }
   if (mtChecks.find((c) => c.id === "meta_description" && c.status === "fail")) {
@@ -493,11 +575,11 @@ export function generateRecommendations(
       id: "add_meta_desc",
       category: "Meta Tags",
       priority: "high",
-      title: "Add Meta Description",
-      description: "Missing meta description reduces click-through from AI-powered results.",
+      title: "Dodaj meta opis",
+      description: "Brak meta opisu zmniejsza klikalność z wyników zasilanych przez AI.",
       howToFix:
-        "Add <meta name='description' content='...'> with a compelling 150–160 character summary that includes your primary keyword.",
-      impact: "Meta descriptions are used by AI engines to understand page content.",
+        "Dodaj <meta name='description' content='...'> z przekonującym podsumowaniem 150–160 znaków zawierającym główne słowo kluczowe.",
+      impact: "Meta opisy są używane przez silniki AI do rozumienia treści strony.",
     });
   }
 

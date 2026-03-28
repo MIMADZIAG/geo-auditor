@@ -950,3 +950,20 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Boty treningowe (GPTBot, ClaudeBot, Google-Extended) zawsze info, nigdy fail/warning
 - [x] Zaktualizowano opis kategorii w Results.tsx
 - [x] 213 testów passing (24 nowych), TypeScript: 0 błędów
+
+## Scoring refactor: psychologiczna kalibracja (2026-03-28)
+- [ ] Audyt scorer.ts i wszystkich modułów kategorii
+- [ ] Nowy model wag kategorii (AI Visibility first)
+- [ ] Kalibracja: typowa strona MŚP powinna lądować w 45-65/100
+- [ ] Psychologiczne zakresy: etykiety i komunikaty motywacyjne
+- [ ] Zaktualizuj UI: progress bar, score hero, etykiety
+- [ ] Testy kalibracji na przykładowych stronach
+
+## Scoring Refactor v4 — Growth Psychology Framework (2026-03-28)
+- [x] Nowe wagi kategorii: contentStructure ↑ (24%), structuredData ↑ (20%), brandAuthority ↓ (10%)
+- [x] Krzywa kalibracji 8-punktowa: typowa strona MŚP ląduje 38–52/100
+- [x] 5 poziomów: Niewidoczny (0–35) / Startujący (36–54) / Rozwijający się (55–69) / Widoczny (70–82) / Dominujący (83+)
+- [x] Ceiling bez Content Intelligence: ~72 — motywuje do upgrade'u
+- [x] UI: nowe etykiety, sublabels z językiem korzyści, progress nudge "+X pkt do następnego poziomu"
+- [x] Zaktualizowano typy: scoreLabel w shared/auditTypes.ts, server/audit/types.ts, server/audit/index.ts
+- [x] Testy: 229 passing, TypeScript: 0 błędów

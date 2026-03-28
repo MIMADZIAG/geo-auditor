@@ -19,7 +19,7 @@ export interface AuditResult {
   pageType: PageType;
   pageTypeLabel: string;
   overallScore: number;
-  scoreLabel: "Excellent" | "Good" | "Fair" | "Poor";
+  scoreLabel: "Dominujący" | "Widoczny" | "Rozwijający się" | "Startujący" | "Niewidoczny";
   findings: AuditFindings;
   recommendations: Recommendation[];
   llmResult?: LLMRecommendationsResult;
@@ -40,7 +40,7 @@ export async function runAudit(url: string): Promise<AuditResult> {
       pageType: "generic" as PageType,
       pageTypeLabel: "Web Page",
       overallScore: 0,
-      scoreLabel: "Poor",
+      scoreLabel: "Niewidoczny",
       findings: createEmptyFindings(),
       recommendations: [],
       responseTimeMs: page.responseTimeMs,
@@ -71,7 +71,7 @@ export async function runAudit(url: string): Promise<AuditResult> {
       pageType: "generic" as PageType,
       pageTypeLabel: "Web Page",
       overallScore: 0,
-      scoreLabel: "Poor",
+      scoreLabel: "Niewidoczny",
       findings: createEmptyFindings(),
       recommendations: [],
       responseTimeMs: page.responseTimeMs,
