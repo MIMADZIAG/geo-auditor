@@ -336,9 +336,17 @@ export default function Results() {
   // Auto-start citation when switching to Tab 2
   const citationAutoStartRef = useRef(false);
   const citationPanelRef = useRef<{ startCheck: () => void } | null>(null);
+  // Spinner fallback: show loading for 2s after entering Tab 2 before status resolves
+  const [tabVisibilityEnteredAt, setTabVisibilityEnteredAt] = useState<number | null>(null);
+  const [, forceUpdate] = useState(0);
+  const isTabInitializing = activeTab === "visibility" && citationStatus === "idle" &&
+    tabVisibilityEnteredAt !== null && (Date.now() - tabVisibilityEnteredAt < 2000);
 
   const handleSwitchToVisibility = useCallback(() => {
     setActiveTab("visibility");
+    setTabVisibilityEnteredAt(Date.now());
+    // After 2s, force re-render to hide spinner if status is still idle
+    setTimeout(() => forceUpdate(n => n + 1), 2000);
     // Auto-start only if no job exists yet (status stays "idle" even after mount
     // when job already exists — onStatusChange fires and updates citationStatus)
     // Use a slightly longer delay to let AICitationPanel mount and fire onStatusChange first
@@ -648,6 +656,16 @@ export default function Results() {
       {/* ── Tab 2: Widoczność AI ── */}
       {activeTab === "visibility" && (
         <main className="container max-w-5xl mx-auto py-10 space-y-8">
+
+          {/* Spinner fallback — shown for 2s while onStatusChange hasn't fired yet */}
+          {isTabInitializing && (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Wczytuję wyniki widoczności…</span>
+              </div>
+            </div>
+          )}
 
           {/* Citation Hero — full panel */}
           <AICitationPanel
