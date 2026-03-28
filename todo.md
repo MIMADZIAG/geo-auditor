@@ -980,3 +980,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Modal nie pojawia się dla użytkowników z planem Pro/Business/Agency
 - [x] Tier badge na /report/:id: nowe etykiety v4 (Dominujący/Widoczny/Rozwijający się/Startujący/Niewidoczny) + getTierSubtitle
 - [x] TypeScript: 0 błędów, 229 testów passing
+
+## BUG FIX: UpsellProModal crash (2026-03-28)
+- [x] UpsellProModal: COPY lookup przeniesiony po early return guard; fallback na "Startujący" dla bezpieczeństwa
+- [x] Wydzielono _UpsellProModalInner — hooks wywoływane tylko gdy isOpen=true
+- [x] Results.tsx: upsellTier w useState, setUpsellTier przed setTimeout, usunięto unsafe cast
+- [x] TypeScript: 0 błędów, 229 testów passing

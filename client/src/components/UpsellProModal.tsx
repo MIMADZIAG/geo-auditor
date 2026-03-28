@@ -3,14 +3,26 @@ import { useLocation } from "wouter";
 import { X, TrendingUp, Brain, BarChart3, Eye, Zap, ArrowRight, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Only these two labels trigger the modal — all other tiers are safe
+type UpsellTier = "Niewidoczny" | "Startujący";
+
 interface UpsellProModalProps {
   isOpen: boolean;
   onClose: () => void;
-  scoreLabel: "Niewidoczny" | "Startujący";
+  scoreLabel: UpsellTier;
   score: number;
 }
 
-const COPY = {
+const COPY: Record<UpsellTier, {
+  urgency: string;
+  headline: string;
+  subheadline: string;
+  badge: string;
+  badgeColor: string;
+  gainText: string;
+  ctaText: string;
+  urgencyIcon: React.ElementType;
+}> = {
   Niewidoczny: {
     urgency: "Twoja strona jest praktycznie niewidoczna dla AI Search",
     headline: "Twoja strona traci klientów na rzecz konkurentów w AI Search — każdego dnia.",
@@ -63,28 +75,53 @@ const PRO_FEATURES = [
 export default function UpsellProModal({ isOpen, onClose, scoreLabel, score }: UpsellProModalProps) {
   const [, navigate] = useLocation();
   const overlayRef = useRef<HTMLDivElement>(null);
-  const copy = COPY[scoreLabel];
+
+  // ── Early return BEFORE any COPY access ──────────────────────────────────────
+  // This prevents crashes when scoreLabel is not a key of COPY (defensive guard)
+  if (!isOpen) return null;
+  const copy = COPY[scoreLabel] ?? COPY["Startujący"];
   const UrgencyIcon = copy.urgencyIcon;
 
+  return (
+    <_UpsellProModalInner
+      overlayRef={overlayRef}
+      onClose={onClose}
+      navigate={navigate}
+      copy={copy}
+      UrgencyIcon={UrgencyIcon}
+      score={score}
+    />
+  );
+}
+
+// Inner component — only rendered when isOpen=true and copy is guaranteed defined
+function _UpsellProModalInner({
+  overlayRef,
+  onClose,
+  navigate,
+  copy,
+  UrgencyIcon,
+  score,
+}: {
+  overlayRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+  navigate: (path: string) => void;
+  copy: typeof COPY[UpsellTier];
+  UrgencyIcon: React.ElementType;
+  score: number;
+}) {
   // Close on Escape
   useEffect(() => {
-    if (!isOpen) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [onClose]);
 
   // Prevent body scroll
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
+  }, []);
 
   const handleCTA = () => {
     onClose();

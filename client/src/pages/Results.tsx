@@ -140,6 +140,7 @@ export default function Results() {
   const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
   // Upsell modal state — shown 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users)
   const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");
   const upsellTriggeredRef = useRef(false);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
@@ -182,6 +183,7 @@ export default function Results() {
     const label = getScoreLabel(Math.round(audit.overallScore ?? 0));
     if (label !== "Niewidoczny" && label !== "Startujący") return;
     upsellTriggeredRef.current = true;
+    setUpsellTier(label); // store the exact tier before opening modal
     const timer = setTimeout(() => setShowUpsellModal(true), 1500);
     return () => clearTimeout(timer);
   }, [audit, hasPaidPlan]);
@@ -199,15 +201,13 @@ export default function Results() {
     else if (platform === "twitter") window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, "_blank");
   };
 
-  const upsellScoreLabel = getScoreLabel(overallScore) as "Niewidoczny" | "Startujący";
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Upsell Pro Modal — shown 1.5s after load for Niewidoczny/Startujący (non-Pro users) */}
       <UpsellProModal
         isOpen={showUpsellModal}
         onClose={() => setShowUpsellModal(false)}
-        scoreLabel={upsellScoreLabel}
+        scoreLabel={upsellTier}
         score={overallScore}
       />
       {/* ── Sticky Header ── */}
