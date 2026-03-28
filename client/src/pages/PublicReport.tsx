@@ -372,9 +372,12 @@ function ScoreHero({
         </div>
 
         <div className="flex-1 text-center lg:text-left">
-          <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
-            <span className="text-sm font-semibold px-3 py-1 rounded-full" style={{ color: scoreColor, background: `${scoreColor}20` }}>
-              {scoreLabel} AI-Readiness
+          <div className="flex items-center justify-center lg:justify-start gap-2 mb-2 flex-wrap">
+            <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ color: scoreColor, background: `${scoreColor}20`, border: `1px solid ${scoreColor}40` }}>
+              {scoreLabel}
+            </span>
+            <span className="text-xs text-muted-foreground px-2.5 py-1 rounded-full bg-muted/50">
+              {getTierSubtitle(score)}
             </span>
           </div>
           <h1 className="text-xl font-bold mb-1 truncate">{pageTitle || url}</h1>
@@ -530,10 +533,19 @@ const CATEGORY_META = [
 ];
 
 function getScoreLabel(score: number): string {
-  if (score >= 80) return "Doskonały";
-  if (score >= 60) return "Dobry";
-  if (score >= 40) return "Przeciętny";
-  return "Słaby";
+  if (score >= 83) return "Dominujący";
+  if (score >= 70) return "Widoczny";
+  if (score >= 55) return "Rozwijający się";
+  if (score >= 36) return "Startujący";
+  return "Niewidoczny";
+}
+
+function getTierSubtitle(score: number): string {
+  if (score >= 83) return "Czołówka AI Search";
+  if (score >= 70) return "Dobra widoczność w AI";
+  if (score >= 55) return "Widoczność w trakcie budowania";
+  if (score >= 36) return "Niska widoczność w AI Search";
+  return "Praktycznie niewidoczna dla AI";
 }
 
 function getScoreColor(score: number): string {

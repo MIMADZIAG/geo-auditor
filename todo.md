@@ -973,3 +973,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Mini-grid: catData jako CategoryResult | undefined, fallback "brak danych" dla starych audytów
 - [x] Nowe audyty zawsze zawierają brandAuthority (index.ts już to robi)
 - [x] TypeScript: 0 błędów, 229 testów passing
+
+## Upsell Modal Pro + Report Tier Badge (2026-03-28)
+- [x] UpsellProModal komponent: dwa warianty copy (Niewidoczny vs Startujący), 4 funkcje Pro, social proof
+- [x] Trigger w Results.tsx: useEffect + 1.5s delay, guard hasPaidPlan + upsellTriggeredRef
+- [x] Modal nie pojawia się dla użytkowników z planem Pro/Business/Agency
+- [x] Tier badge na /report/:id: nowe etykiety v4 (Dominujący/Widoczny/Rozwijający się/Startujący/Niewidoczny) + getTierSubtitle
+- [x] TypeScript: 0 błędów, 229 testów passing

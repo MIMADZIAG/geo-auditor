@@ -37,7 +37,7 @@ import {
   Award,
   Flame,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
@@ -53,6 +53,7 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import UpsellProModal from "@/components/UpsellProModal";
 import { Streamdown } from "streamdown";
 import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
 import type { SimulationResult } from "@/geo-sandbox/types/simulator";
@@ -137,6 +138,9 @@ export default function Results() {
   const hasPaidPlan = isAuthenticated && userPlan !== "free" && !!userPlan;
   // Competitor URLs from AI Citations — passed to WhatIfSection for Full Rewrite AI
   const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
+  // Upsell modal state — shown 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users)
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const upsellTriggeredRef = useRef(false);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
     { id: auditId },
@@ -172,6 +176,16 @@ export default function Results() {
       ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "", scoreGain: llmScoreGain ?? 5, difficulty: llmDifficulty ?? "medium" }
       : null;
 
+  // Trigger upsell modal 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users only)
+  useEffect(() => {
+    if (!audit || hasPaidPlan || upsellTriggeredRef.current) return;
+    const label = getScoreLabel(Math.round(audit.overallScore ?? 0));
+    if (label !== "Niewidoczny" && label !== "Startujący") return;
+    upsellTriggeredRef.current = true;
+    const timer = setTimeout(() => setShowUpsellModal(true), 1500);
+    return () => clearTimeout(timer);
+  }, [audit, hasPaidPlan]);
+
   const handleShare = (platform: "linkedin" | "twitter" | "copy") => {
     const text = `Sprawdziłem widoczność mojej strony w AI Search z GEO-Auditor — wynik ${overallScore}/100. Zobacz pełny raport:`;
     const encodedText = encodeURIComponent(text);
@@ -185,8 +199,17 @@ export default function Results() {
     else if (platform === "twitter") window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, "_blank");
   };
 
+  const upsellScoreLabel = getScoreLabel(overallScore) as "Niewidoczny" | "Startujący";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Upsell Pro Modal — shown 1.5s after load for Niewidoczny/Startujący (non-Pro users) */}
+      <UpsellProModal
+        isOpen={showUpsellModal}
+        onClose={() => setShowUpsellModal(false)}
+        scoreLabel={upsellScoreLabel}
+        score={overallScore}
+      />
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/90 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-16">
