@@ -156,6 +156,21 @@ export default function Results() {
     }
   );
 
+  // ⚠️ HOOKS MUST ALL BE DECLARED BEFORE ANY CONDITIONAL RETURN (Rules of Hooks)
+  // Trigger upsell modal 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users only)
+  useEffect(() => {
+    if (!audit || hasPaidPlan || upsellTriggeredRef.current) return;
+    const auditStatus = (audit as unknown as { status?: string }).status;
+    if (auditStatus === "running" || auditStatus === "pending" || auditStatus === "failed") return;
+    const label = getScoreLabel(Math.round((audit as unknown as { overallScore?: number }).overallScore ?? 0));
+    if (label !== "Niewidoczny" && label !== "Startujący") return;
+    upsellTriggeredRef.current = true;
+    setUpsellTier(label); // store the exact tier before opening modal
+    const timer = setTimeout(() => setShowUpsellModal(true), 1500);
+    return () => clearTimeout(timer);
+  }, [audit, hasPaidPlan]);
+
+  // ── Early returns (after all hooks) ──
   if (isLoading) return <LoadingState />;
   if (error || !audit) return <ErrorState message={error?.message ?? "Audyt nie został znaleziony."} />;
   if (audit.status === "running" || audit.status === "pending") return <LoadingState />;
@@ -178,17 +193,6 @@ export default function Results() {
     llmRecs && llmAiInsight
       ? { recommendations: llmRecs, aiInsight: llmAiInsight, topPriority: llmTopPriority ?? "", scoreGain: llmScoreGain ?? 5, difficulty: llmDifficulty ?? "medium" }
       : null;
-
-  // Trigger upsell modal 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users only)
-  useEffect(() => {
-    if (!audit || hasPaidPlan || upsellTriggeredRef.current) return;
-    const label = getScoreLabel(Math.round(audit.overallScore ?? 0));
-    if (label !== "Niewidoczny" && label !== "Startujący") return;
-    upsellTriggeredRef.current = true;
-    setUpsellTier(label); // store the exact tier before opening modal
-    const timer = setTimeout(() => setShowUpsellModal(true), 1500);
-    return () => clearTimeout(timer);
-  }, [audit, hasPaidPlan]);
 
   const handleShare = (platform: "linkedin" | "twitter" | "copy") => {
     const text = `Sprawdziłem widoczność mojej strony w AI Search z GEO-Auditor — wynik ${overallScore}/100. Zobacz pełny raport:`;
