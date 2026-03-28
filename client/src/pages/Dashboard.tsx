@@ -305,11 +305,13 @@ function MonitoredPageCard({
   onRemove,
   isPro,
   isStarter,
+  citationStatus,
 }: {
   page: MonitoredPageItem;
   onRemove: (id: number) => void;
   isPro: boolean;
   isStarter: boolean;
+  citationStatus?: CitationStatusSummary;
 }) {
   const [showHistory, setShowHistory] = useState(false);
   const score = page.lastScore;
@@ -428,9 +430,21 @@ function MonitoredPageCard({
               Historia
             </Button>
             {page.lastAuditId && (
-              <Link href={`/results/${page.lastAuditId}`}>
-                <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
-              </Link>
+              <>
+                <Link href={`/results/${page.lastAuditId}`}>
+                  <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
+                </Link>
+                <Link href={`/results/${page.lastAuditId}?tab=visibility`}>
+                  <Button size="sm" variant="outline" className="h-6 text-xs gap-1">
+                    <Eye className="w-3 h-3" />
+                    {citationStatus?.status === "completed"
+                      ? citationStatus.citedCount > 0
+                        ? `${citationStatus.citedCount}/${citationStatus.totalEngines} AI`
+                        : "0 AI"
+                      : "AI"}
+                  </Button>
+                </Link>
+              </>
             )}
             <Button
               size="sm"
@@ -674,8 +688,10 @@ export default function Dashboard() {
     { enabled: isAuthenticated }
   );
 
-  // Citation status batch — one query for all audits in history
-  const auditIds = (history ?? []).map((a) => a.id);
+  // Citation status batch — one query for all audits in history + monitored pages
+  const historyAuditIds = (history ?? []).map((a) => a.id);
+  const monitoredAuditIds = (monitoredPages ?? []).filter((p) => p.lastAuditId != null).map((p) => p.lastAuditId!);
+  const auditIds = Array.from(new Set([...historyAuditIds, ...monitoredAuditIds]));
   const { data: citationStatuses } = trpc.citation.getStatusBatch.useQuery(
     { auditIds },
     { enabled: auditIds.length > 0, staleTime: 60_000 }
@@ -1029,6 +1045,7 @@ export default function Dashboard() {
                   onRemove={(id) => removeMonitoring.mutate({ id })}
                   isPro={isPro}
                   isStarter={plan === "starter"}
+                  citationStatus={page.lastAuditId != null ? citationStatuses?.[page.lastAuditId] : undefined}
                 />
               ))}
             </div>

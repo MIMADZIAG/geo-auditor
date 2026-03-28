@@ -315,8 +315,10 @@ export default function Results() {
   const userPlan = (user as any)?.plan ?? "free";
   const hasPaidPlan = isAuthenticated && userPlan !== "free" && !!userPlan;
 
-  // ── Tab state ──
-  const [activeTab, setActiveTab] = useState<"optimization" | "visibility">("optimization");
+  // ── Tab state — supports ?tab=visibility deep link ──
+  const [activeTab, setActiveTab] = useState<"optimization" | "visibility">(
+    () => new URLSearchParams(window.location.search).get("tab") === "visibility" ? "visibility" : "optimization"
+  );
 
   // ── Citation status for Sticky Bar ──
   const [citationStatus, setCitationStatus] = useState<CitationStatus>("idle");
