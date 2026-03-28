@@ -864,6 +864,54 @@ async function checkPerplexity(query: string, targetUrl: string, round: number):
 
 // ─── Engine 4: Google Gemini (grounding) ─────────────────────────────────────
 
+// ─── Gemini grounding URL extractor (shared between primary and fallback) ────
+function extractGeminiCitedUrls(groundingChunks: Array<{ web?: { uri?: string; title?: string } }>): string[] {
+  const allCitedUrls: string[] = [];
+  for (const chunk of groundingChunks) {
+    const uri = chunk.web?.uri ?? "";
+    const title = chunk.web?.title ?? "";
+    // Gemini grounding API wraps real URLs in vertexaisearch redirect wrappers.
+    // Real domain is recoverable from chunk.web.title (e.g. "ocar.pl" or "site.com - Page Title").
+    const isRedirect = uri.includes("grounding-api-redirect") || uri.includes("vertexaisearch");
+    if (!isRedirect && uri.startsWith("http")) {
+      const clean = uri.split("#")[0].replace(/\/$/, "");
+      if (!allCitedUrls.includes(clean)) allCitedUrls.push(clean);
+    } else if (title) {
+      const rawHost = title.split(" ")[0].replace(/[^a-zA-Z0-9.-]/g, "").toLowerCase();
+      if (rawHost && rawHost.includes(".")) {
+        const canonical = `https://${rawHost}`;
+        if (!allCitedUrls.includes(canonical)) allCitedUrls.push(canonical);
+      }
+    }
+  }
+  return allCitedUrls;
+}
+
+// ─── Gemini single-model attempt ─────────────────────────────────────────────
+async function callGeminiModel(
+  model: string,
+  query: string,
+  apiKey: string
+): Promise<{ ok: true; data: unknown } | { ok: false; status: number; body: string }> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: query }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+      }),
+    }
+  );
+  if (!response.ok) {
+    const body = await response.text();
+    return { ok: false, status: response.status, body };
+  }
+  return { ok: true, data: await response.json() };
+}
+
 async function checkGemini(query: string, targetUrl: string, round: number): Promise<CitationResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -871,53 +919,34 @@ async function checkGemini(query: string, targetUrl: string, round: number): Pro
   }
   const targetDomain = new URL(targetUrl).hostname.replace("www.", "");
   const targetPath = new URL(targetUrl).pathname.replace(/\/$/, "");
-  // gemini-2.5-flash-lite: free-tier quota available; gemini-2.0-flash quota exhausted
-  const GEMINI_MODEL = "gemini-2.5-flash-lite";
+  // Model cascade: primary → fallback on 429 (quota exhausted)
+  const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-flash-lite-latest"];
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: query }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-        }),
+    let data: unknown = null;
+    for (const model of GEMINI_MODELS) {
+      const result = await callGeminiModel(model, query, apiKey);
+      if (result.ok) {
+        data = result.data;
+        break;
       }
-    );
-    if (!response.ok) {
-      const err = await response.text();
-      console.warn(`[Citation/Gemini] API error ${response.status}: ${err.slice(0, 200)}`);
+      // 429 = quota exhausted → try next model; any other error → give up
+      if (result.status === 429) {
+        console.warn(`[Citation/Gemini] Model ${model} quota exhausted (429), trying fallback...`);
+        continue;
+      }
+      console.warn(`[Citation/Gemini] API error ${result.status} on ${model}: ${result.body.slice(0, 200)}`);
       return { query, engine: "gemini", round, isCited: "no", allCitedUrls: [], competitorDomains: [] };
     }
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const responseText: string = candidate?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
-    // Extract grounding sources from groundingMetadata
-    // NOTE: Gemini grounding API returns redirect URLs (vertexaisearch.cloud.google.com/grounding-api-redirect/...)
-    // instead of real URLs. The actual domain is available in chunk.web.title (e.g. "ocar.pl").
-    // We reconstruct a canonical URL from the title so domain-matching works correctly.
-    const groundingChunks: Array<{ web?: { uri?: string; title?: string } }> = candidate?.groundingMetadata?.groundingChunks ?? [];
-    const searchEntryPoint = candidate?.groundingMetadata?.searchEntryPoint;
-    const allCitedUrls: string[] = [];
-    for (const chunk of groundingChunks) {
-      const uri = chunk.web?.uri ?? "";
-      const title = chunk.web?.title ?? "";
-      // Prefer real URL if not a redirect wrapper; otherwise derive from title
-      const isRedirect = uri.includes("grounding-api-redirect") || uri.includes("vertexaisearch");
-      if (!isRedirect && uri.startsWith("http")) {
-        const clean = uri.split("#")[0].replace(/\/$/, "");
-        if (!allCitedUrls.includes(clean)) allCitedUrls.push(clean);
-      } else if (title) {
-        // title is typically the bare hostname (e.g. "ocar.pl") or "site.com - Page Title"
-        const rawHost = title.split(" ")[0].replace(/[^a-zA-Z0-9.-]/g, "").toLowerCase();
-        if (rawHost && rawHost.includes(".")) {
-          const canonical = `https://${rawHost}`;
-          if (!allCitedUrls.includes(canonical)) allCitedUrls.push(canonical);
-        }
-      }
+    if (!data) {
+      console.warn("[Citation/Gemini] All models quota exhausted — skipping Gemini for this query");
+      return { query, engine: "gemini", round, isCited: "no", allCitedUrls: [], competitorDomains: [] };
     }
+    const candidate = (data as { candidates?: unknown[] })?.candidates?.[0] as Record<string, unknown> | undefined;
+    const responseText: string = (candidate?.content as { parts?: Array<{ text?: string }> })?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    const groundingChunks: Array<{ web?: { uri?: string; title?: string } }> =
+      (candidate?.groundingMetadata as { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> })?.groundingChunks ?? [];
+    const searchEntryPoint = (candidate?.groundingMetadata as { searchEntryPoint?: unknown } | undefined)?.searchEntryPoint;
+    const allCitedUrls = extractGeminiCitedUrls(groundingChunks);
     const hasGrounding = allCitedUrls.length > 0 || !!searchEntryPoint;
     const competitorDomains = extractCompetitorDomains(allCitedUrls, targetDomain);
     // Exact URL match
