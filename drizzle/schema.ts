@@ -45,6 +45,7 @@ export const audits = mysqlTable("audits", {
   contentIntelligenceScore: float("contentIntelligenceScore"),
   citeabilityScore: float("citeabilityScore"),
   pageTitle: text("pageTitle"),
+  pageType: varchar("pageType", { length: 64 }),
   wafBlocked: boolean("wafBlocked").default(false),
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
