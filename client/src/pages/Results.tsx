@@ -339,15 +339,23 @@ export default function Results() {
 
   const handleSwitchToVisibility = useCallback(() => {
     setActiveTab("visibility");
-    // Auto-start citation check on first visit to Tab 2
-    if (!citationAutoStartRef.current && citationStatus === "idle") {
+    // Auto-start only if no job exists yet (status stays "idle" even after mount
+    // when job already exists — onStatusChange fires and updates citationStatus)
+    // Use a slightly longer delay to let AICitationPanel mount and fire onStatusChange first
+    if (!citationAutoStartRef.current) {
       citationAutoStartRef.current = true;
-      // Small delay to let the panel mount
       setTimeout(() => {
-        citationPanelRef.current?.startCheck();
-      }, 300);
+        // Re-check: if onStatusChange already updated status away from "idle", don't start
+        setCitationStatus(prev => {
+          if (prev === "idle") {
+            // Still idle after mount — no existing job, safe to start
+            citationPanelRef.current?.startCheck();
+          }
+          return prev;
+        });
+      }, 600);
     }
-  }, [citationStatus]);
+  }, []);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
     { id: auditId },

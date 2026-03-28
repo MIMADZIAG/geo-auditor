@@ -902,9 +902,8 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     startCheck: () => { handleStart(); },
   }), [handleStart]);
 
-  // Notify parent of status changes
+  // Notify parent of status changes — fire on mount too (job may already exist)
   useEffect(() => {
-    if (!jobStarted) return;
     if (isRunning || startCheck.isPending) {
       onStatusChange?.("running");
     } else if (isCompleted) {
@@ -915,7 +914,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     } else if (isFailed) {
       onStatusChange?.("error");
     }
-  }, [jobStarted, isRunning, isCompleted, isFailed, startCheck.isPending, checks.length]);
+  }, [isRunning, isCompleted, isFailed, startCheck.isPending, checks.length]);
 
   // ── Idle ─────────────────────────────────────────────────────────────────────
   if (!jobStarted || (!job && !startCheck.isPending)) {
