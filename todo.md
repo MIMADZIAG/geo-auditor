@@ -994,3 +994,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Exhaustive sweep: każda liczba całkowita 0–100 mapuje na znany tier
 - [x] COPY dictionary coverage: invariant że 2 tiery w COPY = 2 tiery triggering modal
 - [x] TypeScript: 0 błędów, 255 testów passing (11 plików)
+
+## BUG FIX: Runtime crash na stronie wyników (2026-03-28)
+- [x] Root cause: `react-syntax-highlighter/dist/esm/styles/hljs` nie może rozwizywać wewnętrznych importów w prod bundle (znany ESM bug)
+- [x] Fix: zmieniono import na `/dist/cjs/styles/hljs` — CJS path działa poprawnie (35 kluczy w atomOneDark)
+- [x] Potwierdzono: `pnpm build` bez błędów, TypeScript: 0 błędów, 255 testów passing
