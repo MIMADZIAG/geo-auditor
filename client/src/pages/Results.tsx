@@ -2591,6 +2591,7 @@ const TIER_CONFIG: Record<ExposureTier, { label: string; color: string; bg: stri
 function AiExposurePanel({ url }: { url: string }) {
   const [displayScore, setDisplayScore] = useState(0);
   const [displayCoverage, setDisplayCoverage] = useState(0);
+  const domainName = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch { return url; } })();
 
   const { data, isLoading, error } = trpc.aiExposure.getScore.useQuery(
     { url },
@@ -2632,7 +2633,7 @@ function AiExposurePanel({ url }: { url: string }) {
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-semibold">Widoczność domeny w Google AI Overviews</h2>
+              <h2 className="text-base font-semibold">Widoczność <span className="text-primary">{domainName}</span> w Google AI Overviews</h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: "oklch(0.6 0.15 260 / 0.18)", color: "oklch(0.75 0.15 260)" }}>
                 Bonus: Kontekst domenowy
               </span>

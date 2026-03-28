@@ -1023,10 +1023,10 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Analizuję Twoją stronę w AI Search…</h2>
+            <h2 className="text-base font-bold text-white">Sprawdzam, czy ChatGPT i Perplexity znają Twoją stronę…</h2>
             <p className="text-sm text-zinc-400 mt-0.5">
-              Przetwarzam treść strony i sprawdzam widoczność w 4 silnikach AI
-              {completedQueries > 0 ? ` — sprawdzono ${completedQueries} fraz` : ""}
+              Pytamy wiodące modele AI tak samo, jak robi to Twój klient — i patrzymy, kogo cytują
+              {completedQueries > 0 ? ` (sprawdzono ${completedQueries} fraz)` : ""}
             </p>
           </div>
         </div>
