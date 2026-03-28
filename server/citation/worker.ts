@@ -25,6 +25,7 @@ import { getDb } from "../db";
 import { citationChecks, citationJobs, audits } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { expandQueriesWithVariants } from "./morphologicalVariants";
+import { getQueriesForUrl } from "./db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1013,7 +1014,16 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       .set({ language })
       .where(eq(citationJobs.id, jobId));
 
-    // Step 2: Adaptive fan-out loop (max 5 rounds × 5 queries)
+    // Step 2: Reuse proven queries from last completed job for this URL (analytical consistency + cost reduction)
+    const cachedQueries = await getQueriesForUrl(job.url);
+    if (cachedQueries) {
+      const total = Object.values(cachedQueries).flat().length;
+      console.log(`[Citation] Job ${jobId}: reusing ${total} cached queries from previous job for ${job.url} (skipping LLM generation for round 1)`);
+    } else {
+      console.log(`[Citation] Job ${jobId}: no cached queries — generating fresh via LLM`);
+    }
+
+    // Step 3: Adaptive fan-out loop (max 5 rounds × 5 queries)
     const MAX_ROUNDS = 5;
     const allResults: CitationResult[] = [];
     const rounds: CitationRound[] = [];
@@ -1025,19 +1035,32 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       console.log(`[Citation] Job ${jobId}: Round ${round}/${MAX_ROUNDS}`);
 
-      // Generate per-engine queries in parallel — each engine gets queries optimized for its citation algorithm
-      const [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
-        generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
-        round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
-        round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
-        round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
-      ]);
+      // Round 1: use cached queries if available (consistency + cost), otherwise generate fresh
+      // Round 2+: always generate fresh (broader fan-out to find new citations)
+      let googleQueries: string[];
+      let chatgptQueries: string[];
+      let perplexityQueries: string[];
+      let geminiQueries: string[];
+
+      if (round === 1 && cachedQueries) {
+        googleQueries = (cachedQueries["google"] ?? []).slice(0, 8);
+        chatgptQueries = (cachedQueries["chatgpt"] ?? []).slice(0, 8);
+        perplexityQueries = (cachedQueries["perplexity"] ?? []).slice(0, 8);
+        geminiQueries = (cachedQueries["gemini"] ?? []).slice(0, 8);
+      } else {
+        [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
+          generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
+          round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
+          round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
+          round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
+        ]);
+      }
 
       // Track all queries used (deduplicated) for avoid-repetition in next rounds
       const allRoundQueries = Array.from(new Set([...googleQueries, ...chatgptQueries, ...perplexityQueries, ...geminiQueries]));
       usedQueries.push(...allRoundQueries);
 
-      console.log(`[Citation] Job ${jobId}: Round ${round} queries — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length}`);
+      console.log(`[Citation] Job ${jobId}: Round ${round} queries — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length} [${round === 1 && cachedQueries ? "CACHED" : "FRESH"}]`);
 
       const roundResults: CitationResult[] = [];
 
