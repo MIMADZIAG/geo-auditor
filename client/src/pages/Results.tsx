@@ -41,7 +41,9 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
-import SyntaxHighlighter from "react-syntax-highlighter";
+import { lazy, Suspense } from "react";
+// Lazy-loaded to avoid ~600 kB in the initial bundle — only loaded when a code snippet is rendered
+const SyntaxHighlighter = lazy(() => import("react-syntax-highlighter").then((m) => ({ default: m.default })));
 import { atomOneDark } from "react-syntax-highlighter/dist/cjs/styles/hljs";
 import type {
   AuditResult,
@@ -1056,13 +1058,19 @@ function IssuesAndFixes({
               <div>
                 <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{issue.llmCodeSnippet.label}</div>
                 <div className="rounded-lg overflow-hidden text-xs">
-                  <SyntaxHighlighter
-                    language={issue.llmCodeSnippet.language}
-                    style={atomOneDark}
-                    customStyle={{ margin: 0, padding: "12px", fontSize: "11px", borderRadius: "8px" }}
-                  >
-                    {issue.llmCodeSnippet.code}
-                  </SyntaxHighlighter>
+                  <Suspense fallback={
+                    <pre className="m-0 p-3 bg-[#282c34] text-[#abb2bf] text-[11px] rounded-lg overflow-auto">
+                      {issue.llmCodeSnippet.code}
+                    </pre>
+                  }>
+                    <SyntaxHighlighter
+                      language={issue.llmCodeSnippet.language}
+                      style={atomOneDark}
+                      customStyle={{ margin: 0, padding: "12px", fontSize: "11px", borderRadius: "8px" }}
+                    >
+                      {issue.llmCodeSnippet.code}
+                    </SyntaxHighlighter>
+                  </Suspense>
                 </div>
               </div>
             )}

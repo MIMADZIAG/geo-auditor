@@ -999,3 +999,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Root cause: `react-syntax-highlighter/dist/esm/styles/hljs` nie może rozwizywać wewnętrznych importów w prod bundle (znany ESM bug)
 - [x] Fix: zmieniono import na `/dist/cjs/styles/hljs` — CJS path działa poprawnie (35 kluczy w atomOneDark)
 - [x] Potwierdzono: `pnpm build` bez błędów, TypeScript: 0 błędów, 255 testów passing
+
+## ErrorBoundary + Lazy SyntaxHighlighter (2026-03-28)
+- [x] Zaktualizowano ErrorBoundary.tsx: context prop, Polski UI, dev details panel, componentDidCatch logging
+- [x] App.tsx: per-route ErrorBoundary z context labels dla Results, PublicReport, Dashboard, Sandbox, PageCreator
+- [x] Results.tsx: React.lazy + Suspense dla SyntaxHighlighter; fallback = plain <pre> z tym samym kodem
+- [x] Główny bundle zmniejszony z 3354 kB → 1616+2447 kB (split na 2 chunki, syntax-highlighter w osobnym)
+- [x] TypeScript: 0 błędów, 255 testów passing, pnpm build bez błędów

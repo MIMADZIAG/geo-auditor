@@ -16,13 +16,37 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/results/:id" component={Results} />
-      <Route path="/report/:id" component={PublicReport} />
-      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/results/:id">
+        <ErrorBoundary context="Results page">
+          <Results />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/report/:id">
+        <ErrorBoundary context="Public Report">
+          <PublicReport />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/dashboard">
+        <ErrorBoundary context="Dashboard">
+          <Dashboard />
+        </ErrorBoundary>
+      </Route>
       <Route path="/pricing" component={Pricing} />
-      <Route path="/sandbox" component={Sandbox} />
-      <Route path="/page-creator" component={PageCreator} />
-      <Route path="/page-creator/:id" component={PageCreatorResult} />
+      <Route path="/sandbox">
+        <ErrorBoundary context="Sandbox">
+          <Sandbox />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/page-creator">
+        <ErrorBoundary context="Page Creator">
+          <PageCreator />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/page-creator/:id">
+        <ErrorBoundary context="Page Creator Result">
+          <PageCreatorResult />
+        </ErrorBoundary>
+      </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
