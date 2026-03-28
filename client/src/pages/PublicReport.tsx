@@ -22,6 +22,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Eye,
 } from "lucide-react";
 import { useState } from "react";
 import type {
@@ -183,6 +184,26 @@ export default function PublicReport() {
         {recommendations && recommendations.length > 0 && (
           <TopRecommendations recommendations={recommendations.slice(0, 3)} />
         )}
+
+        {/* CTA — AI Visibility deep link */}
+        <div
+          className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center gap-4 cursor-pointer hover:bg-primary/10 transition-colors group"
+          onClick={() => navigate(`/results/${auditId}?tab=visibility`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && navigate(`/results/${auditId}?tab=visibility`)}
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+            <Eye className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold">Czy ChatGPT i Perplexity cytują tę stronę?</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Zobacz pełną analizę widoczności AI — które silniki cytują tę stronę i kto ją wyprzedza.</div>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-primary font-semibold group-hover:gap-2 transition-all shrink-0">
+            Sprawdź <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
 
         {/* CTA — Audit your own site */}
         <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/5 border border-primary/20 p-8 text-center">
