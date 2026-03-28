@@ -967,3 +967,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] UI: nowe etykiety, sublabels z językiem korzyści, progress nudge "+X pkt do następnego poziomu"
 - [x] Zaktualizowano typy: scoreLabel w shared/auditTypes.ts, server/audit/types.ts, server/audit/index.ts
 - [x] Testy: 229 passing, TypeScript: 0 błędów
+
+## brandAuthority w mini-grid ScoreHero (2026-03-28)
+- [x] Dodano brandAuthority do shared/auditTypes.ts AuditFindings (opcjonalne)
+- [x] Mini-grid: catData jako CategoryResult | undefined, fallback "brak danych" dla starych audytów
+- [x] Nowe audyty zawsze zawierają brandAuthority (index.ts już to robi)
+- [x] TypeScript: 0 błędów, 229 testów passing

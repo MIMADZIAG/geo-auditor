@@ -447,19 +447,26 @@ function ScoreHero({
           {findings && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {CATEGORY_META.map((cat) => {
-                const catData = findings[cat.key as keyof typeof findings] as CategoryResult;
-                const catScore = catData?.score ?? 0;
-                const catColor = getScoreColor(catScore);
+                const catData = findings[cat.key as keyof typeof findings] as CategoryResult | undefined;
+                const hasData = catData !== undefined && catData !== null;
+                const catScore = hasData ? (catData.score ?? 0) : null;
+                const catColor = catScore !== null ? getScoreColor(catScore) : "hsl(var(--muted-foreground))";
                 return (
                   <div key={cat.key} className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/30 border border-border/30">
                     <cat.icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[10px] text-muted-foreground truncate">{cat.label}</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${catScore}%`, backgroundColor: catColor }} />
-                        </div>
-                        <span className="text-[10px] font-bold shrink-0" style={{ color: catColor }}>{catScore}</span>
+                        {catScore !== null ? (
+                          <>
+                            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${catScore}%`, backgroundColor: catColor }} />
+                            </div>
+                            <span className="text-[10px] font-bold shrink-0" style={{ color: catColor }}>{catScore}</span>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/50 italic">brak danych</span>
+                        )}
                       </div>
                     </div>
                   </div>

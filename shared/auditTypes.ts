@@ -23,6 +23,7 @@ export interface AuditFindings {
   eeat: CategoryResult;
   aiCrawlers: CategoryResult;
   metaTags: CategoryResult;
+  brandAuthority?: CategoryResult;
 }
 
 export interface Recommendation {
