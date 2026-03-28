@@ -25,7 +25,7 @@ import { getDb } from "../db";
 import { citationChecks, citationJobs, audits } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { expandQueriesWithVariants } from "./morphologicalVariants";
-import { getQueriesForUrl } from "./db";
+import { getQueriesForUrl, type CachedQueryMap } from "./db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1014,13 +1014,19 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       .set({ language })
       .where(eq(citationJobs.id, jobId));
 
-    // Step 2: Reuse proven queries from last completed job for this URL (analytical consistency + cost reduction)
-    const cachedQueries = await getQueriesForUrl(job.url);
+    // Step 2: Load structured query cache from last completed job for this URL.
+    // Strategy:
+    //   - Round 1: citedFirst queries (yes/domain) come first — early exit if still cited
+    //   - All rounds: use byRoundEngine[round:engine] if available (analytical consistency)
+    //   - Rounds beyond previous job's maxRound: generate fresh via LLM
+    //   - No cache: generate all rounds fresh
+    const cachedQueries: CachedQueryMap | null = await getQueriesForUrl(job.url);
     if (cachedQueries) {
-      const total = Object.values(cachedQueries).flat().length;
-      console.log(`[Citation] Job ${jobId}: reusing ${total} cached queries from previous job for ${job.url} (skipping LLM generation for round 1)`);
+      const citedCount = Object.values(cachedQueries.citedFirst).flat().length;
+      const totalCached = Object.values(cachedQueries.byEngine).flat().length;
+      console.log(`[Citation] Job ${jobId}: cache HIT — ${totalCached} queries (${citedCount} cited-first) from previous job, maxRound=${cachedQueries.maxRound}`);
     } else {
-      console.log(`[Citation] Job ${jobId}: no cached queries — generating fresh via LLM`);
+      console.log(`[Citation] Job ${jobId}: cache MISS — generating all queries fresh via LLM`);
     }
 
     // Step 3: Adaptive fan-out loop (max 5 rounds × 5 queries)
@@ -1035,32 +1041,53 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       console.log(`[Citation] Job ${jobId}: Round ${round}/${MAX_ROUNDS}`);
 
-      // Round 1: use cached queries if available (consistency + cost), otherwise generate fresh
-      // Round 2+: always generate fresh (broader fan-out to find new citations)
+      // Resolve queries for this round:
+      // 1. If cache exists and this round was covered — use cached queries (consistency)
+      //    Round 1: prepend citedFirst queries (highest priority — check known citations first)
+      // 2. If cache exists but this round is beyond previous maxRound — generate fresh (fan-out)
+      // 3. No cache — generate fresh for all rounds
+      // ChatGPT/Perplexity/Gemini only run in round 1 (cost control)
       let googleQueries: string[];
       let chatgptQueries: string[];
       let perplexityQueries: string[];
       let geminiQueries: string[];
+      let cacheTag = "FRESH";
 
-      if (round === 1 && cachedQueries) {
-        googleQueries = (cachedQueries["google"] ?? []).slice(0, 8);
-        chatgptQueries = (cachedQueries["chatgpt"] ?? []).slice(0, 8);
-        perplexityQueries = (cachedQueries["perplexity"] ?? []).slice(0, 8);
-        geminiQueries = (cachedQueries["gemini"] ?? []).slice(0, 8);
+      if (cachedQueries && round <= cachedQueries.maxRound) {
+        // Use cached queries for this round — analytical consistency
+        const getCached = (engine: string) => {
+          const roundKey = `${round}:${engine}`;
+          const roundQueries = cachedQueries.byRoundEngine[roundKey] ?? [];
+          if (round === 1) {
+            // Prepend citedFirst (deduped) so proven queries run before untested ones
+            const cited = cachedQueries.citedFirst[engine] ?? [];
+            const rest = roundQueries.filter(q => !cited.includes(q));
+            return [...cited, ...rest].slice(0, 8);
+          }
+          return roundQueries.slice(0, 8);
+        };
+        googleQueries = getCached("google");
+        chatgptQueries = round === 1 ? getCached("chatgpt") : [];
+        perplexityQueries = round === 1 ? getCached("perplexity") : [];
+        geminiQueries = round === 1 ? getCached("gemini") : [];
+        cacheTag = round === 1 && Object.keys(cachedQueries.citedFirst).length > 0
+          ? "CACHED+CITED_FIRST" : "CACHED";
       } else {
+        // Fresh generation: beyond previous maxRound or no cache
         [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
           generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
           round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
           round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
           round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
         ]);
+        cacheTag = cachedQueries ? `FRESH_FANOUT_R${round}` : "FRESH";
       }
 
       // Track all queries used (deduplicated) for avoid-repetition in next rounds
       const allRoundQueries = Array.from(new Set([...googleQueries, ...chatgptQueries, ...perplexityQueries, ...geminiQueries]));
       usedQueries.push(...allRoundQueries);
 
-      console.log(`[Citation] Job ${jobId}: Round ${round} queries — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length} [${round === 1 && cachedQueries ? "CACHED" : "FRESH"}]`);
+      console.log(`[Citation] Job ${jobId}: Round ${round} [${cacheTag}] — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length}`);
 
       const roundResults: CitationResult[] = [];
 
