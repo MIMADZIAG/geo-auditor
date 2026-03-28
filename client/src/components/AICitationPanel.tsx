@@ -11,7 +11,7 @@
  * PLG upsell: competitor domains blurred/locked in Free plan
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,12 @@ interface Props {
   url?: string;
   /** Called when citation job completes with all cited competitor URLs */
   onCompetitorUrlsReady?: (urls: string[]) => void;
+  /** Called when citation status changes — used by parent to update Sticky Score Bar */
+  onStatusChange?: (status: "idle" | "running" | "done" | "error", citedCount?: number, totalEngines?: number) => void;
+}
+
+export interface AICitationPanelHandle {
+  startCheck: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -822,7 +828,10 @@ function EngineBreakdownTable({ checks }: { checks: CitationCheck[] }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) {
+export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function AICitationPanel(
+  { auditId, url, onCompetitorUrlsReady, onStatusChange }: Props,
+  ref
+) {
   const { user } = useAuth();
   const isPro = user?.role === "admin" || false; // TODO: replace with plan check
   const [jobStarted, setJobStarted] = useState(false);
@@ -874,9 +883,10 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
   const handleStart = useCallback(async () => {
     if (!user) { window.location.href = getLoginUrl(); return; }
     setJobStarted(true);
+    onStatusChange?.("running");
     await startCheck.mutateAsync({ auditId });
     resultsQuery.refetch();
-  }, [user, auditId]);
+  }, [user, auditId, onStatusChange]);
 
   const targetDomain = url ? getDomain(url) : "";
   const isRunning = job?.status === "pending" || job?.status === "running";
@@ -886,6 +896,26 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
   const byRound = groupByRound(checks);
   const rounds = Array.from(byRound.keys()).sort((a, b) => a - b);
   const totalQueries = new Set(checks.map(c => c.query)).size;
+
+  // Expose startCheck to parent via ref
+  useImperativeHandle(ref, () => ({
+    startCheck: () => { handleStart(); },
+  }), [handleStart]);
+
+  // Notify parent of status changes
+  useEffect(() => {
+    if (!jobStarted) return;
+    if (isRunning || startCheck.isPending) {
+      onStatusChange?.("running");
+    } else if (isCompleted) {
+      const citedChecks = checks.filter(c => c.isCited);
+      const engines = new Set(checks.map(c => c.engine)).size;
+      const citedEngines = new Set(citedChecks.map(c => c.engine)).size;
+      onStatusChange?.("done", citedEngines, Math.max(engines, 3));
+    } else if (isFailed) {
+      onStatusChange?.("error");
+    }
+  }, [jobStarted, isRunning, isCompleted, isFailed, startCheck.isPending, checks.length]);
 
   // ── Idle ─────────────────────────────────────────────────────────────────────
   if (!jobStarted || (!job && !startCheck.isPending)) {
@@ -1135,6 +1165,6 @@ export function AICitationPanel({ auditId, url, onCompetitorUrlsReady }: Props) 
       </div>
     </div>
   );
-}
+});
 
 export default AICitationPanel;

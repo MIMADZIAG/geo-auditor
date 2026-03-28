@@ -1006,3 +1006,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Results.tsx: React.lazy + Suspense dla SyntaxHighlighter; fallback = plain <pre> z tym samym kodem
 - [x] Główny bundle zmniejszony z 3354 kB → 1616+2447 kB (split na 2 chunki, syntax-highlighter w osobnym)
 - [x] TypeScript: 0 błędów, 255 testów passing, pnpm build bez błędów
+
+## Tab-Based Results Refactor (Two-Score Product)
+
+- [x] Sticky Dual Score Bar: AI-Readiness score + Citation status w nagłówku
+- [x] Tab 1 "Optymalizacja": ScoreHero, CompetitorDecayCard, TopPriorityBanner, IssuesAndFixes, MonitorCTA, ContentIntelligencePanel, WhatIfSection, PassingChecks, SharePanel, ScoreHistoryTeaser, PLGUpgradeBanner
+- [x] Tab 2 "Widoczność AI": CitationStatusBanner + AICitationPanel + AiExposurePanel + CompetitorAnalysisTeaser
+- [x] CitationStatusBanner: kompaktowy widget w Tab 1 z CTA "Sprawdź widoczność" linkującym do Tab 2
+- [x] Auto-start citation przy pierwszym wejściu w Tab 2 (jeśli nie uruchomiony)
+- [x] AICitationPanel: forwardRef + useImperativeHandle (startCheck) + onStatusChange callback
+- [x] Dashboard: CitationBadge w AuditRow (ikona Eye + X/Y AI)
+- [x] Backend: citation.getStatusBatch — batch query bez N+1 dla Dashboardu

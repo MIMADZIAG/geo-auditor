@@ -178,7 +178,38 @@ type AuditItem = {
   pageTitle?: string | null;
 };
 
-function AuditRow({ audit }: { audit: AuditItem }) {
+type CitationStatusSummary = { status: string; citedCount: number; totalEngines: number } | undefined;
+
+function CitationBadge({ cs }: { cs: CitationStatusSummary }) {
+  if (!cs) return null;
+  if (cs.status === "completed") {
+    const isCited = cs.citedCount > 0;
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold border"
+        style={{
+          color: isCited ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)",
+          background: isCited ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)",
+          borderColor: isCited ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)",
+        }}
+      >
+        <Eye className="w-2.5 h-2.5" />
+        {isCited ? `${cs.citedCount}/${cs.totalEngines} AI` : "0 AI"}
+      </span>
+    );
+  }
+  if (cs.status === "running" || cs.status === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold border border-primary/25 bg-primary/8 text-primary">
+        <div className="w-2 h-2 border border-primary border-t-transparent rounded-full animate-spin" />
+        AI…
+      </span>
+    );
+  }
+  return null;
+}
+
+function AuditRow({ audit, citationStatus }: { audit: AuditItem; citationStatus?: CitationStatusSummary }) {
   const score = audit.overallScore;
   const domain = (() => { try { return new URL(audit.url).hostname; } catch { return audit.url; } })();
   const path = (() => { try { const u = new URL(audit.url); return u.pathname === "/" ? "" : u.pathname; } catch { return ""; } })();
@@ -195,6 +226,7 @@ function AuditRow({ audit }: { audit: AuditItem }) {
           <p className="text-xs text-muted-foreground truncate">{domain}{path}</p>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className="text-xs text-muted-foreground">{date}</span>
+            <CitationBadge cs={citationStatus} />
             {audit.llmScoreGain != null && audit.llmScoreGain > 0 && (
               <span className="text-xs text-violet-400 font-medium">+{audit.llmScoreGain} pkt potencjału</span>
             )}
@@ -642,6 +674,13 @@ export default function Dashboard() {
     { enabled: isAuthenticated }
   );
 
+  // Citation status batch — one query for all audits in history
+  const auditIds = (history ?? []).map((a) => a.id);
+  const { data: citationStatuses } = trpc.citation.getStatusBatch.useQuery(
+    { auditIds },
+    { enabled: auditIds.length > 0, staleTime: 60_000 }
+  );
+
   const addMonitoring = trpc.monitoring.add.useMutation({
     onSuccess: () => {
       utils.monitoring.list.invalidate();
@@ -783,7 +822,7 @@ export default function Dashboard() {
               ) : (
                 <div className="divide-y divide-border">
                   {history.map((audit) => (
-                    <AuditRow key={audit.id} audit={audit} />
+                    <AuditRow key={audit.id} audit={audit} citationStatus={citationStatuses?.[audit.id]} />
                   ))}
                 </div>
               )}

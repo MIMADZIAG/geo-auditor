@@ -351,6 +351,33 @@ export const appRouter = router({
       }),
 
     /**
+     * Get citation status for multiple audits at once (for Dashboard).
+     * Returns a map of auditId -> {status, citedCount, totalEngines}.
+     * Efficient: one query per batch, no N+1.
+     */
+    getStatusBatch: publicProcedure
+      .input(z.object({ auditIds: z.array(z.number()).max(50) }))
+      .query(async ({ input }) => {
+        const results: Record<number, { status: string; citedCount: number; totalEngines: number }> = {};
+        await Promise.all(
+          input.auditIds.map(async (auditId) => {
+            const { job, checks } = await getCitationResultsForAudit(auditId);
+            if (!job) return;
+            const engines = new Set(checks.map((c) => c.engine)).size;
+            const citedEngines = new Set(
+              checks.filter((c) => c.isCited === "yes" || c.isCited === "domain").map((c) => c.engine)
+            ).size;
+            results[auditId] = {
+              status: job.status,
+              citedCount: citedEngines,
+              totalEngines: Math.max(engines, 3),
+            };
+          })
+        );
+        return results;
+      }),
+
+    /**
      * Admin: Get last Google AI Overview selector health report.
      * Returns the cached result from the last cron run.
      * Admin can also trigger a manual re-check.

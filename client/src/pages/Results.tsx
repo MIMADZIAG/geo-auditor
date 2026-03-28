@@ -37,7 +37,7 @@ import {
   Award,
   Flame,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
@@ -198,6 +198,113 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   brandAuthority: "Jak silnie Twoja marka jest rozpoznawana jako autorytet w swojej dziedzinie przez wyszukiwarki AI.",
 };
 
+// ─── Citation Status Banner (compact widget for Tab 1) ───────────────────────
+
+type CitationStatus = "idle" | "running" | "done" | "error";
+
+function CitationStatusBanner({
+  status,
+  citedCount,
+  totalEngines,
+  onGoToTab,
+}: {
+  status: CitationStatus;
+  citedCount: number;
+  totalEngines: number;
+  onGoToTab: () => void;
+}) {
+  const isCited = citedCount > 0;
+
+  if (status === "idle") {
+    return (
+      <button
+        onClick={onGoToTab}
+        className="w-full rounded-2xl border border-dashed border-primary/30 bg-primary/4 p-4 flex items-center gap-4 hover:bg-primary/8 transition-colors group text-left"
+      >
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Eye className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold">Sprawdź widoczność w AI Search</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Czy ChatGPT, Perplexity i Gemini cytują Twoją stronę? Kliknij, aby uruchomić analizę.</div>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-primary font-semibold group-hover:gap-2.5 transition-all shrink-0">
+          Sprawdź <ChevronDown className="w-3.5 h-3.5 rotate-[-90deg]" />
+        </div>
+      </button>
+    );
+  }
+
+  if (status === "running") {
+    return (
+      <div className="rounded-2xl border border-primary/20 bg-primary/4 p-4 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold">Analizuję widoczność w AI Search…</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Sprawdzam ChatGPT, Perplexity, Gemini i Google AI Overviews</div>
+        </div>
+        <button onClick={onGoToTab} className="text-xs text-primary hover:underline shrink-0">Zobacz postęp →</button>
+      </div>
+    );
+  }
+
+  if (status === "done") {
+    return (
+      <button
+        onClick={onGoToTab}
+        className="w-full rounded-2xl border p-4 flex items-center gap-4 hover:bg-muted/10 transition-colors group text-left"
+        style={{ borderColor: isCited ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)" }}
+      >
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: isCited ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)" }}
+        >
+          {isCited
+            ? <CheckCircle2 className="w-5 h-5" style={{ color: "oklch(0.72 0.18 145)" }} />
+            : <AlertTriangle className="w-5 h-5" style={{ color: "oklch(0.65 0.22 25)" }} />
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold">
+            {isCited
+              ? `Cytowana przez ${citedCount} z ${totalEngines} silników AI`
+              : `Niewidoczna w ${totalEngines} silnikach AI`
+            }
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {isCited
+              ? "Twoja strona pojawia się w odpowiedziach AI — sprawdź szczegóły i pozycję konkurentów"
+              : "Żaden silnik AI nie cytuje tej strony — sprawdź szczegóły i rekomendacje"
+            }
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
+          Szczegóły <ChevronDown className="w-3.5 h-3.5 rotate-[-90deg]" />
+        </div>
+      </button>
+    );
+  }
+
+  // error
+  return (
+    <button
+      onClick={onGoToTab}
+      className="w-full rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-center gap-4 hover:bg-amber-500/8 transition-colors text-left"
+    >
+      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+        <AlertCircle className="w-5 h-5 text-amber-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-amber-300">Analiza cytowań niedostępna</div>
+        <div className="text-xs text-muted-foreground mt-0.5">Kliknij, aby spróbować ponownie</div>
+      </div>
+      <div className="text-xs text-amber-400 shrink-0">Spróbuj ponownie →</div>
+    </button>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Results() {
@@ -205,16 +312,40 @@ export default function Results() {
   const [, navigate] = useLocation();
   const auditId = parseInt(params.id ?? "0");
   const { isAuthenticated, user } = useAuth();
-  // hasPaidPlan: true if user is logged in AND has a paid plan (starter/pro/business/agency)
-  // Used to hide upsell boxes for paying customers
   const userPlan = (user as any)?.plan ?? "free";
   const hasPaidPlan = isAuthenticated && userPlan !== "free" && !!userPlan;
+
+  // ── Tab state ──
+  const [activeTab, setActiveTab] = useState<"optimization" | "visibility">("optimization");
+
+  // ── Citation status for Sticky Bar ──
+  const [citationStatus, setCitationStatus] = useState<CitationStatus>("idle");
+  const [citationCitedCount, setCitationCitedCount] = useState(0);
+  const [citationTotalEngines, setCitationTotalEngines] = useState(3);
+
   // Competitor URLs from AI Citations — passed to WhatIfSection for Full Rewrite AI
   const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
-  // Upsell modal state — shown 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users)
+
+  // Upsell modal state
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");
   const upsellTriggeredRef = useRef(false);
+
+  // Auto-start citation when switching to Tab 2
+  const citationAutoStartRef = useRef(false);
+  const citationPanelRef = useRef<{ startCheck: () => void } | null>(null);
+
+  const handleSwitchToVisibility = useCallback(() => {
+    setActiveTab("visibility");
+    // Auto-start citation check on first visit to Tab 2
+    if (!citationAutoStartRef.current && citationStatus === "idle") {
+      citationAutoStartRef.current = true;
+      // Small delay to let the panel mount
+      setTimeout(() => {
+        citationPanelRef.current?.startCheck();
+      }, 300);
+    }
+  }, [citationStatus]);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
     { id: auditId },
@@ -228,7 +359,6 @@ export default function Results() {
   );
 
   // ⚠️ HOOKS MUST ALL BE DECLARED BEFORE ANY CONDITIONAL RETURN (Rules of Hooks)
-  // Trigger upsell modal 1.5s after audit loads for Niewidoczny/Startujący tiers (non-Pro users only)
   useEffect(() => {
     if (!audit || hasPaidPlan || upsellTriggeredRef.current) return;
     const auditStatus = (audit as unknown as { status?: string }).status;
@@ -236,7 +366,7 @@ export default function Results() {
     const label = getScoreLabel(Math.round((audit as unknown as { overallScore?: number }).overallScore ?? 0));
     if (label !== "Niewidoczny" && label !== "Startujący") return;
     upsellTriggeredRef.current = true;
-    setUpsellTier(label); // store the exact tier before opening modal
+    setUpsellTier(label);
     const timer = setTimeout(() => setShowUpsellModal(true), 1500);
     return () => clearTimeout(timer);
   }, [audit, hasPaidPlan]);
@@ -259,6 +389,7 @@ export default function Results() {
   const overallScore = Math.round(audit.overallScore ?? 0);
   const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
   const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
+  const scoreColor = getScoreColor(overallScore);
 
   const llmResult: LLMRecommendationsResult | null =
     llmRecs && llmAiInsight
@@ -280,16 +411,17 @@ export default function Results() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Upsell Pro Modal — shown 1.5s after load for Niewidoczny/Startujący (non-Pro users) */}
       <UpsellProModal
         isOpen={showUpsellModal}
         onClose={() => setShowUpsellModal(false)}
         scoreLabel={upsellTier}
         score={overallScore}
       />
-      {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/90 backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-16">
+
+      {/* ── Sticky Header with Dual Score Bar ── */}
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-xl">
+        {/* Top row: nav */}
+        <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
@@ -301,119 +433,247 @@ export default function Results() {
               <span className="text-sm font-medium hidden sm:inline">GEO-Auditor</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 max-w-xs overflow-hidden">
-              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'200px',display:'block'}}>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 max-w-[180px] overflow-hidden">
+              <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+              <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate">
                 {audit.url}
               </a>
             </div>
-            {/* AI Sandbox button hidden — feature simplified */}
-            <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs">
+            <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs h-8">
               <Share2 className="w-3.5 h-3.5" /> Share
             </Button>
             <a href={`/api/audit/${auditId}/pdf`} download>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
                 <Download className="w-3.5 h-3.5" /> PDF
               </Button>
             </a>
             {isAuthenticated ? (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8">
                 <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
               </Button>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs text-primary">
+              <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 text-primary">
                 <LogIn className="w-3.5 h-3.5" /> Sign In
               </Button>
             )}
           </div>
         </div>
+
+        {/* Tab Bar with Dual Score ── */}
+        <div className="container border-t border-border/30">
+          <div className="flex items-center justify-between h-11">
+            {/* Tabs */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab("optimization")}
+                className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "optimization"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Optymalizacja</span>
+                <span className="sm:hidden">Audyt</span>
+              </button>
+              <button
+                onClick={handleSwitchToVisibility}
+                className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "visibility"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Widoczność AI</span>
+                <span className="sm:hidden">Widoczność</span>
+                {citationStatus === "running" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                )}
+                {citationStatus === "done" && citationCitedCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
+                    {citationCitedCount}/{citationTotalEngines}
+                  </span>
+                )}
+                {citationStatus === "done" && citationCitedCount === 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-red-500/10 text-red-400">0</span>
+                )}
+              </button>
+            </div>
+
+            {/* Dual Score Pills */}
+            <div className="flex items-center gap-2">
+              {/* AI-Readiness Score */}
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                style={{ color: scoreColor, background: `${scoreColor}15`, borderColor: `${scoreColor}35` }}
+              >
+                <span className="text-base font-black tabular-nums">{overallScore}</span>
+                <span className="font-normal text-[10px] opacity-70">Readiness</span>
+              </div>
+              {/* Citation Score Pill */}
+              {citationStatus === "idle" && (
+                <button
+                  onClick={handleSwitchToVisibility}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>Sprawdź widoczność</span>
+                </button>
+              )}
+              {citationStatus === "running" && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-primary/25 bg-primary/8 text-primary">
+                  <div className="w-2.5 h-2.5 border border-primary border-t-transparent rounded-full animate-spin" />
+                  <span>Analizuję…</span>
+                </div>
+              )}
+              {citationStatus === "done" && (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                  style={{
+                    color: citationCitedCount > 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)",
+                    background: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)",
+                    borderColor: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)",
+                  }}
+                >
+                  {citationCitedCount > 0
+                    ? <CheckCircle2 className="w-3 h-3" />
+                    : <XCircle className="w-3 h-3" />
+                  }
+                  <span className="text-base font-black tabular-nums">{citationCitedCount}/{citationTotalEngines}</span>
+                  <span className="font-normal text-[10px] opacity-70">Cytowania</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </header>
 
-      <main className="container max-w-5xl mx-auto py-10 space-y-8">
+      {/* ── Tab 1: Optymalizacja ── */}
+      {activeTab === "optimization" && (
+        <main className="container max-w-5xl mx-auto py-10 space-y-8">
 
-        {/* ── 1. AI Visibility Score Hero ── */}
-        <ScoreHero
-          score={overallScore}
-          pageTitle={audit.pageTitle ?? audit.url}
-          url={audit.url}
-          findings={findings}
-          citeabilityScore={contentIntelligence?.citeabilityScore}
-          pageType={(audit as unknown as { pageType?: string | null }).pageType}
-        />
-
-        {/* —— 1b. Competitive Decay — retention mechanic for high-scorers —— */}
-        <CompetitorDecayCard score={overallScore} hasPaidPlan={hasPaidPlan} isAuthenticated={isAuthenticated} navigate={navigate} citedCompetitorUrls={citedCompetitorUrls} />
-
-        {/* —— WAF/CDN notice — shown when server blocked automated requests —— */}
-        {(audit as unknown as { wafBlocked?: boolean }).wafBlocked && (
-          <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-            <p className="text-amber-200">
-              <span className="font-semibold">Uwaga: serwer chroniony WAF/CDN.</span>{" "}
-              Automatyczne żądania zostały zablokowane — część danych technicznych mogła być niedostępna podczas tego audytu. Wyniki mogą być niepełne. Spróbuj ponownie za kilka minut lub skontaktuj się z nami.
-            </p>
-          </div>
-        )}
-
-        {/* ── 2. #1 Priority Fix — natychmiastowa wartość, "aha moment" ── */}
-        {llmResult?.topPriority && (
-          <TopPriorityBanner
-            topPriority={llmResult.topPriority}
-            aiInsight={llmResult.aiInsight}
-            scoreGain={llmResult.scoreGain}
-            difficulty={llmResult.difficulty}
+          {/* Score Hero */}
+          <ScoreHero
+            score={overallScore}
+            pageTitle={audit.pageTitle ?? audit.url}
+            url={audit.url}
+            findings={findings}
+            citeabilityScore={contentIntelligence?.citeabilityScore}
+            pageType={(audit as unknown as { pageType?: string | null }).pageType}
           />
-        )}
 
-        {/* ── 3. AI Citation Check — kto Cię wyprzedza (PLG hook) ── */}
-        <AICitationPanel
-          auditId={auditId}
-          url={audit.url}
-          onCompetitorUrlsReady={setCitedCompetitorUrls}
-        />
+          {/* Competitive Decay */}
+          <CompetitorDecayCard
+            score={overallScore}
+            hasPaidPlan={hasPaidPlan}
+            isAuthenticated={isAuthenticated}
+            navigate={navigate}
+            citedCompetitorUrls={citedCompetitorUrls}
+          />
 
-        {/* ── 4. Issues & Fixes — Critical first ── */}
-        <IssuesAndFixes
-          findings={findings}
-          llmRecs={llmResult?.recommendations ?? null}
-          recommendations={recommendations}
-        />
-        {/* ── 4b. Monitor CTA — contextual after seeing issues ── */}
-        {/* Hidden for paying users — they already have monitoring in their plan */}
-        {!hasPaidPlan && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
+          {/* WAF notice */}
+          {(audit as unknown as { wafBlocked?: boolean }).wafBlocked && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <p className="text-amber-200">
+                <span className="font-semibold">Uwaga: serwer chroniony WAF/CDN.</span>{" "}
+                Automatyczne żądania zostały zablokowane — część danych technicznych mogła być niedostępna podczas tego audytu. Wyniki mogą być niepełne. Spróbuj ponownie za kilka minut lub skontaktuj się z nami.
+              </p>
+            </div>
+          )}
 
-        {/* ── 5. Content Intelligence — Citeability deep-dive ── */}
-        <ContentIntelligencePanel
-          contentIntelligence={contentIntelligence}
-          isAuthenticated={isAuthenticated}
-          auditStatus={audit.status}
-        />
+          {/* Top Priority */}
+          {llmResult?.topPriority && (
+            <TopPriorityBanner
+              topPriority={llmResult.topPriority}
+              aiInsight={llmResult.aiInsight}
+              scoreGain={llmResult.scoreGain}
+              difficulty={llmResult.difficulty}
+            />
+          )}
 
-        {/* ── 6. AI Search Exposure Score — domain-level AI visibility ── */}
-        <AiExposurePanel url={audit.url} />
+          {/* Citation Status Banner — compact widget linking to Tab 2 */}
+          <CitationStatusBanner
+            status={citationStatus}
+            citedCount={citationCitedCount}
+            totalEngines={citationTotalEngines}
+            onGoToTab={handleSwitchToVisibility}
+          />
 
-        {/* ── 7. Full Rewrite AI — Content Co-Pilot ── */}
-        <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
+          {/* Issues & Fixes */}
+          <IssuesAndFixes
+            findings={findings}
+            llmRecs={llmResult?.recommendations ?? null}
+            recommendations={recommendations}
+          />
+          {!hasPaidPlan && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
 
-        {/* ── 8. Competitor Analysis Teaser (Pro) ── */}
-        {/* Hidden for paying users — they already have access or can upgrade within dashboard */}
-        {!hasPaidPlan && <CompetitorAnalysisTeaser navigate={navigate} />}
+          {/* Content Intelligence */}
+          <ContentIntelligencePanel
+            contentIntelligence={contentIntelligence}
+            isAuthenticated={isAuthenticated}
+            auditStatus={audit.status}
+          />
 
-        {/* ── 8b. What's Working ── */}
-        {findings && <PassingChecks findings={findings} />}
+          {/* Full Rewrite AI */}
+          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
 
-        {/* ── 9. Share ── */}
-        <SharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
+          {/* Passing Checks */}
+          {findings && <PassingChecks findings={findings} />}
 
-        {/* ── 9b. Score History Teaser ── */}
-        {!isAuthenticated && <ScoreHistoryTeaser />}
+          {/* Share */}
+          <SharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
 
-        {/* ── 10. PLG Upgrade Banner ── */}
-        {/* Hidden for paying users — they already have a paid plan */}
-        {!hasPaidPlan && <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />}
+          {/* Score History Teaser */}
+          {!isAuthenticated && <ScoreHistoryTeaser />}
 
-      </main>
+          {/* PLG Upgrade Banner */}
+          {!hasPaidPlan && <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />}
+
+        </main>
+      )}
+
+      {/* ── Tab 2: Widoczność AI ── */}
+      {activeTab === "visibility" && (
+        <main className="container max-w-5xl mx-auto py-10 space-y-8">
+
+          {/* Citation Hero — full panel */}
+          <AICitationPanel
+            auditId={auditId}
+            url={audit.url}
+            onCompetitorUrlsReady={setCitedCompetitorUrls}
+            onStatusChange={(status, citedCount, totalEngines) => {
+              setCitationStatus(status);
+              if (citedCount !== undefined) setCitationCitedCount(citedCount);
+              if (totalEngines !== undefined) setCitationTotalEngines(totalEngines);
+            }}
+            ref={citationPanelRef}
+          />
+
+          {/* AI Search Exposure Score — domain-level */}
+          <AiExposurePanel url={audit.url} />
+
+          {/* Competitor Analysis Teaser */}
+          {!hasPaidPlan && <CompetitorAnalysisTeaser navigate={navigate} />}
+
+          {/* Bridge back to Tab 1 */}
+          <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Shield className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold">Gotowy na poprawki?</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Wróć do zakładki Optymalizacja — tam znajdziesz konkretne rekomendacje i AI Content Co-Pilot.</div>
+            </div>
+            <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs shrink-0">
+              <Shield className="w-3 h-3" /> Przejdź do Optymalizacji
+            </Button>
+          </div>
+
+        </main>
+      )}
     </div>
   );
 }
