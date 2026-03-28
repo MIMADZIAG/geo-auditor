@@ -986,3 +986,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Wydzielono _UpsellProModalInner — hooks wywoływane tylko gdy isOpen=true
 - [x] Results.tsx: upsellTier w useState, setUpsellTier przed setTimeout, usunięto unsafe cast
 - [x] TypeScript: 0 błędów, 229 testów passing
+
+## Testy regresyjne: UpsellProModal + Results scoring (2026-03-28)
+- [x] Testy UpsellProModal: 26 testów w server/upsellModal.test.ts
+- [x] Testy getScoreLabel: wszystkie progi scoringowe + exact boundary checks
+- [x] Testy upsellTier logic: Rozwijający się/Widoczny/Dominujący MUST NOT trigger modal (regression)
+- [x] Exhaustive sweep: każda liczba całkowita 0–100 mapuje na znany tier
+- [x] COPY dictionary coverage: invariant że 2 tiery w COPY = 2 tiery triggering modal
+- [x] TypeScript: 0 błędów, 255 testów passing (11 plików)
