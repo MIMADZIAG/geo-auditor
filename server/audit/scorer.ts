@@ -48,41 +48,14 @@ const CATEGORY_WEIGHTS_WITH_CI = {
 };
 
 /**
- * Apply a calibration curve to compress raw scores into the target distribution.
- *
- * Raw score → Calibrated score mapping:
- *   0   → 0
- *   30  → 22   (basic page with just HTTPS + meta title)
- *   50  → 38   (typical SMB: HTTPS + meta + canonical, no schema)
- *   65  → 52   (some schema, no FAQ, no TL;DR)
- *   80  → 67   (good schema + FAQ, missing CI)
- *   90  → 78   (excellent without CI)
- *   95  → 84   (requires CI to reach)
- *   100 → 100
- *
- * This is a piecewise linear calibration — transparent and auditable.
+ * No calibration — the overall score is the pure weighted average of category scores.
+ * This ensures mathematical consistency: a page scoring 92, 90, 100, 75, 72, 71, 49
+ * across categories gets an overall score proportional to those values.
+ * Retention is driven by Competitive Decay, AI Volatility, and Benchmark Percentile
+ * mechanics — not by artificially deflating scores.
  */
 function calibrateScore(raw: number): number {
-  const breakpoints: [number, number][] = [
-    [0, 0],
-    [30, 22],
-    [50, 38],
-    [65, 52],
-    [80, 67],
-    [90, 78],
-    [95, 84],
-    [100, 100],
-  ];
-
-  for (let i = 1; i < breakpoints.length; i++) {
-    const [x0, y0] = breakpoints[i - 1];
-    const [x1, y1] = breakpoints[i];
-    if (raw <= x1) {
-      const t = (raw - x0) / (x1 - x0);
-      return Math.round(y0 + t * (y1 - y0));
-    }
-  }
-  return 100;
+  return Math.round(raw); // identity — no compression
 }
 
 export function computeOverallScore(findings: AuditFindings): number {

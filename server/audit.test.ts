@@ -56,8 +56,8 @@ describe("computeOverallScore", () => {
     // v4 weights (base, no brandAuthority in test data):
     // technical=11, structuredData=20, contentStructure=24, eeat=14, aiCrawlers=8, metaTags=5 → sum=82
     // raw = (100/100 * 11) / 82 * 100 = 13.41 → round = 13
-    // calibrated: 13 is between breakpoints [0,0] and [30,22] → t=13/30=0.433 → 22*0.433 = 9.5 → round = 10
-    expect(computeOverallScore(findings)).toBe(10);
+    // No calibration (identity function) → score = 13
+    expect(computeOverallScore(findings)).toBe(13);
   });
 
   it("returns a value between 0 and 100 for mixed scores", () => {
@@ -780,9 +780,9 @@ describe("ContentIntelligenceResult type contract", () => {
     // v4 WITH_CI weights (no brandAuthority in test data):
     // technical=8, structuredData=14, contentStructure=17, eeat=10, aiCrawlers=6, metaTags=4, CI=28 → sum=87
     // raw = (100/100 * 8) / 87 * 100 = 9.2 → round = 9
-    // calibrated: 9 is between [0,0] and [30,22] → t=9/30=0.3 → 22*0.3 = 6.6 → round = 7
+    // No calibration (identity function) → score = 9
     const score = computeOverallScore(findings as AuditFindings);
-    expect(score).toBe(7);
+    expect(score).toBe(9);
   });
 
   it("computeOverallScore includes CI score when CI is present", () => {
@@ -797,9 +797,9 @@ describe("ContentIntelligenceResult type contract", () => {
     };
     // v4 WITH_CI weights (no brandAuthority in test data):
     // Only CI scores 100, weight 28 out of 87 → raw = 28/87*100 = 32.2 → round = 32
-    // calibrated: 32 is between [30,22] and [50,38] → t=(32-30)/(50-30)=0.1 → 22 + 0.1*(38-22) = 23.6 → round = 24
+    // No calibration (identity function) → score = 32
     const score = computeOverallScore(findings as AuditFindings);
-    expect(score).toBe(24);
+    expect(score).toBe(32);
   });
 });
 
