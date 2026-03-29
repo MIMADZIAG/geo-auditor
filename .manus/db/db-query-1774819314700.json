@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, auditId, status, createdAt, completedAt, errorMessage FROM citation_jobs WHERE auditId = 3420005",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, auditId, status, createdAt, completedAt, errorMessage FROM citation_jobs WHERE auditId = 3420005",
+  "rows": [
+    {
+      "id": "1500005",
+      "auditId": "3420005",
+      "status": "completed",
+      "createdAt": "2026-03-29 21:17:47",
+      "completedAt": "2026-03-29 21:18:27",
+      "errorMessage": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tauditId\tstatus\tcreatedAt\tcompletedAt\terrorMessage\n1500005\t3420005\tcompleted\t2026-03-29 21:17:47\t2026-03-29 21:18:27\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 401
+}

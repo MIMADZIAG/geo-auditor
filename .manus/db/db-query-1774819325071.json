@@ -1,0 +1,100 @@
+{
+  "query": "SELECT id, engine, query, isCited, citedUrl, allCitedUrls, round FROM citation_checks WHERE jobId = 1500005 LIMIT 30",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, engine, query, isCited, citedUrl, allCitedUrls, round FROM citation_checks WHERE jobId = 1500005 LIMIT 30",
+  "rows": [
+    {
+      "id": "1500105",
+      "engine": "google",
+      "query": "kredyt hipoteczny marzec 2026 ranking",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.youtube.com/watch?v=ggcvg_7i8k0&vl=pl\", \"https://www.budnex.pl/blog/2026/01/14/co-zmienia-sie-w-kredytach-hipotecznych-w-2026\", \"https://rankomat.pl/finanse/poradniki/wklad-wlasny\", \"https://natwoim.pl/top-oferty-kredytu-hipotecznego-w-2026-roku-ranking-i-strategie-finansowania\", \"https://www.bik.pl/poradnik-bik/jak-sprawdzic-zdolnosc-kredytowa-i-szanse-na-kredyt-hipoteczny\", \"https://czasnazysk.pl/blog/ranking-kredytow-hipotecznych-w-2026-roku\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500106",
+      "engine": "google",
+      "query": "kalkulator rat kredytu hipotecznego",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://notus.pl/kalkulatory-kredytowe/kalkulator-raty-kredytowej\", \"https://www.bankier.pl/smart/kredyt-400-tys-jaka-rata-w-2025-roku-bedzie-do-zaplacenia-przy-takiej-sumie\", \"https://expander.pl/poradniki/ile-trzeba-zarabiac-zeby-dostac-kredyt-500-tys\", \"https://www.bankier.pl/smart/narzedzia/kalkulator-kredytu-hipotecznego-raty-koszt\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/kalkulator-kredytowy\", \"https://www.pkobp.pl/klient-indywidualny/kredyty-pozyczki/kredyt-hipoteczny\", \"https://symulator.aliorbank.pl\", \"https://businessinsider.com.pl/poradnik-finansowy/kredyt-hipoteczny-300-tys-zl-na-25-lat-ile-oddasz-od-czego-zalezy-rata-i-jak-zaplacic/mj96jht\", \"https://rankomat.pl/finanse/kredyt-350-tys-zl\", \"https://www.bankier.pl/smart/Kredyt-700-tys-jaka-rata\", \"https://www.santander.pl/klient-indywidualny/kredyty/kredyt-mieszkaniowy\", \"https://www.bankmillennium.pl/klienci-indywidualni/kredyty-hipoteczne/kredyt-hipoteczny\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500107",
+      "engine": "google",
+      "query": "najlepsze oferty kredytów hipotecznych",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://mfinanse.pl/ranking-kredytow-hipotecznych\", \"https://www.bankier.pl/wiadomosc/Ranking-kredytow-hipotecznych-marzec-2026-najlepsze-kredyty-hipoteczne-9093483.html\", \"https://www.santander.pl/klient-indywidualny/kredyty/kredyt-mieszkaniowy\", \"https://rekinfinansow.pl/kredyt-hipoteczny\", \"https://notus.pl/porownywarka\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500108",
+      "engine": "google",
+      "query": "jak obliczyć zdolność kredytową hipoteka",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[]",
+      "round": "1"
+    },
+    {
+      "id": "1500109",
+      "engine": "google",
+      "query": "kredyt hipoteczny oprocentowanie stałe",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.bik.pl/poradnik-bik/oprocentowanie-stale-czy-zmienne\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/zmiana-oprocentowania-na-stale\", \"https://rankomat.pl/finanse/poradniki/kredyt-hipoteczny-stale-oprocentowanie-10-lat\", \"https://expander.pl/poradniki/kredyt-hipoteczny-ze-stalym-oprocentowaniem-na-czym-polega\", \"https://www.bnpparibas.pl/klienci-indywidualni/kredyty/kredyt-hipoteczny-z-niska-marza/stale-oprocentowanie\", \"https://www.aliorbank.pl/klienci-indywidualni/kredyty-hipoteczne/kredyt-z-okresowo-stala-stopa-oprocentowania.html\", \"https://www.bankmillennium.pl/klienci-indywidualni/kredyty-hipoteczne/kredyt-hipoteczny\", \"https://mfinanse.pl/kredyt-hipoteczny-kalkulator-zdolnosci-kredytowej-podwojne-kalkulatory\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500110",
+      "engine": "chatgpt",
+      "query": "kredyt hipoteczny marzec 2026 ranking",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.bankier.pl/wiadomosc/ranking-kredytow-hipotecznych\", \"https://www.bankier.pl/wiadomosc/Ranking-kredytow-hipotecznych-marzec-2026-najlepsze-kredyty-hipoteczne-9093483.html\", \"https://kredytypozyczki.com/kredyty/kredyty-hipoteczne/ranking-kredytow-mieszkaniowych/\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500111",
+      "engine": "chatgpt",
+      "query": "kalkulator rat kredytu hipotecznego",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.kalkulatorhipoteczny.pl/\", \"https://kalkulatorrat.pl/\", \"https://kalkulatorrat.pl/kalkulator-kredytu-hipotecznego/\", \"https://kalkulatorbox.pl/kalkulator-kredytu-hipotecznego/\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/kalkulator-kredytowy\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500112",
+      "engine": "chatgpt",
+      "query": "najlepsze oferty kredytów hipotecznych",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://pl.tradingeconomics.com/united-states/30-year-mortgage-rate/news/519320\", \"https://www.parkiet.com/wykres-dnia/art42054311-usa-udzial-drogich-kredytow-hipotecznych-najwyzszy-od-2016-r\", \"https://www.bankier.pl/wiadomosc/Ranking-kredytow-hipotecznych-listopad-2025-najlepsze-kredyty-hipoteczne-9035802.html\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500113",
+      "engine": "chatgpt",
+      "query": "jak obliczyć zdolność kredytową hipoteka",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.kredytanaliza.pl/blog/artykul/jak-obliczyc-zdolnosc-kredytowa\", \"https://www.bnpparibas.pl/blog/jak-obliczyc-zdolnosc-kredytowa-w-przypadku-kredytu-hipotecznego\", \"https://www.bankier.pl/smart/narzedzia/kalkulator-zdolnosci-kredytowej\"]",
+      "round": "1"
+    },
+    {
+      "id": "1500114",
+      "engine": "chatgpt",
+      "query": "kredyt hipoteczny oprocentowanie stałe",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.bnpparibas.pl/klienci-indywidualni/kredyty/kredyt-hipoteczny-z-niska-marza/stale-oprocentowanie\", \"https://kredytowyporadnik.pl/oprocentowanie-stale-czy-zmienne/\", \"https://www.lendi.pl/blog/kredyt-hipoteczny-ze-stalym-oprocentowaniem/\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/oferty-i-oprocentowanie-stale\", \"https://www.mbank.pl/pdf/ind/kredyty/kredyt-hipoteczny/ogolna-informacja-o-stalym-oprocentowaniu-konwersja-kredytu-hipotecznego.pdf\", \"https://www.youtube.com/watch?v=Or69ZOoLwbM&utm_source=openai\"]",
+      "round": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tengine\tquery\tisCited\tcitedUrl\tallCitedUrls\tround\n1500105\tgoogle\tkredyt hipoteczny marzec 2026 ranking\tno\tNULL\t[\"https://www.youtube.com/watch?v=ggcvg_7i8k0&vl=pl\", \"https://www.budnex.pl/blog/2026/01/14/co-zmienia-sie-w-kredytach-hipotecznych-w-2026\", \"https://rankomat.pl/finanse/poradniki/wklad-wlasny\", \"https://natwoim.pl/top-oferty-kredytu-hipotecznego-w-2026-roku-ranking-i-strategie-finansowania\", \"https://www.bik.pl/poradnik-bik/jak-sprawdzic-zdolnosc-kredytowa-i-szanse-na-kredyt-hipoteczny\", \"https://czasnazysk.pl/blog/ranking-kredytow-hipotecznych-w-2026-roku\"]\t1\n1500106\tgoogle\tkalkulator rat kredytu hipotecznego\tno\tNULL\t[\"https://notus.pl/kalkulatory-kredytowe/kalkulator-raty-kredytowej\", \"https://www.bankier.pl/smart/kredyt-400-tys-jaka-rata-w-2025-roku-bedzie-do-zaplacenia-przy-takiej-sumie\", \"https://expander.pl/poradniki/ile-trzeba-zarabiac-zeby-dostac-kredyt-500-tys\", \"https://www.bankier.pl/smart/narzedzia/kalkulator-kredytu-hipotecznego-raty-koszt\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/kalkulator-kredytowy\", \"https://www.pkobp.pl/klient-indywidualny/kredyty-pozyczki/kredyt-hipoteczny\", \"https://symulator.aliorbank.pl\", \"https://businessinsider.com.pl/poradnik-finansowy/kredyt-hipoteczny-300-tys-zl-na-25-lat-ile-oddasz-od-czego-zalezy-rata-i-jak-zaplacic/mj96jht\", \"https://rankomat.pl/finanse/kredyt-350-tys-zl\", \"https://www.bankier.pl/smart/Kredyt-700-tys-jaka-rata\", \"https://www.santander.pl/klient-indywidualny/kredyty/kredyt-mieszkaniowy\", \"https://www.bankmillennium.pl/klienci-indywidualni/kredyty-hipoteczne/kredyt-hipoteczny\"]\t1\n1500107\tgoogle\tnajlepsze oferty kredytów hipotecznych\tno\tNULL\t[\"https://mfinanse.pl/ranking-kredytow-hipotecznych\", \"https://www.bankier.pl/wiadomosc/Ranking-kredytow-hipotecznych-marzec-2026-najlepsze-kredyty-hipoteczne-9093483.html\", \"https://www.santander.pl/klient-indywidualny/kredyty/kredyt-mieszkaniowy\", \"https://rekinfinansow.pl/kredyt-hipoteczny\", \"https://notus.pl/porownywarka\"]\t1\n1500108\tgoogle\tjak obliczyć zdolność kredytową hipoteka\tno\tNULL\t[]\t1\n1500109\tgoogle\tkredyt hipoteczny oprocentowanie stałe\tno\tNULL\t[\"https://www.bik.pl/poradnik-bik/oprocentowanie-stale-czy-zmienne\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/zmiana-oprocentowania-na-stale\", \"https://rankomat.pl/finanse/poradniki/kredyt-hipoteczny-stale-oprocentowanie-10-lat\", \"https://expander.pl/poradniki/kredyt-hipoteczny-ze-stalym-oprocentowaniem-na-czym-polega\", \"https://www.bnpparibas.pl/klienci-indywidualni/kredyty/kredyt-hipoteczny-z-niska-marza/stale-oprocentowanie\", \"https://www.aliorbank.pl/klienci-indywidualni/kredyty-hipoteczne/kredyt-z-okresowo-stala-stopa-oprocentowania.html\", \"https://www.bankmillennium.pl/klienci-indywidualni/kredyty-hipoteczne/kredyt-hipoteczny\", \"https://mfinanse.pl/kredyt-hipoteczny-kalkulator-zdolnosci-kredytowej-podwojne-kalkulatory\"]\t1\n1500110\tchatgpt\tkredyt hipoteczny marzec 2026 ranking\tno\tNULL\t[\"https://www.bankier.pl/wiadomosc/ranking-kredytow-hipotecznych\", \"https://www.bankier.pl/wiadomosc/Ranking-kredytow-hipotecznych-marzec-2026-najlepsze-kredyty-hipoteczne-9093483.html\", \"https://kredytypozyczki.com/kredyty/kredyty-hipoteczne/ranking-kredytow-mieszkaniowych/\"]\t1\n1500111\tchatgpt\tkalkulator rat kredytu hipotecznego\tno\tNULL\t[\"https://www.kalkulatorhipoteczny.pl/\", \"https://kalkulatorrat.pl/\", \"https://kalkulatorrat.pl/kalkulator-kredytu-hipotecznego/\", \"https://kalkulatorbox.pl/kalkulator-kredytu-hipotecznego/\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/kalkulator-kredytowy\"]\t1\n1500112\tchatgpt\tnajlepsze oferty kredytów hipotecznych\tno\tNULL\t[\"https://pl.tradingeconomics.com/united-states/30-year-mortgage-rate/news/519320\", \"https://www.parkiet.com/wykres-dnia/art42054311-usa-udzial-drogich-kredytow-hipotecznych-najwyzszy-od-2016-r\", \"https://www.bankier.pl/wiadomosc/Ranking-kredytow-hipotecznych-listopad-2025-najlepsze-kredyty-hipoteczne-9035802.html\"]\t1\n1500113\tchatgpt\tjak obliczyć zdolność kredytową hipoteka\tno\tNULL\t[\"https://www.kredytanaliza.pl/blog/artykul/jak-obliczyc-zdolnosc-kredytowa\", \"https://www.bnpparibas.pl/blog/jak-obliczyc-zdolnosc-kredytowa-w-przypadku-kredytu-hipotecznego\", \"https://www.bankier.pl/smart/narzedzia/kalkulator-zdolnosci-kredytowej\"]\t1\n1500114\tchatgpt\tkredyt hipoteczny oprocentowanie stałe\tno\tNULL\t[\"https://www.bnpparibas.pl/klienci-indywidualni/kredyty/kredyt-hipoteczny-z-niska-marza/stale-oprocentowanie\", \"https://kredytowyporadnik.pl/oprocentowanie-stale-czy-zmienne/\", \"https://www.lendi.pl/blog/kredyt-hipoteczny-ze-stalym-oprocentowaniem/\", \"https://www.ing.pl/indywidualni/kredyty-i-pozyczki/kredyt-hipoteczny/oferty-i-oprocentowanie-stale\", \"https://www.mbank.pl/pdf/ind/kredyty/kredyt-hipoteczny/ogolna-informacja-o-stalym-oprocentowaniu-konwersja-kredytu-hipotecznego.pdf\", \"https://www.youtube.com/watch?v=Or69ZOoLwbM&utm_source=openai\"]\t1\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

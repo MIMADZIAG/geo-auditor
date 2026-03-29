@@ -1056,22 +1056,26 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       let cacheTag = "FRESH";
 
       if (cachedQueries && round <= cachedQueries.maxRound) {
-        // Use cached queries for this round — analytical consistency
-        const getCached = (engine: string) => {
+        // Use cached queries for this round — analytical consistency.
+        // CRITICAL: if a previous job skipped an engine (quota exhaustion, API error),
+        // byRoundEngine[round:engine] will be empty. Fall back to fresh generation
+        // for that engine so we never silently run 0 queries for any engine.
+        const getCachedOrFresh = async (engine: CitationEngine): Promise<string[]> => {
           const roundKey = `${round}:${engine}`;
-          const roundQueries = cachedQueries.byRoundEngine[roundKey] ?? [];
-          if (round === 1) {
-            // Prepend citedFirst (deduped) so proven queries run before untested ones
-            const cited = cachedQueries.citedFirst[engine] ?? [];
-            const rest = roundQueries.filter(q => !cited.includes(q));
-            return [...cited, ...rest].slice(0, 8);
-          }
-          return roundQueries.slice(0, 8);
+          const roundQueries = cachedQueries!.byRoundEngine[roundKey] ?? [];
+          const cited = cachedQueries!.citedFirst[engine] ?? [];
+          const combined = round === 1
+            ? [...cited, ...roundQueries.filter(q => !cited.includes(q))]
+            : roundQueries;
+          if (combined.length > 0) return combined.slice(0, 8);
+          // Engine was absent from previous job — generate fresh queries
+          console.log(`[Citation] Job ${jobId}: engine "${engine}" absent from cache (quota/error) — generating fresh queries`);
+          return generateEngineQueries(pageContent, job.url, engine, round, usedQueries);
         };
-        googleQueries = getCached("google");
-        chatgptQueries = round === 1 ? getCached("chatgpt") : [];
-        perplexityQueries = round === 1 ? getCached("perplexity") : [];
-        geminiQueries = round === 1 ? getCached("gemini") : [];
+        googleQueries = await getCachedOrFresh("google");
+        chatgptQueries = round === 1 ? await getCachedOrFresh("chatgpt") : [];
+        perplexityQueries = round === 1 ? await getCachedOrFresh("perplexity") : [];
+        geminiQueries = round === 1 ? await getCachedOrFresh("gemini") : [];
         cacheTag = round === 1 && Object.keys(cachedQueries.citedFirst).length > 0
           ? "CACHED+CITED_FIRST" : "CACHED";
       } else {

@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, engine, query, isCited, allCitedUrls FROM citation_checks WHERE jobId = 1500005 AND allCitedUrls LIKE '%totalmoney%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, engine, query, isCited, allCitedUrls FROM citation_checks WHERE jobId = 1500005 AND allCitedUrls LIKE '%totalmoney%'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 351
+}

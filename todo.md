@@ -1180,3 +1180,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Bug 3: handleSwitchToVisibility(autoStart) — autoStart=false dla running/done/error, =true tylko dla idle
 - [x] Bug 3: CitationStatusBanner onGoToTab przekazuje autoStart=false gdy status != idle
 - [x] Bug 3: usunięto citationAutoStartRef (niepotrzebny po refaktorze) — 340 testów, TS: 0 błędów
+
+## Bug Fix: Fałszywe 0 cytowań w audycie 3420005 (2026-03-29)
+
+- [x] Diagnoza: root cause = cache z poprzedniego joba miał perplexity:0 i gemini:0 (quota 429 w poprzednim jobie)
+- [x] Diagnoza: getCached("perplexity") zwracało [] — system pomijał te silniki zamiast generować świeże zapytania
+- [x] Fix: getCachedOrFresh() — jeśli engine ma 0 zapytań w cache, generuje świeże zamiast pomijać
+- [x] Fix: dotyczy wszystkich silników (google, chatgpt, perplexity, gemini) — 340 testów, TS: 0 błędów
