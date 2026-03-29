@@ -2003,17 +2003,23 @@ function ContentCreatorRewriteWidget({
           </p>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => navigate(`/page-creator?auditId=${auditId}&mode=rewrite`)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+              onClick={() =>
+                isPaid
+                  ? navigate(`/page-creator?auditId=${auditId}&mode=rewrite`)
+                  : navigate("/pricing")
+              }
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                isPaid
+                  ? "bg-violet-600 hover:bg-violet-500 text-white"
+                  : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700"
+              }`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              Aktualizuj z AI
+              {isPaid ? (
+                <><Sparkles className="w-3.5 h-3.5" /> Aktualizuj z AI</>
+              ) : (
+                <><Lock className="w-3 h-3" /> Odblokuj — plan Starter</>
+              )}
             </button>
-            {!isPaid && (
-              <span className="inline-flex items-center gap-1 text-xs text-zinc-500 px-3 py-1.5">
-                <Lock className="w-3 h-3" /> Dostępne w planie Starter
-              </span>
-            )}
           </div>
         </div>
       </div>

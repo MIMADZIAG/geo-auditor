@@ -38,6 +38,7 @@ import { runPageCreatorPipeline } from "./pageCreator/index";
 import { pageCreations, aiExposureCache } from "../drizzle/schema";
 import { computeAiExposureScore, type AiExposureResult } from "./aiExposure/index";
 import { ENV } from "./_core/env";
+import { notifyOwner } from "./_core/notification";
 
 export const appRouter = router({
   system: systemRouter,
@@ -1283,6 +1284,10 @@ ${cleanedContent.slice(0, 20000)}
               completedAt: new Date(),
             }).where(eq(pageCreations.id, creationId));
             console.log(`[PageCreator/Rewrite] Job ${creationId} completed`);
+            notifyOwner({
+              title: `✨ Rewrite AI użyty: ${pageTitle}`,
+              content: `Użytkownik ${ctx.user.name ?? ctx.user.email} uruchomił Aktualizację treści AI dla: ${audit.url}`,
+            }).catch(() => {/* non-critical */});
           } catch (err) {
             const msg = err instanceof Error ? err.message : "Pipeline failed";
             await db.update(pageCreations).set({ status: "failed", errorMessage: msg }).where(eq(pageCreations.id, creationId));
