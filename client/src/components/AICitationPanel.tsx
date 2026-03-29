@@ -604,6 +604,32 @@ function CompetitorIntelPanel({ auditId, isPro }: { auditId: number; isPro: bool
   const completed = competitors.filter(c => c.status === "completed");
   if (completed.length === 0) return null;
 
+  // ── Freshness indicator ──────────────────────────────────────────────────────
+  // Use the most recent completedAt among all completed competitors.
+  const latestCompletedAt: Date | null = completed.reduce<Date | null>((latest, c) => {
+    if (!c.completedAt) return latest;
+    const d = new Date(c.completedAt);
+    return !latest || d > latest ? d : latest;
+  }, null);
+
+  function formatRelativeTime(date: Date): string {
+    const diffMs = Date.now() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60_000);
+    const diffH = Math.floor(diffMin / 60);
+    const diffD = Math.floor(diffH / 24);
+    if (diffMin < 2) return "przed chwilą";
+    if (diffMin < 60) return `${diffMin} min temu`;
+    if (diffH < 24) return `${diffH} godz. temu`;
+    if (diffD === 1) return "wczoraj";
+    if (diffD < 7) return `${diffD} dni temu`;
+    return date.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+  }
+
+  // Fresh = completed within last 24 h; Stale = older
+  const isFresh = latestCompletedAt
+    ? Date.now() - latestCompletedAt.getTime() < 24 * 60 * 60 * 1000
+    : false;
+
   // Score tier color helper
   function scoreColor(score: number | null): string {
     if (score === null) return "text-zinc-500";
@@ -642,9 +668,27 @@ function CompetitorIntelPanel({ auditId, isPro }: { auditId: number; isPro: bool
           <h3 className="text-sm font-semibold text-white">Competitor Intelligence</h3>
           <p className="text-[10px] text-zinc-500">AI-Readiness Score stron, które AI cytuje zamiast Twojej</p>
         </div>
-        {!isPro && (
-          <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">Pro</span>
-        )}
+        {/* Freshness badge + last-run timestamp */}
+        <div className="ml-auto flex items-center gap-2">
+          {latestCompletedAt && (
+            <span
+              title={`Ostatni audyt: ${latestCompletedAt.toLocaleString("pl-PL")}`}
+              className={`flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${
+                isFresh
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                  : "bg-amber-500/10 text-amber-400 border-amber-500/25"
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                isFresh ? "bg-emerald-400" : "bg-amber-400"
+              }`} />
+              {formatRelativeTime(latestCompletedAt)}
+            </span>
+          )}
+          {!isPro && (
+            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">Pro</span>
+          )}
+        </div>
       </div>
 
       {/* Column headers */}

@@ -425,6 +425,21 @@ export default function Results() {
     return () => clearTimeout(timer);
   }, [audit, hasPaidPlan]);
 
+  // Deep-link auto-start: when ?tab=visibility is in the URL on first mount,
+  // call handleSwitchToVisibility once the component is ready.
+  // We use a ref to ensure this fires only once even in StrictMode double-invoke.
+  const deepLinkFiredRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkFiredRef.current) return;
+    const isVisibilityTab = new URLSearchParams(window.location.search).get("tab") === "visibility";
+    if (!isVisibilityTab) return;
+    deepLinkFiredRef.current = true;
+    // Small delay so AICitationPanel has time to mount and register its ref
+    const timer = setTimeout(() => handleSwitchToVisibility(), 200);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — handleSwitchToVisibility is stable (useCallback [])
+
   // ── Early returns (after all hooks) ──
   if (isLoading) return <LoadingState />;
   if (error || !audit) return <ErrorState message={error?.message ?? "Audyt nie został znaleziony."} />;

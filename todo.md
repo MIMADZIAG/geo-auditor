@@ -1167,3 +1167,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: citationStatusRef — ref zsynchronizowany ze state, czytany w setTimeout zamiast setState updater
 - [x] Fix: setCitationStatus opakowuje setCitationStatusRaw + aktualizuje ref (useCallback)
 - [x] 340 testów, TypeScript: 0 błędów
+
+## Feature: Deep-link auto-start + Competitor status indicator (2026-03-29)
+
+- [x] Deep-link auto-start: useEffect w Results.tsx wywołuje handleSwitchToVisibility gdy ?tab=visibility w URL (deepLinkFiredRef guard, 200ms delay)
+- [x] Competitor audit status indicator: latestCompletedAt + isFresh badge (zielony <24h / żółty >24h) + tooltip z dokładną datą
