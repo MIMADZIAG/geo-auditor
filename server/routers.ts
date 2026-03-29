@@ -194,12 +194,16 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const existing = await getMonitoredPagesByUser(ctx.user.id);
+        const userPlan = ctx.user.plan ?? "free";
+        const planLimits = getPlanLimits(userPlan);
+        const maxPages = planLimits.monitoredPages; // Infinity for business/pro
 
-        // Free plan: max 1 monitored page
-        if (existing.length >= MAX_MONITORING_SLOTS_FREE) {
+        // Enforce per-plan monitoring slot limit
+        if (maxPages !== Infinity && existing.length >= maxPages) {
+          const planLabel = userPlan === "free" ? "Free" : userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: `Free plan allows monitoring ${MAX_MONITORING_SLOTS_FREE} page. Upgrade to monitor more.`,
+            message: `${planLabel} plan allows monitoring ${maxPages} page${maxPages !== 1 ? "s" : ""}. Upgrade to monitor more.`,
           });
         }
 
