@@ -1,0 +1,12 @@
+{
+  "query": "\nSELECT COUNT(*) as checkCount FROM citation_checks WHERE jobId = 1500003;\nSELECT status, COUNT(*) as cnt FROM competitor_audits WHERE auditId = 3420002 GROUP BY status;\nSELECT id, url, status, overallScore, completedAt FROM competitor_audits WHERE auditId = 3420002 ORDER BY rank;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT COUNT(*) as checkCount FROM citation_checks WHERE jobId = 1500003;\nSELECT status, COUNT(*) as cnt FROM competitor_audits WHERE auditId = 3420002 GROUP BY status;\nSELECT id, url, status, overallScore, completedAt FROM competitor_audits WHERE auditId = 3420002 ORDER BY rank;\n",
+  "returncode": 1,
+  "logs": [
+    "checkCount",
+    "32",
+    "status\tcnt",
+    "completed\t5",
+    "ERROR 1064 (42000) at line 4: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 110 near \"\""
+  ]
+}

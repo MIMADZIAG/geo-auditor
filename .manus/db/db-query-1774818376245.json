@@ -1,0 +1,14 @@
+{
+  "query": "SELECT COUNT(*) as checkCount, SUM(isCited) as citedCount FROM citation_checks WHERE jobId = 1500003",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT COUNT(*) as checkCount, SUM(isCited) as citedCount FROM citation_checks WHERE jobId = 1500003",
+  "rows": [
+    {
+      "checkCount": "32",
+      "citedCount": "66"
+    }
+  ],
+  "messages": [],
+  "stdout": "checkCount\tcitedCount\n32\t66\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

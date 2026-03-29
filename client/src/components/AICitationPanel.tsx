@@ -1025,23 +1025,38 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 ) {
   const { user } = useAuth();
   const isPro = user?.role === "admin" || user?.plan === "pro" || user?.plan === "business";
-  const [jobStarted, setJobStarted] = useState(false);
+
+  // ── Core fix: always query DB for existing jobs ───────────────────────────────────
+  // Previously: enabled: jobStarted (local state) — reset to false on every remount
+  // (switching tabs unmounts AICitationPanel, so existing completed jobs were invisible).
+  // Fix: always enable the query. Use `userStartedJob` only to distinguish
+  // "user explicitly clicked Start" from "job already existed in DB".
+  const [userStartedJob, setUserStartedJob] = useState(false);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [competitorUrlsNotified, setCompetitorUrlsNotified] = useState(false);
 
   const startCheck = trpc.citation.startCheck.useMutation();
   const resultsQuery = trpc.citation.getResults.useQuery(
     { auditId },
-    { enabled: jobStarted, refetchInterval: false }
+    {
+      // Always enabled — loads existing job from DB even after remount.
+      // staleTime: 0 ensures we always get fresh data on mount.
+      enabled: true,
+      refetchInterval: false,
+      staleTime: 0,
+    }
   );
 
   const job = resultsQuery.data?.job as CitationJob | null | undefined;
   const checks = (resultsQuery.data?.checks ?? []) as CitationCheck[];
 
+  // jobStarted = user clicked Start OR a job already exists in DB
+  const jobStarted = userStartedJob || !!job;
+
   // Poll while running
   useEffect(() => {
-    if (!jobStarted) return;
-    if (job?.status === "completed" || job?.status === "failed") {
+    const isActive = job?.status === "pending" || job?.status === "running";
+    if (!isActive) {
       if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
       return;
     }
@@ -1050,7 +1065,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
       setPollInterval(id);
     }
     return () => { if (pollInterval) clearInterval(pollInterval); };
-  }, [jobStarted, job?.status]);
+  }, [job?.status]);
 
   // Notify parent when job completes with competitor URLs
   useEffect(() => {
@@ -1073,7 +1088,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 
   const handleStart = useCallback(async () => {
     if (!user) { window.location.href = getLoginUrl(); return; }
-    setJobStarted(true);
+    setUserStartedJob(true);
     onStatusChange?.("running");
     await startCheck.mutateAsync({ auditId });
     resultsQuery.refetch();

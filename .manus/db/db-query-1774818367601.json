@@ -1,0 +1,34 @@
+{
+  "query": "\nSELECT id, auditId, status, createdAt, completedAt, errorMessage \nFROM citation_jobs \nWHERE auditId IN (3420002, 3330001) \nORDER BY createdAt DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT id, auditId, status, createdAt, completedAt, errorMessage \nFROM citation_jobs \nWHERE auditId IN (3420002, 3330001) \nORDER BY createdAt DESC;\n",
+  "rows": [
+    {
+      "id": "1500003",
+      "auditId": "3420002",
+      "status": "completed",
+      "createdAt": "2026-03-29 21:01:16",
+      "completedAt": "2026-03-29 21:04:28",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "1500002",
+      "auditId": "3330001",
+      "status": "completed",
+      "createdAt": "2026-03-29 20:56:36",
+      "completedAt": "2026-03-29 20:59:18",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "1410001",
+      "auditId": "3330001",
+      "status": "completed",
+      "createdAt": "2026-03-29 10:42:26",
+      "completedAt": "2026-03-29 10:43:47",
+      "errorMessage": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tauditId\tstatus\tcreatedAt\tcompletedAt\terrorMessage\n1500003\t3420002\tcompleted\t2026-03-29 21:01:16\t2026-03-29 21:04:28\tNULL\n1500002\t3330001\tcompleted\t2026-03-29 20:56:36\t2026-03-29 20:59:18\tNULL\n1410001\t3330001\tcompleted\t2026-03-29 10:42:26\t2026-03-29 10:43:47\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 400
+}

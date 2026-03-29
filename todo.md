@@ -1172,3 +1172,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 - [x] Deep-link auto-start: useEffect w Results.tsx wywołuje handleSwitchToVisibility gdy ?tab=visibility w URL (deepLinkFiredRef guard, 200ms delay)
 - [x] Competitor audit status indicator: latestCompletedAt + isFresh badge (zielony <24h / żółty >24h) + tooltip z dokładną datą
+
+## Bug Fix: 3 krytyczne błędy (2026-03-29)
+
+- [x] Bug 1+2: AICitationPanel zawsze pyta DB (enabled:true, staleTime:0) — wyniki widoczne po remount
+- [x] Bug 1+2: jobStarted = userStartedJob || !!job — istniejący job z DB inicjalizuje panel poprawnie
+- [x] Bug 3: handleSwitchToVisibility(autoStart) — autoStart=false dla running/done/error, =true tylko dla idle
+- [x] Bug 3: CitationStatusBanner onGoToTab przekazuje autoStart=false gdy status != idle
+- [x] Bug 3: usunięto citationAutoStartRef (niepotrzebny po refaktorze) — 340 testów, TS: 0 błędów

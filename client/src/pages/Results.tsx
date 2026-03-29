@@ -372,7 +372,6 @@ export default function Results() {
   );
 
   // Auto-start citation when switching to Tab 2
-  const citationAutoStartRef = useRef(false);
   const citationPanelRef = useRef<{ startCheck: () => void } | null>(null);
   // Spinner fallback: show loading for 2s after entering Tab 2 before status resolves
   const [tabVisibilityEnteredAt, setTabVisibilityEnteredAt] = useState<number | null>(null);
@@ -380,25 +379,24 @@ export default function Results() {
   const isTabInitializing = activeTab === "visibility" && citationStatus === "idle" &&
     tabVisibilityEnteredAt !== null && (Date.now() - tabVisibilityEnteredAt < 2000);
 
-  const handleSwitchToVisibility = useCallback(() => {
+  // Switch to visibility tab and optionally auto-start citation check.
+  // autoStart=true only on first entry (deep link or first manual click when status=idle).
+  // For subsequent clicks (badge "Zobacz postęp", "Szczegóły"), autoStart=false.
+  const handleSwitchToVisibility = useCallback((autoStart = true) => {
     setActiveTab("visibility");
     setTabVisibilityEnteredAt(Date.now());
     // After 2s, force re-render to hide spinner if status is still idle
     setTimeout(() => forceUpdate(n => n + 1), 2000);
-    // Auto-start only if no job exists yet (status stays "idle" even after mount
-    // when job already exists — onStatusChange fires and updates citationStatus)
-    // Use a slightly longer delay to let AICitationPanel mount and fire onStatusChange first
-    if (!citationAutoStartRef.current) {
-      citationAutoStartRef.current = true;
-      setTimeout(() => {
-        // Re-check: if onStatusChange already updated status away from "idle", don't start.
-        // Read from ref (not state) to avoid calling startCheck() inside a setState updater,
-        // which would trigger the "setState during render" React error.
-        if (citationStatusRef.current === "idle") {
-          citationPanelRef.current?.startCheck();
-        }
-      }, 600);
-    }
+    if (!autoStart) return;
+    // Auto-start: only if citationStatus is still "idle" (no existing job in DB).
+    // We read from ref to avoid setState-in-render. The 600ms delay lets
+    // AICitationPanel mount and fire onStatusChange (which updates citationStatusRef)
+    // before we decide whether to start.
+    setTimeout(() => {
+      if (citationStatusRef.current === "idle") {
+        citationPanelRef.current?.startCheck();
+      }
+    }, 600);
   }, []);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
@@ -547,7 +545,7 @@ export default function Results() {
                 <span className="sm:hidden">Audyt</span>
               </button>
               <button
-                onClick={handleSwitchToVisibility}
+                onClick={() => handleSwitchToVisibility(true)}
                 className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "visibility"
                     ? "border-primary text-foreground"
@@ -584,7 +582,7 @@ export default function Results() {
               {/* Citation Score Pill */}
               {citationStatus === "idle" && (
                 <button
-                  onClick={handleSwitchToVisibility}
+                  onClick={() => handleSwitchToVisibility(true)}
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
                 >
                   <Eye className="w-3 h-3" />
@@ -668,7 +666,7 @@ export default function Results() {
             status={citationStatus}
             citedCount={citationCitedCount}
             totalEngines={citationTotalEngines}
-            onGoToTab={handleSwitchToVisibility}
+            onGoToTab={() => handleSwitchToVisibility(citationStatus === "idle")}
           />
 
           {/* Issues & Fixes */}

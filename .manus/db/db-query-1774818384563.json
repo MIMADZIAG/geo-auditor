@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, url, status, overallScore FROM competitor_audits WHERE auditId = 3420002",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, url, status, overallScore FROM competitor_audits WHERE auditId = 3420002",
+  "rows": [
+    {
+      "id": "30011",
+      "url": "https://outdoorzy.pl/blog/najlepsze-kurtki-przeciwwiatrowe-ranking-kurtek-wiatrowek",
+      "status": "completed",
+      "overallScore": "74"
+    },
+    {
+      "id": "30012",
+      "url": "https://avanti24.pl/magazyn/7,150441,32690184,columbia-wyprzedaje-kurtki-naszpikowane-technologiami-dobre.html",
+      "status": "completed",
+      "overallScore": "67"
+    },
+    {
+      "id": "30013",
+      "url": "https://www.decathlon.pl/c/htc/wodoodpornosc-kurtki-jak-wybrac-pierwsza-kurtke-przeciwdeszczowa_12b53898-d1ce-4e76-8ad7-c3dc1f059580",
+      "status": "completed",
+      "overallScore": "64"
+    },
+    {
+      "id": "30014",
+      "url": "https://www.pakamera.pl/magazyn/jak-wybrac-kurtke-przeciwdeszczowa-poradnik",
+      "status": "completed",
+      "overallScore": "75"
+    },
+    {
+      "id": "30015",
+      "url": "https://www.decathlon.pl/c/htc/co-to-jest-membrana-w-kurtce-rodzaje-membran-w-kurtkach_3f6de8d7-b812-4dd0-8225-fec63b7a3901",
+      "status": "completed",
+      "overallScore": "63"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\turl\tstatus\toverallScore\n30011\thttps://outdoorzy.pl/blog/najlepsze-kurtki-przeciwwiatrowe-ranking-kurtek-wiatrowek\tcompleted\t74\n30012\thttps://avanti24.pl/magazyn/7,150441,32690184,columbia-wyprzedaje-kurtki-naszpikowane-technologiami-dobre.html\tcompleted\t67\n30013\thttps://www.decathlon.pl/c/htc/wodoodpornosc-kurtki-jak-wybrac-pierwsza-kurtke-przeciwdeszczowa_12b53898-d1ce-4e76-8ad7-c3dc1f059580\tcompleted\t64\n30014\thttps://www.pakamera.pl/magazyn/jak-wybrac-kurtke-przeciwdeszczowa-poradnik\tcompleted\t75\n30015\thttps://www.decathlon.pl/c/htc/co-to-jest-membrana-w-kurtce-rodzaje-membran-w-kurtkach_3f6de8d7-b812-4dd0-8225-fec63b7a3901\tcompleted\t63\n",
+  "stderr": "",
+  "execution_time_ms": 369
+}
