@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, url, overallScore FROM audits WHERE id = 3270001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, url, overallScore FROM audits WHERE id = 3270001;",
+  "rows": [
+    {
+      "id": "3270001",
+      "url": "https://www.obi.pl/podlogi/panele-podlogowe-i-podlogi-drewniane/c/893",
+      "overallScore": "59"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\turl\toverallScore\n3270001\thttps://www.obi.pl/podlogi/panele-podlogowe-i-podlogi-drewniane/c/893\t59\n",
+  "stderr": "",
+  "execution_time_ms": 368
+}

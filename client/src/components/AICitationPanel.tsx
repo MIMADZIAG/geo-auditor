@@ -583,6 +583,151 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
 
 // ─── PLG Upsell ───────────────────────────────────────────────────────────────
 
+// ─── Competitor Intelligence Panel ──────────────────────────────────────────────────
+
+/**
+ * Shows top-5 competitor pages with their AI-Readiness Score vs. audited page.
+ * Data is populated asynchronously after citation check completes (fire-and-forget).
+ * Pro gate: Starter/Free see blurred rows with upgrade CTA.
+ */
+function CompetitorIntelPanel({ auditId, isPro }: { auditId: number; isPro: boolean }) {
+  const { data: competitors, isLoading } = trpc.competitor.getForAudit.useQuery(
+    { auditId },
+    { retry: false }
+  );
+
+  // Not yet populated (citation job still running or no competitors found)
+  if (isLoading) return null;
+  if (!competitors || competitors.length === 0) return null;
+
+  const completed = competitors.filter(c => c.status === "completed");
+  if (completed.length === 0) return null;
+
+  // Score tier color helper
+  function scoreColor(score: number | null): string {
+    if (score === null) return "text-zinc-500";
+    if (score >= 75) return "text-emerald-400";
+    if (score >= 50) return "text-amber-400";
+    return "text-red-400";
+  }
+
+  function ScoreBar({ score }: { score: number | null }) {
+    if (score === null) return <span className="text-zinc-600 text-xs">N/A</span>;
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-amber-500" : "bg-red-500"
+            }`}
+            style={{ width: `${score}%` }}
+          />
+        </div>
+        <span className={`text-xs font-bold tabular-nums w-7 text-right ${scoreColor(score)}`}>{score}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-zinc-900/40 border border-white/8 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
+        <div className="w-6 h-6 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
+          <svg className="w-3.5 h-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-white">Competitor Intelligence</h3>
+          <p className="text-[10px] text-zinc-500">AI-Readiness Score stron, które AI cytuje zamiast Twojej</p>
+        </div>
+        {!isPro && (
+          <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">Pro</span>
+        )}
+      </div>
+
+      {/* Column headers */}
+      <div className="px-4 py-2 grid grid-cols-[1fr_80px_80px_80px] gap-2 border-b border-white/5">
+        <span className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">Strona konkurenta</span>
+        <span className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium text-center">Cytowania</span>
+        <span className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">AI Score</span>
+        <span className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">Dostęp tech.</span>
+      </div>
+
+      {/* Competitor rows */}
+      <div className="divide-y divide-white/5">
+        {completed.map((comp, idx) => {
+          const isBlurred = !isPro && idx >= 2;
+          return (
+            <div
+              key={comp.id}
+              className={`px-4 py-3 grid grid-cols-[1fr_80px_80px_80px] gap-2 items-center transition-colors hover:bg-white/2 ${
+                isBlurred ? "relative" : ""
+              }`}
+            >
+              {isBlurred && (
+                <div className="absolute inset-0 backdrop-blur-sm bg-zinc-950/60 flex items-center justify-center z-10 rounded">
+                  <Link href="/pricing">
+                    <span className="text-[11px] text-violet-400 font-semibold hover:text-violet-300 cursor-pointer">
+                      🔒 Odblokuj pełną analizę → Pro
+                    </span>
+                  </Link>
+                </div>
+              )}
+              {/* Domain + rank */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded text-[9px] font-bold bg-zinc-800 text-zinc-500 flex items-center justify-center flex-shrink-0">
+                    {comp.rank}
+                  </span>
+                  <a
+                    href={comp.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-zinc-300 hover:text-white truncate font-medium"
+                  >
+                    {comp.domain}
+                  </a>
+                </div>
+                {comp.pageTitle && (
+                  <p className="text-[10px] text-zinc-600 truncate mt-0.5 pl-5.5">{comp.pageTitle}</p>
+                )}
+              </div>
+              {/* Citation count */}
+              <div className="text-center">
+                <span className="text-xs font-bold text-violet-400">{comp.citationCount}</span>
+                <span className="text-[9px] text-zinc-600"> raz</span>
+              </div>
+              {/* Overall score */}
+              <ScoreBar score={comp.overallScore} />
+              {/* Technical access */}
+              <div className="flex items-center gap-1">
+                {comp.tech_robots_disallow === null ? (
+                  <span className="text-[9px] text-zinc-600">–</span>
+                ) : comp.tech_robots_disallow === 0 ? (
+                  <span className="text-[9px] text-emerald-400 font-medium">✓ OK</span>
+                ) : (
+                  <span className="text-[9px] text-red-400 font-medium">✗ Blok.</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pro upsell footer */}
+      {!isPro && completed.length > 2 && (
+        <div className="px-4 py-3 border-t border-white/5 bg-violet-500/5">
+          <p className="text-[11px] text-zinc-500">
+            Odblokuj pełną analizę {completed.length} konkurentów z porównaniem 50+ parametrów.
+            {" "}<Link href="/pricing" className="text-violet-400 hover:text-violet-300 font-semibold">Upgrade do Pro →</Link>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PLGUpsell({ url }: { url?: string }) {
   const sandboxHref = url ? `/sandbox?url=${encodeURIComponent(url)}` : "/sandbox";
   return (
@@ -1190,6 +1335,9 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 
       {/* Global competitor summary */}
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
+
+      {/* Competitor Intelligence — AI Score comparison table */}
+      <CompetitorIntelPanel auditId={auditId} isPro={isPro} />
 
       {/* Methodology disclaimer — at the bottom, after all results */}
       <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">

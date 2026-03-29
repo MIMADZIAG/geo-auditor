@@ -1396,5 +1396,32 @@ ${cleanedContent.slice(0, 20000)}
         return { result, fromCache: false };
       }),
   }),
+
+  // ─── Competitor Intelligence ──────────────────────────────────────────────────
+
+  competitor: router({
+    /**
+     * Get competitor audits for a given audit ID.
+     * Returns top-5 competitor pages ranked by citation frequency.
+     * Available to all authenticated users; data is populated async after citation check.
+     */
+    getForAudit: protectedProcedure
+      .input(z.object({ auditId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        // Verify the audit belongs to this user
+        const audit = await getAuditById(input.auditId);
+        if (!audit) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found." });
+        }
+        // Allow owner OR public audits (share links)
+        if (audit.userId !== null && audit.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        }
+
+        const { getCompetitorAuditsForAudit } = await import("./competitor/db");
+        const rows = await getCompetitorAuditsForAudit(input.auditId);
+        return rows;
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

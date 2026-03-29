@@ -1,0 +1,8 @@
+{
+  "query": "SELECT cc.engine_name, cc.is_cited, cc.cited_url, cc.query_used, cc.competitor_urls, cc.created_at FROM citation_checks cc WHERE cc.audit_id = 3270001 LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT cc.engine_name, cc.is_cited, cc.cited_url, cc.query_used, cc.competitor_urls, cc.created_at FROM citation_checks cc WHERE cc.audit_id = 3270001 LIMIT 20;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'cc.audit_id' in 'where clause'"
+  ]
+}

@@ -34,6 +34,8 @@ import {
 } from "../db";
 import { createCitationJob, getCitationResultsForAudit } from "../citation/db";
 import { runCitationJob } from "../citation/worker";
+import { extractTopCompetitorUrls, runCompetitorAudits } from "../competitor/engine";
+import { insertCompetitorAudit, competitorAuditsExist } from "../competitor/db";
 import { monitorAuditRuns, monitoredPages, users, audits } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sendMonitoringEmail, type MonitoringEmailPayload } from "./email";
@@ -167,7 +169,38 @@ async function triggerCitationJobForMonitoredPage(params: {
     // 2. Backfill score_snapshot with citation data for trend chart
     await updateScoreSnapshotCitation(auditId, pageId, citedEngines, totalEngines, jobId);
 
-    // 3. Detect significant citation change — send follow-up email if needed
+    // 3. Trigger competitor intelligence — parallel audit of top-5 cited competitor URLs
+    // Fire-and-forget: non-blocking, non-critical, deduped by auditId
+    if (!await competitorAuditsExist(auditId)) {
+      void (async () => {
+        try {
+          let targetDomain = "";
+          try { targetDomain = new URL(url).hostname.replace(/^www\./, ""); } catch {}
+          const topUrls = extractTopCompetitorUrls(citationResult.allResults, targetDomain);
+          if (topUrls.length > 0) {
+            console.log(`[CompetitorIntel] Auditing ${topUrls.length} competitors for audit #${auditId}`);
+            const results = await runCompetitorAudits(topUrls);
+            for (const r of results) {
+              await insertCompetitorAudit({
+                auditId,
+                jobId,
+                userId,
+                input: r.input,
+                columns: r.columns,
+                pageTitle: null,
+                status: r.error ? "failed" : "completed",
+                errorMessage: r.error ?? null,
+              });
+            }
+            console.log(`[CompetitorIntel] Saved ${results.length} competitor audits for audit #${auditId}`);
+          }
+        } catch (err) {
+          console.error(`[CompetitorIntel] Failed for audit #${auditId}:`, err);
+        }
+      })();
+    }
+
+    // 4. Detect significant citation change — send follow-up email if needed
     // "Significant" = went from 0 to any, or increased by 2+ engines
     const citationChanged =
       previousCitedEngines !== null &&

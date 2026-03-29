@@ -1,0 +1,192 @@
+{
+  "query": "SELECT engine, isCited, citedUrl, query, allCitedUrls, competitorDomains, snippet FROM citation_checks WHERE auditId = 3270001 LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT engine, isCited, citedUrl, query, allCitedUrls, competitorDomains, snippet FROM citation_checks WHERE auditId = 3270001 LIMIT 20;",
+  "rows": [
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "najlepszy rodzaj paneli podłogowych do domu",
+      "allCitedUrls": "[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://nilen.pl/jakie-panele-podlogowe-wybrac-rodzaje-i-kryteria-wyboru\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://www.eurofloors.pl/blog-panele/porownanie-paneli-winylowych-lvt-i-paneli-laminowanych-wady-i-zalety\", \"https://kronosfera.pl/blog/klasy-scieralnosci-paneli-podlogowych-a-klasy-ich-uzytecznosci-co-koniecznie-powinienes-o-tym-wiedziec-przed-zakupem,1308\"]",
+      "competitorDomains": "[\"bricomarche.pl\", \"nilen.pl\", \"showroom.classen.pl\", \"eurofloors.pl\", \"kronosfera.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "jak wybrać panele podłogowe do salonu",
+      "allCitedUrls": "[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://podlogi24.net/panele-winylowe-czy-laminowane-c_91.html\", \"https://www.whitemad.pl/jak-dobrac-kolor-paneli-podlogowych-zobacz-na-co-uwazac\", \"https://wulian.pl/jak-wybrac-panele-podlogowe-praktyczne-porady-i-wskazowki\", \"https://parkiet.pl/forum/temat/na-co-zwrocic-uwage-przy-zakupie-paneli\", \"https://www.youtube.com/watch?v=IiicpNLbuNc\"]",
+      "competitorDomains": "[\"bricomarche.pl\", \"podlogi24.net\", \"whitemad.pl\", \"wulian.pl\", \"parkiet.pl\", \"youtube.com\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "co to jest panel podłogowy laminowany",
+      "allCitedUrls": "[\"https://www.leroymerlin.pl/porady/wykonczenie-wnetrz/ukladanie-plytek-i-paneli/panele-laminowane-poznaj-odpowiedzi-na-najczesciej-zadawane-pytania.html\", \"https://vipparkiet.pl/panele-laminowane-w-jakich-wnetrzach\", \"https://www.bricoman.pl/page/panele-podlogowe-laminowane-i-winylowe-wlasciwosci-zalety-i-wady.html\", \"https://www.merkurymarket.pl/porady-fachowcow/podloga-laminowana-co-to-jest-jaka-podloge-wybrac-laminowana-czy-winylowa,1791.html\", \"https://www.mdekor-wnetrza.pl/blog/laminowane-czy-winylowe-ktore-panele-podlogowe-wybrac\", \"https://inspiracje.domino.pl/blog/podlogi-laminowane-co-to-jest\", \"https://demoprojekt.pl/rodzaje-paneli-podlogowych-ich-wady-i-zalety\", \"https://nexterio.pl/informacje/czy-panele-laminowane-z-wodopodpornoscia-do-72-h-sa-odpowiednie-do-lazienki\", \"https://arbiton.com/pl/panele-podlogowe-rodzaje-wady-i-zalety\", \"https://fachowiec.opoczno.pl/panele-podlogowe-winylowe-czy-laminowane\", \"https://www.premiumfloor.pl/porady/panele-laminowane-czyli-trwala-i-odporna-podloga-do-twojego-domu/30\", \"https://czterykaty.org/laminowane-panele-podlogowe\", \"https://www.eurofloors.pl/blog-panele/panele-laminowane-i-drewniane-porownanie\"]",
+      "competitorDomains": "[\"leroymerlin.pl\", \"vipparkiet.pl\", \"bricoman.pl\", \"merkurymarket.pl\", \"mdekor-wnetrza.pl\", \"inspiracje.domino.pl\", \"demoprojekt.pl\", \"nexterio.pl\", \"arbiton.com\", \"fachowiec.opoczno.pl\", \"premiumfloor.pl\", \"czterykaty.org\", \"eurofloors.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "ranking paneli podłogowych trwałość",
+      "allCitedUrls": "[\"https://panele-podlogowe.sklep.pl/ranking-paneli-podlogowych\", \"https://meblewerso.pl/jakie-panele-sa-najtrwalsze\", \"https://komfort.pl/porady/klasy-scieralnosci-paneli-co-warto-wiedziec-i-jakie-panele-podlogowe-wybrac\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.weninger.pl/jaka-klasa-paneli-do-domu\", \"https://www.youtube.com/watch?v=TAohh4b-ftw\", \"https://www.alfastyllublin.pl/blog/inspiracje/panele-podlogowe\"]",
+      "competitorDomains": "[\"panele-podlogowe.sklep.pl\", \"meblewerso.pl\", \"komfort.pl\", \"showroom.classen.pl\", \"weninger.pl\", \"youtube.com\", \"alfastyllublin.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "porównanie paneli podłogowych i parkietu",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "Brak AI Overview dla tego zapytania"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Optymalny rodzaj paneli podłogowych do domu",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "Brak AI Overview dla tego zapytania"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Rekomendowany rodzaj paneli podłogowych do domu",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "Brak AI Overview dla tego zapytania"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Jak wybierać panele podłogowe do salonu",
+      "allCitedUrls": "[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://tryszczyn.pl/jak-wybrac-panele-podlogowe-do-salonu-praktyczny-poradnik-ekspertow\", \"https://www.firmabudowlanaprobud.pl/blog/jakie-panele-wybrac-do-salonu\", \"https://quercus.co/strefa-porad/jak-wybrac-idealna-podloge-praktyczny-przewodnik-do-kazdego-pomieszczenia\", \"https://www.youtube.com/watch?v=3DYuFhDF3b0\", \"https://stolarkakoszalin.pl/blog/jakie-panele-podlogowe-wybrac-do-salonu\", \"https://classenfloor.com/pl/aktualnosci/jak-dobrac-kolor-paneli-podlogowych-dobre-i-zle-praktyki\"]",
+      "competitorDomains": "[\"bricomarche.pl\", \"tryszczyn.pl\", \"firmabudowlanaprobud.pl\", \"quercus.co\", \"youtube.com\", \"stolarkakoszalin.pl\", \"classenfloor.com\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "pomóż mi wybrać panele podłogowe",
+      "allCitedUrls": "[\"https://www.grupapsb.com.pl/porady/porada/jakie-panele-podlogowe-wybrac-glos-psb.html\", \"https://www.castorama.pl/panele-na-ogrzewanie-podlogowe-jakie-wybrac-ins-106798.html\", \"https://todom.pl/blog/jakie-panele-podlogowe-wybrac-przeglad-rodzajow-i-ich-zastosowan\", \"https://zaufanaekipa.pl/jakie-panele-na-ogrzewanie-podlogowe/\"]",
+      "competitorDomains": "[\"grupapsb.com.pl\", \"castorama.pl\", \"todom.pl\", \"zaufanaekipa.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "jakie są najlepsze panele podłogowe OBI",
+      "allCitedUrls": "[\"https://homeclub.pl/oferta/obi/swiss-krono-panele-podlogowe-dab-ravenna-10-mm-ac5-2255200/\"]",
+      "competitorDomains": "[\"homeclub.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "daj mi listę paneli podłogowych drewnianych",
+      "allCitedUrls": "[\"https://www.abra-meble.pl/panele-podlogowe-drewniane\", \"https://vox.pl/podlogi/panele-podlogowe/drewniane\", \"https://www.castorama.pl/panele-i-podlogi-drewniane\", \"https://www.castorama.pl/panele-i-podlogi-drewniane/\"]",
+      "competitorDomains": "[\"abra-meble.pl\", \"vox.pl\", \"castorama.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "stwórz porównanie paneli i parkietów",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "domain",
+      "citedUrl": "NULL",
+      "query": "napisz mi o rodzajach podłóg OBI",
+      "allCitedUrls": "[\"https://www.obi.pl/porady-i-inspiracje/mieszkac/sciany-podlogi-sufity/panele-podlogowe-czy-deska-w-salonie\", \"https://muratordom.pl/budowa/stropy-balkony-schody/rodzaje-i-ceny-podlog-balkonowych-2026-co-wybrac-do-remontu-aa-MqbC-fmEG-AGr5.html\"]",
+      "competitorDomains": "[\"muratordom.pl\"]",
+      "snippet": "... i temperaturę niż tradycyjny parkiet, ale wymagają odpowiedniej pielęgnacji. ([obi.pl](https://www.obi.pl/porady-i-inspiracje/mieszkac/sciany-podlogi-sufity/panele-podlogowe-czy-deska-w-salonie?utm_source=openai))"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Pomóż mi wybierać panele podłogowe",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Jak wybrać pomóż mi wybrać panele podłogowe",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Jakie są optymalne panele podłogowe obi",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "perplexity",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Jaki jest najlepszy rodzaj paneli podłogowych do domu?",
+      "allCitedUrls": "[\"https://muratordom.pl/wnetrza/prace-wykonczeniowe/jakie-panele-podlogowe-wybrac-porownanie-drewna-laminatu-winylu-i-korka-aa-aNoJ-1ETw-dGtU.html\", \"https://arena.pl/blog/podlogi-laminowane-czy-winylowe---pomagamy-wybrac-najlepsze-rozwiazanie\", \"https://www.swiatpodlog.com.pl/jak-dobrac-podloge-do-malego-mieszkania\", \"https://strefapaneli.pl/panele-winylowe-jodelka-styl-i-funkcjonalnosc-dla-kazdego-wnetrza\", \"https://topboden.pl/blog/trendy-i-inspiracje\", \"https://www.leroymerlin.pl/w-ktora-strone-ukladac-panele-podlogowe-wzgledem-okna.html\"]",
+      "competitorDomains": "[\"muratordom.pl\", \"arena.pl\", \"swiatpodlog.com.pl\", \"strefapaneli.pl\", \"topboden.pl\", \"leroymerlin.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "perplexity",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Jak działa system łączenia paneli podłogowych?",
+      "allCitedUrls": "[\"https://www.leroymerlin.pl/w-ktora-strone-ukladac-panele-podlogowe-wzgledem-okna.html\", \"https://almarsystem.pl/ogrzewanie-podlogowe-suche\", \"https://strefapaneli.pl/panele-winylowe-jodelka-styl-i-funkcjonalnosc-dla-kazdego-wnetrza\", \"https://www.leroymerlin.pl/porady/urzadzanie-i-dekoracja-wnetrz/dekoracja-wnetrz/podloga-do-zadan-specjalnych-jakie-panele-wybrac-gdy-masz-dzieci-i-zwierzeta.html\", \"https://www.techsterowniki.pl\", \"https://www.panele.krakow.pl/aktualnepromocje\", \"https://www.oferteo.pl/ukladanie-paneli/malopolskie\", \"https://www.ceneo.pl/170705860\"]",
+      "competitorDomains": "[\"leroymerlin.pl\", \"almarsystem.pl\", \"strefapaneli.pl\", \"techsterowniki.pl\", \"panele.krakow.pl\", \"oferteo.pl\", \"ceneo.pl\"]",
+      "snippet": "NULL"
+    },
+    {
+      "engine": "perplexity",
+      "isCited": "domain",
+      "citedUrl": "NULL",
+      "query": "Dlaczego warto wybrać podłogi drewniane z OBI?",
+      "allCitedUrls": "[\"https://www.obi.pl/porady-i-inspiracje/lazienka-i-kuchnia/aranzacja-lazienki/lazienka-z-drewnem\", \"https://www.obi.pl/podlogi-drewniane/deska-podlogowa-dab-standard-3l-wym-14x180x1092-mm/p/5216619\", \"https://www.obi.pl/search/panele%20podlogowe%20dab\", \"https://www.obi.pl/ogrodzenia-drewniane/sobex-plot-pelny-teo-180-x-180/p/7303308\", \"https://www.obi.pl/panele-scienne/foge-lamele-scienne-dab-saragossa-6-szt-30x40x2800-mm/p/6753768\", \"https://www.obi.pl/ogrodzenia-drewniane/plot-pelny-leo-prosty-dab-180-x-180-cm/p/7303324\", \"https://www.obi.pl/ogrodzenia-drewniane/sobex-kratka-diagonalna-duo-natural-antracyt-90-x-180-cm/p/6998108\", \"https://okna-gromex.pl/porta-drzwi-wejsciowe-ekspercki-przewodnik\", \"https://u-janoszuk.pl/co-na-balkon-zamiast-plytek\", \"https://www.obi.pl/ogrodzenia-drewniane/sobex-plot-pelny-r30-prosty-180-x-180-cm/p/1999960\"]",
+      "competitorDomains": "[\"okna-gromex.pl\", \"u-janoszuk.pl\"]",
+      "snippet": "Podłogi drewniane z OBI, takie jak trójwarstwowa deska podłogowa dąb Standard, warto wybrać ze względu na ich **stabilność, łatwy montaż bez kleju, estetyczny wygląd przypominający naturalny parkiet o"
+    },
+    {
+      "engine": "perplexity",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "query": "Kiedy warto zainwestować w parkiet drewniany?",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]",
+      "snippet": "NULL"
+    }
+  ],
+  "messages": [
+    "**2. Podłogi d..."
+  ],
+  "stdout": "engine\tisCited\tcitedUrl\tquery\tallCitedUrls\tcompetitorDomains\tsnippet\ngoogle\tno\tNULL\tnajlepszy rodzaj paneli podłogowych do domu\t[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://nilen.pl/jakie-panele-podlogowe-wybrac-rodzaje-i-kryteria-wyboru\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://www.eurofloors.pl/blog-panele/porownanie-paneli-winylowych-lvt-i-paneli-laminowanych-wady-i-zalety\", \"https://kronosfera.pl/blog/klasy-scieralnosci-paneli-podlogowych-a-klasy-ich-uzytecznosci-co-koniecznie-powinienes-o-tym-wiedziec-przed-zakupem,1308\"]\t[\"bricomarche.pl\", \"nilen.pl\", \"showroom.classen.pl\", \"eurofloors.pl\", \"kronosfera.pl\"]\tNULL\ngoogle\tno\tNULL\tjak wybrać panele podłogowe do salonu\t[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://podlogi24.net/panele-winylowe-czy-laminowane-c_91.html\", \"https://www.whitemad.pl/jak-dobrac-kolor-paneli-podlogowych-zobacz-na-co-uwazac\", \"https://wulian.pl/jak-wybrac-panele-podlogowe-praktyczne-porady-i-wskazowki\", \"https://parkiet.pl/forum/temat/na-co-zwrocic-uwage-przy-zakupie-paneli\", \"https://www.youtube.com/watch?v=IiicpNLbuNc\"]\t[\"bricomarche.pl\", \"podlogi24.net\", \"whitemad.pl\", \"wulian.pl\", \"parkiet.pl\", \"youtube.com\"]\tNULL\ngoogle\tno\tNULL\tco to jest panel podłogowy laminowany\t[\"https://www.leroymerlin.pl/porady/wykonczenie-wnetrz/ukladanie-plytek-i-paneli/panele-laminowane-poznaj-odpowiedzi-na-najczesciej-zadawane-pytania.html\", \"https://vipparkiet.pl/panele-laminowane-w-jakich-wnetrzach\", \"https://www.bricoman.pl/page/panele-podlogowe-laminowane-i-winylowe-wlasciwosci-zalety-i-wady.html\", \"https://www.merkurymarket.pl/porady-fachowcow/podloga-laminowana-co-to-jest-jaka-podloge-wybrac-laminowana-czy-winylowa,1791.html\", \"https://www.mdekor-wnetrza.pl/blog/laminowane-czy-winylowe-ktore-panele-podlogowe-wybrac\", \"https://inspiracje.domino.pl/blog/podlogi-laminowane-co-to-jest\", \"https://demoprojekt.pl/rodzaje-paneli-podlogowych-ich-wady-i-zalety\", \"https://nexterio.pl/informacje/czy-panele-laminowane-z-wodopodpornoscia-do-72-h-sa-odpowiednie-do-lazienki\", \"https://arbiton.com/pl/panele-podlogowe-rodzaje-wady-i-zalety\", \"https://fachowiec.opoczno.pl/panele-podlogowe-winylowe-czy-laminowane\", \"https://www.premiumfloor.pl/porady/panele-laminowane-czyli-trwala-i-odporna-podloga-do-twojego-domu/30\", \"https://czterykaty.org/laminowane-panele-podlogowe\", \"https://www.eurofloors.pl/blog-panele/panele-laminowane-i-drewniane-porownanie\"]\t[\"leroymerlin.pl\", \"vipparkiet.pl\", \"bricoman.pl\", \"merkurymarket.pl\", \"mdekor-wnetrza.pl\", \"inspiracje.domino.pl\", \"demoprojekt.pl\", \"nexterio.pl\", \"arbiton.com\", \"fachowiec.opoczno.pl\", \"premiumfloor.pl\", \"czterykaty.org\", \"eurofloors.pl\"]\tNULL\ngoogle\tno\tNULL\tranking paneli podłogowych trwałość\t[\"https://panele-podlogowe.sklep.pl/ranking-paneli-podlogowych\", \"https://meblewerso.pl/jakie-panele-sa-najtrwalsze\", \"https://komfort.pl/porady/klasy-scieralnosci-paneli-co-warto-wiedziec-i-jakie-panele-podlogowe-wybrac\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.weninger.pl/jaka-klasa-paneli-do-domu\", \"https://www.youtube.com/watch?v=TAohh4b-ftw\", \"https://www.alfastyllublin.pl/blog/inspiracje/panele-podlogowe\"]\t[\"panele-podlogowe.sklep.pl\", \"meblewerso.pl\", \"komfort.pl\", \"showroom.classen.pl\", \"weninger.pl\", \"youtube.com\", \"alfastyllublin.pl\"]\tNULL\ngoogle\tno\tNULL\tporównanie paneli podłogowych i parkietu\t[]\t[]\tBrak AI Overview dla tego zapytania\ngoogle\tno\tNULL\tOptymalny rodzaj paneli podłogowych do domu\t[]\t[]\tBrak AI Overview dla tego zapytania\ngoogle\tno\tNULL\tRekomendowany rodzaj paneli podłogowych do domu\t[]\t[]\tBrak AI Overview dla tego zapytania\ngoogle\tno\tNULL\tJak wybierać panele podłogowe do salonu\t[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://tryszczyn.pl/jak-wybrac-panele-podlogowe-do-salonu-praktyczny-poradnik-ekspertow\", \"https://www.firmabudowlanaprobud.pl/blog/jakie-panele-wybrac-do-salonu\", \"https://quercus.co/strefa-porad/jak-wybrac-idealna-podloge-praktyczny-przewodnik-do-kazdego-pomieszczenia\", \"https://www.youtube.com/watch?v=3DYuFhDF3b0\", \"https://stolarkakoszalin.pl/blog/jakie-panele-podlogowe-wybrac-do-salonu\", \"https://classenfloor.com/pl/aktualnosci/jak-dobrac-kolor-paneli-podlogowych-dobre-i-zle-praktyki\"]\t[\"bricomarche.pl\", \"tryszczyn.pl\", \"firmabudowlanaprobud.pl\", \"quercus.co\", \"youtube.com\", \"stolarkakoszalin.pl\", \"classenfloor.com\"]\tNULL\nchatgpt\tno\tNULL\tpomóż mi wybrać panele podłogowe\t[\"https://www.grupapsb.com.pl/porady/porada/jakie-panele-podlogowe-wybrac-glos-psb.html\", \"https://www.castorama.pl/panele-na-ogrzewanie-podlogowe-jakie-wybrac-ins-106798.html\", \"https://todom.pl/blog/jakie-panele-podlogowe-wybrac-przeglad-rodzajow-i-ich-zastosowan\", \"https://zaufanaekipa.pl/jakie-panele-na-ogrzewanie-podlogowe/\"]\t[\"grupapsb.com.pl\", \"castorama.pl\", \"todom.pl\", \"zaufanaekipa.pl\"]\tNULL\nchatgpt\tno\tNULL\tjakie są najlepsze panele podłogowe OBI\t[\"https://homeclub.pl/oferta/obi/swiss-krono-panele-podlogowe-dab-ravenna-10-mm-ac5-2255200/\"]\t[\"homeclub.pl\"]\tNULL\nchatgpt\tno\tNULL\tdaj mi listę paneli podłogowych drewnianych\t[\"https://www.abra-meble.pl/panele-podlogowe-drewniane\", \"https://vox.pl/podlogi/panele-podlogowe/drewniane\", \"https://www.castorama.pl/panele-i-podlogi-drewniane\", \"https://www.castorama.pl/panele-i-podlogi-drewniane/\"]\t[\"abra-meble.pl\", \"vox.pl\", \"castorama.pl\"]\tNULL\nchatgpt\tno\tNULL\tstwórz porównanie paneli i parkietów\t[]\t[]\tNULL\nchatgpt\tdomain\tNULL\tnapisz mi o rodzajach podłóg OBI\t[\"https://www.obi.pl/porady-i-inspiracje/mieszkac/sciany-podlogi-sufity/panele-podlogowe-czy-deska-w-salonie\", \"https://muratordom.pl/budowa/stropy-balkony-schody/rodzaje-i-ceny-podlog-balkonowych-2026-co-wybrac-do-remontu-aa-MqbC-fmEG-AGr5.html\"]\t[\"muratordom.pl\"]\t... i temperaturę niż tradycyjny parkiet, ale wymagają odpowiedniej pielęgnacji. ([obi.pl](https://www.obi.pl/porady-i-inspiracje/mieszkac/sciany-podlogi-sufity/panele-podlogowe-czy-deska-w-salonie?utm_source=openai))\n\n**2. Podłogi d...\nchatgpt\tno\tNULL\tPomóż mi wybierać panele podłogowe\t[]\t[]\tNULL\nchatgpt\tno\tNULL\tJak wybrać pomóż mi wybrać panele podłogowe\t[]\t[]\tNULL\nchatgpt\tno\tNULL\tJakie są optymalne panele podłogowe obi\t[]\t[]\tNULL\nperplexity\tno\tNULL\tJaki jest najlepszy rodzaj paneli podłogowych do domu?\t[\"https://muratordom.pl/wnetrza/prace-wykonczeniowe/jakie-panele-podlogowe-wybrac-porownanie-drewna-laminatu-winylu-i-korka-aa-aNoJ-1ETw-dGtU.html\", \"https://arena.pl/blog/podlogi-laminowane-czy-winylowe---pomagamy-wybrac-najlepsze-rozwiazanie\", \"https://www.swiatpodlog.com.pl/jak-dobrac-podloge-do-malego-mieszkania\", \"https://strefapaneli.pl/panele-winylowe-jodelka-styl-i-funkcjonalnosc-dla-kazdego-wnetrza\", \"https://topboden.pl/blog/trendy-i-inspiracje\", \"https://www.leroymerlin.pl/w-ktora-strone-ukladac-panele-podlogowe-wzgledem-okna.html\"]\t[\"muratordom.pl\", \"arena.pl\", \"swiatpodlog.com.pl\", \"strefapaneli.pl\", \"topboden.pl\", \"leroymerlin.pl\"]\tNULL\nperplexity\tno\tNULL\tJak działa system łączenia paneli podłogowych?\t[\"https://www.leroymerlin.pl/w-ktora-strone-ukladac-panele-podlogowe-wzgledem-okna.html\", \"https://almarsystem.pl/ogrzewanie-podlogowe-suche\", \"https://strefapaneli.pl/panele-winylowe-jodelka-styl-i-funkcjonalnosc-dla-kazdego-wnetrza\", \"https://www.leroymerlin.pl/porady/urzadzanie-i-dekoracja-wnetrz/dekoracja-wnetrz/podloga-do-zadan-specjalnych-jakie-panele-wybrac-gdy-masz-dzieci-i-zwierzeta.html\", \"https://www.techsterowniki.pl\", \"https://www.panele.krakow.pl/aktualnepromocje\", \"https://www.oferteo.pl/ukladanie-paneli/malopolskie\", \"https://www.ceneo.pl/170705860\"]\t[\"leroymerlin.pl\", \"almarsystem.pl\", \"strefapaneli.pl\", \"techsterowniki.pl\", \"panele.krakow.pl\", \"oferteo.pl\", \"ceneo.pl\"]\tNULL\nperplexity\tdomain\tNULL\tDlaczego warto wybrać podłogi drewniane z OBI?\t[\"https://www.obi.pl/porady-i-inspiracje/lazienka-i-kuchnia/aranzacja-lazienki/lazienka-z-drewnem\", \"https://www.obi.pl/podlogi-drewniane/deska-podlogowa-dab-standard-3l-wym-14x180x1092-mm/p/5216619\", \"https://www.obi.pl/search/panele%20podlogowe%20dab\", \"https://www.obi.pl/ogrodzenia-drewniane/sobex-plot-pelny-teo-180-x-180/p/7303308\", \"https://www.obi.pl/panele-scienne/foge-lamele-scienne-dab-saragossa-6-szt-30x40x2800-mm/p/6753768\", \"https://www.obi.pl/ogrodzenia-drewniane/plot-pelny-leo-prosty-dab-180-x-180-cm/p/7303324\", \"https://www.obi.pl/ogrodzenia-drewniane/sobex-kratka-diagonalna-duo-natural-antracyt-90-x-180-cm/p/6998108\", \"https://okna-gromex.pl/porta-drzwi-wejsciowe-ekspercki-przewodnik\", \"https://u-janoszuk.pl/co-na-balkon-zamiast-plytek\", \"https://www.obi.pl/ogrodzenia-drewniane/sobex-plot-pelny-r30-prosty-180-x-180-cm/p/1999960\"]\t[\"okna-gromex.pl\", \"u-janoszuk.pl\"]\tPodłogi drewniane z OBI, takie jak trójwarstwowa deska podłogowa dąb Standard, warto wybrać ze względu na ich **stabilność, łatwy montaż bez kleju, estetyczny wygląd przypominający naturalny parkiet o\nperplexity\tno\tNULL\tKiedy warto zainwestować w parkiet drewniany?\t[]\t[]\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 351
+}

@@ -248,3 +248,111 @@ export const weeklyDigestLog = mysqlTable("weekly_digest_log", {
 });
 export type WeeklyDigestLog = typeof weeklyDigestLog.$inferSelect;
 export type InsertWeeklyDigestLog = typeof weeklyDigestLog.$inferInsert;
+
+// ─── Competitor Intelligence ──────────────────────────────────────────────────
+// Stores lightweight (no-LLM) audits of top-5 competitor URLs discovered during
+// citation checks. Designed for gap analysis: every column maps 1:1 to an
+// AuditCheck.id so the comparison layer can diff them against the audited page
+// without extra queries.
+export const competitorAudits = mysqlTable("competitor_audits", {
+  id: int("id").autoincrement().primaryKey(),
+  // Source linkage
+  auditId:       int("auditId").notNull(),   // original audit that triggered this
+  jobId:         int("jobId").notNull(),     // citation job that discovered this competitor
+  userId:        int("userId").notNull(),    // owner (for access control)
+  // Competitor identity
+  url:           text("url").notNull(),
+  domain:        varchar("domain", { length: 255 }).notNull(),
+  pageTitle:     text("pageTitle"),
+  citationCount: int("citationCount").default(0).notNull(), // times cited across all engines/queries
+  rank:          int("rank").default(1).notNull(),           // 1 = most cited, 5 = least
+  // Processing state
+  status:        mysqlEnum("status", ["pending", "running", "completed", "failed"]).default("pending").notNull(),
+  errorMessage:  text("errorMessage"),
+  // ── Category scores (0-100) ──────────────────────────────────────────────
+  overallScore:          int("overallScore"),
+  technicalScore:        int("technicalScore"),
+  structuredDataScore:   int("structuredDataScore"),
+  contentStructureScore: int("contentStructureScore"),
+  eeatScore:             int("eeatScore"),
+  aiCrawlersScore:       int("aiCrawlersScore"),
+  metaTagsScore:         int("metaTagsScore"),
+  brandAuthorityScore:   int("brandAuthorityScore"),
+  // ── Technical checks (1=pass, 0=fail, null=unknown) ──────────────────────
+  tech_https:           int("tech_https"),
+  tech_noindex:         int("tech_noindex"),         // 1=noindex present (bad)
+  tech_nosnippet:       int("tech_nosnippet"),       // 1=nosnippet present (bad)
+  tech_canonical:       int("tech_canonical"),
+  tech_viewport:        int("tech_viewport"),
+  tech_robots_disallow: int("tech_robots_disallow"), // 1=disallowed (bad)
+  tech_response_time_ms: int("tech_response_time_ms"),
+  tech_page_size_kb:    int("tech_page_size_kb"),
+  tech_sitemap:         int("tech_sitemap"),
+  tech_hreflang:        int("tech_hreflang"),
+  tech_max_snippet:     int("tech_max_snippet"),
+  tech_noai_directive:  int("tech_noai_directive"),  // 1=AI blocked (bad)
+  // ── Structured Data ───────────────────────────────────────────────────────
+  sd_jsonld_present:      int("sd_jsonld_present"),
+  sd_high_value_schema:   int("sd_high_value_schema"),
+  sd_faq_schema:          int("sd_faq_schema"),
+  sd_howto_schema:        int("sd_howto_schema"),
+  sd_article_product:     int("sd_article_product"),
+  sd_organization:        int("sd_organization"),
+  sd_schema_completeness: int("sd_schema_completeness"),
+  sd_author_schema:       int("sd_author_schema"),
+  sd_date_signals:        int("sd_date_signals"),
+  sd_breadcrumb:          int("sd_breadcrumb"),
+  // ── Content Structure ─────────────────────────────────────────────────────
+  cs_h1_present:           int("cs_h1_present"),
+  cs_heading_hierarchy:    int("cs_heading_hierarchy"),
+  cs_passage_optimization: int("cs_passage_optimization"),
+  cs_tldr_summary:         int("cs_tldr_summary"),
+  cs_faq_section:          int("cs_faq_section"),
+  cs_semantic_chunking:    int("cs_semantic_chunking"),
+  cs_entity_richness:      int("cs_entity_richness"),
+  cs_readability:          int("cs_readability"),
+  cs_semantic_triples:     int("cs_semantic_triples"),
+  cs_lists_present:        int("cs_lists_present"),
+  cs_content_length:       int("cs_content_length"),  // word count
+  cs_information_gain:     int("cs_information_gain"),
+  cs_answer_patterns:      int("cs_answer_patterns"),
+  cs_external_citations:   int("cs_external_citations"),
+  cs_data_points:          int("cs_data_points"),
+  // ── E-E-A-T ───────────────────────────────────────────────────────────────
+  eeat_author_byline:      int("eeat_author_byline"),
+  eeat_about_page:         int("eeat_about_page"),
+  eeat_contact_info:       int("eeat_contact_info"),
+  eeat_legal_pages:        int("eeat_legal_pages"),
+  eeat_review_signals:     int("eeat_review_signals"),
+  eeat_trust_signals:      int("eeat_trust_signals"),
+  eeat_publication_date:   int("eeat_publication_date"),
+  eeat_experience_signals: int("eeat_experience_signals"),
+  eeat_expertise_signals:  int("eeat_expertise_signals"),
+  // ── AI Crawlers ───────────────────────────────────────────────────────────
+  ai_url_access:       int("ai_url_access"),
+  ai_full_block:       int("ai_full_block"),        // 1=blocked (bad)
+  ai_training_bots:    int("ai_training_bots"),
+  ai_sitemap_crawlers: int("ai_sitemap_crawlers"),
+  ai_llms_txt:         int("ai_llms_txt"),
+  // ── Meta Tags ─────────────────────────────────────────────────────────────
+  mt_title_tag:        int("mt_title_tag"),
+  mt_meta_description: int("mt_meta_description"),
+  mt_og_title:         int("mt_og_title"),
+  mt_og_description:   int("mt_og_description"),
+  mt_og_image:         int("mt_og_image"),
+  mt_twitter_card:     int("mt_twitter_card"),
+  mt_lang_attribute:   int("mt_lang_attribute"),
+  // ── Brand Authority ───────────────────────────────────────────────────────
+  ba_brand_consistency:    int("ba_brand_consistency"),
+  ba_knowledge_panel:      int("ba_knowledge_panel"),
+  ba_media_presence:       int("ba_media_presence"),
+  ba_industry_credentials: int("ba_industry_credentials"),
+  ba_social_proof:         int("ba_social_proof"),
+  ba_niche_authority:      int("ba_niche_authority"),
+  // ── Timestamps ────────────────────────────────────────────────────────────
+  createdAt:   timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type CompetitorAudit = typeof competitorAudits.$inferSelect;
+export type InsertCompetitorAudit = typeof competitorAudits.$inferInsert;

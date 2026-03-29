@@ -1,0 +1,66 @@
+{
+  "query": "SELECT engine, isCited, citedUrl, allCitedUrls, competitorDomains FROM citation_checks WHERE auditId = 3270001 AND competitorDomains IS NOT NULL LIMIT 8;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT engine, isCited, citedUrl, allCitedUrls, competitorDomains FROM citation_checks WHERE auditId = 3270001 AND competitorDomains IS NOT NULL LIMIT 8;",
+  "rows": [
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://nilen.pl/jakie-panele-podlogowe-wybrac-rodzaje-i-kryteria-wyboru\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://www.eurofloors.pl/blog-panele/porownanie-paneli-winylowych-lvt-i-paneli-laminowanych-wady-i-zalety\", \"https://kronosfera.pl/blog/klasy-scieralnosci-paneli-podlogowych-a-klasy-ich-uzytecznosci-co-koniecznie-powinienes-o-tym-wiedziec-przed-zakupem,1308\"]",
+      "competitorDomains": "[\"bricomarche.pl\", \"nilen.pl\", \"showroom.classen.pl\", \"eurofloors.pl\", \"kronosfera.pl\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://podlogi24.net/panele-winylowe-czy-laminowane-c_91.html\", \"https://www.whitemad.pl/jak-dobrac-kolor-paneli-podlogowych-zobacz-na-co-uwazac\", \"https://wulian.pl/jak-wybrac-panele-podlogowe-praktyczne-porady-i-wskazowki\", \"https://parkiet.pl/forum/temat/na-co-zwrocic-uwage-przy-zakupie-paneli\", \"https://www.youtube.com/watch?v=IiicpNLbuNc\"]",
+      "competitorDomains": "[\"bricomarche.pl\", \"podlogi24.net\", \"whitemad.pl\", \"wulian.pl\", \"parkiet.pl\", \"youtube.com\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.leroymerlin.pl/porady/wykonczenie-wnetrz/ukladanie-plytek-i-paneli/panele-laminowane-poznaj-odpowiedzi-na-najczesciej-zadawane-pytania.html\", \"https://vipparkiet.pl/panele-laminowane-w-jakich-wnetrzach\", \"https://www.bricoman.pl/page/panele-podlogowe-laminowane-i-winylowe-wlasciwosci-zalety-i-wady.html\", \"https://www.merkurymarket.pl/porady-fachowcow/podloga-laminowana-co-to-jest-jaka-podloge-wybrac-laminowana-czy-winylowa,1791.html\", \"https://www.mdekor-wnetrza.pl/blog/laminowane-czy-winylowe-ktore-panele-podlogowe-wybrac\", \"https://inspiracje.domino.pl/blog/podlogi-laminowane-co-to-jest\", \"https://demoprojekt.pl/rodzaje-paneli-podlogowych-ich-wady-i-zalety\", \"https://nexterio.pl/informacje/czy-panele-laminowane-z-wodopodpornoscia-do-72-h-sa-odpowiednie-do-lazienki\", \"https://arbiton.com/pl/panele-podlogowe-rodzaje-wady-i-zalety\", \"https://fachowiec.opoczno.pl/panele-podlogowe-winylowe-czy-laminowane\", \"https://www.premiumfloor.pl/porady/panele-laminowane-czyli-trwala-i-odporna-podloga-do-twojego-domu/30\", \"https://czterykaty.org/laminowane-panele-podlogowe\", \"https://www.eurofloors.pl/blog-panele/panele-laminowane-i-drewniane-porownanie\"]",
+      "competitorDomains": "[\"leroymerlin.pl\", \"vipparkiet.pl\", \"bricoman.pl\", \"merkurymarket.pl\", \"mdekor-wnetrza.pl\", \"inspiracje.domino.pl\", \"demoprojekt.pl\", \"nexterio.pl\", \"arbiton.com\", \"fachowiec.opoczno.pl\", \"premiumfloor.pl\", \"czterykaty.org\", \"eurofloors.pl\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://panele-podlogowe.sklep.pl/ranking-paneli-podlogowych\", \"https://meblewerso.pl/jakie-panele-sa-najtrwalsze\", \"https://komfort.pl/porady/klasy-scieralnosci-paneli-co-warto-wiedziec-i-jakie-panele-podlogowe-wybrac\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.weninger.pl/jaka-klasa-paneli-do-domu\", \"https://www.youtube.com/watch?v=TAohh4b-ftw\", \"https://www.alfastyllublin.pl/blog/inspiracje/panele-podlogowe\"]",
+      "competitorDomains": "[\"panele-podlogowe.sklep.pl\", \"meblewerso.pl\", \"komfort.pl\", \"showroom.classen.pl\", \"weninger.pl\", \"youtube.com\", \"alfastyllublin.pl\"]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[]",
+      "competitorDomains": "[]"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "citedUrl": "NULL",
+      "allCitedUrls": "[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://tryszczyn.pl/jak-wybrac-panele-podlogowe-do-salonu-praktyczny-poradnik-ekspertow\", \"https://www.firmabudowlanaprobud.pl/blog/jakie-panele-wybrac-do-salonu\", \"https://quercus.co/strefa-porad/jak-wybrac-idealna-podloge-praktyczny-przewodnik-do-kazdego-pomieszczenia\", \"https://www.youtube.com/watch?v=3DYuFhDF3b0\", \"https://stolarkakoszalin.pl/blog/jakie-panele-podlogowe-wybrac-do-salonu\", \"https://classenfloor.com/pl/aktualnosci/jak-dobrac-kolor-paneli-podlogowych-dobre-i-zle-praktyki\"]",
+      "competitorDomains": "[\"bricomarche.pl\", \"tryszczyn.pl\", \"firmabudowlanaprobud.pl\", \"quercus.co\", \"youtube.com\", \"stolarkakoszalin.pl\", \"classenfloor.com\"]"
+    }
+  ],
+  "messages": [],
+  "stdout": "engine\tisCited\tcitedUrl\tallCitedUrls\tcompetitorDomains\ngoogle\tno\tNULL\t[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://nilen.pl/jakie-panele-podlogowe-wybrac-rodzaje-i-kryteria-wyboru\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://www.eurofloors.pl/blog-panele/porownanie-paneli-winylowych-lvt-i-paneli-laminowanych-wady-i-zalety\", \"https://kronosfera.pl/blog/klasy-scieralnosci-paneli-podlogowych-a-klasy-ich-uzytecznosci-co-koniecznie-powinienes-o-tym-wiedziec-przed-zakupem,1308\"]\t[\"bricomarche.pl\", \"nilen.pl\", \"showroom.classen.pl\", \"eurofloors.pl\", \"kronosfera.pl\"]\ngoogle\tno\tNULL\t[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://www.bricomarche.pl/jakie-panele-wybrac-ac4-czy-ac5\", \"https://podlogi24.net/panele-winylowe-czy-laminowane-c_91.html\", \"https://www.whitemad.pl/jak-dobrac-kolor-paneli-podlogowych-zobacz-na-co-uwazac\", \"https://wulian.pl/jak-wybrac-panele-podlogowe-praktyczne-porady-i-wskazowki\", \"https://parkiet.pl/forum/temat/na-co-zwrocic-uwage-przy-zakupie-paneli\", \"https://www.youtube.com/watch?v=IiicpNLbuNc\"]\t[\"bricomarche.pl\", \"podlogi24.net\", \"whitemad.pl\", \"wulian.pl\", \"parkiet.pl\", \"youtube.com\"]\ngoogle\tno\tNULL\t[\"https://www.leroymerlin.pl/porady/wykonczenie-wnetrz/ukladanie-plytek-i-paneli/panele-laminowane-poznaj-odpowiedzi-na-najczesciej-zadawane-pytania.html\", \"https://vipparkiet.pl/panele-laminowane-w-jakich-wnetrzach\", \"https://www.bricoman.pl/page/panele-podlogowe-laminowane-i-winylowe-wlasciwosci-zalety-i-wady.html\", \"https://www.merkurymarket.pl/porady-fachowcow/podloga-laminowana-co-to-jest-jaka-podloge-wybrac-laminowana-czy-winylowa,1791.html\", \"https://www.mdekor-wnetrza.pl/blog/laminowane-czy-winylowe-ktore-panele-podlogowe-wybrac\", \"https://inspiracje.domino.pl/blog/podlogi-laminowane-co-to-jest\", \"https://demoprojekt.pl/rodzaje-paneli-podlogowych-ich-wady-i-zalety\", \"https://nexterio.pl/informacje/czy-panele-laminowane-z-wodopodpornoscia-do-72-h-sa-odpowiednie-do-lazienki\", \"https://arbiton.com/pl/panele-podlogowe-rodzaje-wady-i-zalety\", \"https://fachowiec.opoczno.pl/panele-podlogowe-winylowe-czy-laminowane\", \"https://www.premiumfloor.pl/porady/panele-laminowane-czyli-trwala-i-odporna-podloga-do-twojego-domu/30\", \"https://czterykaty.org/laminowane-panele-podlogowe\", \"https://www.eurofloors.pl/blog-panele/panele-laminowane-i-drewniane-porownanie\"]\t[\"leroymerlin.pl\", \"vipparkiet.pl\", \"bricoman.pl\", \"merkurymarket.pl\", \"mdekor-wnetrza.pl\", \"inspiracje.domino.pl\", \"demoprojekt.pl\", \"nexterio.pl\", \"arbiton.com\", \"fachowiec.opoczno.pl\", \"premiumfloor.pl\", \"czterykaty.org\", \"eurofloors.pl\"]\ngoogle\tno\tNULL\t[\"https://panele-podlogowe.sklep.pl/ranking-paneli-podlogowych\", \"https://meblewerso.pl/jakie-panele-sa-najtrwalsze\", \"https://komfort.pl/porady/klasy-scieralnosci-paneli-co-warto-wiedziec-i-jakie-panele-podlogowe-wybrac\", \"https://showroom.classen.pl/poradniki/najbardziej-wytrzymale-panele-podlogowe-na-rynku\", \"https://www.weninger.pl/jaka-klasa-paneli-do-domu\", \"https://www.youtube.com/watch?v=TAohh4b-ftw\", \"https://www.alfastyllublin.pl/blog/inspiracje/panele-podlogowe\"]\t[\"panele-podlogowe.sklep.pl\", \"meblewerso.pl\", \"komfort.pl\", \"showroom.classen.pl\", \"weninger.pl\", \"youtube.com\", \"alfastyllublin.pl\"]\ngoogle\tno\tNULL\t[]\t[]\ngoogle\tno\tNULL\t[]\t[]\ngoogle\tno\tNULL\t[]\t[]\ngoogle\tno\tNULL\t[\"https://www.bricomarche.pl/jakie-panele-podlogowe-do-salonu-wybrac\", \"https://tryszczyn.pl/jak-wybrac-panele-podlogowe-do-salonu-praktyczny-poradnik-ekspertow\", \"https://www.firmabudowlanaprobud.pl/blog/jakie-panele-wybrac-do-salonu\", \"https://quercus.co/strefa-porad/jak-wybrac-idealna-podloge-praktyczny-przewodnik-do-kazdego-pomieszczenia\", \"https://www.youtube.com/watch?v=3DYuFhDF3b0\", \"https://stolarkakoszalin.pl/blog/jakie-panele-podlogowe-wybrac-do-salonu\", \"https://classenfloor.com/pl/aktualnosci/jak-dobrac-kolor-paneli-podlogowych-dobre-i-zle-praktyki\"]\t[\"bricomarche.pl\", \"tryszczyn.pl\", \"firmabudowlanaprobud.pl\", \"quercus.co\", \"youtube.com\", \"stolarkakoszalin.pl\", \"classenfloor.com\"]\n",
+  "stderr": "",
+  "execution_time_ms": 363
+}

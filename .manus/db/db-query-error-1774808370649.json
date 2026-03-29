@@ -1,0 +1,8 @@
+{
+  "query": "SELECT engine, COUNT(*) as appearances, GROUP_CONCAT(DISTINCT JSON_UNQUOTE(jt.domain) ORDER BY jt.domain SEPARATOR ', ') as domains FROM citation_checks, JSON_TABLE(competitorDomains, '$[*]' COLUMNS (domain VARCHAR(255) PATH '$')) AS jt WHERE auditId = 3270001 AND competitorDomains IS NOT NULL GROUP BY engine ORDER BY appearances DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT engine, COUNT(*) as appearances, GROUP_CONCAT(DISTINCT JSON_UNQUOTE(jt.domain) ORDER BY jt.domain SEPARATOR ', ') as domains FROM citation_checks, JSON_TABLE(competitorDomains, '$[*]' COLUMNS (domain VARCHAR(255) PATH '$')) AS jt WHERE auditId = 3270001 AND competitorDomains IS NOT NULL GROUP BY engine ORDER BY appearances DESC LIMIT 20;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 165 near \"(competitorDomains, '$[*]' COLUMNS (domain VARCHAR(255) PATH '$')) AS jt WHERE auditId = 3270001 AND competitorDomains IS NOT NULL GROUP BY engine ORDER BY appearances DESC LIMIT 20\""
+  ]
+}

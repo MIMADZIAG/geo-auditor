@@ -1110,3 +1110,25 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] DashboardTopNav: "Audyty" jako osobny punkt nawigacji (hash link #audits)
 - [x] DashboardTopNav: AI Sandbox, Page Creator, Plany w nawigacji
 - [x] TypeScript: 0 errors, 306 tests passing
+
+## Competitor Intelligence — AI Score rywali (2026-03-29) — COMPLETED
+
+### Architektura
+- [x] shared/visibilityScore.ts: ENGINE_CONFIG + ALL_ENGINES (reused)
+- [x] DB: competitor_audits table — 85 granular columns (migration 0023)
+- [x] server/competitor/engine.ts: extractTopCompetitorUrls() + mapFindingsToColumns() + runCompetitorAudits()
+- [x] server/competitor/db.ts: insertCompetitorAudit(), updateCompetitorAuditStatus(), getCompetitorAuditsForAudit()
+
+### Backend Integration
+- [x] server/monitoring/worker.ts: auto-trigger runCompetitorAudits() after citation job completes (fire-and-forget)
+- [x] server/routers.ts: competitor.getCompetitors tRPC procedure (by auditId)
+
+### Frontend
+- [x] AICitationPanel.tsx: CompetitorIntelPanel component — score table with per-category bars
+- [x] CompetitorIntelPanel: ScoreBar mini-component for visual comparison
+- [x] CompetitorIntelPanel: status handling (loading/empty/data states)
+- [x] CompetitorIntelPanel: Pro paywall for full breakdown (Starter sees top-3, Pro sees all + details)
+
+### Tests
+- [x] server/competitor/competitor.test.ts: 19 tests (extractTopCompetitorUrls + mapFindingsToColumns)
+- [x] Full test suite: 325 tests passing, TypeScript: 0 errors

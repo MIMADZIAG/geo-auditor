@@ -1,0 +1,8 @@
+{
+  "query": "SELECT a.url, a.score FROM audits a WHERE a.id = 3270001; ",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT a.url, a.score FROM audits a WHERE a.id = 3270001; ",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'a.score' in 'field list'"
+  ]
+}
