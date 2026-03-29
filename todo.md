@@ -1132,3 +1132,26 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ### Tests
 - [x] server/competitor/competitor.test.ts: 19 tests (extractTopCompetitorUrls + mapFindingsToColumns)
 - [x] Full test suite: 325 tests passing, TypeScript: 0 errors
+
+## Bug Fix + Competitor Intelligence v2 (2026-03-29)
+
+### Bug Fix: CompetitorIntelPanel nie wyświetla danych
+- [x] Diagnoza: trigger w citation worker brakował dla jednorazowych audytów
+- [x] Fix: trigger dodany do citation/worker.ts (fire-and-forget async, dedup guard)
+- [x] Fix: isPro poprawiony — używa user.plan (pro/business) + user.role=admin
+
+### Krok 2: Competitor audit dla jednorazowych audytów
+- [x] citation/worker.ts: fire-and-forget trigger po zakończeniu citation job
+- [x] Dedup guard: competitorAuditsExist() zapobiega podwójnemu audytowi
+- [x] Paywall: Free = top-2 wyniki (blur), Pro = wszystkie 5 + szczegóły
+
+### Krok 3: Gap Analysis
+- [x] server/competitor/gapAnalysis.ts: computeGapAnalysis() — 34 checks, 7 kategorii
+- [x] tRPC: competitor.getGapAnalysis(auditId) — zwraca listę różnic z priorytetem
+- [x] GapAnalysisPanel.tsx: "Co mają rywale, czego Ty nie masz" z category bars
+- [x] GapAnalysisPanel: grupowanie po kategorii + priorytet (critical/high/medium/low)
+- [x] GapAnalysisPanel: filter pills + expand/collapse per gap item
+- [x] GapAnalysisPanel: Pro paywall (Free = top-3 gaps, Pro = wszystkie)
+- [x] Tests: 15 unit testów dla gap analysis (340 total, TypeScript: 0 errors)
+- [ ] GapAnalysisPanel: link do konkretnej rekomendacji w audycie (future)
+- [ ] Competitor trend w weekly digest email (future)

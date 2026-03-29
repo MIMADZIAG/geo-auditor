@@ -26,6 +26,8 @@ import { citationChecks, citationJobs, audits } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { expandQueriesWithVariants } from "./morphologicalVariants";
 import { getQueriesForUrl, type CachedQueryMap } from "./db";
+import { runCompetitorAudits, extractTopCompetitorUrls } from "../competitor/engine";
+import { insertCompetitorAudit, getCompetitorAuditsForAudit, competitorAuditsExist } from "../competitor/db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1200,6 +1202,45 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       .where(eq(citationJobs.id, jobId));
 
     console.log(`[Citation] Job ${jobId}: completed. Rounds: ${rounds.length}, Found: ${foundCitation}, Competitors: ${allCompetitorDomains.length}`);
+
+    // ── Fire-and-forget competitor audit ──────────────────────────────────────
+    // Extract top-5 cited URLs and audit them in parallel (no LLM, ~10-20s)
+    // This runs for ALL citation jobs (monitoring + single audits)
+    const auditId = job.auditId;
+    if (allCompetitorDomains.length > 0) {
+      const topUrls = extractTopCompetitorUrls(allResults, job.url, 5);
+      if (topUrls.length > 0) {
+        // Run async — do not await, do not block return
+        (async () => {
+          try {
+            console.log(`[Competitor] Starting parallel audit for ${topUrls.length} competitors (auditId=${auditId})`);
+            const results = await runCompetitorAudits(topUrls);
+            // Dedup guard: skip if already audited (e.g. monitoring worker ran first)
+            const alreadyExists = await competitorAuditsExist(auditId);
+            if (alreadyExists) {
+              console.log(`[Competitor] Skipping — audits already exist for auditId=${auditId}`);
+              return;
+            }
+            for (const result of results) {
+              const { input, columns, error } = result;
+              await insertCompetitorAudit({
+                auditId,
+                jobId: jobId,
+                userId: 0,
+                input,
+                columns,
+                pageTitle: (columns as any).pageTitle ?? null,
+                status: error ? "failed" : "completed",
+                errorMessage: error ?? null,
+              });
+            }
+            console.log(`[Competitor] Saved ${results.length} competitor audits for auditId=${auditId}`);
+          } catch (err) {
+            console.error(`[Competitor] Parallel audit failed for auditId=${auditId}:`, err);
+          }
+        })();
+      }
+    }
 
     return {
       jobId,

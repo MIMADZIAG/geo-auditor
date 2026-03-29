@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import { ENGINE_CONFIG, ALL_ENGINES, getVisibilityScoreResult } from "../../../shared/visibilityScore";
+import { GapAnalysisPanel } from "./GapAnalysisPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -979,7 +980,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
   ref
 ) {
   const { user } = useAuth();
-  const isPro = user?.role === "admin" || false; // TODO: replace with plan check
+  const isPro = user?.role === "admin" || user?.plan === "pro" || user?.plan === "business";
   const [jobStarted, setJobStarted] = useState(false);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [competitorUrlsNotified, setCompetitorUrlsNotified] = useState(false);
@@ -1338,6 +1339,9 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 
       {/* Competitor Intelligence — AI Score comparison table */}
       <CompetitorIntelPanel auditId={auditId} isPro={isPro} />
+
+      {/* Gap Analysis — check-by-check diff vs competitors */}
+      <GapAnalysisPanel auditId={auditId} isPro={isPro} />
 
       {/* Methodology disclaimer — at the bottom, after all results */}
       <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">

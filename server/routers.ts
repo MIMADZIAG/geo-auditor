@@ -1422,6 +1422,32 @@ ${cleanedContent.slice(0, 20000)}
         const rows = await getCompetitorAuditsForAudit(input.auditId);
         return rows;
       }),
+
+    /**
+     * Get gap analysis for a given audit ID.
+     * Computes check-by-check differences between the target page and competitors.
+     * Returns prioritised list of gaps where competitors outperform the target.
+     */
+    getGapAnalysis: protectedProcedure
+      .input(z.object({ auditId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const audit = await getAuditById(input.auditId);
+        if (!audit) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found." });
+        }
+        if (audit.userId !== null && audit.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        }
+        const findings = audit.findings as import("./audit/types").AuditFindings | null;
+        if (!findings) return null;
+
+        const { getCompetitorAuditsForAudit } = await import("./competitor/db");
+        const competitors = await getCompetitorAuditsForAudit(input.auditId);
+        if (competitors.length === 0) return null;
+
+        const { computeGapAnalysis } = await import("./competitor/gapAnalysis");
+        return computeGapAnalysis(findings, competitors);
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;
