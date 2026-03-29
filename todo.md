@@ -1160,3 +1160,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 - [x] Diagnoza: onStatusChange inline w JSX wywoływało setCitationStatus podczas renderowania
 - [x] Fix: wyodrębniono handleCitationStatusChange jako useCallback + queueMicrotask do odroczenia setState
+
+## Bug Fix: setState-in-render w AICitationPanel — root cause wewnątrz komponentu (2026-03-29)
+
+- [x] Trace: root cause = startCheck() wywoływany wewnątrz setState updater (setCitationStatus(prev => { startCheck() }))
+- [x] Fix: citationStatusRef — ref zsynchronizowany ze state, czytany w setTimeout zamiast setState updater
+- [x] Fix: setCitationStatus opakowuje setCitationStatusRaw + aktualizuje ref (useCallback)
+- [x] 340 testów, TypeScript: 0 błędów

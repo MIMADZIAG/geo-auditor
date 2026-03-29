@@ -335,7 +335,14 @@ export default function Results() {
   );
 
   // ── Citation status for Sticky Bar ──
-  const [citationStatus, setCitationStatus] = useState<CitationStatus>("idle");
+  // Keep a ref in sync so we can read the latest value inside setTimeout callbacks
+  // without capturing stale closures (avoids calling startCheck inside setState updater).
+  const citationStatusRef = useRef<CitationStatus>("idle");
+  const [citationStatus, setCitationStatusRaw] = useState<CitationStatus>("idle");
+  const setCitationStatus = useCallback((s: CitationStatus) => {
+    citationStatusRef.current = s;
+    setCitationStatusRaw(s);
+  }, []);
   const [citationCitedCount, setCitationCitedCount] = useState(0);
   const [citationTotalEngines, setCitationTotalEngines] = useState(3);
 
@@ -384,14 +391,12 @@ export default function Results() {
     if (!citationAutoStartRef.current) {
       citationAutoStartRef.current = true;
       setTimeout(() => {
-        // Re-check: if onStatusChange already updated status away from "idle", don't start
-        setCitationStatus(prev => {
-          if (prev === "idle") {
-            // Still idle after mount — no existing job, safe to start
-            citationPanelRef.current?.startCheck();
-          }
-          return prev;
-        });
+        // Re-check: if onStatusChange already updated status away from "idle", don't start.
+        // Read from ref (not state) to avoid calling startCheck() inside a setState updater,
+        // which would trigger the "setState during render" React error.
+        if (citationStatusRef.current === "idle") {
+          citationPanelRef.current?.startCheck();
+        }
       }, 600);
     }
   }, []);
