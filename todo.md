@@ -1040,3 +1040,27 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Monitoring email: Dedicated citation change email (improvement/decline)
 - [x] Tests: 19 new citation monitoring tests (284 total, all passing)
 - [ ] Paywall: Citation trend history = Pro, current status = Starter+ (future iteration)
+
+## PLG Retention Sprint (2026-03-29)
+
+### Task 1: Paywall — Citation Trend Sparkline (Pro only)
+- [x] MonitoredPageCard: citation sparkline in history panel locked for Starter/Free
+- [x] Locked state: blurred sparkline + "Odblokuj trend widoczności AI" CTA → /pricing
+- [x] Pro users: full citation sparkline visible as before
+- [x] TypeScript: 0 errors
+
+### Task 2: AI Visibility StatCard in Dashboard
+- [x] Backend: getAuditUsageStats extended with avgCitedEngines, citationTotal, pagesWithCitationCount
+- [x] Dashboard: 5th StatCard "Widoczność AI" — shows X/4 or "–" if no data, color-coded
+- [x] Tooltip: "Średnio X z 4 silników AI cytuje Twoje monitorowane strony"
+- [x] Grid: 2-col mobile → 3-col md → 5-col lg (responsive)
+- [x] TypeScript: 0 errors
+
+### Task 3: Weekly Digest Email
+- [x] DB: weekly_digest_log table (userId, weekStart, sentAt + metric snapshots) — migration 0022
+- [x] Backend: getWeeklyDigestData(userId) — dual-metric trend from score_snapshots + monitored_pages
+- [x] Email template: dark HTML, dual-metric cards (AI Score ±X pkt, Widoczność AI ±Y silników), top page block, insight nudge
+- [x] Cron worker: runs every Monday 09:00 UTC, iterates eligible users with dedup
+- [x] tRPC: system.triggerWeeklyDigest (admin-only, single-user test + full cron run)
+- [x] Tests: 22 weekly digest tests (HTML template + edge cases), 306 total passing
+- [x] TypeScript: 0 errors

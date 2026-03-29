@@ -232,3 +232,19 @@ export const aiExposureCache = mysqlTable("ai_exposure_cache", {
 
 export type AiExposureCache = typeof aiExposureCache.$inferSelect;
 export type InsertAiExposureCache = typeof aiExposureCache.$inferInsert;
+
+// Weekly Digest Log — prevents duplicate sends, tracks what was sent per user per week
+export const weeklyDigestLog = mysqlTable("weekly_digest_log", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  weekStart: timestamp("weekStart").notNull(),   // Monday 00:00 UTC of the week covered
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  // Snapshot of metrics included in this digest (for analytics / debugging)
+  avgScoreThisWeek: float("avgScoreThisWeek"),
+  avgScorePrevWeek: float("avgScorePrevWeek"),
+  citedEnginesThisWeek: float("citedEnginesThisWeek"),
+  citedEnginesPrevWeek: float("citedEnginesPrevWeek"),
+  monitoredPagesCount: int("monitoredPagesCount").default(0),
+});
+export type WeeklyDigestLog = typeof weeklyDigestLog.$inferSelect;
+export type InsertWeeklyDigestLog = typeof weeklyDigestLog.$inferInsert;

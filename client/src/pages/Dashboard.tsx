@@ -571,31 +571,63 @@ function MonitoredPageCard({
                         <p className="text-xs text-muted-foreground mt-0.5">{sparklineValues.length} audytów</p>
                       </div>
                     </div>
-                    {/* AI Citation Visibility trend */}
+                    {/* AI Citation Visibility trend — Pro only */}
                     {citationSparklineValues.length >= 2 && (
-                      <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                            <Eye className="w-3 h-3" /> Trend widoczności AI
-                          </p>
-                          <CitationSparkline values={citationSparklineValues} total={citationTotal} width={130} height={32} />
-                        </div>
-                        <div className="text-right">
-                          {(() => {
-                            const first = citationSparklineValues[0];
-                            const last = citationSparklineValues[citationSparklineValues.length - 1];
-                            const delta = last - first;
-                            const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-                            const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
-                            return (
-                              <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
-                                <Icon className="w-3.5 h-3.5" />
-                                <span>{last}/{citationTotal} AI</span>
+                      <div className="pt-1 border-t border-border/50">
+                        {isPro ? (
+                          /* Pro: full trend visible */
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                <Eye className="w-3 h-3" /> Trend widoczności AI
+                              </p>
+                              <CitationSparkline values={citationSparklineValues} total={citationTotal} width={130} height={32} />
+                            </div>
+                            <div className="text-right">
+                              {(() => {
+                                const first = citationSparklineValues[0];
+                                const last = citationSparklineValues[citationSparklineValues.length - 1];
+                                const delta = last - first;
+                                const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+                                const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
+                                return (
+                                  <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
+                                    <Icon className="w-3.5 h-3.5" />
+                                    <span>{last}/{citationTotal} AI</span>
+                                  </div>
+                                );
+                              })()}
+                              <p className="text-xs text-muted-foreground mt-0.5">silniki AI</p>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Starter/Free: blurred teaser + upgrade CTA */
+                          <div className="relative">
+                            <div className="flex items-center justify-between opacity-40 select-none pointer-events-none">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                  <Eye className="w-3 h-3" /> Trend widoczności AI
+                                </p>
+                                <CitationSparkline values={citationSparklineValues} total={citationTotal} width={130} height={32} />
                               </div>
-                            );
-                          })()}
-                          <p className="text-xs text-muted-foreground mt-0.5">silniki AI</p>
-                        </div>
+                              <div className="text-right">
+                                <div className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
+                                  <TrendingUp className="w-3.5 h-3.5" />
+                                  <span>+2/4 AI</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">silniki AI</p>
+                              </div>
+                            </div>
+                            <div className="absolute inset-0 backdrop-blur-[3px] rounded flex items-center justify-center">
+                              <Link href="/pricing">
+                                <div className="flex items-center gap-1.5 bg-violet-600/90 hover:bg-violet-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                                  <Lock className="w-3 h-3" />
+                                  <span>Odblokuj trend AI → Pro</span>
+                                </div>
+                              </Link>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -874,7 +906,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── STATS ROW ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
             icon={BarChart2}
             label="Średni wynik AI"
@@ -905,6 +937,62 @@ export default function Dashboard() {
             sub={`z ${monitoringLimit > 9999 ? "∞" : monitoringLimit} w planie`}
             iconColor="text-blue-400"
           />
+          {/* 5th card: AI Visibility — citation data from monitored pages */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <StatCard
+                    icon={Eye}
+                    label="Widoczność AI"
+                    value={
+                      usageStats?.avgCitedEngines != null
+                        ? `${usageStats.avgCitedEngines}/${usageStats.citationTotal ?? 4}`
+                        : "–"
+                    }
+                    sub={
+                      usageStats?.avgCitedEngines != null
+                        ? usageStats.avgCitedEngines >= (usageStats.citationTotal ?? 4)
+                          ? "Pełna widoczność"
+                          : usageStats.avgCitedEngines > 0
+                          ? "Częściowa"
+                          : "Niewidoczna"
+                        : usageStats?.pagesWithCitationCount === 0
+                        ? "Brak danych"
+                        : "Sprawdź widoczność"
+                    }
+                    colorClass={
+                      usageStats?.avgCitedEngines != null
+                        ? usageStats.avgCitedEngines >= (usageStats.citationTotal ?? 4)
+                          ? "text-emerald-400"
+                          : usageStats.avgCitedEngines > 0
+                          ? "text-amber-400"
+                          : "text-red-400"
+                        : undefined
+                    }
+                    iconColor={
+                      usageStats?.avgCitedEngines != null
+                        ? usageStats.avgCitedEngines >= (usageStats.citationTotal ?? 4)
+                          ? "text-emerald-400"
+                          : usageStats.avgCitedEngines > 0
+                          ? "text-amber-400"
+                          : "text-red-400"
+                        : "text-violet-400"
+                    }
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <p className="text-xs">
+                  {
+                    usageStats?.avgCitedEngines != null
+                      ? `Średnio ${usageStats.avgCitedEngines} z ${usageStats.citationTotal ?? 4} silników AI cytuje Twoje monitorowane strony (ChatGPT, Perplexity, Google AI, Gemini).`
+                      : "Uruchom monitoring strony i sprawdź widoczność AI, aby zobaczyć tę metrykę."
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* ── USAGE METER ── */}

@@ -369,10 +369,31 @@ export async function getAuditUsageStats(userId: number) {
       ? Math.round(Math.max(...completedAudits.map((a) => a.overallScore ?? 0)))
       : null;
 
+  // AI Visibility: average cited engines across monitored pages with citation data
+  const monitoredPagesData = await db
+    .select()
+    .from(monitoredPages)
+    .where(and(eq(monitoredPages.userId, userId), eq(monitoredPages.isActive, "yes")));
+  const pagesWithCitation = monitoredPagesData.filter(
+    (p) => p.lastCitedEngines != null && p.lastTotalEngines != null && p.lastTotalEngines > 0
+  );
+  // avgCitedEngines: average number of engines citing across all monitored pages
+  const avgCitedEngines =
+    pagesWithCitation.length > 0
+      ? Math.round(
+          (pagesWithCitation.reduce((sum, p) => sum + (p.lastCitedEngines ?? 0), 0) /
+            pagesWithCitation.length) * 10
+        ) / 10
+      : null;
+  // Use the total engines from the first page with citation data (always 4 in practice)
+  const citationTotal = pagesWithCitation.length > 0 ? (pagesWithCitation[0].lastTotalEngines ?? 4) : 4;
   return {
     auditsThisMonth: monthlyCount,
     avgScore,
     bestScore,
     totalAudits: allAudits.length,
+    avgCitedEngines,
+    citationTotal,
+    pagesWithCitationCount: pagesWithCitation.length,
   };
 }

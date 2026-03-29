@@ -12,6 +12,7 @@ import { handleStripeWebhook } from "../stripe/handler";
 import { generateAuditPDF } from "../pdf/reportGenerator";
 import { getAuditById } from "../db";
 import { startMonitoringWorker } from "../monitoring/worker";
+import { runWeeklyDigestCron } from "../monitoring/weeklyDigest";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -142,7 +143,26 @@ setInterval(() => {
 
 console.log("[SelectorHealth] Selector monitoring active — checks every 6h, initial check in 2min.");
 
-// ─── Monitoring Worker ─────────────────────────────────────────────────────────────────────────────────
+// ─── Monitoring Worker ──────────────────────────────────────────────────────────────────────────────────────────────────
 // Runs every hour. Triggers full audits for monitored pages whose nextAuditAt <= now.
 // Sends email notification to user after each completed audit.
 startMonitoringWorker();
+
+// ─── Weekly Digest Cron ──────────────────────────────────────────────────────────────────────────────────────────────────
+// Fires every Monday at 09:00 UTC. Sends dual-metric trend digest to all users with monitored pages.
+// Deduplication via weekly_digest_log prevents double-sends within the same calendar week.
+function isMonday9amUtc(): boolean {
+  const now = new Date();
+  return now.getUTCDay() === 1 && now.getUTCHours() === 9;
+}
+setInterval(async () => {
+  if (!isMonday9amUtc()) return;
+  const appUrl = process.env.VITE_APP_URL ?? `https://${process.env.VITE_APP_ID ?? "geo-auditor"}.manus.space`;
+  try {
+    const result = await runWeeklyDigestCron(appUrl);
+    console.log(`[WeeklyDigest] Cron result: sent=${result.sent}, skipped=${result.skipped}, errors=${result.errors}`);
+  } catch (err) {
+    console.error("[WeeklyDigest] Cron error:", err);
+  }
+}, 60 * 60 * 1000); // check every hour, fire only on Monday 09:00 UTC
+console.log("[WeeklyDigest] Weekly digest cron active — fires every Monday 09:00 UTC.");
