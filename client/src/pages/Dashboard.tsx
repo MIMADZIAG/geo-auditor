@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { getVisibilityScoreResult, ENGINE_CONFIG, ALL_ENGINES } from "../../../shared/visibilityScore";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -310,8 +311,191 @@ function Sparkline({ values, width = 120, height = 32 }: { values: number[]; wid
   );
 }
 
-// ─── Monitored Page Card ──────────────────────────────────────────────────────
+// ─── Engine Breakdown Row ───────────────────────────────────────────────────
+/**
+ * Shows 4 engine icons (ChatGPT, Google AI, Perplexity, Gemini) with color-coded
+ * cited/not-cited state. Used in MonitoredPageCard header and AICitationPanel.
+ */
+type EngineBreakdownItem = { engine: string; cited: boolean; citedUrl: string | null; query: string | null };
 
+function EngineBreakdownRow({
+  breakdown,
+  size = "sm",
+}: {
+  breakdown: EngineBreakdownItem[];
+  size?: "sm" | "md";
+}) {
+  const iconSize = size === "md" ? "w-5 h-5" : "w-4 h-4";
+  const dotSize = size === "md" ? "w-2 h-2" : "w-1.5 h-1.5";
+
+  return (
+    <TooltipProvider>
+      <div className="flex items-center gap-1.5">
+        {ALL_ENGINES.map((engine) => {
+          const cfg = ENGINE_CONFIG[engine];
+          const item = breakdown.find((b) => b.engine === engine);
+          const cited = item?.cited ?? false;
+          return (
+            <Tooltip key={engine}>
+              <TooltipTrigger asChild>
+                <div className="relative cursor-default">
+                  {/* Engine initial pill */}
+                  <div
+                    className={`${iconSize} rounded flex items-center justify-center text-[9px] font-bold border transition-all ${
+                      cited
+                        ? "border-transparent text-white"
+                        : "border-border/50 text-muted-foreground/50 bg-muted/20"
+                    }`}
+                    style={cited ? { backgroundColor: cfg.color, borderColor: cfg.color } : {}}
+                  >
+                    {cfg.shortLabel[0]}
+                  </div>
+                  {/* Status dot */}
+                  <div
+                    className={`absolute -bottom-0.5 -right-0.5 ${dotSize} rounded-full border border-background ${
+                      cited ? "bg-emerald-400" : "bg-zinc-600"
+                    }`}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs max-w-52">
+                <p className="font-semibold mb-0.5">{cfg.label}</p>
+                {cited ? (
+                  <p className="text-emerald-400">✓ Cytuje tę stronę</p>
+                ) : (
+                  <p className="text-muted-foreground">Nie cytuje tej strony</p>
+                )}
+                {item?.query && (
+                  <p className="text-muted-foreground mt-0.5 truncate">Zapytanie: {item.query}</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// ─── AI Visibility Score Badge ────────────────────────────────────────────────
+/**
+ * Replaces the raw "2/4" fraction with a 0–100 score + tier label.
+ * One number, immediately understood by a marketing director.
+ */
+function AIVisibilityScoreBadge({
+  citedEngines,
+  totalEngines,
+  size = "sm",
+}: {
+  citedEngines: number | null | undefined;
+  totalEngines: number | null | undefined;
+  size?: "sm" | "lg";
+}) {
+  const result = getVisibilityScoreResult(citedEngines, totalEngines);
+  const hasData = citedEngines != null && totalEngines != null;
+
+  if (!hasData) return null;
+
+  if (size === "lg") {
+    return (
+      <div className={`flex flex-col items-center px-4 py-3 rounded-xl border ${result.bgClass}`}>
+        <span className={`text-3xl font-bold tabular-nums ${result.colorClass}`}>{result.score}</span>
+        <span className="text-[10px] text-muted-foreground mt-0.5">/ 100</span>
+        <span className={`text-xs font-semibold mt-1 ${result.colorClass}`}>{result.label}</span>
+      </div>
+    );
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold tabular-nums cursor-default ${result.bgClass} ${result.colorClass}`}>
+          <Eye className="w-3 h-3" />
+          <span>{result.score}</span>
+          <span className="font-normal opacity-60 text-[10px]">/100</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs max-w-56">
+        <p className="font-semibold mb-1">Widoczność AI: {result.label}</p>
+        <p className="text-muted-foreground">{result.description}</p>
+        <p className="text-muted-foreground mt-1 text-[10px]">Cytowana przez {citedEngines} z {totalEngines} silników AI</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ─── AI Visibility Timeline ───────────────────────────────────────────────────
+/**
+ * Dual-line SVG chart: AI Score trend (violet) + AI Visibility Score trend (emerald/amber/red).
+ * Replaces the two separate sparklines with one unified view.
+ */
+function AIVisibilityTimeline({
+  scoreValues,
+  citationValues,
+  citationTotal = 4,
+  width = 280,
+  height = 56,
+}: {
+  scoreValues: number[];
+  citationValues: number[];
+  citationTotal?: number;
+  width?: number;
+  height?: number;
+}) {
+  const pts = useMemo(() => {
+    const len = Math.max(scoreValues.length, citationValues.length);
+    if (len < 2) return null;
+
+    const step = width / (len - 1);
+    const pad = 4;
+
+    const scoreLine = scoreValues.map((v, i) => {
+      const x = i * step;
+      const y = height - (v / 100) * (height - pad * 2) - pad;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+
+    const citeLine = citationValues.map((v, i) => {
+      const x = i * step;
+      const score = Math.round((v / citationTotal) * 100);
+      const y = height - (score / 100) * (height - pad * 2) - pad;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+
+    return { scoreLine, citeLine };
+  }, [scoreValues, citationValues, citationTotal, width, height]);
+
+  if (!pts) return null;
+
+  const lastCite = citationValues[citationValues.length - 1] ?? 0;
+  const citeColor = lastCite >= citationTotal ? "#34d399" : lastCite > 0 ? "#fbbf24" : "#f87171";
+
+  const scoreLastPt = pts.scoreLine.split(" ").pop()!.split(",");
+  const citeLastPt = pts.citeLine.split(" ").pop()!.split(",");
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      {/* Score line — violet */}
+      {scoreValues.length >= 2 && (
+        <>
+          <polyline points={pts.scoreLine} fill="none" stroke="#8b5cf6" strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+          <circle cx={scoreLastPt[0]} cy={scoreLastPt[1]} r="2.5" fill="#8b5cf6" />
+        </>
+      )}
+      {/* Citation line — dynamic color */}
+      {citationValues.length >= 2 && (
+        <>
+          <polyline points={pts.citeLine} fill="none" stroke={citeColor} strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+          <circle cx={citeLastPt[0]} cy={citeLastPt[1]} r="2.5" fill={citeColor} />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// ─── Monitored Page Card ──────────────────────────────────────────────────────
 type MonitoredPageItem = {
   id: number;
   url: string;
@@ -361,8 +545,14 @@ function MonitoredPageCard({
     { monitoredPageId: page.id, limit: 10 },
     { enabled: showHistory }
   );
+  // Per-engine breakdown — lazy-loaded when history is opened
+  const engineBreakdownQuery = trpc.monitoring.getEngineBreakdown.useQuery(
+    { monitoredPageId: page.id },
+    { enabled: showHistory && page.lastCitedEngines != null, staleTime: 120_000 }
+  );
   const runs = historyQuery.data ?? [];
   const snapshots = snapshotsQuery.data ?? [];
+  const engineBreakdown = engineBreakdownQuery.data ?? [];
   const sparklineValues = useMemo(
     () => [...runs].reverse().map((r) => r.overallScore ?? 0).filter((v) => v > 0),
     [runs]
@@ -380,8 +570,7 @@ function MonitoredPageCard({
   const hasCitationData = page.lastCitedEngines != null;
   const citedEngines = page.lastCitedEngines ?? 0;
   const totalEngines = page.lastTotalEngines ?? 4;
-  const citationColorClass = citedEngines === 0 ? "text-red-400" : citedEngines >= totalEngines ? "text-emerald-400" : "text-amber-400";
-  const citationBgClass = citedEngines === 0 ? "bg-red-500/10 border-red-500/20" : citedEngines >= totalEngines ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20";
+  const visibilityResult = getVisibilityScoreResult(hasCitationData ? citedEngines : null, hasCitationData ? totalEngines : null);
   const lastAudit = page.lastAuditAt
     ? new Date(page.lastAuditAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : "Brak danych";
@@ -422,29 +611,17 @@ function MonitoredPageCard({
             <p className="text-sm font-semibold truncate">{page.label || domain}</p>
             <p className="text-xs text-muted-foreground truncate mt-0.5">{page.url}</p>
           </div>
-          {/* Dual metric: AI Score + Citation Visibility */}
-          <div className="flex items-center gap-2 shrink-0">
-            {hasCitationData && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold tabular-nums cursor-default ${citationBgClass} ${citationColorClass}`}>
-                    <Eye className="w-3 h-3" />
-                    <span>{citedEngines}/{totalEngines}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs max-w-52">
-                  <p className="font-semibold mb-1">Widoczność AI Search</p>
-                  <p>{citedEngines} z {totalEngines} silników AI cytuje tę stronę</p>
-                  <p className="text-muted-foreground mt-0.5">(ChatGPT, Google AI, Perplexity, Gemini)</p>
-                  {page.lastCitationAt && (
-                    <p className="mt-1 text-muted-foreground">Sprawdzono: {new Date(page.lastCitationAt).toLocaleDateString("pl-PL")}</p>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            )}
+          {/* Dual metric: AI Score + AI Visibility Score */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            {/* AI Readiness Score */}
             <div className={`text-2xl font-bold tabular-nums ${scoreColor(score)}`}>
               {score != null ? Math.round(score) : "–"}
             </div>
+            {/* AI Visibility Score badge — replaces raw 2/4 fraction */}
+            <AIVisibilityScoreBadge
+              citedEngines={hasCitationData ? citedEngines : null}
+              totalEngines={hasCitationData ? totalEngines : null}
+            />
           </div>
         </div>
 
@@ -548,86 +725,68 @@ function MonitoredPageCard({
               </p>
             ) : (
               <>
+                {/* ── AI Visibility Timeline: unified dual-line chart ── */}
                 {sparklineValues.length >= 2 && (
-                  <div className="mb-3 space-y-2">
-                    {/* AI Score trend */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Trend AI Score</p>
-                        <Sparkline values={sparklineValues} width={130} height={32} />
+                  <div className="mb-3">
+                    {/* Legend row */}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-0.5 rounded bg-violet-500 inline-block" /> AI Score
+                        </span>
+                        {citationSparklineValues.length >= 2 && isPro && (
+                          <span className="flex items-center gap-1">
+                            <span className="w-2.5 h-0.5 rounded bg-emerald-400 inline-block" /> Widoczność AI
+                          </span>
+                        )}
                       </div>
-                      <div className="text-right">
-                        {(() => {
-                          const delta = sparklineValues[sparklineValues.length - 1] - sparklineValues[0];
-                          const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-                          const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
-                          return (
-                            <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
-                              <Icon className="w-3.5 h-3.5" />
-                              <span>{delta > 0 ? "+" : ""}{delta.toFixed(0)} pkt</span>
-                            </div>
-                          );
-                        })()}
-                        <p className="text-xs text-muted-foreground mt-0.5">{sparklineValues.length} audytów</p>
-                      </div>
-                    </div>
-                    {/* AI Citation Visibility trend — Pro only */}
-                    {citationSparklineValues.length >= 2 && (
-                      <div className="pt-1 border-t border-border/50">
-                        {isPro ? (
-                          /* Pro: full trend visible */
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <Eye className="w-3 h-3" /> Trend widoczności AI
-                              </p>
-                              <CitationSparkline values={citationSparklineValues} total={citationTotal} width={130} height={32} />
-                            </div>
-                            <div className="text-right">
-                              {(() => {
-                                const first = citationSparklineValues[0];
-                                const last = citationSparklineValues[citationSparklineValues.length - 1];
-                                const delta = last - first;
-                                const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-                                const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
-                                return (
-                                  <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
-                                    <Icon className="w-3.5 h-3.5" />
-                                    <span>{last}/{citationTotal} AI</span>
-                                  </div>
-                                );
-                              })()}
-                              <p className="text-xs text-muted-foreground mt-0.5">silniki AI</p>
-                            </div>
+                      {/* Delta summary */}
+                      {(() => {
+                        const scoreDelta = sparklineValues[sparklineValues.length - 1] - sparklineValues[0];
+                        const Icon = scoreDelta > 0 ? TrendingUp : scoreDelta < 0 ? TrendingDown : Minus;
+                        const cls = scoreDelta > 0 ? "text-emerald-400" : scoreDelta < 0 ? "text-red-400" : "text-muted-foreground";
+                        return (
+                          <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
+                            <Icon className="w-3 h-3" />
+                            <span>{scoreDelta > 0 ? "+" : ""}{scoreDelta.toFixed(0)} pkt</span>
                           </div>
-                        ) : (
-                          /* Starter/Free: blurred teaser + upgrade CTA */
-                          <div className="relative">
-                            <div className="flex items-center justify-between opacity-40 select-none pointer-events-none">
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                  <Eye className="w-3 h-3" /> Trend widoczności AI
-                                </p>
-                                <CitationSparkline values={citationSparklineValues} total={citationTotal} width={130} height={32} />
-                              </div>
-                              <div className="text-right">
-                                <div className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
-                                  <TrendingUp className="w-3.5 h-3.5" />
-                                  <span>+2/4 AI</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">silniki AI</p>
-                              </div>
-                            </div>
-                            <div className="absolute inset-0 backdrop-blur-[3px] rounded flex items-center justify-center">
-                              <Link href="/pricing">
-                                <div className="flex items-center gap-1.5 bg-violet-600/90 hover:bg-violet-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                                  <Lock className="w-3 h-3" />
-                                  <span>Odblokuj trend AI → Pro</span>
-                                </div>
-                              </Link>
-                            </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Dual-line chart (Pro) or single score line (Starter/Free) */}
+                    {isPro ? (
+                      <AIVisibilityTimeline
+                        scoreValues={sparklineValues}
+                        citationValues={citationSparklineValues}
+                        citationTotal={citationTotal}
+                        width={220}
+                        height={48}
+                      />
+                    ) : (
+                      <div className="relative">
+                        <AIVisibilityTimeline
+                          scoreValues={sparklineValues}
+                          citationValues={[]}
+                          width={220}
+                          height={48}
+                        />
+                        {citationSparklineValues.length >= 2 && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Lock className="w-3 h-3 text-violet-400" />
+                            <Link href="/pricing" className="text-violet-400 hover:text-violet-300 underline">
+                              Odblokuj trend widoczności AI → Pro
+                            </Link>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Per-engine breakdown — shown when data is available */}
+                    {engineBreakdown.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/40 flex items-center justify-between">
+                        <p className="text-[10px] text-muted-foreground">Silniki AI:</p>
+                        <EngineBreakdownRow breakdown={engineBreakdown} size="sm" />
                       </div>
                     )}
                   </div>
@@ -1156,15 +1315,22 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── MONITORED PAGES ── */}
+        {/* ── AI VISIBILITY HUB ── */}
         <div>
+          {/* Section header */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-muted-foreground" /> Monitoring stron
-              {monitoredPages && monitoredPages.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{monitoredPages.length}</Badge>
-              )}
-            </h2>
+            <div>
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Eye className="w-4 h-4 text-violet-400" />
+                <span>Widoczność AI Search</span>
+                {monitoredPages && monitoredPages.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{monitoredPages.length} stron</Badge>
+                )}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Monitoring widoczności Twoich stron w ChatGPT, Google AI, Perplexity i Gemini
+              </p>
+            </div>
             <Button
               size="sm"
               variant="outline"
@@ -1174,6 +1340,72 @@ export default function Dashboard() {
               <Plus className="w-3 h-3" /> Dodaj stronę
             </Button>
           </div>
+
+          {/* AI Visibility aggregate banner — shown when at least one page has citation data */}
+          {monitoredPages && monitoredPages.length > 0 && (() => {
+            const pagesWithData = monitoredPages.filter((p) => p.lastCitedEngines != null);
+            if (pagesWithData.length === 0) return null;
+            const totalCited = pagesWithData.reduce((sum, p) => sum + (p.lastCitedEngines ?? 0), 0);
+            const totalPossible = pagesWithData.reduce((sum, p) => sum + (p.lastTotalEngines ?? 4), 0);
+            const avgVisScore = Math.round((totalCited / totalPossible) * 100);
+            const visResult = getVisibilityScoreResult(
+              totalCited / pagesWithData.length,
+              pagesWithData[0]?.lastTotalEngines ?? 4
+            );
+            const citedPages = pagesWithData.filter((p) => (p.lastCitedEngines ?? 0) > 0).length;
+            return (
+              <div className={`rounded-xl border p-4 mb-4 flex items-center gap-4 ${visResult.bgClass}`}>
+                {/* Score ring */}
+                <div className="shrink-0 flex flex-col items-center">
+                  <span className={`text-3xl font-bold tabular-nums ${visResult.colorClass}`}>{avgVisScore}</span>
+                  <span className="text-[10px] text-muted-foreground">/100</span>
+                </div>
+                <div className="w-px h-10 bg-border/60 shrink-0" />
+                {/* Breakdown */}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${visResult.colorClass}`}>{visResult.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {citedPages} z {pagesWithData.length} stron cytowanych · {totalCited}/{totalPossible} sprawdzeń silników
+                  </p>
+                </div>
+                {/* Engine legend */}
+                <div className="shrink-0 hidden sm:flex items-center gap-1.5">
+                  {ALL_ENGINES.map((engine) => {
+                    const cfg = ENGINE_CONFIG[engine];
+                    const citedCount = pagesWithData.filter((p) => {
+                      // approximate: if page has citation data and cited > 0 assume engine may cite
+                      return (p.lastCitedEngines ?? 0) > 0;
+                    }).length;
+                    return (
+                      <TooltipProvider key={engine}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className="w-6 h-6 rounded text-[9px] font-bold flex items-center justify-center text-white"
+                              style={{ backgroundColor: cfg.color }}
+                            >
+                              {cfg.shortLabel[0]}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs">
+                            {cfg.label}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
+                {/* CTA for non-Pro */}
+                {!isPro && (
+                  <Link href="/pricing" className="shrink-0">
+                    <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1 h-7">
+                      <TrendingUp className="w-3 h-3" /> Trend AI
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            );
+          })()}
 
           {showAddMonitoring && (
             <div className="rounded-xl border border-border bg-card p-4 mb-4">

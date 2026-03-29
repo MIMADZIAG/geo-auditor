@@ -17,6 +17,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
+import { ENGINE_CONFIG, ALL_ENGINES, getVisibilityScoreResult } from "../../../shared/visibilityScore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1101,10 +1102,14 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
           ? `${citingNames[0]} i ${citingNames[1]} cytują Twoją stronę`
           : `${citingNames.slice(0, -1).join(", ")} i ${citingNames[citingNames.length - 1]} cytują Twoją stronę`;
 
+        // AI Visibility Score — one number, immediately understood by marketing directors
+        const visResult = getVisibilityScoreResult(citingEngines.length, ALL_ENGINES.length);
+
         return (
           <div className={`bg-zinc-900/40 border rounded-2xl p-5 ${
             foundCitation ? "border-emerald-500/30" : "border-red-500/20"
           }`}>
+            {/* Top row: icon + headline + AI Visibility Score */}
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 foundCitation ? "bg-emerald-500/20 border border-emerald-500/30" : "bg-red-500/15 border border-red-500/25"
@@ -1119,26 +1124,59 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
                   </svg>
                 )}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <h2 className="text-base font-bold text-white">
-                  {foundCitation
-                    ? "Twoja strona jest widoczna w AI Search ✅"
-                    : "Twoja strona nie jest widoczna w AI Search ❌"}
+                  {foundCitation ? "Twoja strona jest widoczna w AI Search" : "Twoja strona nie jest widoczna w AI Search"}
                 </h2>
                 {foundCitation && citingEngines.length > 0 ? (
-                  <>
-                    <p className="text-sm text-zinc-400 mt-1">{citingSentence}.</p>
-                    {/* Engine badges row */}
-                    <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                      <span className="text-[10px] text-zinc-600 mr-0.5">Wykryto w:</span>
-                      {citingEngines.map(e => <EngineChip key={e} engine={e} />)}
-                    </div>
-                  </>
+                  <p className="text-sm text-zinc-400 mt-1">{citingSentence}.</p>
                 ) : (
                   <p className="text-sm text-zinc-400 mt-1">
                     Sprawdziliśmy Twoją stronę w 4 silnikach AI. Twoja domena nie pojawiła się w żadnej z przeanalizowanych odpowiedzi.
                   </p>
                 )}
+              </div>
+              {/* AI Visibility Score — replaces the raw fraction, one number */}
+              <div className={`shrink-0 flex flex-col items-center px-3 py-2 rounded-xl border ${
+                foundCitation ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/20 bg-red-500/8"
+              }`}>
+                <span className={`text-2xl font-bold tabular-nums ${visResult.colorClass}`}>{visResult.score}</span>
+                <span className="text-[9px] text-zinc-500">/100</span>
+                <span className={`text-[10px] font-semibold mt-0.5 ${visResult.colorClass}`}>{visResult.label}</span>
+              </div>
+            </div>
+
+            {/* Per-engine breakdown — 4-column grid with color-coded status */}
+            <div className="mt-4 pt-3 border-t border-white/5">
+              <p className="text-[10px] text-zinc-600 mb-2.5 uppercase tracking-wide font-medium">Status w silnikach AI</p>
+              <div className="grid grid-cols-4 gap-2">
+                {ALL_ENGINES.map((engine) => {
+                  const cfg = ENGINE_CONFIG[engine];
+                  const isCited = (citingEngines as string[]).includes(engine);
+                  return (
+                    <div
+                      key={engine}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
+                        isCited
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : "border-white/5 bg-zinc-800/30"
+                      }`}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+                        style={{ backgroundColor: isCited ? cfg.color : "#3f3f46" }}
+                      >
+                        {cfg.shortLabel[0]}
+                      </div>
+                      <span className="text-[10px] text-zinc-400 text-center leading-tight font-medium">{cfg.shortLabel}</span>
+                      <span className={`text-[9px] font-semibold ${
+                        isCited ? "text-emerald-400" : "text-zinc-600"
+                      }`}>
+                        {isCited ? "✓ Cytuje" : "– Brak"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

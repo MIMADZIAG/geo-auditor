@@ -291,6 +291,19 @@ export const appRouter = router({
           .orderBy(descOrd(monitorAuditRuns.createdAt))
           .limit(input.limit);
       }),
+
+    // Per-engine citation breakdown for a monitored page (latest citation job)
+    getEngineBreakdown: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Monitorowana strona nie została znaleziona." });
+        }
+        const { getEngineBreakdownForPage } = await import("./db");
+        return getEngineBreakdownForPage(input.monitoredPageId);
+      }),
    }),
   leads: router({
     captureEmail: publicProcedure

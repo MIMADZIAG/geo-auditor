@@ -1064,3 +1064,28 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] tRPC: system.triggerWeeklyDigest (admin-only, single-user test + full cron run)
 - [x] Tests: 22 weekly digest tests (HTML template + edge cases), 306 total passing
 - [x] TypeScript: 0 errors
+
+## AI Visibility UX Redesign (2026-03-29)
+
+### Change 1: AI Visibility Score (0-100)
+- [x] shared/visibilityScore.ts: shared formula + tier labels (Dominująca/Widoczna/Rozwijająca się/Niewidoczna) + ENGINE_CONFIG + ALL_ENGINES
+- [x] server/db.ts: getEngineBreakdownForPage(monitoredPageId) helper
+- [x] server/db.ts: getAuditUsageStats extended with avgVisibilityScore
+- [x] server/routers.ts: monitoring.getEngineBreakdown tRPC procedure
+- [x] MonitoredPageCard: AIVisibilityScoreBadge (large score + tier label + color-coded)
+- [x] StatCard “Widoczność AI”: shows avgVisibilityScore/100 with color-coded tier
+
+### Change 2: AIVisibilityTimeline dual-line chart
+- [x] Dashboard: AIVisibilityTimeline recharts AreaChart (AI Score purple + AI Visibility Score green)
+- [x] MonitoredPageCard: AIVisibilityTimeline in history panel (Pro gate on AI Visibility line)
+- [x] Tooltip: date + both values
+
+### Change 3: Dashboard AI Visibility Hub
+- [x] Dashboard: AI Visibility Hub section above audit history with aggregated score + engine badges
+- [x] Hub: shown when user has ≥1 monitored page with citation data
+- [x] Hub: empty state with CTA to add monitoring
+
+### Change 4: Per-engine breakdown
+- [x] MonitoredPageCard: EngineBreakdownRow with 4 color-coded engine icons + status per engine
+- [x] AICitationPanel summary hero: full per-engine 4-column grid + AI Visibility Score badge
+- [x] AICitationPanel: import ENGINE_CONFIG, ALL_ENGINES, getVisibilityScoreResult from shared/visibilityScore.ts

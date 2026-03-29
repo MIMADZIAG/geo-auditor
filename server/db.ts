@@ -387,6 +387,19 @@ export async function getAuditUsageStats(userId: number) {
       : null;
   // Use the total engines from the first page with citation data (always 4 in practice)
   const citationTotal = pagesWithCitation.length > 0 ? (pagesWithCitation[0].lastTotalEngines ?? 4) : 4;
+
+  // avgVisibilityScore: AI Visibility Score (0-100) averaged across pages with citation data
+  const { computeAIVisibilityScore } = await import("../shared/visibilityScore");
+  const avgVisibilityScore =
+    pagesWithCitation.length > 0
+      ? Math.round(
+          pagesWithCitation.reduce(
+            (sum, p) => sum + computeAIVisibilityScore(p.lastCitedEngines ?? 0, p.lastTotalEngines ?? 4, null),
+            0
+          ) / pagesWithCitation.length
+        )
+      : null;
+
   return {
     auditsThisMonth: monthlyCount,
     avgScore,
@@ -395,5 +408,55 @@ export async function getAuditUsageStats(userId: number) {
     avgCitedEngines,
     citationTotal,
     pagesWithCitationCount: pagesWithCitation.length,
+    avgVisibilityScore,
   };
+}
+
+// ─── Per-engine breakdown helper ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns per-engine citation status for a monitored page based on the latest
+ * completed citation job linked to the page’s last audit.
+ * Used by: MonitoredPageCard engine breakdown, Dashboard Hub.
+ */
+export async function getEngineBreakdownForPage(monitoredPageId: number): Promise<{
+  engine: string;
+  cited: boolean;
+  citedUrl: string | null;
+  query: string | null;
+}[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const pages = await db
+    .select()
+    .from(monitoredPages)
+    .where(eq(monitoredPages.id, monitoredPageId))
+    .limit(1);
+  const page = pages[0];
+  if (!page?.lastAuditId) return [];
+
+  const { getCitationJobByAuditId, getCitationChecksByJobId } = await import("./citation/db");
+  const job = await getCitationJobByAuditId(page.lastAuditId);
+  if (!job) return [];
+
+  const checks = await getCitationChecksByJobId(job.id);
+  if (checks.length === 0) return [];
+
+  const ENGINES = ["chatgpt", "google", "perplexity", "gemini"] as const;
+  const PRIORITY: Record<string, number> = { yes: 0, domain: 1, no: 2 };
+
+  return ENGINES.map((engine) => {
+    const engineChecks = checks.filter((c) => c.engine === engine);
+    if (engineChecks.length === 0) return { engine, cited: false, citedUrl: null, query: null };
+    const best = [...engineChecks].sort(
+      (a, b) => (PRIORITY[a.isCited] ?? 2) - (PRIORITY[b.isCited] ?? 2)
+    )[0];
+    return {
+      engine,
+      cited: best.isCited === "yes" || best.isCited === "domain",
+      citedUrl: best.citedUrl ?? best.domainCitedUrl ?? null,
+      query: best.query ?? null,
+    };
+  });
 }
