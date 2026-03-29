@@ -1089,3 +1089,24 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] MonitoredPageCard: EngineBreakdownRow with 4 color-coded engine icons + status per engine
 - [x] AICitationPanel summary hero: full per-engine 4-column grid + AI Visibility Score badge
 - [x] AICitationPanel: import ENGINE_CONFIG, ALL_ENGINES, getVisibilityScoreResult from shared/visibilityScore.ts
+
+## AI Visibility Command Center (2026-03-29) — COMPLETED
+
+### Zmiana 1: Dashboard — AI Visibility Overview Hero
+- [x] Dashboard: AIVisibilityCommandCenter hero sekcja na górze (przed StatCards i historią)
+- [x] Dashboard: StatCards uproszczone do 3 (Audyty, Śr. AI Score, Widoczność AI)
+- [x] Dashboard: Historia audytów zwinięta domyślnie (collapsible z licznikiem) + id="audits" anchor
+- [x] Dashboard: AI Visibility Hub z agregowanym score + per-engine breakdown + weakest page CTA
+- [x] Dashboard: Stary AI Visibility Hub (duplikat) usunięty — jedna sekcja widoczności
+
+### Zmiana 2: Results — CTA "Śledź widoczność" w tab Widoczność AI
+- [x] Results: CitationMonitoringCTA banner po AICitationPanel
+- [x] Results: CTA pre-wypełnia URL z audit.url
+- [x] Results: CTA ukryty gdy strona już jest monitorowana (normalise URL comparison)
+- [x] Results: monitoring.list query + monitoring.add mutation dodane do Results.tsx
+
+### Zmiana 3: DashboardTopNav — nawigacja AI Visibility Command Center
+- [x] DashboardTopNav: "Widoczność AI" jako główny punkt nawigacji z ikoną Eye
+- [x] DashboardTopNav: "Audyty" jako osobny punkt nawigacji (hash link #audits)
+- [x] DashboardTopNav: AI Sandbox, Page Creator, Plany w nawigacji
+- [x] TypeScript: 0 errors, 306 tests passing

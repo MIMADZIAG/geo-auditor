@@ -58,6 +58,7 @@ import { AICitationPanel } from "@/components/AICitationPanel";
 import UpsellProModal from "@/components/UpsellProModal";
 import { Streamdown } from "streamdown";
 import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
+import { Plus, RefreshCw as RefreshCwIcon } from "lucide-react";
 import type { SimulationResult } from "@/geo-sandbox/types/simulator";
 import WhatIfEditor from "@/geo-sandbox/components/WhatIfEditor";
 import ScoreGauge from "@/geo-sandbox/components/ScoreGauge";
@@ -314,6 +315,19 @@ export default function Results() {
   const { isAuthenticated, user } = useAuth();
   const userPlan = (user as any)?.plan ?? "free";
   const hasPaidPlan = isAuthenticated && userPlan !== "free" && !!userPlan;
+  const utils = trpc.useUtils();
+  // Monitoring CTA: check if this URL is already monitored
+  const { data: monitoredPages } = trpc.monitoring.list.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
+  const addMonitoringMutation = trpc.monitoring.add.useMutation({
+    onSuccess: () => {
+      utils.monitoring.list.invalidate();
+      toast.success("Strona dodana do monitoringu! Widoczność AI będzie śledzona automatycznie.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   // ── Tab state — supports ?tab=visibility deep link ──
   const [activeTab, setActiveTab] = useState<"optimization" | "visibility">(
@@ -685,6 +699,36 @@ export default function Results() {
 
           {/* Competitor Analysis Teaser */}
           {!hasPaidPlan && <CompetitorAnalysisTeaser navigate={navigate} />}
+
+          {/* Monitoring CTA — shown to authenticated users who haven't added this URL yet */}
+          {isAuthenticated && (() => {
+            const normalise = (u: string) => { try { return new URL(u).href.replace(/\/$/, ""); } catch { return u.replace(/\/$/, ""); } };
+            const isAlreadyMonitored = (monitoredPages ?? []).some((p) => normalise(p.url) === normalise(audit.url));
+            if (isAlreadyMonitored) return null;
+            return (
+              <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-violet-600/5 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+                  <Eye className="w-4 h-4 text-violet-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold">Śledź widoczność tej strony w czasie</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Dodaj tę stronę do monitoringu, aby automatycznie sprawdzać czy ChatGPT, Google AI, Perplexity i Gemini Cię cytują — i otrzymywać alerty o zmianach.
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5 text-xs shrink-0"
+                  onClick={() => addMonitoringMutation.mutate({ url: audit.url })}
+                  disabled={addMonitoringMutation.isPending}
+                >
+                  {addMonitoringMutation.isPending
+                    ? <RefreshCwIcon className="w-3 h-3 animate-spin" />
+                    : <><Plus className="w-3 h-3" /> Dodaj do monitoringu</>}
+                </Button>
+              </div>
+            );
+          })()}
 
           {/* Bridge back to Tab 1 */}
           <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">

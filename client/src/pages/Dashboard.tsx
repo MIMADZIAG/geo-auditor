@@ -15,6 +15,7 @@ import {
   Lock, ChevronRight, RefreshCw, Star, Target, Sparkles, Shield,
   Globe, ArrowUpRight, Activity, FileText, Search, Bot, Trophy,
   Flame, Info, Brain, LogIn, History, TrendingUp, TrendingDown, Minus,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -868,7 +869,11 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
           </div>
         </Link>
         <nav className="hidden md:flex items-center gap-5 text-sm text-muted-foreground">
-          <Link href="/dashboard" className="text-foreground font-medium">Dashboard</Link>
+          <Link href="/dashboard" className="text-foreground font-medium flex items-center gap-1.5">
+            <Eye className="w-3.5 h-3.5 text-violet-400" />
+            Widoczność AI
+          </Link>
+          <Link href="/dashboard#audits" className="hover:text-foreground transition-colors">Audyty</Link>
           <Link href="/sandbox" className="hover:text-foreground transition-colors">AI Sandbox</Link>
           <Link href="/page-creator" className="hover:text-foreground transition-colors">Page Creator</Link>
           <Link href="/pricing" className="hover:text-foreground transition-colors">Plany</Link>
@@ -961,6 +966,169 @@ function NotAuthenticated() {
   );
 }
 
+// ─── AI Visibility Command Center Hero ───────────────────────────────────────
+
+function AIVisibilityCommandCenter({
+  monitoredPages,
+  usageStats,
+  isPro,
+  onAddMonitoring,
+}: {
+  monitoredPages: MonitoredPageItem[] | undefined;
+  usageStats: ReturnType<typeof trpc.audit.getUsageStats.useQuery>["data"];
+  isPro: boolean;
+  onAddMonitoring: () => void;
+}) {
+  const pagesWithData = (monitoredPages ?? []).filter((p) => p.lastCitedEngines != null);
+  const hasData = pagesWithData.length > 0;
+  const hasPages = (monitoredPages ?? []).length > 0;
+
+  // Aggregate visibility score across all monitored pages
+  const totalCited = pagesWithData.reduce((sum, p) => sum + (p.lastCitedEngines ?? 0), 0);
+  const totalPossible = pagesWithData.reduce((sum, p) => sum + (p.lastTotalEngines ?? 4), 0);
+  const avgVisScore = hasData ? Math.round((totalCited / totalPossible) * 100) : null;
+  const visResult = hasData
+    ? getVisibilityScoreResult(totalCited / pagesWithData.length, pagesWithData[0]?.lastTotalEngines ?? 4)
+    : null;
+  const citedPages = pagesWithData.filter((p) => (p.lastCitedEngines ?? 0) > 0).length;
+
+  // Weakest page — lowest visibility score
+  const weakestPage = hasData
+    ? [...pagesWithData].sort((a, b) => (a.lastCitedEngines ?? 0) - (b.lastCitedEngines ?? 0))[0]
+    : null;
+
+  if (!hasPages) {
+    // Empty state — no monitored pages yet
+    return (
+      <div className="rounded-2xl border border-dashed border-violet-500/30 bg-violet-500/5 p-8 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-4">
+          <Eye className="w-6 h-6 text-violet-400" />
+        </div>
+        <h2 className="text-base font-semibold mb-1">Centrum Widoczności AI</h2>
+        <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+          Dodaj pierwszą stronę do monitoringu, aby śledzić jej widoczność w ChatGPT, Google AI, Perplexity i Gemini.
+        </p>
+        <Button
+          size="sm"
+          className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
+          onClick={onAddMonitoring}
+        >
+          <Plus className="w-3.5 h-3.5" /> Dodaj stronę do monitoringu
+        </Button>
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    // Pages exist but no citation data yet
+    return (
+      <div className="rounded-2xl border border-border bg-card p-6 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+          <Eye className="w-5 h-5 text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-semibold">Centrum Widoczności AI</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {(monitoredPages ?? []).length} stron w monitoringu — oczekiwanie na pierwsze dane widoczności.
+          </p>
+        </div>
+        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-2xl border p-5 ${visResult?.bgClass ?? "border-border bg-card"}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Eye className={`w-4 h-4 ${visResult?.colorClass ?? "text-violet-400"}`} />
+          <span className="text-sm font-semibold">Centrum Widoczności AI</span>
+          <Badge variant="secondary" className="text-xs">{(monitoredPages ?? []).length} stron</Badge>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-xs gap-1 h-7 text-muted-foreground hover:text-foreground"
+          onClick={onAddMonitoring}
+        >
+          <Plus className="w-3 h-3" /> Dodaj stronę
+        </Button>
+      </div>
+
+      {/* Main metrics row */}
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center">
+        {/* Big score */}
+        <div className="flex items-end gap-1.5 shrink-0">
+          <span className={`text-5xl font-bold tabular-nums leading-none ${visResult?.colorClass}`}>
+            {avgVisScore}
+          </span>
+          <div className="pb-1">
+            <span className="text-sm text-muted-foreground">/100</span>
+            <p className={`text-xs font-semibold ${visResult?.colorClass}`}>{visResult?.label}</p>
+          </div>
+        </div>
+
+        <div className="w-px h-12 bg-border/60 shrink-0 hidden sm:block" />
+
+        {/* Stats */}
+        <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Cytowane strony</p>
+            <p className="text-lg font-bold tabular-nums">{citedPages}<span className="text-sm text-muted-foreground font-normal">/{pagesWithData.length}</span></p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Sprawdzeń silników</p>
+            <p className="text-lg font-bold tabular-nums">{totalCited}<span className="text-sm text-muted-foreground font-normal">/{totalPossible}</span></p>
+          </div>
+          {weakestPage && (
+            <div>
+              <p className="text-xs text-muted-foreground">Najsłabsza strona</p>
+              <p className="text-xs font-medium truncate max-w-[140px]">
+                {(() => { try { return new URL(weakestPage.url).pathname || "/"; } catch { return weakestPage.url; } })()}
+              </p>
+              <p className={`text-xs ${getVisibilityScoreResult(weakestPage.lastCitedEngines ?? 0, weakestPage.lastTotalEngines ?? 4).colorClass}`}>
+                {weakestPage.lastCitedEngines ?? 0}/{weakestPage.lastTotalEngines ?? 4} silników
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Engine breakdown */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          {ALL_ENGINES.map((engine) => {
+            const cfg = ENGINE_CONFIG[engine];
+            return (
+              <TooltipProvider key={engine}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="w-7 h-7 rounded-lg text-[10px] font-bold flex items-center justify-center text-white shadow-sm"
+                      style={{ backgroundColor: cfg.color }}
+                    >
+                      {cfg.shortLabel[0]}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">{cfg.label}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })}
+        </div>
+
+        {/* Pro upgrade CTA */}
+        {!isPro && (
+          <Link href="/pricing" className="shrink-0">
+            <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1 h-8">
+              <TrendingUp className="w-3 h-3" /> Trend AI
+            </Button>
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -1041,31 +1209,41 @@ export default function Dashboard() {
     addMonitoring.mutate({ url });
   };
 
+  const [auditHistoryExpanded, setAuditHistoryExpanded] = useState(false);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <DashboardTopNav plan={plan} user={user} />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
 
-        {/* ── HERO ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* ── HERO GREETING ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">{greeting}, {firstName}! 👋</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <h1 className="text-2xl font-bold">{greeting}, {firstName}!</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">
               {totalAudits === 0
-                ? "Uruchom swój pierwszy audyt i sprawdź widoczność w AI Search."
-                : `Łącznie wykonałeś ${totalAudits} audyt${totalAudits === 1 ? "" : totalAudits < 5 ? "y" : "ów"}.`}
+                ? "Uruchom pierwszy audyt i sprawdź widoczność w AI Search."
+                : `${totalAudits} audyt${totalAudits === 1 ? "" : totalAudits < 5 ? "y" : "ów"} · Plan ${planLabel(plan)}`}
             </p>
           </div>
           <Link href="/">
             <Button className="bg-violet-600 hover:bg-violet-700 text-white gap-2 h-10 px-5 text-sm font-semibold shadow-lg shadow-violet-900/30">
-              <Zap className="w-4 h-4" /> Uruchom nowy audyt
+              <Zap className="w-4 h-4" /> Nowy audyt
             </Button>
           </Link>
         </div>
 
-        {/* ── STATS ROW ── */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* ── AI VISIBILITY COMMAND CENTER (HERO) ── */}
+        <AIVisibilityCommandCenter
+          monitoredPages={monitoredPages}
+          usageStats={usageStats}
+          isPro={isPro}
+          onAddMonitoring={() => setShowAddMonitoring(true)}
+        />
+
+        {/* ── STATS ROW — simplified to 3 cards ── */}
+        <div className="grid grid-cols-3 gap-3">
           <StatCard
             icon={BarChart2}
             label="Średni wynik AI"
@@ -1085,132 +1263,159 @@ export default function Dashboard() {
           <StatCard
             icon={Flame}
             label="Audyty w tym mies."
-            value={auditsUsed}
-            sub={`z ${auditsLimit > 9999 ? "∞" : auditsLimit} w planie`}
+            value={`${auditsUsed}/${auditsLimit > 9999 ? "∞" : auditsLimit}`}
+            sub={`Limit planu ${planLabel(plan)}`}
             iconColor="text-orange-400"
           />
-          <StatCard
-            icon={Globe}
-            label="Monitorowane strony"
-            value={monitoredPages?.length ?? 0}
-            sub={`z ${monitoringLimit > 9999 ? "∞" : monitoringLimit} w planie`}
-            iconColor="text-blue-400"
-          />
-          {/* 5th card: AI Visibility — citation data from monitored pages */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <StatCard
-                    icon={Eye}
-                    label="Widoczność AI"
-                    value={
-                      usageStats?.avgCitedEngines != null
-                        ? `${usageStats.avgCitedEngines}/${usageStats.citationTotal ?? 4}`
-                        : "–"
-                    }
-                    sub={
-                      usageStats?.avgCitedEngines != null
-                        ? usageStats.avgCitedEngines >= (usageStats.citationTotal ?? 4)
-                          ? "Pełna widoczność"
-                          : usageStats.avgCitedEngines > 0
-                          ? "Częściowa"
-                          : "Niewidoczna"
-                        : usageStats?.pagesWithCitationCount === 0
-                        ? "Brak danych"
-                        : "Sprawdź widoczność"
-                    }
-                    colorClass={
-                      usageStats?.avgCitedEngines != null
-                        ? usageStats.avgCitedEngines >= (usageStats.citationTotal ?? 4)
-                          ? "text-emerald-400"
-                          : usageStats.avgCitedEngines > 0
-                          ? "text-amber-400"
-                          : "text-red-400"
-                        : undefined
-                    }
-                    iconColor={
-                      usageStats?.avgCitedEngines != null
-                        ? usageStats.avgCitedEngines >= (usageStats.citationTotal ?? 4)
-                          ? "text-emerald-400"
-                          : usageStats.avgCitedEngines > 0
-                          ? "text-amber-400"
-                          : "text-red-400"
-                        : "text-violet-400"
-                    }
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                <p className="text-xs">
-                  {
-                    usageStats?.avgCitedEngines != null
-                      ? `Średnio ${usageStats.avgCitedEngines} z ${usageStats.citationTotal ?? 4} silników AI cytuje Twoje monitorowane strony (ChatGPT, Perplexity, Google AI, Gemini).`
-                      : "Uruchom monitoring strony i sprawdź widoczność AI, aby zobaczyć tę metrykę."
-                  }
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
 
         {/* ── USAGE METER ── */}
         <UsageMeter used={auditsUsed} limit={auditsLimit} plan={plan} />
 
-        {/* ── MAIN GRID ── */}
+        {/* ── MONITORED PAGES GRID ── */}
+        {(monitoredPages ?? []).length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                <Eye className="w-4 h-4" /> Monitorowane strony
+              </h2>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs gap-1 h-7 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowAddMonitoring(!showAddMonitoring)}
+              >
+                <Plus className="w-3 h-3" /> Dodaj stronę
+              </Button>
+            </div>
+
+            {showAddMonitoring && (
+              <div className="rounded-xl border border-border bg-card p-4 mb-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    placeholder="https://twoja-strona.pl/produkt"
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-foreground placeholder:text-muted-foreground"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddMonitoring()}
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                    onClick={handleAddMonitoring}
+                    disabled={addMonitoring.isPending}
+                  >
+                    {addMonitoring.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Dodaj"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="shrink-0 text-muted-foreground" onClick={() => setShowAddMonitoring(false)}>Anuluj</Button>
+                </div>
+                {!isPaid && (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    Plan Free: 1 monitorowana strona.{" "}
+                    <Link href="/pricing" className="text-violet-400 underline">Upgrade</Link> dla więcej.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(monitoredPages ?? []).map((page) => (
+                <MonitoredPageCard
+                  key={page.id}
+                  page={page}
+                  onRemove={(id) => removeMonitoring.mutate({ id })}
+                  isPro={isPro}
+                  isStarter={plan === "starter"}
+                  citationStatus={page.lastAuditId != null ? citationStatuses?.[page.lastAuditId] : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── MAIN GRID: Audit History + Sidebar ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* LEFT — Recent Audits */}
-          <div className="lg:col-span-2 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" /> Ostatnie audyty
-              </h2>
-              <Link href="/">
-                <Button size="sm" variant="ghost" className="text-xs gap-1 text-muted-foreground hover:text-foreground h-7">
-                  <Plus className="w-3 h-3" /> Nowy audyt
-                </Button>
-              </Link>
-            </div>
+          {/* LEFT — Audit History (collapsible) */}
+          <div id="audits" className="lg:col-span-2 space-y-3">
+            <button
+              className="w-full flex items-center justify-between text-sm font-semibold hover:text-foreground text-muted-foreground transition-colors"
+              onClick={() => setAuditHistoryExpanded(!auditHistoryExpanded)}
+            >
+              <span className="flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Historia audytów
+                {history && history.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{history.length}</Badge>
+                )}
+              </span>
+              {auditHistoryExpanded
+                ? <ChevronUp className="w-4 h-4" />
+                : <ChevronDown className="w-4 h-4" />}
+            </button>
 
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              {historyLoading ? (
-                <div className="p-8 text-center text-muted-foreground text-sm">Ładowanie historii...</div>
-              ) : !history || history.length === 0 ? (
-                <div className="p-10 text-center">
-                  <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm font-medium">Brak audytów</p>
-                  <p className="text-xs text-muted-foreground mt-1 mb-4">
-                    Uruchom pierwszy audyt i sprawdź widoczność swojej strony w AI Search.
-                  </p>
-                  <Link href="/">
-                    <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
-                      Uruchom audyt
-                    </Button>
-                  </Link>
+            {auditHistoryExpanded && (
+              <>
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
+                  {historyLoading ? (
+                    <div className="p-8 text-center text-muted-foreground text-sm">Ładowanie historii...</div>
+                  ) : !history || history.length === 0 ? (
+                    <div className="p-10 text-center">
+                      <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm font-medium">Brak audytów</p>
+                      <p className="text-xs text-muted-foreground mt-1 mb-4">
+                        Uruchom pierwszy audyt i sprawdź widoczność swojej strony w AI Search.
+                      </p>
+                      <Link href="/">
+                        <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+                          Uruchom audyt
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {history.map((audit) => (
+                        <AuditRow key={audit.id} audit={audit} citationStatus={citationStatuses?.[audit.id]} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {history.map((audit) => (
-                    <AuditRow key={audit.id} audit={audit} citationStatus={citationStatuses?.[audit.id]} />
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {!isPaid && history && history.length >= 3 && (
-              <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-violet-300">Widzisz tylko ostatnie audyty</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Plan Starter odblokuje pełną historię, eksport PDF i monitoring 10 stron.
-                  </p>
-                </div>
-                <Link href="/pricing">
-                  <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white shrink-0 text-xs gap-1">
-                    <Zap className="w-3 h-3" /> Upgrade
-                  </Button>
-                </Link>
+                {!isPaid && history && history.length >= 3 && (
+                  <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-violet-300">Widzisz tylko ostatnie audyty</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Plan Starter odblokuje pełną historię, eksport PDF i monitoring 10 stron.
+                      </p>
+                    </div>
+                    <Link href="/pricing">
+                      <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white shrink-0 text-xs gap-1">
+                        <Zap className="w-3 h-3" /> Upgrade
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!auditHistoryExpanded && history && history.length > 0 && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <AuditRow audit={history[0]} citationStatus={citationStatuses?.[history[0].id]} />
+                <button
+                  className="w-full py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors flex items-center justify-center gap-1"
+                  onClick={() => setAuditHistoryExpanded(true)}
+                >
+                  <ChevronDown className="w-3 h-3" /> Pokaż wszystkie {history.length} audytów
+                </button>
+              </div>
+            )}
+
+            {!history || history.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border p-6 text-center">
+                <p className="text-sm text-muted-foreground">Brak audytów — uruchom pierwszy poniżej.</p>
+                <Link href="/"><Button size="sm" className="mt-3 bg-violet-600 hover:bg-violet-700 text-white">Uruchom audyt</Button></Link>
               </div>
             )}
           </div>
@@ -1313,170 +1518,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* ── AI VISIBILITY HUB ── */}
-        <div>
-          {/* Section header */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-base font-semibold flex items-center gap-2">
-                <Eye className="w-4 h-4 text-violet-400" />
-                <span>Widoczność AI Search</span>
-                {monitoredPages && monitoredPages.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">{monitoredPages.length} stron</Badge>
-                )}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Monitoring widoczności Twoich stron w ChatGPT, Google AI, Perplexity i Gemini
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs gap-1 h-7"
-              onClick={() => setShowAddMonitoring(!showAddMonitoring)}
-            >
-              <Plus className="w-3 h-3" /> Dodaj stronę
-            </Button>
-          </div>
-
-          {/* AI Visibility aggregate banner — shown when at least one page has citation data */}
-          {monitoredPages && monitoredPages.length > 0 && (() => {
-            const pagesWithData = monitoredPages.filter((p) => p.lastCitedEngines != null);
-            if (pagesWithData.length === 0) return null;
-            const totalCited = pagesWithData.reduce((sum, p) => sum + (p.lastCitedEngines ?? 0), 0);
-            const totalPossible = pagesWithData.reduce((sum, p) => sum + (p.lastTotalEngines ?? 4), 0);
-            const avgVisScore = Math.round((totalCited / totalPossible) * 100);
-            const visResult = getVisibilityScoreResult(
-              totalCited / pagesWithData.length,
-              pagesWithData[0]?.lastTotalEngines ?? 4
-            );
-            const citedPages = pagesWithData.filter((p) => (p.lastCitedEngines ?? 0) > 0).length;
-            return (
-              <div className={`rounded-xl border p-4 mb-4 flex items-center gap-4 ${visResult.bgClass}`}>
-                {/* Score ring */}
-                <div className="shrink-0 flex flex-col items-center">
-                  <span className={`text-3xl font-bold tabular-nums ${visResult.colorClass}`}>{avgVisScore}</span>
-                  <span className="text-[10px] text-muted-foreground">/100</span>
-                </div>
-                <div className="w-px h-10 bg-border/60 shrink-0" />
-                {/* Breakdown */}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${visResult.colorClass}`}>{visResult.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {citedPages} z {pagesWithData.length} stron cytowanych · {totalCited}/{totalPossible} sprawdzeń silników
-                  </p>
-                </div>
-                {/* Engine legend */}
-                <div className="shrink-0 hidden sm:flex items-center gap-1.5">
-                  {ALL_ENGINES.map((engine) => {
-                    const cfg = ENGINE_CONFIG[engine];
-                    const citedCount = pagesWithData.filter((p) => {
-                      // approximate: if page has citation data and cited > 0 assume engine may cite
-                      return (p.lastCitedEngines ?? 0) > 0;
-                    }).length;
-                    return (
-                      <TooltipProvider key={engine}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              className="w-6 h-6 rounded text-[9px] font-bold flex items-center justify-center text-white"
-                              style={{ backgroundColor: cfg.color }}
-                            >
-                              {cfg.shortLabel[0]}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="text-xs">
-                            {cfg.label}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  })}
-                </div>
-                {/* CTA for non-Pro */}
-                {!isPro && (
-                  <Link href="/pricing" className="shrink-0">
-                    <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1 h-7">
-                      <TrendingUp className="w-3 h-3" /> Trend AI
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            );
-          })()}
-
-          {showAddMonitoring && (
-            <div className="rounded-xl border border-border bg-card p-4 mb-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newUrl}
-                  onChange={(e) => setNewUrl(e.target.value)}
-                  placeholder="https://twoja-strona.pl/produkt"
-                  className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-foreground placeholder:text-muted-foreground"
-                  onKeyDown={(e) => e.key === "Enter" && handleAddMonitoring()}
-                />
-                <Button
-                  size="sm"
-                  className="bg-violet-600 hover:bg-violet-700 text-white shrink-0"
-                  onClick={handleAddMonitoring}
-                  disabled={addMonitoring.isPending}
-                >
-                  {addMonitoring.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Dodaj"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0 text-muted-foreground"
-                  onClick={() => setShowAddMonitoring(false)}
-                >
-                  Anuluj
-                </Button>
-              </div>
-              {!isPaid && (
-                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <Info className="w-3 h-3" />
-                  Plan Free: 1 monitorowana strona.{" "}
-                  <Link href="/pricing" className="text-violet-400 underline">Upgrade</Link> dla więcej.
-                </p>
-              )}
-            </div>
-          )}
-
-          {monitoringLoading ? (
-            <div className="text-sm text-muted-foreground">Ładowanie...</div>
-          ) : !monitoredPages || monitoredPages.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center">
-              <Eye className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm font-medium">Brak monitorowanych stron</p>
-              <p className="text-xs text-muted-foreground mt-1 mb-3">
-                Dodaj stronę, aby automatycznie śledzić zmiany wyników AI-Readiness.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs gap-1"
-                onClick={() => setShowAddMonitoring(true)}
-              >
-                <Plus className="w-3 h-3" /> Dodaj pierwszą stronę
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {monitoredPages.map((page) => (
-                <MonitoredPageCard
-                  key={page.id}
-                  page={page}
-                  onRemove={(id) => removeMonitoring.mutate({ id })}
-                  isPro={isPro}
-                  isStarter={plan === "starter"}
-                  citationStatus={page.lastAuditId != null ? citationStatuses?.[page.lastAuditId] : undefined}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ── LOCKED FEATURES ── */}
