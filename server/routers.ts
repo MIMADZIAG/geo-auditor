@@ -1204,6 +1204,93 @@ ${cleanedContent.slice(0, 20000)}
         };
       }),
 
+    // Create a rewrite job from an existing audit — auto-fills brief from ContentIntelligence
+    createRewrite: protectedProcedure
+      .input(z.object({
+        auditId: z.number().int().positive(),
+        toneOfVoice: z.enum(["professional", "friendly", "expert", "conversational"]).optional(),
+        additionalInstructions: z.string().max(1000).optional(),
+        language: z.enum(["pl", "en"]).default("pl"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const userRows = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+        const user = userRows[0];
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        if (!user.plan || user.plan === "free") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "AI Content Creator jest dostępny tylko dla planów płatnych." });
+        }
+        const audit = await getAuditById(input.auditId);
+        if (!audit) throw new TRPCError({ code: "NOT_FOUND", message: "Audyt nie znaleziony" });
+        const ci = audit.contentIntelligence as any;
+        const findings = audit.findings as any;
+        // Extract page title from meta tags check or fallback to URL
+        const metaChecks: any[] = findings?.metaTags?.checks ?? [];
+        const titleCheck = metaChecks.find((c: any) => c.id === "meta_title");
+        const pageTitle = audit.pageTitle ?? titleCheck?.description ?? audit.url;
+        const pageTopics: string[] = ci?.pageTopics ?? [];
+        const semanticGaps: string[] = ci?.semanticGaps ?? [];
+        const topOpportunity: string = ci?.topOpportunity ?? "";
+        const ciSummary: string = ci?.summary ?? "";
+        const topQuestions: string[] = ci?.topQuestions ?? [];
+        const pageTypeMap: Record<string, string> = {
+          product: "product", "product-listing": "listing", category: "category",
+          article: "article", homepage: "landing", landing: "landing",
+          service: "landing", faq: "faq", generic: "article",
+        };
+        const mappedPageType = pageTypeMap[audit.pageType ?? "generic"] ?? "article";
+        const contextParts: string[] = [];
+        if (ciSummary) contextParts.push(`Ocena AI: ${ciSummary}`);
+        if (semanticGaps.length > 0) contextParts.push(`Brakujące tematy: ${semanticGaps.join(", ")}`);
+        if (topOpportunity) contextParts.push(`Główna szansa: ${topOpportunity}`);
+        if (topQuestions.length > 0) contextParts.push(`Pytania użytkowników: ${topQuestions.slice(0, 5).join(" | ")}`);
+        if (input.additionalInstructions) contextParts.push(`Wskazówki: ${input.additionalInstructions}`);
+        const topic = `Aktualizacja treści strony: ${pageTitle}\nURL: ${audit.url}`;
+        const [inserted] = await db.insert(pageCreations).values({
+          userId: ctx.user.id,
+          pageType: mappedPageType,
+          topic,
+          targetKeywords: pageTopics,
+          toneOfVoice: input.toneOfVoice ?? "professional",
+          targetAudience: "",
+          additionalContext: contextParts.join("\n"),
+          language: input.language,
+          status: "pending",
+        });
+        const creationId = (inserted as any).insertId as number;
+        console.log(`[PageCreator/Rewrite] Job created: id=${creationId} auditId=${input.auditId}`);
+        (async () => {
+          try {
+            await db.update(pageCreations).set({ status: "researching" }).where(eq(pageCreations.id, creationId));
+            const result = await runPageCreatorPipeline(
+              { pageType: mappedPageType, topic, targetKeywords: pageTopics,
+                toneOfVoice: input.toneOfVoice ?? "professional", targetAudience: "",
+                additionalContext: contextParts.join("\n"), language: input.language },
+              async (progress) => {
+                const statusMap: Record<string, "pending" | "researching" | "generating" | "completed" | "failed"> = {
+                  fan_out: "researching", researching: "researching", synthesizing: "researching",
+                  generating: "generating", technical: "generating", done: "completed",
+                };
+                await db.update(pageCreations).set({ status: statusMap[progress.stage] ?? "generating" }).where(eq(pageCreations.id, creationId));
+              }
+            );
+            await db.update(pageCreations).set({
+              status: "completed", result: result as any,
+              queryFanOut: result.queryFanOut,
+              groundingUrls: result.groundingSources.map(s => s.url),
+              groundingSummary: result.researchSummary,
+              completedAt: new Date(),
+            }).where(eq(pageCreations.id, creationId));
+            console.log(`[PageCreator/Rewrite] Job ${creationId} completed`);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "Pipeline failed";
+            await db.update(pageCreations).set({ status: "failed", errorMessage: msg }).where(eq(pageCreations.id, creationId));
+          }
+        })();
+        return { id: creationId, status: "pending" };
+      }),
+
     // List user's page creations
     list: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();

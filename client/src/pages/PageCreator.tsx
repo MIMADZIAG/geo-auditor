@@ -13,12 +13,12 @@ import {
   Sparkles, FileText, ShoppingBag, Rocket, Package,
   HelpCircle, LayoutGrid, BarChart2, MapPin,
   ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle2,
-  ChevronRight, Zap, Globe, Brain
+  ChevronRight, Zap, Globe, Brain, RefreshCw
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type PageType = "article" | "listing" | "landing" | "product" | "faq" | "category" | "comparison" | "local";
+type PageType = "article" | "listing" | "landing" | "product" | "faq" | "category" | "comparison" | "local" | "rewrite";
 type ToneOfVoice = "professional" | "friendly" | "expert" | "conversational";
 
 interface PageTypeOption {
@@ -95,6 +95,14 @@ const PAGE_TYPES: PageTypeOption[] = [
     example: "Fryzjer Kraków — centrum",
     aiTip: "Dominacja w lokalnych AI Overviews",
   },
+  {
+    id: "rewrite",
+    label: "Aktualizacja treści",
+    description: "Ulepsz istniejącą stronę na podstawie audytu AI",
+    icon: <RefreshCw className="w-6 h-6" />,
+    example: "Zaktualizuj stronę produktu wg rekomendacji AI",
+    aiTip: "Najszybsza droga do poprawy widoczności",
+  },
 ];
 
 const TONES: { id: ToneOfVoice; label: string; desc: string }[] = [
@@ -119,20 +127,70 @@ export default function PageCreator() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
 
+  // Parse URL params — ?auditId=X&mode=rewrite
+  const urlParams = new URLSearchParams(window.location.search);
+  const auditIdParam = urlParams.get("auditId") ? Number(urlParams.get("auditId")) : null;
+  const modeParam = urlParams.get("mode");
+
   // Wizard state
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedType, setSelectedType] = useState<PageType | null>(null);
+  const [selectedType, setSelectedType] = useState<PageType | null>(modeParam === "rewrite" ? "rewrite" : null);
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
   const [tone, setTone] = useState<ToneOfVoice>("professional");
   const [audience, setAudience] = useState("");
   const [additionalContext, setAdditionalContext] = useState("");
+  const [additionalInstructions, setAdditionalInstructions] = useState("");
   const [language, setLanguage] = useState<"pl" | "en">("pl");
 
   // Job polling
   const [jobId, setJobId] = useState<number | null>(null);
   const [jobStatus, setJobStatus] = useState<string>("pending");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch audit data for auto-fill when ?auditId=X&mode=rewrite
+  const auditQuery = trpc.audit.getById.useQuery(
+    { id: auditIdParam! },
+    { enabled: !!auditIdParam && modeParam === "rewrite" }
+  );
+
+  // Auto-fill form from ContentIntelligence when audit data arrives
+  useEffect(() => {
+    if (!auditQuery.data || modeParam !== "rewrite") return;
+    const audit = auditQuery.data as any;
+    const ci = audit.contentIntelligence as any;
+    const pageTitle = audit.pageTitle ?? audit.url;
+    const pageTopics: string[] = ci?.pageTopics ?? [];
+    const semanticGaps: string[] = ci?.semanticGaps ?? [];
+    const topOpportunity: string = ci?.topOpportunity ?? "";
+    const topQuestions: string[] = ci?.topQuestions ?? [];
+    const ciSummary: string = ci?.summary ?? "";
+    setTopic(`Aktualizacja treści strony: ${pageTitle}\nURL: ${audit.url}`);
+    setKeywords(pageTopics.join(", "));
+    const ctxParts: string[] = [];
+    if (ciSummary) ctxParts.push(`Ocena AI: ${ciSummary}`);
+    if (semanticGaps.length > 0) ctxParts.push(`Brakujące tematy: ${semanticGaps.join(", ")}`);
+    if (topOpportunity) ctxParts.push(`Główna szansa: ${topOpportunity}`);
+    if (topQuestions.length > 0) ctxParts.push(`Pytania użytkowników: ${topQuestions.slice(0, 5).join(" | ")}`);
+    setAdditionalContext(ctxParts.join("\n"));
+    if (pageTitle && pageTopics.length > 0) setStep(2);
+  }, [auditQuery.data, modeParam]);
+
+  // createRewrite mutation — used when selectedType === "rewrite" and auditId is available
+  const createRewriteMutation = trpc.pageCreator.createRewrite.useMutation({
+    onSuccess: (data) => {
+      setJobId(data.id);
+      setStep(3);
+      setJobStatus("pending");
+    },
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN") {
+        toast.error("Plan płatny wymagany: " + err.message);
+      } else {
+        toast.error(err.message);
+      }
+    },
+  });
 
   const createMutation = trpc.pageCreator.create.useMutation({
     onSuccess: (data) => {
@@ -398,8 +456,20 @@ export default function PageCreator() {
   const handleSubmit = () => {
     if (!selectedType || topic.trim().length < 10) return;
     const kwList = keywords.split(",").map(k => k.trim()).filter(Boolean);
+    // Route rewrite type to dedicated mutation
+    if (selectedType === "rewrite" && auditIdParam) {
+      createRewriteMutation.mutate({
+        auditId: auditIdParam,
+        toneOfVoice: tone,
+        additionalInstructions: additionalInstructions.trim() || undefined,
+        language,
+      });
+      return;
+    }
+    // Standard page creation for all other types
+    const safePageType = selectedType as Exclude<PageType, "rewrite">;
     createMutation.mutate({
-      pageType: selectedType,
+      pageType: safePageType,
       topic: topic.trim(),
       targetKeywords: kwList.length > 0 ? kwList : undefined,
       toneOfVoice: tone,
@@ -408,6 +478,8 @@ export default function PageCreator() {
       language,
     });
   };
+  const isRewriteMode = selectedType === "rewrite" && !!auditIdParam;
+  const isSubmitting = createMutation.isPending || createRewriteMutation.isPending;
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] py-12 px-4">
@@ -501,24 +573,58 @@ export default function PageCreator() {
             />
           </div>
 
-          {/* Additional context */}
-          <div>
-            <Label className="text-zinc-200 font-semibold mb-2 block">
-              Dodatkowe informacje
-              <span className="text-zinc-500 font-normal ml-2 text-xs">(opcjonalne — bardzo zalecane!)</span>
-            </Label>
-            <Textarea
-              value={additionalContext}
-              onChange={(e) => setAdditionalContext(e.target.value)}
-              placeholder="Podaj wszystko, co może pomóc AI: unikalne cechy produktu/usługi, USP, certyfikaty, nagrody, dane techniczne, ceny, obszar działania, konkurenci, specjalne wymagania..."
-              className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-600 min-h-[100px] resize-none focus:border-violet-500"
-              maxLength={3000}
-            />
-            <div className="flex justify-between mt-1.5">
-              <p className="text-zinc-600 text-xs">Każdy szczegół poprawia jakość wygenerowanej treści.</p>
-              <span className="text-zinc-600 text-xs">{additionalContext.length}/3000</span>
+          {/* Additional context — rewrite mode shows audit data read-only + user instructions */}
+          {isRewriteMode ? (
+            <>
+              {/* Auto-filled audit context — read-only, collapsible */}
+              <div>
+                <Label className="text-zinc-200 font-semibold mb-2 block">
+                  Dane z audytu
+                  <span className="text-emerald-400 font-normal ml-2 text-xs">✔ Auto-wypełnione</span>
+                </Label>
+                <div className="bg-zinc-900/60 border border-emerald-500/20 rounded-xl p-4 text-zinc-400 text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
+                  {additionalContext || "Brak danych z audytu"}
+                </div>
+                <p className="text-zinc-600 text-xs mt-1.5">Wnioski z analizy Content Intelligence — AI użyje ich jako kontekst aktualizacji.</p>
+              </div>
+              {/* User additional instructions */}
+              <div>
+                <Label className="text-zinc-200 font-semibold mb-2 block">
+                  Twoje wskazówki
+                  <span className="text-zinc-500 font-normal ml-2 text-xs">(opcjonalne)</span>
+                </Label>
+                <Textarea
+                  value={additionalInstructions}
+                  onChange={(e) => setAdditionalInstructions(e.target.value)}
+                  placeholder="Np. zachowaj obecny ton, dodaj sekcję o dostawie, skup się na korzyściach dla kobiet 25-40 lat..."
+                  className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-600 min-h-[80px] resize-none focus:border-violet-500"
+                  maxLength={1000}
+                />
+                <div className="flex justify-between mt-1.5">
+                  <p className="text-zinc-600 text-xs">Dodaj własne wytyczne, które AI uwzględni przy aktualizacji.</p>
+                  <span className="text-zinc-600 text-xs">{additionalInstructions.length}/1000</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div>
+              <Label className="text-zinc-200 font-semibold mb-2 block">
+                Dodatkowe informacje
+                <span className="text-zinc-500 font-normal ml-2 text-xs">(opcjonalne — bardzo zalecane!)</span>
+              </Label>
+              <Textarea
+                value={additionalContext}
+                onChange={(e) => setAdditionalContext(e.target.value)}
+                placeholder="Podaj wszystko, co może pomóc AI: unikalne cechy produktu/usługi, USP, certyfikaty, nagrody, dane techniczne, ceny, obszar działania, konkurenci, specjalne wymagania..."
+                className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-600 min-h-[100px] resize-none focus:border-violet-500"
+                maxLength={3000}
+              />
+              <div className="flex justify-between mt-1.5">
+                <p className="text-zinc-600 text-xs">Każdy szczegół poprawia jakość wygenerowanej treści.</p>
+                <span className="text-zinc-600 text-xs">{additionalContext.length}/3000</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Language */}
           <div>
@@ -565,13 +671,18 @@ export default function PageCreator() {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={topic.trim().length < 10 || createMutation.isPending}
+            disabled={(isRewriteMode ? false : topic.trim().length < 10) || isSubmitting}
             className="bg-violet-600 hover:bg-violet-500 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-40"
           >
-            {createMutation.isPending ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Uruchamiam…
+              </>
+            ) : isRewriteMode ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Aktualizuj treść AI
               </>
             ) : (
               <>

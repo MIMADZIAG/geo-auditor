@@ -635,8 +635,8 @@ export default function Results() {
             auditStatus={audit.status}
           />
 
-          {/* Full Rewrite AI */}
-          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
+          {/* AI Content Creator — Aktualizacja treści */}
+          <ContentCreatorRewriteWidget auditId={audit.id} navigate={navigate} isPaid={hasPaidPlan} />
 
           {/* Passing Checks */}
           {findings && <PassingChecks findings={findings} />}
@@ -1971,6 +1971,51 @@ function RewriteProgressIndicator({
           className="h-full bg-gradient-to-r from-violet-600 to-indigo-500 rounded-full transition-all duration-700 ease-out"
           style={{ width: `${Math.min(100, (step / REWRITE_STEPS.length) * 100)}%` }}
         />
+      </div>
+    </div>
+  );
+}
+
+// ─── Content Creator Rewrite Widget (compact CTA in Tab 1) ─────────────────────────
+function ContentCreatorRewriteWidget({
+  auditId,
+  navigate,
+  isPaid,
+}: {
+  auditId: number;
+  navigate: (path: string) => void;
+  isPaid: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-violet-500/20 bg-violet-500/4 p-5">
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-bold text-white">Aktualizacja treści AI</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">Content Creator</span>
+          </div>
+          <p className="text-xs text-zinc-400 mb-3">
+            AI przepisze tę stronę zgodnie z zasadami GEO — z FAQ, danymi strukturalnymi i treścią cytowaną przez modele AI.
+            Wnioski z audytu są automatycznie wczytywane jako kontekst.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate(`/page-creator?auditId=${auditId}&mode=rewrite`)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Aktualizuj z AI
+            </button>
+            {!isPaid && (
+              <span className="inline-flex items-center gap-1 text-xs text-zinc-500 px-3 py-1.5">
+                <Lock className="w-3 h-3" /> Dostępne w planie Starter
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

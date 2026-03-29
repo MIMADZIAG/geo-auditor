@@ -1017,3 +1017,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] AICitationPanel: forwardRef + useImperativeHandle (startCheck) + onStatusChange callback
 - [x] Dashboard: CitationBadge w AuditRow (ikona Eye + X/Y AI)
 - [x] Backend: citation.getStatusBatch — batch query bez N+1 dla Dashboardu
+
+## Full Rewrite → Content Creator Migration
+- [ ] Nowy typ "rewrite" w PAGE_TYPES w PageCreator.tsx
+- [ ] Backend endpoint pageCreator.createRewrite z auditId + auto-fill z ContentIntelligence
+- [ ] Auto-fill briefu w PageCreator gdy ?auditId=X w URL
+- [ ] Widget akwizycji w Results.tsx (Tab 1) — CTA do Content Creator z auditId
+- [ ] WhatIfSection zachowany jako widget w Tab 1 dla paid users (uproszczony)
