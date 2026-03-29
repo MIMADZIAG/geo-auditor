@@ -286,6 +286,57 @@ export async function captureEmailLead(email: string, auditId?: number, source =
   }
 }
 
+// ─── Citation Visibility helpers ────────────────────────────────────────────────
+
+/**
+ * Update monitored_pages with latest citation check results.
+ * Called after each citation job completes for a monitored page.
+ */
+export async function updateMonitoredPageCitationStatus(
+  monitoredPageId: number,
+  citedEngines: number,
+  totalEngines: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(monitoredPages)
+    .set({
+      lastCitedEngines: citedEngines,
+      lastTotalEngines: totalEngines,
+      lastCitationAt: new Date(),
+    })
+    .where(eq(monitoredPages.id, monitoredPageId));
+}
+
+/**
+ * Update a score_snapshot with citation data after citation job completes.
+ * Allows the history sparkline to show citation trend over time.
+ */
+export async function updateScoreSnapshotCitation(
+  auditId: number,
+  monitoredPageId: number,
+  citedEngines: number,
+  totalEngines: number,
+  citationJobId: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(scoreSnapshots)
+    .set({
+      citedEnginesCount: citedEngines,
+      totalEnginesChecked: totalEngines,
+      citationJobId,
+    })
+    .where(
+      and(
+        eq(scoreSnapshots.auditId, auditId),
+        eq(scoreSnapshots.monitoredPageId, monitoredPageId)
+      )
+    );
+}
+
 // ─── Usage Stats helper ───────────────────────────────────────────────────────
 export async function getAuditUsageStats(userId: number) {
   const db = await getDb();

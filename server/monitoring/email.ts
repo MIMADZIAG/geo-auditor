@@ -1,13 +1,15 @@
 /**
- * Monitoring Email Notifications
+ * Monitoring Email Notifications v2 — with AI Visibility section
  *
  * Priority order for sending emails:
  * 1. Resend API (RESEND_API_KEY) — simplest, no SMTP config needed, 3000 free/month
  * 2. SMTP via Nodemailer (SMTP_HOST + SMTP_USER + SMTP_PASS) — any provider
  * 3. Dev mode fallback — logs to console when neither is configured
  *
- * Architecture decision: Resend is preferred because it requires only one env var
- * and works reliably in serverless/container environments without SMTP firewall issues.
+ * NEW in v2: Added citedEngines / totalEngines to payload.
+ * When citation data is available, the email shows a dedicated "Widoczność AI" section
+ * with engine count and a CTA to the visibility tab (?tab=visibility).
+ * When citation data is not yet available (first audit), the section shows a pending state.
  */
 
 import nodemailer from "nodemailer";
@@ -21,6 +23,9 @@ export interface MonitoringEmailPayload {
   scoreDelta: number | null;
   auditId: number;
   appUrl: string;
+  // AI Citation Visibility — null when not yet checked
+  citedEngines: number | null;
+  totalEngines: number | null;
 }
 
 // ─── Score helpers ────────────────────────────────────────────────────────────
@@ -49,6 +54,20 @@ function deltaColor(delta: number | null): string {
   return delta > 0 ? "#22c55e" : "#ef4444";
 }
 
+function citationColor(cited: number, total: number): string {
+  if (cited === 0) return "#ef4444";
+  if (cited >= total) return "#22c55e";
+  if (cited >= Math.ceil(total / 2)) return "#f59e0b";
+  return "#f59e0b";
+}
+
+function citationLabel(cited: number, total: number): string {
+  if (cited === 0) return "Niewidoczna";
+  if (cited >= total) return "Pełna widoczność";
+  if (cited >= Math.ceil(total / 2)) return "Częściowa";
+  return "Niska widoczność";
+}
+
 // ─── HTML Template ────────────────────────────────────────────────────────────
 
 function buildHtmlEmail(p: MonitoringEmailPayload): string {
@@ -57,9 +76,63 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
   const delta = deltaText(p.scoreDelta);
   const deltaClr = deltaColor(p.scoreDelta);
   const pageLabel = p.label ?? p.url;
-  const reportUrl = `${p.appUrl}/report/${p.auditId}`;
+  const reportUrl = `${p.appUrl}/results/${p.auditId}`;
+  const visibilityUrl = `${p.appUrl}/results/${p.auditId}?tab=visibility`;
   const dashboardUrl = `${p.appUrl}/dashboard`;
-  const name = p.toName ?? "Czesc";
+  const name = p.toName ?? "Cześć";
+
+  const hasCitationData = p.citedEngines !== null && p.totalEngines !== null;
+  const citedEngines = p.citedEngines ?? 0;
+  const totalEngines = p.totalEngines ?? 4;
+  const citClr = citationColor(citedEngines, totalEngines);
+  const citLabel = citationLabel(citedEngines, totalEngines);
+
+  // Build citation section HTML
+  const citationSection = hasCitationData
+    ? `
+      <!-- AI Visibility section -->
+      <div style="margin-bottom:24px;">
+        <p style="margin:0 0 12px 0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Widoczność w AI Search</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td width="50%" style="padding-right:6px;">
+              <div style="background:#0f172a;border-radius:10px;padding:16px;text-align:center;border:1px solid #1e3a5f;">
+                <p style="margin:0 0 4px 0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Silniki AI</p>
+                <p style="margin:0;font-size:32px;font-weight:800;color:${citClr};">${citedEngines}<span style="font-size:16px;color:#475569;">/${totalEngines}</span></p>
+                <p style="margin:4px 0 0 0;font-size:12px;color:${citClr};">${citLabel}</p>
+              </div>
+            </td>
+            <td width="50%" style="padding-left:6px;">
+              <div style="background:#0f172a;border-radius:10px;padding:16px;border:1px solid #1e3a5f;">
+                <p style="margin:0 0 8px 0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Sprawdzone silniki</p>
+                <p style="margin:0 0 4px 0;font-size:12px;color:${citedEngines > 0 ? '#22c55e' : '#64748b'};">● ChatGPT Search</p>
+                <p style="margin:0 0 4px 0;font-size:12px;color:${citedEngines > 0 ? '#22c55e' : '#64748b'};">● Google AI Overviews</p>
+                <p style="margin:0 0 4px 0;font-size:12px;color:${citedEngines > 0 ? '#22c55e' : '#64748b'};">● Perplexity</p>
+                <p style="margin:0;font-size:12px;color:${citedEngines > 0 ? '#22c55e' : '#64748b'};">● Gemini</p>
+              </div>
+            </td>
+          </tr>
+        </table>
+        ${citedEngines > 0
+          ? `<div style="background:#052e16;border-radius:8px;padding:12px 16px;margin-top:12px;border:1px solid #14532d;">
+               <p style="margin:0;font-size:13px;color:#86efac;">🎉 Twoja strona jest cytowana przez ${citedEngines} z ${totalEngines} silników AI. Użytkownicy AI Search mogą trafić na Twoją stronę!</p>
+             </div>`
+          : `<div style="background:#1c0a09;border-radius:8px;padding:12px 16px;margin-top:12px;border:1px solid #7f1d1d;">
+               <p style="margin:0;font-size:13px;color:#fca5a5;">Twoja strona nie jest jeszcze cytowana przez AI. Sprawdź rekomendacje w raporcie, aby poprawić widoczność.</p>
+             </div>`
+        }
+      </div>
+    `
+    : `
+      <!-- Citation pending section -->
+      <div style="margin-bottom:24px;">
+        <p style="margin:0 0 12px 0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Widoczność w AI Search</p>
+        <div style="background:#0f172a;border-radius:10px;padding:16px;border:1px solid #1e3a5f;text-align:center;">
+          <p style="margin:0;font-size:13px;color:#64748b;">Sprawdzanie widoczności w toku — wyniki pojawią się w ciągu kilku minut w panelu.</p>
+          <a href="${visibilityUrl}" style="display:inline-block;margin-top:10px;color:#a78bfa;font-size:13px;text-decoration:none;">Sprawdź widoczność AI →</a>
+        </div>
+      </div>
+    `;
 
   return `<!DOCTYPE html>
 <html lang="pl">
@@ -122,13 +195,15 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
                     <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;border:1px solid #1e3a5f;">
                       <p style="margin:0 0 4px 0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Zmiana vs poprzedni</p>
                       <p style="margin:0;font-size:28px;font-weight:800;color:${deltaClr};">
-                        ${p.scoreDelta !== null ? (p.scoreDelta >= 0 ? "+" : "") + p.scoreDelta.toFixed(1) : ""}
+                        ${p.scoreDelta !== null ? (p.scoreDelta >= 0 ? "+" : "") + p.scoreDelta.toFixed(1) : "—"}
                       </p>
                       <p style="margin:4px 0 0 0;font-size:12px;color:${deltaClr};">${delta || "Pierwszy audyt"}</p>
                     </div>
                   </td>
                 </tr>
               </table>
+
+              ${citationSection}
 
               <!-- CTA buttons -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
@@ -139,8 +214,8 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
                     </a>
                   </td>
                   <td style="padding-left:8px;" width="50%">
-                    <a href="${dashboardUrl}" style="display:block;background:#1e293b;color:#a78bfa;text-decoration:none;text-align:center;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:600;border:1px solid #334155;">
-                      Przejdz do panelu
+                    <a href="${visibilityUrl}" style="display:block;background:#1e293b;color:#a78bfa;text-decoration:none;text-align:center;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:600;border:1px solid #334155;">
+                      Widocznosc AI →
                     </a>
                   </td>
                 </tr>
@@ -149,7 +224,7 @@ function buildHtmlEmail(p: MonitoringEmailPayload): string {
               <!-- Info note -->
               <p style="margin:0;font-size:12px;color:#475569;text-align:center;line-height:1.6;">
                 Ten raport zostal wygenerowany automatycznie przez GEO-Auditor.<br/>
-                Mozesz zmienic czestotliwosc monitoringu w ustawieniach panelu.
+                <a href="${dashboardUrl}" style="color:#7c3aed;text-decoration:none;">Zarzadzaj monitoringiem</a>
               </p>
 
             </td>
@@ -260,7 +335,10 @@ async function sendViaSmtp(
  * Returns true on success, false on failure (non-throwing).
  */
 export async function sendMonitoringEmail(payload: MonitoringEmailPayload): Promise<boolean> {
-  const subject = `Raport monitoringu: ${payload.label ?? payload.url} - wynik ${Math.round(payload.overallScore)}/100`;
+  const citationSuffix = payload.citedEngines !== null
+    ? ` | AI: ${payload.citedEngines}/${payload.totalEngines ?? 4} silników`
+    : "";
+  const subject = `Raport monitoringu: ${payload.label ?? payload.url} — wynik ${Math.round(payload.overallScore)}/100${citationSuffix}`;
   const html = buildHtmlEmail(payload);
 
   // 1. Try Resend API
@@ -276,7 +354,8 @@ export async function sendMonitoringEmail(payload: MonitoringEmailPayload): Prom
   // 3. Dev mode fallback
   console.log(
     `[MonitoringEmail] No email provider configured (set RESEND_API_KEY or SMTP_HOST+SMTP_USER+SMTP_PASS).`,
-    `Would send to ${payload.toEmail}: Score ${payload.overallScore}, delta ${payload.scoreDelta ?? "N/A"}, audit #${payload.auditId}`
+    `Would send to ${payload.toEmail}: Score ${payload.overallScore}, delta ${payload.scoreDelta ?? "N/A"}, audit #${payload.auditId}`,
+    payload.citedEngines !== null ? `Citation: ${payload.citedEngines}/${payload.totalEngines}` : "Citation: pending"
   );
   return true; // treat as success in dev
 }

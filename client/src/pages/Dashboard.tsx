@@ -243,6 +243,37 @@ function AuditRow({ audit, citationStatus }: { audit: AuditItem; citationStatus?
 
 // ─── Sparkline ───────────────────────────────────────────────────────────────
 
+// Citation Sparkline: renders 0-4 values as step-line with color gradient
+function CitationSparkline({ values, total = 4, width = 120, height = 32 }: { values: number[]; total?: number; width?: number; height?: number }) {
+  const pts = useMemo(() => {
+    if (values.length < 2) return null;
+    const step = width / (values.length - 1);
+    return values.map((v, i) => {
+      const x = i * step;
+      const y = height - (v / total) * (height - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  }, [values, total, width, height]);
+  if (!pts) return null;
+  const lastVal = values[values.length - 1];
+  const color = lastVal === 0 ? "#f87171" : lastVal >= total ? "#34d399" : lastVal >= total / 2 ? "#fbbf24" : "#f87171";
+  const lastPt = pts.split(" ").pop()!.split(",");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.8"
+      />
+      <circle cx={lastPt[0]} cy={lastPt[1]} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
 function Sparkline({ values, width = 120, height = 32 }: { values: number[]; width?: number; height?: number }) {
   const pts = useMemo(() => {
     if (values.length < 2) return null;
@@ -290,6 +321,10 @@ type MonitoredPageItem = {
   lastAuditId: number | null;
   nextAuditAt?: Date | null;
   scheduleFrequency?: number | null;
+  // AI Citation Visibility — from last citation check
+  lastCitedEngines?: number | null;
+  lastTotalEngines?: number | null;
+  lastCitationAt?: Date | null;
 };
 
 const FREQUENCY_OPTIONS = [
@@ -321,11 +356,32 @@ function MonitoredPageCard({
     { monitoredPageId: page.id, limit: 10 },
     { enabled: showHistory }
   );
+  // Citation snapshots for trend sparkline (loaded with history)
+  const snapshotsQuery = trpc.monitoring.getSnapshots.useQuery(
+    { monitoredPageId: page.id, limit: 10 },
+    { enabled: showHistory }
+  );
   const runs = historyQuery.data ?? [];
+  const snapshots = snapshotsQuery.data ?? [];
   const sparklineValues = useMemo(
     () => [...runs].reverse().map((r) => r.overallScore ?? 0).filter((v) => v > 0),
     [runs]
   );
+  // Citation sparkline: values from score_snapshots ordered oldest-first
+  const citationSparklineValues = useMemo(() => {
+    const ordered = [...snapshots].reverse();
+    return ordered
+      .filter((s) => s.citedEnginesCount != null)
+      .map((s) => s.citedEnginesCount as number);
+  }, [snapshots]);
+  const citationTotal = snapshots.find((s) => s.totalEnginesChecked != null)?.totalEnginesChecked ?? 4;
+
+  // Current citation status from monitored_pages (fast, no extra query)
+  const hasCitationData = page.lastCitedEngines != null;
+  const citedEngines = page.lastCitedEngines ?? 0;
+  const totalEngines = page.lastTotalEngines ?? 4;
+  const citationColorClass = citedEngines === 0 ? "text-red-400" : citedEngines >= totalEngines ? "text-emerald-400" : "text-amber-400";
+  const citationBgClass = citedEngines === 0 ? "bg-red-500/10 border-red-500/20" : citedEngines >= totalEngines ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20";
   const lastAudit = page.lastAuditAt
     ? new Date(page.lastAuditAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : "Brak danych";
@@ -366,8 +422,29 @@ function MonitoredPageCard({
             <p className="text-sm font-semibold truncate">{page.label || domain}</p>
             <p className="text-xs text-muted-foreground truncate mt-0.5">{page.url}</p>
           </div>
-          <div className={`text-2xl font-bold tabular-nums shrink-0 ${scoreColor(score)}`}>
-            {score != null ? Math.round(score) : "–"}
+          {/* Dual metric: AI Score + Citation Visibility */}
+          <div className="flex items-center gap-2 shrink-0">
+            {hasCitationData && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold tabular-nums cursor-default ${citationBgClass} ${citationColorClass}`}>
+                    <Eye className="w-3 h-3" />
+                    <span>{citedEngines}/{totalEngines}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs max-w-52">
+                  <p className="font-semibold mb-1">Widoczność AI Search</p>
+                  <p>{citedEngines} z {totalEngines} silników AI cytuje tę stronę</p>
+                  <p className="text-muted-foreground mt-0.5">(ChatGPT, Google AI, Perplexity, Gemini)</p>
+                  {page.lastCitationAt && (
+                    <p className="mt-1 text-muted-foreground">Sprawdzono: {new Date(page.lastCitationAt).toLocaleDateString("pl-PL")}</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <div className={`text-2xl font-bold tabular-nums ${scoreColor(score)}`}>
+              {score != null ? Math.round(score) : "–"}
+            </div>
           </div>
         </div>
 
@@ -472,25 +549,55 @@ function MonitoredPageCard({
             ) : (
               <>
                 {sparklineValues.length >= 2 && (
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Trend score</p>
-                      <Sparkline values={sparklineValues} width={140} height={36} />
+                  <div className="mb-3 space-y-2">
+                    {/* AI Score trend */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Trend AI Score</p>
+                        <Sparkline values={sparklineValues} width={130} height={32} />
+                      </div>
+                      <div className="text-right">
+                        {(() => {
+                          const delta = sparklineValues[sparklineValues.length - 1] - sparklineValues[0];
+                          const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+                          const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
+                          return (
+                            <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                              <span>{delta > 0 ? "+" : ""}{delta.toFixed(0)} pkt</span>
+                            </div>
+                          );
+                        })()}
+                        <p className="text-xs text-muted-foreground mt-0.5">{sparklineValues.length} audytów</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {(() => {
-                        const delta = sparklineValues[sparklineValues.length - 1] - sparklineValues[0];
-                        const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-                        const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
-                        return (
-                          <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
-                            <Icon className="w-3.5 h-3.5" />
-                            <span>{delta > 0 ? "+" : ""}{delta.toFixed(0)} pkt</span>
-                          </div>
-                        );
-                      })()}
-                      <p className="text-xs text-muted-foreground mt-0.5">{sparklineValues.length} audytów</p>
-                    </div>
+                    {/* AI Citation Visibility trend */}
+                    {citationSparklineValues.length >= 2 && (
+                      <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                            <Eye className="w-3 h-3" /> Trend widoczności AI
+                          </p>
+                          <CitationSparkline values={citationSparklineValues} total={citationTotal} width={130} height={32} />
+                        </div>
+                        <div className="text-right">
+                          {(() => {
+                            const first = citationSparklineValues[0];
+                            const last = citationSparklineValues[citationSparklineValues.length - 1];
+                            const delta = last - first;
+                            const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+                            const cls = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground";
+                            return (
+                              <div className={`flex items-center gap-1 text-xs font-semibold ${cls}`}>
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{last}/{citationTotal} AI</span>
+                              </div>
+                            );
+                          })()}
+                          <p className="text-xs text-muted-foreground mt-0.5">silniki AI</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -79,6 +79,10 @@ export const monitoredPages = mysqlTable("monitored_pages", {
   // Starter: locked to 7. Pro: 1/2/3/7/14/30. Business: any.
   scheduleFrequency: int("scheduleFrequency").default(7).notNull(),
   isActive: mysqlEnum("isActive", ["yes", "no"]).default("yes").notNull(),
+  // AI Citation Visibility — updated after each citation job completes
+  lastCitedEngines: int("lastCitedEngines"),     // how many engines cited this page last check
+  lastTotalEngines: int("lastTotalEngines"),     // total engines checked last time (usually 4)
+  lastCitationAt: timestamp("lastCitationAt"),  // when last citation check completed
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -114,6 +118,10 @@ export const scoreSnapshots = mysqlTable("score_snapshots", {
   eeatScore: float("eeatScore"),
   aiCrawlerScore: float("aiCrawlerScore"),
   metaTagsScore: float("metaTagsScore"),
+  // AI Citation Visibility — snapshot of citation status at this point in time
+  citedEnginesCount: int("citedEnginesCount"),    // engines that cited this page (0-4)
+  totalEnginesChecked: int("totalEnginesChecked"), // engines checked (usually 4)
+  citationJobId: int("citationJobId"),             // FK to citation_jobs.id
   recordedAt: timestamp("recordedAt").defaultNow().notNull(),
 });
 

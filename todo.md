@@ -1024,3 +1024,19 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Auto-fill briefu w PageCreator gdy ?auditId=X w URL
 - [ ] Widget akwizycji w Results.tsx (Tab 1) — CTA do Content Creator z auditId
 - [ ] WhatIfSection zachowany jako widget w Tab 1 dla paid users (uproszczony)
+
+## Citation Visibility Monitoring (Retention Engine)
+
+- [x] DB: Add citedEnginesCount, totalEnginesChecked, citationJobId to score_snapshots
+- [x] DB: Add lastCitedEngines, lastTotalEngines, lastCitationAt to monitored_pages
+- [x] Monitoring worker: auto-trigger citation job after each monitoring audit (fire-and-forget)
+- [x] Monitoring worker: updateMonitoredPageCitationStatus + updateScoreSnapshotCitation helpers
+- [x] Monitoring worker: sendCitationChangeEmail when visibility changes significantly (0→1 or ±2 engines)
+- [x] Dashboard: CitationSparkline component (0-4 scale, color-coded)
+- [x] Dashboard: Citation sparkline trend in MonitoredPageCard history panel
+- [x] Dashboard: Dual-metric header (AI Score + AI Visibility badge) in MonitoredPageCard
+- [x] Dashboard: Tooltip with engine list and last check date
+- [x] Monitoring email: Add AI Visibility section with citation count, color-coded status, CTA
+- [x] Monitoring email: Dedicated citation change email (improvement/decline)
+- [x] Tests: 19 new citation monitoring tests (284 total, all passing)
+- [ ] Paywall: Citation trend history = Pro, current status = Starter+ (future iteration)
