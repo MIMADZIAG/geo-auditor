@@ -347,6 +347,23 @@ export default function Results() {
   const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");
   const upsellTriggeredRef = useRef(false);
 
+  // Stable callback for AICitationPanel — avoids setState-in-render warning
+  // (AICitationPanel calls this from a useEffect, but React can still warn if the
+  // callback reference changes every render. Using useCallback + queueMicrotask
+  // ensures the setState is always deferred past the current render cycle.)
+  const handleCitationStatusChange = useCallback(
+    (status: CitationStatus, citedCount?: number, totalEngines?: number) => {
+      // Defer to avoid "setState during render" when AICitationPanel fires onStatusChange
+      // synchronously on mount (e.g., when a completed job already exists in the query cache).
+      queueMicrotask(() => {
+        setCitationStatus(status);
+        if (citedCount !== undefined) setCitationCitedCount(citedCount);
+        if (totalEngines !== undefined) setCitationTotalEngines(totalEngines);
+      });
+    },
+    []
+  );
+
   // Auto-start citation when switching to Tab 2
   const citationAutoStartRef = useRef(false);
   const citationPanelRef = useRef<{ startCheck: () => void } | null>(null);
@@ -686,11 +703,7 @@ export default function Results() {
             auditId={auditId}
             url={audit.url}
             onCompetitorUrlsReady={setCitedCompetitorUrls}
-            onStatusChange={(status, citedCount, totalEngines) => {
-              setCitationStatus(status);
-              if (citedCount !== undefined) setCitationCitedCount(citedCount);
-              if (totalEngines !== undefined) setCitationTotalEngines(totalEngines);
-            }}
+            onStatusChange={handleCitationStatusChange}
             ref={citationPanelRef}
           />
 

@@ -1155,3 +1155,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Tests: 15 unit testów dla gap analysis (340 total, TypeScript: 0 errors)
 - [ ] GapAnalysisPanel: link do konkretnej rekomendacji w audycie (future)
 - [ ] Competitor trend w weekly digest email (future)
+
+## Bug Fix: setState-in-render w AICitationPanel (2026-03-29)
+
+- [x] Diagnoza: onStatusChange inline w JSX wywoływało setCitationStatus podczas renderowania
+- [x] Fix: wyodrębniono handleCitationStatusChange jako useCallback + queueMicrotask do odroczenia setState
