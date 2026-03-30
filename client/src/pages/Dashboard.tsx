@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { PhraseManager } from "@/components/PhraseManager";
 import { getVisibilityScoreResult, ENGINE_CONFIG, ALL_ENGINES } from "../../../shared/visibilityScore";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -712,6 +713,17 @@ function MonitoredPageCard({
           </div>
         </div>
 
+        {/* Phrase Manager — stable monitoring phrases */}
+        {isMonitoringEligible && (
+          <div className="mt-3 border-t border-border pt-3">
+            <PhraseManager
+              monitoredPageId={page.id}
+              plan={isPro ? "pro" : isStarter ? "starter" : "free"}
+              compact
+            />
+          </div>
+        )}
+
         {/* History panel */}
         {showHistory && (
           <div className="mt-3 border-t border-border pt-3">
@@ -872,6 +884,10 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
           <Link href="/dashboard" className="text-foreground font-medium flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5 text-violet-400" />
             Widoczność AI
+          </Link>
+          <Link href="/pulse" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+            Citation Pulse
           </Link>
           <Link href="/dashboard#audits" className="hover:text-foreground transition-colors">Audyty</Link>
           <Link href="/sandbox" className="hover:text-foreground transition-colors">AI Sandbox</Link>

@@ -12,6 +12,7 @@ import Pricing from "./pages/Pricing";
 import Sandbox from "./pages/Sandbox";
 import PageCreator from "./pages/PageCreator";
 import PageCreatorResult from "./pages/PageCreatorResult";
+import CitationPulse from "./pages/CitationPulse";
 function Router() {
   return (
     <Switch>
@@ -45,6 +46,11 @@ function Router() {
       <Route path="/page-creator/:id">
         <ErrorBoundary context="Page Creator Result">
           <PageCreatorResult />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/pulse">
+        <ErrorBoundary context="Citation Pulse">
+          <CitationPulse />
         </ErrorBoundary>
       </Route>
       <Route path="/404" component={NotFound} />

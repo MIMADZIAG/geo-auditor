@@ -1246,3 +1246,22 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] d) eeat.ts: remove duplicate external_citations check (already present in contentStructure.ts)
 - [x] e) technical.ts: enhance js_rendering to check H1 and first paragraph presence in HTML source
 - [x] f) contentStructure.ts: replace naive regex semantic_triples with NLP-quality SPO density algorithm
+
+## Monitoring Platform v2 — Stable Phrase Management + Citation Pulse (2026-03-31)
+
+### Phase 1 — Stable Phrase Architecture
+- [x] DB: monitored_page_phrases table (phrase, source, aiRationale, intentType, sortOrder, isActive, citationStreakDays)
+- [x] server/stripe/products.ts: maxAiPhrasesPerPage + maxCustomPhrasesPerPage per plan
+- [x] server/monitoring/phraseGenerator.ts: CI-aware phrase generation with rationale (url + DB lookup + LLM)
+- [x] server/monitoring/phrases.ts: CRUD helpers (getPhrasesForPage, initializePhrases, addCustomPhrase, togglePhrase, deletePhrase, getPlanLimits)
+- [x] server/routers.ts: monitoring.getPhrases, initializePhrases, addPhrase, togglePhrase, deletePhrase procedures
+- [x] client/src/components/PhraseManager.tsx: phrase list with rationale, add/toggle/delete, plan-aware upsell
+- [x] Dashboard.tsx: PhraseManager integrated into MonitoredPageCard
+
+### Phase 2 — Citation Pulse Board + Alert System
+- [x] client/src/pages/CitationPulse.tsx: per-phrase performance board with engine breakdown table
+- [x] Dashboard.tsx: "Citation Pulse" link in DashboardTopNav
+- [x] App.tsx: /pulse route registered
+- [x] server/monitoring/alerts.ts: evaluateAndSendAlerts() — new_citation / lost_citation / competitor alerts with cooldown
+- [x] server/monitoring/worker.ts: alert system integrated after citation job completion (fire-and-forget)
+- [x] Tests: 372 tests passing, TypeScript: 0 errors

@@ -128,6 +128,28 @@ export const scoreSnapshots = mysqlTable("score_snapshots", {
 export type ScoreSnapshot = typeof scoreSnapshots.$inferSelect;
 export type InsertScoreSnapshot = typeof scoreSnapshots.$inferInsert;
 
+// Monitored page phrases — stable set of queries for each monitored page
+// Source of truth for citation monitoring — replaces ephemeral LLM generation per run
+export const monitoredPagePhrases = mysqlTable("monitored_page_phrases", {
+  id: int("id").autoincrement().primaryKey(),
+  monitoredPageId: int("monitoredPageId").notNull(),
+  userId: int("userId").notNull(),
+  phrase: varchar("phrase", { length: 512 }).notNull(),
+  source: mysqlEnum("source", ["ai_generated", "user_added", "user_modified"]).default("ai_generated").notNull(),
+  aiRationale: text("aiRationale"),          // Why this phrase was selected (shown to user)
+  intentType: mysqlEnum("intentType", ["informational", "navigational", "commercial", "transactional"]).default("informational"),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  // Denormalized citation metrics for fast UI rendering
+  lastCitedEngines: int("lastCitedEngines").default(0),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  citationStreakDays: int("citationStreakDays").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MonitoredPagePhrase = typeof monitoredPagePhrases.$inferSelect;
+export type InsertMonitoredPagePhrase = typeof monitoredPagePhrases.$inferInsert;
+
 // Email leads — captured from diagnostic results page (pre-registration)
 export const emailLeads = mysqlTable("email_leads", {
   id: int("id").autoincrement().primaryKey(),

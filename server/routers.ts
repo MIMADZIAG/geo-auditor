@@ -309,6 +309,71 @@ export const appRouter = router({
         const { getEngineBreakdownForPage } = await import("./db");
         return getEngineBreakdownForPage(input.monitoredPageId);
       }),
+
+    // ── Phrase management ─────────────────────────────────────────────────────
+    getPhrases: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "NOT_FOUND", message: "Monitorowana strona nie została znaleziona." });
+        const { getPhrasesForPage } = await import("./monitoring/phrases");
+        return getPhrasesForPage(input.monitoredPageId);
+      }),
+
+    initializePhrases: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "NOT_FOUND", message: "Monitorowana strona nie została znaleziona." });
+        const { initializePhrasesForPage } = await import("./monitoring/phrases");
+        const result = await initializePhrasesForPage({
+          monitoredPageId: input.monitoredPageId,
+          userId: ctx.user.id,
+          url: owned.url,
+          plan: ctx.user.plan ?? "free",
+        });
+        return result;
+      }),
+
+    addPhrase: protectedProcedure
+      .input(z.object({
+        monitoredPageId: z.number(),
+        phrase: z.string().min(3).max(300),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "NOT_FOUND", message: "Monitorowana strona nie została znaleziona." });
+        const { addCustomPhrase } = await import("./monitoring/phrases");
+        const result = await addCustomPhrase({
+          monitoredPageId: input.monitoredPageId,
+          userId: ctx.user.id,
+          phrase: input.phrase,
+          plan: ctx.user.plan ?? "free",
+        });
+        if (!result.success) throw new TRPCError({ code: "FORBIDDEN", message: result.error ?? "Nie można dodać frazy." });
+        return result.phrase!;
+      }),
+
+    togglePhrase: protectedProcedure
+      .input(z.object({ phraseId: z.number(), isActive: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const { togglePhrase } = await import("./monitoring/phrases");
+        const ok = await togglePhrase(input.phraseId, ctx.user.id, input.isActive);
+        if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "Fraza nie została znaleziona." });
+        return { success: true };
+      }),
+
+    deletePhrase: protectedProcedure
+      .input(z.object({ phraseId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { deleteCustomPhrase } = await import("./monitoring/phrases");
+        const ok = await deleteCustomPhrase(input.phraseId, ctx.user.id);
+        if (!ok) throw new TRPCError({ code: "FORBIDDEN", message: "Można usuwać tylko własne frazy." });
+        return { success: true };
+      }),
    }),
   leads: router({
     captureEmail: publicProcedure

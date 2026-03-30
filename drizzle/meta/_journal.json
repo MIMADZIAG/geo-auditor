@@ -169,6 +169,13 @@
       "when": 1774809996585,
       "tag": "0023_yellow_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1774909380930,
+      "tag": "0024_gray_deathbird",
+      "breakpoints": true
     }
   ]
 }

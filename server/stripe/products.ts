@@ -25,9 +25,11 @@ export interface PlanConfig {
     competitorAnalysis: boolean;
     whiteLabel: boolean;
     apiAccess: boolean;
+    // Phrase monitoring limits (per monitored page)
+    maxAiPhrasesPerPage: number;     // AI-generated phrases shown to user
+    maxCustomPhrasesPerPage: number; // User-added custom phrases
   };
   // Stripe Price IDs — set after creating products in Stripe Dashboard
-  // For now using lookup keys that will be created via Stripe CLI or Dashboard
   stripePriceId: string | null;
 }
 
@@ -44,6 +46,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       "AI Citation Check (ChatGPT + Google AI Overviews)",
       "AI Content Co-Pilot",
       "Monitor 10 pages",
+      "8 AI phrases + 3 custom per page",
       "Audit history",
       "PDF export",
     ],
@@ -56,6 +59,8 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       competitorAnalysis: false,
       whiteLabel: false,
       apiAccess: false,
+      maxAiPhrasesPerPage: 8,
+      maxCustomPhrasesPerPage: 3,
     },
     stripePriceId: process.env.STRIPE_PRICE_STARTER ?? null,
   },
@@ -69,6 +74,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       "200 audits per month",
       "Everything in Starter",
       "Monitor 50 pages",
+      "12 AI phrases + 10 custom per page",
       "Competitor domain analysis",
       "Advanced content recommendations",
       "Priority support",
@@ -82,6 +88,8 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       competitorAnalysis: true,
       whiteLabel: false,
       apiAccess: false,
+      maxAiPhrasesPerPage: 12,
+      maxCustomPhrasesPerPage: 10,
     },
     stripePriceId: process.env.STRIPE_PRICE_PRO ?? null,
   },
@@ -95,6 +103,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       "Unlimited audits",
       "Everything in Pro",
       "Monitor unlimited pages",
+      "20 AI phrases + unlimited custom per page",
       "White-label PDF reports",
       "API access",
       "Shopify / WooCommerce integrations",
@@ -109,6 +118,8 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       competitorAnalysis: true,
       whiteLabel: true,
       apiAccess: true,
+      maxAiPhrasesPerPage: 20,
+      maxCustomPhrasesPerPage: Infinity,
     },
     stripePriceId: process.env.STRIPE_PRICE_BUSINESS ?? null,
   },
@@ -123,6 +134,8 @@ export const FREE_PLAN_LIMITS = {
   competitorAnalysis: false,
   whiteLabel: false,
   apiAccess: false,
+  maxAiPhrasesPerPage: 5,
+  maxCustomPhrasesPerPage: 0,
 };
 
 export function getPlanLimits(plan: string) {

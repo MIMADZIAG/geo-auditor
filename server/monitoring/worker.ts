@@ -39,6 +39,7 @@ import { insertCompetitorAudit, competitorAuditsExist } from "../competitor/db";
 import { monitorAuditRuns, monitoredPages, users, audits } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sendMonitoringEmail, type MonitoringEmailPayload } from "./email";
+import { evaluateAndSendAlerts } from "./alerts";
 
 const WORKER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const MAX_PARALLEL = 3; // max concurrent audits
@@ -122,8 +123,9 @@ async function triggerCitationJobForMonitoredPage(params: {
   userName: string | null;
   label: string | null;
   appUrl: string;
+  plan?: string;
 }): Promise<void> {
-  const { pageId, auditId, url, userId, previousCitedEngines, userEmail, userName, label, appUrl } = params;
+  const { pageId, auditId, url, userId, previousCitedEngines, userEmail, userName, label, appUrl, plan } = params;
 
   try {
     console.log(`[MonitorWorker][Citation] Starting citation job for page #${pageId}: ${url}`);
@@ -224,6 +226,29 @@ async function triggerCitationJobForMonitoredPage(params: {
       });
       console.log(`[MonitorWorker][Citation] Citation change email sent to ${userEmail}`);
     }
+
+    // 5. Smart alert system — new_citation / lost_citation / competitor
+    //    Non-blocking, fire-and-forget with built-in cooldowns
+    const competitorDomains: string[] = [];
+    if (citationResult.allResults) {
+      let ownDomain = "";
+      try { ownDomain = new URL(url).hostname.replace(/^www\./, ""); } catch {}
+      for (const r of citationResult.allResults as Array<{ cited?: boolean; citedUrl?: string | null }>) {
+        if (r.cited && r.citedUrl) {
+          try {
+            const d = new URL(r.citedUrl).hostname.replace(/^www\./, "");
+            if (d && d !== ownDomain) competitorDomains.push(d);
+          } catch {}
+        }
+      }
+    }
+    void evaluateAndSendAlerts({
+      pageId, url, label, userEmail, userName, appUrl, auditId,
+      citedEngines, totalEngines,
+      previousCitedEngines,
+      plan: plan ?? "starter",
+      competitorDomains: Array.from(new Set(competitorDomains)).slice(0, 3),
+    });
 
   } catch (err) {
     // Citation failure is non-fatal — audit already completed successfully
