@@ -217,6 +217,23 @@ export const appRouter = router({
           nextAuditAt,
         });
 
+        // Fire-and-forget: initialize CI-based phrases for this page.
+        // Runs async — user gets instant response, phrases appear in PhraseManager shortly after.
+        (async () => {
+          try {
+            const { initializePhrasesForPage } = await import("./monitoring/phrases");
+            await initializePhrasesForPage({
+              monitoredPageId: id,
+              userId: ctx.user.id,
+              url: input.url,
+              plan: userPlan,
+            });
+          } catch (err) {
+            // Non-fatal — phrases can be initialized manually via PhraseManager
+            console.warn("[monitoring.add] phrase init failed (non-fatal):", err);
+          }
+        })();
+
         return { id };
       }),
 
@@ -373,6 +390,58 @@ export const appRouter = router({
         const ok = await deleteCustomPhrase(input.phraseId, ctx.user.id);
         if (!ok) throw new TRPCError({ code: "FORBIDDEN", message: "Można usuwać tylko własne frazy." });
         return { success: true };
+      }),
+
+    // Returns last N citation history rows per phrase — powers sparkline trend chart
+    getPhraseHistory: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number(), limit: z.number().min(1).max(30).default(7) }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+
+        const db = await getDb();
+        if (!db) return [];
+
+        const { phraseCitationHistory, monitoredPagePhrases } = await import("../drizzle/schema");
+        const { desc, and: andOp, eq: eqOp, inArray } = await import("drizzle-orm");
+
+        // Fetch all active phrases for this page
+        const phrases = await db
+          .select({ id: monitoredPagePhrases.id, phrase: monitoredPagePhrases.phrase })
+          .from(monitoredPagePhrases)
+          .where(andOp(
+            eqOp(monitoredPagePhrases.monitoredPageId, input.monitoredPageId),
+            eqOp(monitoredPagePhrases.isActive, true)
+          ));
+
+        if (phrases.length === 0) return [];
+
+        // Fetch last N history rows per phrase
+        const phraseIds = phrases.map((p) => p.id);
+        const history = await db
+          .select()
+          .from(phraseCitationHistory)
+          .where(inArray(phraseCitationHistory.phraseId, phraseIds))
+          .orderBy(desc(phraseCitationHistory.recordedAt));
+
+        // Group by phraseId, keep last N per phrase
+        const grouped = new Map<number, typeof history>();
+        for (const row of history) {
+          const existing = grouped.get(row.phraseId) ?? [];
+          if (existing.length < input.limit) {
+            existing.push(row);
+            grouped.set(row.phraseId, existing);
+          }
+        }
+
+        // Return flat array with phrase text attached
+        const phraseMap = new Map(phrases.map((p) => [p.id, p.phrase]));
+        return Array.from(grouped.entries()).map(([phraseId, rows]) => ({
+          phraseId,
+          phrase: phraseMap.get(phraseId) ?? "",
+          history: rows.reverse(), // chronological order for chart
+        }));
       }),
    }),
   leads: router({

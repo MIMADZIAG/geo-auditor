@@ -1265,3 +1265,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] server/monitoring/alerts.ts: evaluateAndSendAlerts() — new_citation / lost_citation / competitor alerts with cooldown
 - [x] server/monitoring/worker.ts: alert system integrated after citation job completion (fire-and-forget)
 - [x] Tests: 372 tests passing, TypeScript: 0 errors
+
+## Monitoring UX: Auto-init phrases + Per-phrase sparkline (2026-03-31)
+
+- [x] monitoring.add router: fire-and-forget initializePhrasesForPage after page is created
+- [x] monitoring.add: pass userId, url, plan to initializePhrasesForPage
+- [x] DB: add phrase_citation_history table for per-phrase per-run citation tracking
+- [x] monitoring worker: record per-phrase citation result per run into phrase_citation_history
+- [x] tRPC: monitoring.getPhraseHistory(monitoredPageId, phraseId, limit) procedure
+- [x] CitationPulse: PhraseTrendSparkline SVG component (7-run mini chart per phrase)
+- [x] CitationPulse: per-phrase row shows sparkline + last citation status per engine

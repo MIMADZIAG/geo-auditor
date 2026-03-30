@@ -60,6 +60,63 @@ function CitationDot({ cited }: { cited: boolean | null }) {
       </span>;
 }
 
+// ─── Sparkline SVG ───────────────────────────────────────────────────────────
+// Pure SVG, no external deps. Renders 7-point citation trend (0-4 engines).
+
+function Sparkline({ data, width = 64, height = 24 }: {
+  data: number[]; // citedEnginesCount per run, chronological
+  width?: number;
+  height?: number;
+}) {
+  if (data.length < 2) {
+    // Single point or empty — render a flat line
+    const y = height / 2;
+    return (
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        <line x1={0} y1={y} x2={width} y2={y} stroke="currentColor" strokeWidth={1.5} strokeOpacity={0.3} />
+        {data.length === 1 && (
+          <circle cx={width / 2} cy={y} r={2} fill="currentColor" fillOpacity={0.6} />
+        )}
+      </svg>
+    );
+  }
+
+  const max = 4; // max engines
+  const pad = 3;
+  const w = width - pad * 2;
+  const h = height - pad * 2;
+
+  const points = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * w;
+    const y = pad + h - (v / max) * h;
+    return { x, y, v };
+  });
+
+  // Build smooth polyline
+  const pathD = points
+    .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
+    .join(" ");
+
+  // Area fill
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
+
+  const lastVal = data[data.length - 1];
+  const prevVal = data[data.length - 2];
+  const trend = lastVal > prevVal ? "up" : lastVal < prevVal ? "down" : "flat";
+  const lineColor = trend === "up" ? "#22c55e" : trend === "down" ? "#ef4444" : "#a78bfa";
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      {/* Area */}
+      <path d={areaD} fill={lineColor} fillOpacity={0.08} />
+      {/* Line */}
+      <path d={pathD} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Last point dot */}
+      <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r={2.5} fill={lineColor} />
+    </svg>
+  );
+}
+
 // ─── Per-page Citation Pulse Panel ────────────────────────────────────────────
 
 function PagePulsePanel({
@@ -112,6 +169,12 @@ function PagePulsePanel({
     { monitoredPageId: page.id },
     { enabled: expanded }
   );
+  // Per-phrase citation history for sparklines
+  const phraseHistoryQuery = trpc.monitoring.getPhraseHistory.useQuery(
+    { monitoredPageId: page.id, limit: 7 },
+    { enabled: expanded }
+  );
+  const phraseHistory = phraseHistoryQuery.data ?? [];
 
   const engineBreakdown = engineBreakdownQuery.data ?? [];
 
@@ -208,6 +271,70 @@ function PagePulsePanel({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Per-phrase sparkline trend table */}
+          {phraseHistory.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                <TrendingUp className="w-3 h-3" /> Trend widoczności per fraza (ostatnie 7 runów)
+              </p>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Fraza</th>
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground w-20">Trend</th>
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground w-16">Ostatni</th>
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground w-10" title="ChatGPT">GPT</th>
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground w-10" title="Perplexity">PPX</th>
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground w-10" title="Google AI">GGL</th>
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground w-10" title="Gemini">GEM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {phraseHistory.map((ph) => {
+                      const sparkData = ph.history.map((h) => h.citedEnginesCount);
+                      const last = ph.history[ph.history.length - 1];
+                      const lastCount = last?.citedEnginesCount ?? 0;
+                      const lastColor = lastCount >= 3 ? "text-emerald-400" : lastCount >= 1 ? "text-amber-400" : "text-red-400";
+                      return (
+                        <tr key={ph.phraseId} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-3 py-2 font-medium max-w-[200px] truncate" title={ph.phrase}>
+                            {ph.phrase}
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <div className="flex items-center justify-center">
+                              <Sparkline data={sparkData} width={64} height={22} />
+                            </div>
+                          </td>
+                          <td className={`px-2 py-2 text-center font-bold tabular-nums ${lastColor}`}>
+                            {lastCount}/4
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <CitationDot cited={last?.chatgptCited ?? null} />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <CitationDot cited={last?.perplexityCited ?? null} />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <CitationDot cited={last?.googleCited ?? null} />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <CitationDot cited={last?.geminiCited ?? null} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {phraseHistoryQuery.isLoading && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Ładowanie historii fraz...
+                </p>
+              )}
             </div>
           )}
 

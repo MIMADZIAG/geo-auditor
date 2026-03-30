@@ -36,7 +36,7 @@ import { createCitationJob, getCitationResultsForAudit } from "../citation/db";
 import { runCitationJob } from "../citation/worker";
 import { extractTopCompetitorUrls, runCompetitorAudits } from "../competitor/engine";
 import { insertCompetitorAudit, competitorAuditsExist } from "../competitor/db";
-import { monitorAuditRuns, monitoredPages, users, audits } from "../../drizzle/schema";
+import { monitorAuditRuns, monitoredPages, users, audits, monitoredPagePhrases, phraseCitationHistory } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sendMonitoringEmail, type MonitoringEmailPayload } from "./email";
 import { evaluateAndSendAlerts } from "./alerts";
@@ -200,6 +200,53 @@ async function triggerCitationJobForMonitoredPage(params: {
           console.error(`[CompetitorIntel] Failed for audit #${auditId}:`, err);
         }
       })();
+    }
+
+    // 3.5 Record per-phrase citation history for sparkline trend chart
+    // Maps each active phrase to its per-engine citation result from this run
+    try {
+      const db = await getDb();
+      if (db) {
+        const phrases = await db
+          .select({ id: monitoredPagePhrases.id, phrase: monitoredPagePhrases.phrase })
+          .from(monitoredPagePhrases)
+          .where(and(
+            eq(monitoredPagePhrases.monitoredPageId, pageId),
+            eq(monitoredPagePhrases.isActive, true)
+          ));
+
+        if (phrases.length > 0) {
+          const historyRows: typeof phraseCitationHistory.$inferInsert[] = phrases.map((p) => {
+            // Match citation results to this phrase (case-insensitive substring match)
+            const phraseNorm = p.phrase.toLowerCase();
+            const phraseResults = citationResult.allResults.filter(
+              (r) => r.query.toLowerCase().includes(phraseNorm) || phraseNorm.includes(r.query.toLowerCase())
+            );
+            const cited = (engine: string) =>
+              phraseResults.some((r) => r.engine === engine && (r.isCited === "yes" || r.isCited === "domain"));
+            const chatgptCited = cited("chatgpt");
+            const perplexityCited = cited("perplexity");
+            const googleCited = cited("google");
+            const geminiCited = cited("gemini");
+            const citedCount = [chatgptCited, perplexityCited, googleCited, geminiCited].filter(Boolean).length;
+            return {
+              phraseId: p.id,
+              monitoredPageId: pageId,
+              citationJobId: jobId,
+              chatgptCited,
+              perplexityCited,
+              googleCited,
+              geminiCited,
+              citedEnginesCount: citedCount,
+            };
+          });
+          await db.insert(phraseCitationHistory).values(historyRows);
+          console.log(`[MonitorWorker][PhraseHistory] Recorded ${historyRows.length} phrase history rows for page #${pageId}`);
+        }
+      }
+    } catch (histErr) {
+      // Non-fatal — sparkline data missing for this run but monitoring continues
+      console.warn(`[MonitorWorker][PhraseHistory] Failed to record phrase history for page #${pageId}:`, histErr);
     }
 
     // 4. Detect significant citation change — send follow-up email if needed

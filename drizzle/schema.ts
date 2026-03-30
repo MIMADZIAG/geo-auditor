@@ -150,6 +150,24 @@ export const monitoredPagePhrases = mysqlTable("monitored_page_phrases", {
 export type MonitoredPagePhrase = typeof monitoredPagePhrases.$inferSelect;
 export type InsertMonitoredPagePhrase = typeof monitoredPagePhrases.$inferInsert;
 
+// Per-phrase citation history — one row per phrase per monitoring run
+// Powers the sparkline trend chart in Citation Pulse
+export const phraseCitationHistory = mysqlTable("phrase_citation_history", {
+  id: int("id").autoincrement().primaryKey(),
+  phraseId: int("phraseId").notNull(),           // FK to monitored_page_phrases.id
+  monitoredPageId: int("monitoredPageId").notNull(),
+  citationJobId: int("citationJobId"),            // FK to citation_jobs.id (nullable for manual runs)
+  // Per-engine citation result (null = not checked, true = cited, false = not cited)
+  chatgptCited: boolean("chatgptCited"),
+  perplexityCited: boolean("perplexityCited"),
+  googleCited: boolean("googleCited"),
+  geminiCited: boolean("geminiCited"),
+  citedEnginesCount: int("citedEnginesCount").default(0).notNull(), // 0-4
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+export type PhraseCitationHistory = typeof phraseCitationHistory.$inferSelect;
+export type InsertPhraseCitationHistory = typeof phraseCitationHistory.$inferInsert;
+
 // Email leads — captured from diagnostic results page (pre-registration)
 export const emailLeads = mysqlTable("email_leads", {
   id: int("id").autoincrement().primaryKey(),

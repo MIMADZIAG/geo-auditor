@@ -176,6 +176,13 @@
       "when": 1774909380930,
       "tag": "0024_gray_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1774911158738,
+      "tag": "0025_same_ser_duncan",
+      "breakpoints": true
     }
   ]
 }
