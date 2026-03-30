@@ -105,8 +105,26 @@ export async function extractPageContent(url: string, ciData?: any): Promise<Pag
 
     const langAttr = $("html").attr("lang") ?? "";
     const lang = langAttr.toLowerCase().split("-")[0];
-    const hasPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(html.slice(0, 5000));
-    const language = lang || (hasPolish ? "pl" : "en");
+
+    // Multi-signal language detection (priority: html lang attr > TLD > content heuristic)
+    // 1. html[lang] attribute — most reliable when present
+    // 2. TLD-based detection — .pl/.de/.fr/.es/.it/.nl/.ru etc. are strong signals
+    // 3. Polish character heuristic — scan FULL html (not just first 5000 chars)
+    //    Category pages often have JS/CSS before visible text
+    const TLD_LANG_MAP: Record<string, string> = {
+      pl: "pl", de: "de", fr: "fr", es: "es", it: "it",
+      nl: "nl", ru: "ru", pt: "pt", cs: "cs", sk: "sk",
+      hu: "hu", ro: "ro", bg: "bg", hr: "hr", sl: "sl",
+      sv: "sv", no: "no", da: "da", fi: "fi",
+    };
+    const tldMatch = url.match(/\.([a-z]{2,3})(?:\/|\?|#|$)/i);
+    const tldLang = tldMatch ? TLD_LANG_MAP[tldMatch[1].toLowerCase()] : undefined;
+
+    // Scan full HTML for Polish characters (not just first 5000 chars)
+    const hasPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(html);
+
+    const language = lang || tldLang || (hasPolish ? "pl" : "en");
+    console.log(`[Citation] Language detection: html_lang="${lang}" tld_lang="${tldLang ?? ''}" hasPolish=${hasPolish} → "${language}" for ${url}`);
 
     const title = $("title").first().text().trim().replace(/\s+/g, " ").slice(0, 120);
     const h1 = $("h1").first().text().trim().replace(/\s+/g, " ").slice(0, 120);
@@ -120,7 +138,21 @@ export async function extractPageContent(url: string, ciData?: any): Promise<Pag
 
     if (ciData) {
       if (ciData.query_coverage?.top_questions) {
-        ciTopQuestions.push(...(ciData.query_coverage.top_questions as string[]).slice(0, 8));
+        // Only include CI questions that are in the detected page language.
+        // CI data may contain English questions for non-English pages if the CI
+        // model didn't enforce language. We detect language mismatch by checking
+        // for Polish characters when language=pl, or absence of them for en.
+        const rawQuestions: string[] = (ciData.query_coverage.top_questions as string[]).slice(0, 8);
+        const polishCharRe = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
+        const filteredQuestions = language === "pl"
+          ? rawQuestions.filter(q => polishCharRe.test(q) || /\b(jak|co|czy|jaki|jakie|gdzie|kiedy|ile|który|dlaczego|po co)\b/i.test(q))
+          : rawQuestions;
+        // If all CI questions were filtered out (wrong language), log a warning
+        if (language === "pl" && rawQuestions.length > 0 && filteredQuestions.length === 0) {
+          console.warn(`[Citation] CI top_questions appear to be in wrong language for ${url} (expected pl). Discarding to prevent language contamination.`);
+        } else {
+          ciTopQuestions.push(...filteredQuestions);
+        }
       }
       if (ciData.page_topics) {
         ciTopics.push(...(ciData.page_topics as string[]).slice(0, 6));
@@ -214,9 +246,36 @@ async function generateEngineQueries(
   const { title, h1, h2s, metaDescription, language, ciKeywords, ciTopQuestions, ciTopics } = content;
   const profile = ENGINE_QUERY_PROFILES[engine];
 
+  // Determine the language label and enforcement note for the LLM prompt.
+  // We use a CRITICAL marker and concrete examples to prevent the model from
+  // defaulting to English even when the page content signals are in Polish.
+  const langLabel = language === "pl" ? "Polish (język polski)"
+    : language === "de" ? "German (Deutsch)"
+    : language === "fr" ? "French (Français)"
+    : language === "es" ? "Spanish (Español)"
+    : language === "it" ? "Italian (Italiano)"
+    : language === "nl" ? "Dutch (Nederlands)"
+    : language === "ru" ? "Russian (Русский)"
+    : language === "pt" ? "Portuguese (Português)"
+    : language === "cs" ? "Czech (Čeština)"
+    : language === "sk" ? "Slovak (Slovenčina)"
+    : language === "hu" ? "Hungarian (Magyar)"
+    : language === "sv" ? "Swedish (Svenska)"
+    : language === "da" ? "Danish (Dansk)"
+    : language === "no" ? "Norwegian (Norsk)"
+    : language === "fi" ? "Finnish (Suomi)"
+    : `the page's native language (${language})`;
+
+  const polishExamples = engine === "google" ? "e.g. 'jak wybrać płytki do łazienki', 'najlepsze płytki ceramiczne ranking'"
+    : engine === "chatgpt" ? "e.g. 'pomóż mi wybrać płytki do salonu', 'jakie są najlepsze płytki pod ogrzewanie podłogowe'"
+    : engine === "perplexity" ? "e.g. 'jaki rodzaj płytek jest najlepszy do łazienki?', 'jak dobrać płytki do małej łazienki?'"
+    : "e.g. 'płytki ceramiczne vs gresowe — co lepsze?', 'czy warto wybrać płytki wielkoformatowe?'";
+
   const langNote = language === "pl"
-    ? "Generate ALL queries in POLISH (język polski). Use natural Polish phrasing."
-    : `Generate ALL queries in the same language as the page (${language}).`;
+    ? `CRITICAL: Generate ALL queries in POLISH (język polski). NEVER use English. Every single query MUST be in Polish. ${polishExamples}`
+    : language === "en"
+    ? "Generate ALL queries in English."
+    : `CRITICAL: Generate ALL queries in ${langLabel}. NEVER use English. Every single query MUST be in ${langLabel}.`;
 
   // Rich CI context — the more signals, the better the queries
   const pageSignals = [
@@ -303,6 +362,20 @@ Return ONLY a JSON object: { "queries": ["query1", "query2", "query3", "query4",
       : [];
 
     if (queries.length < 3) return buildFallbackQueries(content, url, round, engine);
+
+    // ── Post-generation language validation ─────────────────────────────────────────
+    // Verify generated queries are in the expected language.
+    // If the model ignored the language rule (e.g. returned English for a Polish page),
+    // discard and use deterministic fallback queries in the correct language.
+    if (language === "pl") {
+      const polishCharRe = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
+      const polishWordRe = /\b(jak|co|czy|jaki|jakie|gdzie|kiedy|ile|który|dlaczego|najlepszy|najlepsze|jaką|jaką|pomóż|daj|jakie|wybrać|porównanie|ranking|poradnik|wady|zalety|tanie|tani|opinie)\b/i;
+      const polishQueryCount = queries.filter(q => polishCharRe.test(q) || polishWordRe.test(q)).length;
+      if (polishQueryCount < Math.ceil(queries.length / 2)) {
+        console.warn(`[Citation] Language validation FAILED for ${engine} round ${round}: ${polishQueryCount}/${queries.length} queries in Polish. Using fallback.`);
+        return buildFallbackQueries(content, url, round, engine);
+      }
+    }
 
     // ── Morphological expansion ──────────────────────────────────────────────
     // Generate 2 semantic/morphological variants per base query (rules + LLM).
@@ -592,6 +665,16 @@ const LOCALE_MAP: Record<string, { hl: string; gl: string; location: string }> =
   fr: { hl: "fr", gl: "fr", location: "Paris, France" },
   es: { hl: "es", gl: "es", location: "Madrid, Spain" },
   it: { hl: "it", gl: "it", location: "Rome, Italy" },
+  nl: { hl: "nl", gl: "nl", location: "Amsterdam, Netherlands" },
+  pt: { hl: "pt", gl: "pt", location: "Lisbon, Portugal" },
+  cs: { hl: "cs", gl: "cz", location: "Prague, Czech Republic" },
+  sk: { hl: "sk", gl: "sk", location: "Bratislava, Slovakia" },
+  hu: { hl: "hu", gl: "hu", location: "Budapest, Hungary" },
+  ro: { hl: "ro", gl: "ro", location: "Bucharest, Romania" },
+  sv: { hl: "sv", gl: "se", location: "Stockholm, Sweden" },
+  no: { hl: "no", gl: "no", location: "Oslo, Norway" },
+  da: { hl: "da", gl: "dk", location: "Copenhagen, Denmark" },
+  fi: { hl: "fi", gl: "fi", location: "Helsinki, Finland" },
 };
 
 /**

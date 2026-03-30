@@ -1,0 +1,36 @@
+{
+  "query": "SELECT a.id, a.url FROM audits a WHERE a.id = 3450002;\nSELECT id, engine, query, isCited, round FROM citation_checks WHERE jobId IN (SELECT id FROM citation_jobs WHERE auditId = 3450002) ORDER BY id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT a.id, a.url FROM audits a WHERE a.id = 3450002;\nSELECT id, engine, query, isCited, round FROM citation_checks WHERE jobId IN (SELECT id FROM citation_jobs WHERE auditId = 3450002) ORDER BY id LIMIT 20;",
+  "rows": [
+    {
+      "id": "3450002",
+      "url": "https://komfort.pl/k/plytki?rodzaj_pom_plytki=do-lazienki"
+    }
+  ],
+  "messages": [
+    "id\tengine\tquery\tisCited\tround",
+    "1530001\tgoogle\tbest bathroom tiles for small spaces\tno\t1",
+    "1530002\tgoogle\tbest bathroom tiles for small spaces\tno\t1",
+    "1530003\tgoogle\thow to choose bathroom tiles guide\tno\t1",
+    "1530004\tgoogle\thow to choose bathroom tiles guide\tno\t1",
+    "1530005\tgoogle\twhat is the best material for bathroom tiles\tno\t1",
+    "1530006\tgoogle\twhat is the best type of bathroom tile\tno\t1",
+    "1530007\tgoogle\ttop bathroom tile trends 2024\tno\t1",
+    "1530008\tgoogle\ttop bathroom tile trends 2024\tno\t1",
+    "1530009\tgoogle\tcomparison of bathroom tile materials\tno\t1",
+    "1530010\tgoogle\tcomparison of bathroom tile types\tno\t1",
+    "1530011\tgoogle\tTop bathroom tile choices for tiny bathrooms\tno\t1",
+    "1530012\tgoogle\tTop bathroom tile choices for tiny bathrooms\tno\t1",
+    "1530013\tgoogle\tTiles for small bathrooms ideas\tno\t1",
+    "1530014\tgoogle\tIdeal tiles for compact bathrooms\tno\t1",
+    "1530015\tgoogle\tBathroom tile selection guide\tno\t1",
+    "1530016\tgoogle\tBathroom tile selection guide\tno\t1",
+    "1530017\tchatgpt\thelp me choose bathroom tiles\tno\t1",
+    "1530018\tchatgpt\thelp me choose bathroom tiles\tno\t1",
+    "1530019\tchatgpt\tgive me a list of bathroom tile options\tno\t1",
+    "1530020\tchatgpt\tgive me a list of bathroom tile ideas\tno\t1"
+  ],
+  "stdout": "id\turl\n3450002\thttps://komfort.pl/k/plytki?rodzaj_pom_plytki=do-lazienki\nid\tengine\tquery\tisCited\tround\n1530001\tgoogle\tbest bathroom tiles for small spaces\tno\t1\n1530002\tgoogle\tbest bathroom tiles for small spaces\tno\t1\n1530003\tgoogle\thow to choose bathroom tiles guide\tno\t1\n1530004\tgoogle\thow to choose bathroom tiles guide\tno\t1\n1530005\tgoogle\twhat is the best material for bathroom tiles\tno\t1\n1530006\tgoogle\twhat is the best type of bathroom tile\tno\t1\n1530007\tgoogle\ttop bathroom tile trends 2024\tno\t1\n1530008\tgoogle\ttop bathroom tile trends 2024\tno\t1\n1530009\tgoogle\tcomparison of bathroom tile materials\tno\t1\n1530010\tgoogle\tcomparison of bathroom tile types\tno\t1\n1530011\tgoogle\tTop bathroom tile choices for tiny bathrooms\tno\t1\n1530012\tgoogle\tTop bathroom tile choices for tiny bathrooms\tno\t1\n1530013\tgoogle\tTiles for small bathrooms ideas\tno\t1\n1530014\tgoogle\tIdeal tiles for compact bathrooms\tno\t1\n1530015\tgoogle\tBathroom tile selection guide\tno\t1\n1530016\tgoogle\tBathroom tile selection guide\tno\t1\n1530017\tchatgpt\thelp me choose bathroom tiles\tno\t1\n1530018\tchatgpt\thelp me choose bathroom tiles\tno\t1\n1530019\tchatgpt\tgive me a list of bathroom tile options\tno\t1\n1530020\tchatgpt\tgive me a list of bathroom tile ideas\tno\t1\n",
+  "stderr": "",
+  "execution_time_ms": 410
+}

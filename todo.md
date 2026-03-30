@@ -1187,3 +1187,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Diagnoza: getCached("perplexity") zwracało [] — system pomijał te silniki zamiast generować świeże zapytania
 - [x] Fix: getCachedOrFresh() — jeśli engine ma 0 zapytań w cache, generuje świeże zamiast pomijać
 - [x] Fix: dotyczy wszystkich silników (google, chatgpt, perplexity, gemini) — 340 testów, TS: 0 błędów
+
+## Bug Fix: Anglojęzyczne zapytania dla polskich stron (2026-03-30)
+
+- [x] Diagnoza: 4 warstwy problemu — has Polish skanował tylko 5000 znaków, brak TLD detection, ciTopQuestions w złym języku, brak walidacji po generacji
+- [x] Fix: TLD_LANG_MAP (.pl→pl, .de→de, .fr→fr itd.) — priorytet: html[lang] > TLD > content heuristic
+- [x] Fix: hasPolish skanuje pełny HTML (nie tylko 5000 znaków)
+- [x] Fix: ciTopQuestions filtrowanie — tylko pytania w języku strony trafiają do promptu
+- [x] Fix: CRITICAL langNote w prompcie z przykładami zapytań po polsku
+- [x] Fix: post-generation validation — jeśli <50% zapytań w języku strony, użyj buildFallbackQueries
+- [x] Fix: LOCALE_MAP rozszerzony o 10 języków (nl, pt, cs, sk, hu, ro, sv, no, da, fi)
+- [x] 340 testów, TypeScript: 0 błędów
