@@ -1,0 +1,42 @@
+{
+  "query": "SELECT * FROM monitored_pages WHERE userId = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT * FROM monitored_pages WHERE userId = 1;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "1",
+      "url": "https://rankomat.pl/turystyka/ranking-ubezpieczen-turystycznych",
+      "label": "NULL",
+      "lastAuditId": "1080004",
+      "lastScore": "81",
+      "lastAuditAt": "2026-03-07 23:23:06",
+      "nextAuditAt": "2026-03-14 23:23:06",
+      "isActive": "no",
+      "createdAt": "2026-03-06 14:00:17",
+      "scheduleFrequency": "7",
+      "lastCitedEngines": "NULL",
+      "lastTotalEngines": "NULL",
+      "lastCitationAt": "NULL"
+    },
+    {
+      "id": "30001",
+      "userId": "1",
+      "url": "https://www.totalmoney.pl/kredyty_gotowkowe",
+      "label": "NULL",
+      "lastAuditId": "3540001",
+      "lastScore": "80",
+      "lastAuditAt": "2026-03-30 23:16:17",
+      "nextAuditAt": "2026-04-06 23:16:17",
+      "isActive": "yes",
+      "createdAt": "2026-03-07 23:25:36",
+      "scheduleFrequency": "1",
+      "lastCitedEngines": "2",
+      "lastTotalEngines": "4",
+      "lastCitationAt": "2026-03-29 11:05:51"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\turl\tlabel\tlastAuditId\tlastScore\tlastAuditAt\tnextAuditAt\tisActive\tcreatedAt\tscheduleFrequency\tlastCitedEngines\tlastTotalEngines\tlastCitationAt\n1\t1\thttps://rankomat.pl/turystyka/ranking-ubezpieczen-turystycznych\tNULL\t1080004\t81\t2026-03-07 23:23:06\t2026-03-14 23:23:06\tno\t2026-03-06 14:00:17\t7\tNULL\tNULL\tNULL\n30001\t1\thttps://www.totalmoney.pl/kredyty_gotowkowe\tNULL\t3540001\t80\t2026-03-30 23:16:17\t2026-04-06 23:16:17\tyes\t2026-03-07 23:25:36\t1\t2\t4\t2026-03-29 11:05:51\n",
+  "stderr": "",
+  "execution_time_ms": 369
+}

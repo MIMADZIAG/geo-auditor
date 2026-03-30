@@ -416,31 +416,77 @@ export async function getAuditUsageStats(userId: number) {
 
 /**
  * Returns per-engine citation status for a monitored page based on the latest
- * completed citation job linked to the page’s last audit.
- * Used by: MonitoredPageCard engine breakdown, Dashboard Hub.
+ * COMPLETED citation job. Falls back through score_snapshots to find the most
+ * recent run that has actual citation data — handles the case where the current
+ * audit's citation job is still running/pending.
+ * Used by: MonitoredPageCard engine breakdown, Dashboard Hub, Citation Pulse.
  */
 export async function getEngineBreakdownForPage(monitoredPageId: number): Promise<{
   engine: string;
   cited: boolean;
   citedUrl: string | null;
   query: string | null;
+  jobStatus?: string;
+  checkedAt?: Date | null;
 }[]> {
   const db = await getDb();
   if (!db) return [];
 
-  const pages = await db
-    .select()
-    .from(monitoredPages)
-    .where(eq(monitoredPages.id, monitoredPageId))
-    .limit(1);
-  const page = pages[0];
-  if (!page?.lastAuditId) return [];
+  const { getCitationChecksByJobId } = await import("./citation/db");
+  const { citationJobs } = await import("../drizzle/schema");
 
-  const { getCitationJobByAuditId, getCitationChecksByJobId } = await import("./citation/db");
-  const job = await getCitationJobByAuditId(page.lastAuditId);
-  if (!job) return [];
+  // Strategy: find the most recent completed citation job for this monitored page
+  // by joining score_snapshots → citation_jobs (completed only).
+  // This handles the common case where lastAuditId's job is still running.
+  const snapshots = await db
+    .select({
+      citationJobId: scoreSnapshots.citationJobId,
+      recordedAt: scoreSnapshots.recordedAt,
+    })
+    .from(scoreSnapshots)
+    .where(eq(scoreSnapshots.monitoredPageId, monitoredPageId))
+    .orderBy(desc(scoreSnapshots.recordedAt))
+    .limit(10);
 
-  const checks = await getCitationChecksByJobId(job.id);
+  // Find the first snapshot that has a citation job in completed state
+  let completedJobId: number | null = null;
+  let completedAt: Date | null = null;
+  for (const snap of snapshots) {
+    if (!snap.citationJobId) continue;
+    const jobs = await db
+      .select({ id: citationJobs.id, status: citationJobs.status, createdAt: citationJobs.createdAt })
+      .from(citationJobs)
+      .where(and(eq(citationJobs.id, snap.citationJobId), eq(citationJobs.status, "completed")))
+      .limit(1);
+    if (jobs[0]) {
+      completedJobId = jobs[0].id;
+      completedAt = snap.recordedAt;
+      break;
+    }
+  }
+
+  // Also try lastAuditId directly (in case snapshot linkage is missing)
+  if (!completedJobId) {
+    const pages = await db
+      .select({ lastAuditId: monitoredPages.lastAuditId })
+      .from(monitoredPages)
+      .where(eq(monitoredPages.id, monitoredPageId))
+      .limit(1);
+    const lastAuditId = pages[0]?.lastAuditId;
+    if (lastAuditId) {
+      const jobs = await db
+        .select({ id: citationJobs.id, status: citationJobs.status })
+        .from(citationJobs)
+        .where(and(eq(citationJobs.auditId, lastAuditId), eq(citationJobs.status, "completed")))
+        .orderBy(desc(citationJobs.id))
+        .limit(1);
+      if (jobs[0]) completedJobId = jobs[0].id;
+    }
+  }
+
+  if (!completedJobId) return [];
+
+  const checks = await getCitationChecksByJobId(completedJobId);
   if (checks.length === 0) return [];
 
   const ENGINES = ["chatgpt", "google", "perplexity", "gemini"] as const;
@@ -448,7 +494,7 @@ export async function getEngineBreakdownForPage(monitoredPageId: number): Promis
 
   return ENGINES.map((engine) => {
     const engineChecks = checks.filter((c) => c.engine === engine);
-    if (engineChecks.length === 0) return { engine, cited: false, citedUrl: null, query: null };
+    if (engineChecks.length === 0) return { engine, cited: false, citedUrl: null, query: null, checkedAt: completedAt };
     const best = [...engineChecks].sort(
       (a, b) => (PRIORITY[a.isCited] ?? 2) - (PRIORITY[b.isCited] ?? 2)
     )[0];
@@ -457,6 +503,7 @@ export async function getEngineBreakdownForPage(monitoredPageId: number): Promis
       cited: best.isCited === "yes" || best.isCited === "domain",
       citedUrl: best.citedUrl ?? best.domainCitedUrl ?? null,
       query: best.query ?? null,
+      checkedAt: completedAt,
     };
   });
 }

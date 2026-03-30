@@ -131,8 +131,10 @@ function PagePulsePanel({
     label: string | null;
     lastScore: number | null;
     lastAuditAt: Date | string | null;
+    nextAuditAt?: Date | string | null;
     lastCitedEngines: number | null;
     lastTotalEngines: number | null;
+    lastCitationAt?: Date | string | null;
   };
   isPro: boolean;
   isStarter: boolean;
@@ -148,13 +150,17 @@ function PagePulsePanel({
   const totalEngines = page.lastTotalEngines ?? 4;
   const hasCitationData = page.lastTotalEngines != null;
 
+  const lastCitationDate = page.lastCitationAt
+    ? new Date(page.lastCitationAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" })
+    : null;
+
   const citationStatus =
     !hasCitationData ? "unknown" :
     citedEngines === 0 ? "none" :
     citedEngines >= 3 ? "strong" : "partial";
 
   const statusConfig = {
-    unknown: { label: "Brak danych", color: "text-muted-foreground", bg: "border-border" },
+    unknown: { label: "Brak danych cytowania", color: "text-muted-foreground", bg: "border-border" },
     none: { label: "Nie cytowana", color: "text-red-400", bg: "border-red-500/20" },
     partial: { label: "Częściowo cytowana", color: "text-amber-400", bg: "border-amber-500/20" },
     strong: { label: "Silnie cytowana", color: "text-emerald-400", bg: "border-emerald-500/20" },
@@ -213,8 +219,18 @@ function PagePulsePanel({
                 </span>
               )}
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {lastAudit}
+                <Clock className="w-3 h-3" /> Audyt: {lastAudit}
               </span>
+              {lastCitationDate && (
+                <span className="text-xs text-violet-400/80 flex items-center gap-1">
+                  <Eye className="w-3 h-3" /> Cytowania: {lastCitationDate}
+                </span>
+              )}
+              {!lastCitationDate && !hasCitationData && (
+                <span className="text-xs text-amber-400/70 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Oczekuje na sprawdzenie cytowań
+                </span>
+              )}
             </div>
           </div>
 

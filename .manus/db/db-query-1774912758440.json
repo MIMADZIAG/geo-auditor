@@ -1,0 +1,34 @@
+{
+  "query": "\nSELECT cj.id, cj.auditId, cj.status, cj.createdAt FROM citation_jobs cj WHERE cj.auditId IN (3540001, 3330002, 2880001, 2790001, 1080005) ORDER BY cj.id DESC LIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT cj.id, cj.auditId, cj.status, cj.createdAt FROM citation_jobs cj WHERE cj.auditId IN (3540001, 3330002, 2880001, 2790001, 1080005) ORDER BY cj.id DESC LIMIT 10;\n",
+  "rows": [
+    {
+      "id": "1620001",
+      "auditId": "3540001",
+      "status": "running",
+      "createdAt": "2026-03-30 23:16:22"
+    },
+    {
+      "id": "1410003",
+      "auditId": "3330002",
+      "status": "completed",
+      "createdAt": "2026-03-29 11:10:50"
+    },
+    {
+      "id": "1410002",
+      "auditId": "3330002",
+      "status": "completed",
+      "createdAt": "2026-03-29 11:04:40"
+    },
+    {
+      "id": "1320001",
+      "auditId": "2880001",
+      "status": "completed",
+      "createdAt": "2026-03-28 19:33:47"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tauditId\tstatus\tcreatedAt\n1620001\t3540001\trunning\t2026-03-30 23:16:22\n1410003\t3330002\tcompleted\t2026-03-29 11:10:50\n1410002\t3330002\tcompleted\t2026-03-29 11:04:40\n1320001\t2880001\tcompleted\t2026-03-28 19:33:47\n",
+  "stderr": "",
+  "execution_time_ms": 351
+}

@@ -1275,3 +1275,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] tRPC: monitoring.getPhraseHistory(monitoredPageId, phraseId, limit) procedure
 - [x] CitationPulse: PhraseTrendSparkline SVG component (7-run mini chart per phrase)
 - [x] CitationPulse: per-phrase row shows sparkline + last citation status per engine
+
+## Citation Pulse visibility fixes (2026-03-31)
+
+- [x] getEngineBreakdownForPage: fallback to last completed citation job (not just lastAuditId)
+- [x] Citation Pulse: show last run date + status clearly per page
+- [x] Citation Pulse: show "running" state when citation job is in progress
+- [ ] Dashboard: ensure add-to-monitoring button is visible and accessible for additional pages

@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT mp.id, mp.url, mp.plan, mp.status, mp.last_audit_at, mp.next_audit_at, mp.created_at\nFROM monitored_pages mp\nWHERE mp.user_id = 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT mp.id, mp.url, mp.plan, mp.status, mp.last_audit_at, mp.next_audit_at, mp.created_at\nFROM monitored_pages mp\nWHERE mp.user_id = 1;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'mp.user_id' in 'where clause'"
+  ]
+}

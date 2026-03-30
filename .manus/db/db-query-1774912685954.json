@@ -1,0 +1,118 @@
+{
+  "query": "\nSELECT id, phrase, source, isActive, citationStreakDays FROM monitored_page_phrases WHERE monitoredPageId = 30001 LIMIT 15;\nSELECT COUNT(*) as historyCount FROM phrase_citation_history WHERE monitoredPageId = 30001;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT id, phrase, source, isActive, citationStreakDays FROM monitored_page_phrases WHERE monitoredPageId = 30001 LIMIT 15;\nSELECT COUNT(*) as historyCount FROM phrase_citation_history WHERE monitoredPageId = 30001;\n",
+  "rows": [
+    {
+      "id": "1",
+      "phrase": "kredyt gotówkowy co to jest",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "2",
+      "phrase": "jak działa kredyt gotówkowy",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "3",
+      "phrase": "gdzie wziąć kredyt gotówkowy",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "4",
+      "phrase": "kredyt gotówkowy online",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "5",
+      "phrase": "najlepszy kredyt gotówkowy",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "6",
+      "phrase": "kalkulator kredytu gotówkowego",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "7",
+      "phrase": "warunki uzyskania kredytu gotówkowego",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "8",
+      "phrase": "oprocentowanie kredytu gotówkowego",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "9",
+      "phrase": "jak wybrać kredyt gotówkowy",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "10",
+      "phrase": "kredyt gotówkowy bez zaświadczeń",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "11",
+      "phrase": "dokumenty do kredytu gotówkowego",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "12",
+      "phrase": "czy warto brać kredyt gotówkowy",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "13",
+      "phrase": "kredyt gotówkowy na remont",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "14",
+      "phrase": "kredyt gotówkowy na wakacje",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    },
+    {
+      "id": "15",
+      "phrase": "porównanie kredytów gotówkowych",
+      "source": "ai_generated",
+      "isActive": "1",
+      "citationStreakDays": "0"
+    }
+  ],
+  "messages": [
+    "historyCount",
+    "0"
+  ],
+  "stdout": "id\tphrase\tsource\tisActive\tcitationStreakDays\n1\tkredyt gotówkowy co to jest\tai_generated\t1\t0\n2\tjak działa kredyt gotówkowy\tai_generated\t1\t0\n3\tgdzie wziąć kredyt gotówkowy\tai_generated\t1\t0\n4\tkredyt gotówkowy online\tai_generated\t1\t0\n5\tnajlepszy kredyt gotówkowy\tai_generated\t1\t0\n6\tkalkulator kredytu gotówkowego\tai_generated\t1\t0\n7\twarunki uzyskania kredytu gotówkowego\tai_generated\t1\t0\n8\toprocentowanie kredytu gotówkowego\tai_generated\t1\t0\n9\tjak wybrać kredyt gotówkowy\tai_generated\t1\t0\n10\tkredyt gotówkowy bez zaświadczeń\tai_generated\t1\t0\n11\tdokumenty do kredytu gotówkowego\tai_generated\t1\t0\n12\tczy warto brać kredyt gotówkowy\tai_generated\t1\t0\n13\tkredyt gotówkowy na remont\tai_generated\t1\t0\n14\tkredyt gotówkowy na wakacje\tai_generated\t1\t0\n15\tporównanie kredytów gotówkowych\tai_generated\t1\t0\nhistoryCount\n0\n",
+  "stderr": "",
+  "execution_time_ms": 394
+}

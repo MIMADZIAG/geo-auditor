@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT id, monitoredPageId, overallScore, citedEnginesCount, checkedAt FROM score_snapshots WHERE monitoredPageId = 30001 ORDER BY checkedAt DESC LIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT id, monitoredPageId, overallScore, citedEnginesCount, checkedAt FROM score_snapshots WHERE monitoredPageId = 30001 ORDER BY checkedAt DESC LIMIT 10;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'checkedat' in 'field list'"
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "query": "\nSELECT engine, isCited, query, citedUrl FROM citation_checks WHERE jobId = 1410002 LIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT engine, isCited, query, citedUrl FROM citation_checks WHERE jobId = 1410002 LIMIT 20;\n",
+  "rows": [
+    {
+      "engine": "google",
+      "isCited": "no",
+      "query": "ranking kredytów gotówkowych marzec 2026",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "google",
+      "isCited": "no",
+      "query": "najlepszy kredyt gotówkowy jak wybrać",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "query": "Pomóż mi znajdować najtańszy kredyt gotówkowy",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "query": "jakie są najlepsze oferty kredytu gotówkowego",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "domain",
+      "query": "napisz mi ranking kredytów gotówkowych",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "no",
+      "query": "stwórz porównanie kredytów gotówkowych",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "chatgpt",
+      "isCited": "domain",
+      "query": "Jak wybrać daj mi listę najlepszych kredytów gotówkowych marzec 2026",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "gemini",
+      "isCited": "domain",
+      "query": "Wyjaśnij ranking kredytów gotówkowych Totalmoney",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "gemini",
+      "isCited": "domain",
+      "query": "Porównaj najtańsze kredyty gotówkowe marzec 2026",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "gemini",
+      "isCited": "domain",
+      "query": "Pomóż mi wybrać najlepszy kredyt gotówkowy",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "gemini",
+      "isCited": "domain",
+      "query": "Jak wybrać kredyt gotówkowy marzec 2026 vs inne miesiące",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "gemini",
+      "isCited": "domain",
+      "query": "Porównanie kredytów gotówkowych marzec 2026 z innymi miesiącami",
+      "citedUrl": "NULL"
+    },
+    {
+      "engine": "gemini",
+      "isCited": "domain",
+      "query": "Opłacalność kredytu gotówkowego w marcu 2026",
+      "citedUrl": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "engine\tisCited\tquery\tcitedUrl\ngoogle\tno\tranking kredytów gotówkowych marzec 2026\tNULL\ngoogle\tno\tnajlepszy kredyt gotówkowy jak wybrać\tNULL\nchatgpt\tno\tPomóż mi znajdować najtańszy kredyt gotówkowy\tNULL\nchatgpt\tno\tjakie są najlepsze oferty kredytu gotówkowego\tNULL\nchatgpt\tdomain\tnapisz mi ranking kredytów gotówkowych\tNULL\nchatgpt\tno\tstwórz porównanie kredytów gotówkowych\tNULL\nchatgpt\tdomain\tJak wybrać daj mi listę najlepszych kredytów gotówkowych marzec 2026\tNULL\ngemini\tdomain\tWyjaśnij ranking kredytów gotówkowych Totalmoney\tNULL\ngemini\tdomain\tPorównaj najtańsze kredyty gotówkowe marzec 2026\tNULL\ngemini\tdomain\tPomóż mi wybrać najlepszy kredyt gotówkowy\tNULL\ngemini\tdomain\tJak wybrać kredyt gotówkowy marzec 2026 vs inne miesiące\tNULL\ngemini\tdomain\tPorównanie kredytów gotówkowych marzec 2026 z innymi miesiącami\tNULL\ngemini\tdomain\tOpłacalność kredytu gotówkowego w marcu 2026\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 352
+}

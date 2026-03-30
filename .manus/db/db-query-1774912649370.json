@@ -1,0 +1,16 @@
+{
+  "query": "\nSELECT u.id, u.email, u.plan, u.name FROM users u WHERE u.email = 'mikolajmadziag@gmail.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT u.id, u.email, u.plan, u.name FROM users u WHERE u.email = 'mikolajmadziag@gmail.com';\n",
+  "rows": [
+    {
+      "id": "1",
+      "email": "mikolajmadziag@gmail.com",
+      "plan": "business",
+      "name": "Mikołaj Madziąg"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tplan\tname\n1\tmikolajmadziag@gmail.com\tbusiness\tMikołaj Madziąg\n",
+  "stderr": "",
+  "execution_time_ms": 392
+}
