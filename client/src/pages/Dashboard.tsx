@@ -1179,6 +1179,8 @@ export default function Dashboard() {
     },
     onError: (e) => toast.error(e.message),
   });
+  // MUST be before any early returns — Rules of Hooks
+  const [auditHistoryExpanded, setAuditHistoryExpanded] = useState(false);
 
   if (authLoading) return <DashboardSkeleton />;
   if (!isAuthenticated) return <NotAuthenticated />;
@@ -1198,7 +1200,7 @@ export default function Dashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Dzień dobry" : hour < 18 ? "Cześć" : "Dobry wieczór";
-  const firstName = user?.name?.split(" ")[0] ?? "Użytkowniku";
+  const firstName = user?.name?.split(" ")[0] ?? "Użytkownik u";
 
   const handleAddMonitoring = () => {
     if (!newUrl.trim()) return;
@@ -1208,8 +1210,6 @@ export default function Dashboard() {
     }
     addMonitoring.mutate({ url });
   };
-
-  const [auditHistoryExpanded, setAuditHistoryExpanded] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

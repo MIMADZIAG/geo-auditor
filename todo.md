@@ -1232,3 +1232,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] CitationOpportunityPanel: Pro paywall (Free = 1 opportunity preview, Pro = all + content briefs)
 - [x] AICitationPanel: CitationOpportunityPanel po GapAnalysisPanel, overallScore przekazywany z Results.tsx
 - [x] Fix psychological paradox: ScoreParadoxExplainer aktywowany gdy score>=60 i citedCount=0
+
+## Bug Fix: Dashboard "Rendered more hooks" (2026-03-30)
+
+- [x] Diagnoza: useState(auditHistoryExpanded) wywoływany po early returns (linia 1212 > 1183)
+- [x] Fix: przeniesiono useState przed if(authLoading)/if(!isAuthenticated) — 340 testów, TS: 0 błędów
