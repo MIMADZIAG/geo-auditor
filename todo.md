@@ -1216,3 +1216,19 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: GapAnalysisPanel — ten sam smart polling z useEffect + citationJobStatus prop
 - [x] Fix: loading indicator "Trwa analiza konkurencji…" podczas oczekiwania na dane
 - [x] 340 testów, TypeScript: 0 błędów
+
+## Feature: Citation Opportunity Finder (2026-03-30)
+
+### Backend
+- [x] server/citation/opportunityFinder.ts: Level 1 structural diff (34 checks, 7 categories, zero LLM cost)
+- [x] server/citation/opportunityFinder.ts: Level 2 LLM semantic analysis (intent, responseType, winningFragment, contentBrief)
+- [x] tRPC: citation.getOpportunities(auditId) — 5min cache, sorted by priority
+- [x] Tests: 340 unit tests passing, TypeScript: 0 błędów
+
+### Frontend
+- [x] CitationOpportunityPanel.tsx: per-query breakdown, aha-moment design, content brief cards
+- [x] CitationOpportunityPanel: ScoreParadoxExplainer — "Masz 92/100 ale 0 cytowań — dlaczego?"
+- [x] CitationOpportunityPanel: "Dlaczego warto dążyć do 100/100" educational section
+- [x] CitationOpportunityPanel: Pro paywall (Free = 1 opportunity preview, Pro = all + content briefs)
+- [x] AICitationPanel: CitationOpportunityPanel po GapAnalysisPanel, overallScore przekazywany z Results.tsx
+- [x] Fix psychological paradox: ScoreParadoxExplainer aktywowany gdy score>=60 i citedCount=0

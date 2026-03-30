@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { runAudit } from "./audit/index";
 import { createCitationJob, getCitationResultsForAudit } from "./citation/db";
+import { computeOpportunities } from "./citation/opportunityFinder";
 import { runCitationJob } from "./citation/worker";
 import { getLastHealthReport, runAndCacheHealthCheck } from "./citation/selectorHealth";
 import { createCheckoutSession, createBillingPortalSession } from "./stripe/handler";
@@ -415,6 +416,36 @@ export const appRouter = router({
           return report;
         }
         return getLastHealthReport();
+      }),
+
+    /**
+     * Citation Opportunity Finder — Level 1 (structural) + Level 2 (LLM semantic)
+     * Level 1: always available (free + pro)
+     * Level 2: Pro/Business only (includeSemanticInsights=true)
+     */
+    getOpportunities: publicProcedure
+      .input(z.object({
+        auditId: z.number(),
+        includeSemanticInsights: z.boolean().optional().default(false),
+      }))
+      .query(async ({ ctx, input }) => {
+        // Semantic insights are Pro/Business only
+        let canUseSemantic = false;
+        if (input.includeSemanticInsights) {
+          const user = (ctx as any).user;
+          if (user) {
+            const db = await getDb();
+            if (db) {
+              const userRows = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+              const plan = userRows[0]?.plan ?? "free";
+              canUseSemantic = plan === "pro" || plan === "business" || user.role === "admin";
+            }
+          }
+        }
+        const result = await computeOpportunities(input.auditId, {
+          includeSemanticInsights: canUseSemantic,
+        });
+        return result;
       }),
   }),
 

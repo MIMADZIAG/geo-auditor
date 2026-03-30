@@ -19,6 +19,7 @@ import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import { ENGINE_CONFIG, ALL_ENGINES, getVisibilityScoreResult } from "../../../shared/visibilityScore";
 import { GapAnalysisPanel } from "./GapAnalysisPanel";
+import { CitationOpportunityPanel } from "./CitationOpportunityPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,8 @@ interface CitationJob {
 interface Props {
   auditId: number;
   url?: string;
+  /** Overall audit score (0-100) — used for score paradox explainer in CitationOpportunityPanel */
+  overallScore?: number | null;
   /** Called when citation job completes with all cited competitor URLs */
   onCompetitorUrlsReady?: (urls: string[]) => void;
   /** Called when citation status changes — used by parent to update Sticky Score Bar */
@@ -1051,7 +1054,7 @@ function EngineBreakdownTable({ checks }: { checks: CitationCheck[] }) {
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function AICitationPanel(
-  { auditId, url, onCompetitorUrlsReady, onStatusChange }: Props,
+  { auditId, url, overallScore, onCompetitorUrlsReady, onStatusChange }: Props,
   ref
 ) {
   const { user } = useAuth();
@@ -1431,8 +1434,15 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
       <CompetitorIntelPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
 
       {/* Gap Analysis — check-by-check diff vs competitors */}
-      <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-
+       <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
+      {/* Citation Opportunity Finder — per-query analysis of why competitors are cited instead */}
+      <CitationOpportunityPanel
+        auditId={auditId}
+        isPro={isPro}
+        auditScore={overallScore ?? null}
+        citationJobStatus={job?.status ?? null}
+        citedCount={checks.filter(c => c.isCited === "yes" || c.isCited === "domain").length}
+      />
       {/* Methodology disclaimer — at the bottom, after all results */}
       <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">
         <svg className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

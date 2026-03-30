@@ -720,6 +720,7 @@ export default function Results() {
           <AICitationPanel
             auditId={auditId}
             url={audit.url}
+            overallScore={overallScore}
             onCompetitorUrlsReady={setCitedCompetitorUrls}
             onStatusChange={handleCitationStatusChange}
             ref={citationPanelRef}
