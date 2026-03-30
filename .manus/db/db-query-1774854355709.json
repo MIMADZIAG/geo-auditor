@@ -1,0 +1,90 @@
+{
+  "query": "\nSHOW COLUMNS FROM citation_jobs;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSHOW COLUMNS FROM citation_jobs;\n",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "auditId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "userId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "url",
+      "Type": "varchar(2048)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('pending','running','completed','failed')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    },
+    {
+      "Field": "prompts",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "errorMessage",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "completedAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "language",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "en",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nauditId\tint\tNO\t\tNULL\t\nuserId\tint\tYES\t\tNULL\t\nurl\tvarchar(2048)\tNO\t\tNULL\t\nstatus\tenum('pending','running','completed','failed')\tNO\t\tpending\t\nprompts\tjson\tYES\t\tNULL\t\nerrorMessage\ttext\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\ncompletedAt\ttimestamp\tYES\t\tNULL\t\nlanguage\tvarchar(10)\tYES\t\ten\t\n",
+  "stderr": "",
+  "execution_time_ms": 356
+}

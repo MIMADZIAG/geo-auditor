@@ -1,0 +1,32 @@
+{
+  "query": "\nSELECT \n  a.id as audit_id, a.url, a.status as audit_status,\n  cj.id as citation_job_id, cj.status as job_status, cj.completedAt,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.jobId = cj.id) as check_count,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.jobId = cj.id AND cc.isCited = 'yes') as cited_count,\n  (SELECT COUNT(*) FROM competitor_audits ca WHERE ca.auditId = a.id) as competitor_audit_count\nFROM audits a\nLEFT JOIN citation_jobs cj ON cj.auditId = a.id\nWHERE a.id = 3450003;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT \n  a.id as audit_id, a.url, a.status as audit_status,\n  cj.id as citation_job_id, cj.status as job_status, cj.completedAt,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.jobId = cj.id) as check_count,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.jobId = cj.id AND cc.isCited = 'yes') as cited_count,\n  (SELECT COUNT(*) FROM competitor_audits ca WHERE ca.auditId = a.id) as competitor_audit_count\nFROM audits a\nLEFT JOIN citation_jobs cj ON cj.auditId = a.id\nWHERE a.id = 3450003;\n",
+  "rows": [
+    {
+      "audit_id": "3450003",
+      "url": "https://www.kuchenny.com.pl/3573-22-kaszmirowa-kuchnia--jakie-dodatki-wybrac.html#:~:text=Kuchnia%20kaszmirowa%20z%20ciemnymi%20dodatkami%20Doskona%C5%82ym%20sposobem,innych%20jasnych%20tonacji%20to%20tak%C5%BCe%20dobry%20pomys%C5%82.",
+      "audit_status": "completed",
+      "citation_job_id": "1530003",
+      "job_status": "completed",
+      "completedAt": "2026-03-30 07:02:59",
+      "check_count": "31",
+      "cited_count": "3",
+      "competitor_audit_count": "5"
+    },
+    {
+      "audit_id": "3450003",
+      "url": "https://www.kuchenny.com.pl/3573-22-kaszmirowa-kuchnia--jakie-dodatki-wybrac.html#:~:text=Kuchnia%20kaszmirowa%20z%20ciemnymi%20dodatkami%20Doskona%C5%82ym%20sposobem,innych%20jasnych%20tonacji%20to%20tak%C5%BCe%20dobry%20pomys%C5%82.",
+      "audit_status": "completed",
+      "citation_job_id": "1530004",
+      "job_status": "completed",
+      "completedAt": "2026-03-30 07:02:56",
+      "check_count": "32",
+      "cited_count": "1",
+      "competitor_audit_count": "5"
+    }
+  ],
+  "messages": [],
+  "stdout": "audit_id\turl\taudit_status\tcitation_job_id\tjob_status\tcompletedAt\tcheck_count\tcited_count\tcompetitor_audit_count\n3450003\thttps://www.kuchenny.com.pl/3573-22-kaszmirowa-kuchnia--jakie-dodatki-wybrac.html#:~:text=Kuchnia%20kaszmirowa%20z%20ciemnymi%20dodatkami%20Doskona%C5%82ym%20sposobem,innych%20jasnych%20tonacji%20to%20tak%C5%BCe%20dobry%20pomys%C5%82.\tcompleted\t1530003\tcompleted\t2026-03-30 07:02:59\t31\t3\t5\n3450003\thttps://www.kuchenny.com.pl/3573-22-kaszmirowa-kuchnia--jakie-dodatki-wybrac.html#:~:text=Kuchnia%20kaszmirowa%20z%20ciemnymi%20dodatkami%20Doskona%C5%82ym%20sposobem,innych%20jasnych%20tonacji%20to%20tak%C5%BCe%20dobry%20pomys%C5%82.\tcompleted\t1530004\tcompleted\t2026-03-30 07:02:56\t32\t1\t5\n",
+  "stderr": "",
+  "execution_time_ms": 373
+}

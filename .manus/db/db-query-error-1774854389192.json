@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT \n  ca.id, ca.auditId, ca.competitorUrl, ca.status, ca.overallScore,\n  ca.createdAt, ca.completedAt,\n  LENGTH(ca.findings) as findings_len\nFROM competitor_audits ca\nWHERE ca.auditId = 3450003\nORDER BY ca.createdAt DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT \n  ca.id, ca.auditId, ca.competitorUrl, ca.status, ca.overallScore,\n  ca.createdAt, ca.completedAt,\n  LENGTH(ca.findings) as findings_len\nFROM competitor_audits ca\nWHERE ca.auditId = 3450003\nORDER BY ca.createdAt DESC;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'ca.competitorurl' in 'field list'"
+  ]
+}

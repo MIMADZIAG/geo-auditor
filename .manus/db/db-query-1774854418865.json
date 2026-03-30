@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, auditId, jobId, url, domain, status, overallScore, citationCount FROM competitor_audits WHERE auditId = 3450003;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute SELECT id, auditId, jobId, url, domain, status, overallScore, citationCount FROM competitor_audits WHERE auditId = 3450003;",
+  "rows": [
+    {
+      "id": "60006",
+      "auditId": "3450003",
+      "jobId": "1530004",
+      "url": "https://www.facebook.com/pluciennikpl/videos/kaszmir-wci%c4%85%c5%bc-na-topie-ale-teraz-w-duecie-z-drewnem-cho%c4%87-dekor-w-kolorze-kaszmir/583933854664695",
+      "domain": "facebook.com",
+      "status": "completed",
+      "overallScore": "48",
+      "citationCount": "5"
+    },
+    {
+      "id": "60007",
+      "auditId": "3450003",
+      "jobId": "1530004",
+      "url": "https://www.kuchenny.com.pl/3886-19-zlewozmywaki-franke-idealne-do-kaszmirowej-kuchni.html",
+      "domain": "kuchenny.com.pl",
+      "status": "completed",
+      "overallScore": "68",
+      "citationCount": "5"
+    },
+    {
+      "id": "60008",
+      "auditId": "3450003",
+      "jobId": "1530004",
+      "url": "https://www.weranda.pl/urzadzamy/kuchnia/kaszmirowa-kuchnia",
+      "domain": "weranda.pl",
+      "status": "completed",
+      "overallScore": "67",
+      "citationCount": "5"
+    },
+    {
+      "id": "60009",
+      "auditId": "3450003",
+      "jobId": "1530004",
+      "url": "https://vinterior.pl/kuchnia-kaszmir-jaki-blat-wybrac",
+      "domain": "vinterior.pl",
+      "status": "completed",
+      "overallScore": "67",
+      "citationCount": "4"
+    },
+    {
+      "id": "60010",
+      "auditId": "3450003",
+      "jobId": "1530004",
+      "url": "https://kuchenny.com.pl",
+      "domain": "kuchenny.com.pl",
+      "status": "completed",
+      "overallScore": "63",
+      "citationCount": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tauditId\tjobId\turl\tdomain\tstatus\toverallScore\tcitationCount\n60006\t3450003\t1530004\thttps://www.facebook.com/pluciennikpl/videos/kaszmir-wci%c4%85%c5%bc-na-topie-ale-teraz-w-duecie-z-drewnem-cho%c4%87-dekor-w-kolorze-kaszmir/583933854664695\tfacebook.com\tcompleted\t48\t5\n60007\t3450003\t1530004\thttps://www.kuchenny.com.pl/3886-19-zlewozmywaki-franke-idealne-do-kaszmirowej-kuchni.html\tkuchenny.com.pl\tcompleted\t68\t5\n60008\t3450003\t1530004\thttps://www.weranda.pl/urzadzamy/kuchnia/kaszmirowa-kuchnia\tweranda.pl\tcompleted\t67\t5\n60009\t3450003\t1530004\thttps://vinterior.pl/kuchnia-kaszmir-jaki-blat-wybrac\tvinterior.pl\tcompleted\t67\t4\n60010\t3450003\t1530004\thttps://kuchenny.com.pl\tkuchenny.com.pl\tcompleted\t63\t4\n",
+  "stderr": "",
+  "execution_time_ms": 341
+}

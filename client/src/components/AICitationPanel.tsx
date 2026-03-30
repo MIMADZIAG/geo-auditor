@@ -591,15 +591,46 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
  * Data is populated asynchronously after citation check completes (fire-and-forget).
  * Pro gate: Starter/Free see blurred rows with upgrade CTA.
  */
-function CompetitorIntelPanel({ auditId, isPro }: { auditId: number; isPro: boolean }) {
-  const { data: competitors, isLoading } = trpc.competitor.getForAudit.useQuery(
+function CompetitorIntelPanel({ auditId, isPro, citationJobStatus }: { auditId: number; isPro: boolean; citationJobStatus?: string | null }) {
+  // Smart polling: competitor audit runs async ~30-60s after citation job completes.
+  // Poll every 5s for up to 3 minutes until data arrives, then stop.
+  const [pollCount, setPollCount] = useState(0);
+  const MAX_POLLS = 36; // 36 × 5s = 3 min max
+
+  const { data: competitors, isLoading, refetch } = trpc.competitor.getForAudit.useQuery(
     { auditId },
-    { retry: false }
+    { retry: false, staleTime: 0 }
   );
+
+  const hasCompleted = !!(competitors && competitors.some(c => c.status === "completed"));
+
+  // Start polling when citation job is done but competitor data isn't ready yet
+  useEffect(() => {
+    if (hasCompleted) return; // data arrived — stop
+    if (pollCount >= MAX_POLLS) return; // timeout
+    // Only poll when citation job is completed (competitor audit is in progress)
+    if (citationJobStatus !== "completed") return;
+    const timer = setTimeout(() => {
+      refetch();
+      setPollCount(p => p + 1);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [hasCompleted, pollCount, citationJobStatus]);
 
   // Not yet populated (citation job still running or no competitors found)
   if (isLoading) return null;
-  if (!competitors || competitors.length === 0) return null;
+  if (!competitors || competitors.length === 0) {
+    // Show a subtle loading indicator when citation job is done (competitor audit in progress)
+    if (citationJobStatus === "completed" && pollCount < MAX_POLLS) {
+      return (
+        <div className="bg-zinc-900/40 border border-white/8 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full border-2 border-zinc-500 border-t-transparent animate-spin flex-shrink-0" />
+          <span className="text-xs text-zinc-500">Trwa analiza konkurencji… może potrwać do 2 minut</span>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const completed = competitors.filter(c => c.status === "completed");
   if (completed.length === 0) return null;
@@ -1397,10 +1428,10 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
 
       {/* Competitor Intelligence — AI Score comparison table */}
-      <CompetitorIntelPanel auditId={auditId} isPro={isPro} />
+      <CompetitorIntelPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
 
       {/* Gap Analysis — check-by-check diff vs competitors */}
-      <GapAnalysisPanel auditId={auditId} isPro={isPro} />
+      <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
 
       {/* Methodology disclaimer — at the bottom, after all results */}
       <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">

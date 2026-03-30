@@ -1207,3 +1207,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: validateLanguageOfStrings() — post-generation validation dla top_questions, page_topics, semantic_gaps, missing_subtopics
 - [x] Fix: ContentIntelligenceResult.detectedLanguage — nowe pole z wykrytym językiem
 - [x] 340 testów, TypeScript: 0 błędów
+
+## Bug Fix: Competitor audit nie uruchomił się dla audytu 3450003 (2026-03-30)
+
+- [x] Diagnoza: DB ma 5 completed competitor audits dla 3450003 — problem był w UI (brak pollingu)
+- [x] Diagnoza: CompetitorIntelPanel miał { retry: false } bez refetchInterval — jeśli dane nie były gotowe przy mount, nie odwieżał się
+- [x] Fix: CompetitorIntelPanel — smart polling co 5s (max 3 min) gdy citationJobStatus=completed i brak danych
+- [x] Fix: GapAnalysisPanel — ten sam smart polling z useEffect + citationJobStatus prop
+- [x] Fix: loading indicator "Trwa analiza konkurencji…" podczas oczekiwania na dane
+- [x] 340 testów, TypeScript: 0 błędów

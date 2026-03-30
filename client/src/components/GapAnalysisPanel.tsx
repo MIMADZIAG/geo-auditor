@@ -12,7 +12,7 @@
  *  - Pro paywall: Free sees top-3 critical gaps only
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -261,13 +261,29 @@ function CategorySummaryRow({
 interface GapAnalysisPanelProps {
   auditId: number;
   isPro: boolean;
+  citationJobStatus?: string | null;
 }
 
-export function GapAnalysisPanel({ auditId, isPro }: GapAnalysisPanelProps) {
-  const { data: gapData, isLoading } = trpc.competitor.getGapAnalysis.useQuery(
+export function GapAnalysisPanel({ auditId, isPro, citationJobStatus }: GapAnalysisPanelProps) {
+  const [pollCount, setPollCount] = useState(0);
+  const MAX_POLLS = 36;
+
+  const { data: gapData, isLoading, refetch } = trpc.competitor.getGapAnalysis.useQuery(
     { auditId },
     { retry: 1, staleTime: 5 * 60 * 1000 }
   );
+
+  // Poll for gap analysis data when citation job is done but competitor audit is still running
+  useEffect(() => {
+    if (gapData && gapData.totalGaps > 0) return; // data arrived
+    if (pollCount >= MAX_POLLS) return;
+    if (citationJobStatus !== "completed") return;
+    const timer = setTimeout(() => {
+      refetch();
+      setPollCount(p => p + 1);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [gapData, pollCount, citationJobStatus]);
 
   const [activeCategory, setActiveCategory] = useState<GapCategory | "all">("all");
   const [showAll, setShowAll] = useState(false);

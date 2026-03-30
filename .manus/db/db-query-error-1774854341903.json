@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT \n  a.id as audit_id, a.url, a.status,\n  cj.id as citation_job_id, cj.status as job_status, cj.completed_at,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.job_id = cj.id) as check_count,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.job_id = cj.id AND cc.is_cited = 'yes') as cited_count,\n  (SELECT COUNT(*) FROM competitor_audits ca WHERE ca.audit_id = a.id) as competitor_audit_count\nFROM audits a\nLEFT JOIN citation_jobs cj ON cj.audit_id = a.id\nWHERE a.id = 3450003;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4UmUGkccTe7FGVA.root --database 2tpPVwaQRo98xpKcbz8MHo --execute \nSELECT \n  a.id as audit_id, a.url, a.status,\n  cj.id as citation_job_id, cj.status as job_status, cj.completed_at,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.job_id = cj.id) as check_count,\n  (SELECT COUNT(*) FROM citation_checks cc WHERE cc.job_id = cj.id AND cc.is_cited = 'yes') as cited_count,\n  (SELECT COUNT(*) FROM competitor_audits ca WHERE ca.audit_id = a.id) as competitor_audit_count\nFROM audits a\nLEFT JOIN citation_jobs cj ON cj.audit_id = a.id\nWHERE a.id = 3450003;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'cj.audit_id' in 'on clause'"
+  ]
+}
