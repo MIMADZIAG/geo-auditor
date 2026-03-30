@@ -2,11 +2,12 @@
  * Content Intelligence Module
  *
  * LLM-powered analysis of content quality from an AI-citation perspective.
- * Evaluates 5 dimensions that determine whether AI engines (ChatGPT, Perplexity,
+ * Evaluates 8 dimensions that determine whether AI engines (ChatGPT, Perplexity,
  * Google AI Overviews) will cite, quote, or surface this page in their answers.
  *
- * This is the premium differentiator of GEO-Auditor — no competitor analyzes
- * content quality at this level for individual URLs.
+ * Language enforcement: ALL LLM outputs (descriptions, recommendations, top_questions,
+ * page_topics, semantic_gaps) are generated in the NATIVE LANGUAGE of the audited page.
+ * Detection priority: html[lang] attr > TLD > Polish character heuristic > default "en".
  */
 
 import { invokeLLM } from "../_core/llm";
@@ -34,7 +35,8 @@ export interface ContentIntelligenceResult {
   summary: string;             // 1–2 sentence overall assessment
   topOpportunity: string;      // Single most impactful improvement
   pageTopics: string[];        // Detected main topics (for virality/sharing)
-  semanticGaps: string[];      // NEW — missing subtopics/questions (iPullRank Ch.11)
+  semanticGaps: string[];      // Missing subtopics/questions (iPullRank Ch.11)
+  detectedLanguage: string;    // ISO 639-1 language code detected for this page
   isLLMPowered: true;
 }
 
@@ -101,6 +103,276 @@ interface LLMContentAnalysis {
   semantic_gaps: string[];
 }
 
+// ─── Language Detection ───────────────────────────────────────────────────────
+
+/**
+ * TLD → ISO 639-1 language code mapping.
+ * Country-code TLDs are strong signals for page language.
+ * Shared with citation/worker.ts — keep in sync.
+ */
+const TLD_LANG_MAP: Record<string, string> = {
+  pl: "pl", de: "de", fr: "fr", es: "es", it: "it",
+  nl: "nl", ru: "ru", pt: "pt", cs: "cs", sk: "sk",
+  hu: "hu", ro: "ro", bg: "bg", hr: "hr", sl: "sl",
+  sv: "sv", no: "no", da: "da", fi: "fi",
+};
+
+/**
+ * Detect the native language of a page.
+ * Priority: html[lang] attr > TLD > Polish character heuristic > "en" default.
+ *
+ * @param html  Raw HTML string of the page
+ * @param url   Page URL (used for TLD detection)
+ * @returns     ISO 639-1 language code, e.g. "pl", "de", "en"
+ */
+export function detectPageLanguageForCI(html: string, url: string): string {
+  // 1. html[lang] attribute — most authoritative signal
+  const langAttrMatch = html.match(/<html[^>]+lang=["']([a-zA-Z-]+)["']/i);
+  if (langAttrMatch) {
+    const lang = langAttrMatch[1].toLowerCase().split("-")[0];
+    if (lang && lang !== "und" && lang !== "zxx") return lang;
+  }
+
+  // 2. TLD-based detection — country-code TLDs are strong language signals
+  const tldMatch = url.match(/\.([a-z]{2,3})(?:\/|\?|#|$)/i);
+  if (tldMatch) {
+    const tldLang = TLD_LANG_MAP[tldMatch[1].toLowerCase()];
+    if (tldLang) return tldLang;
+  }
+
+  // 3. Polish character heuristic — scan full HTML (not just first N chars)
+  //    Category/product pages often have JS/CSS before visible text
+  const hasPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(html);
+  if (hasPolish) return "pl";
+
+  return "en";
+}
+
+// ─── Language-aware Prompt Builder ────────────────────────────────────────────
+
+/**
+ * Returns the human-readable language label for use in LLM prompts.
+ */
+function getLangLabel(lang: string): string {
+  const labels: Record<string, string> = {
+    pl: "Polish (język polski)",
+    de: "German (Deutsch)",
+    fr: "French (Français)",
+    es: "Spanish (Español)",
+    it: "Italian (Italiano)",
+    nl: "Dutch (Nederlands)",
+    ru: "Russian (Русский)",
+    pt: "Portuguese (Português)",
+    cs: "Czech (Čeština)",
+    sk: "Slovak (Slovenčina)",
+    hu: "Hungarian (Magyar)",
+    ro: "Romanian (Română)",
+    sv: "Swedish (Svenska)",
+    no: "Norwegian (Norsk)",
+    da: "Danish (Dansk)",
+    fi: "Finnish (Suomi)",
+  };
+  return labels[lang] ?? `the page's native language (${lang})`;
+}
+
+/**
+ * Build the language enforcement section for the CI system prompt.
+ * Uses CRITICAL marker + concrete examples to prevent the model from
+ * defaulting to English for non-English pages.
+ */
+function buildLangEnforcementNote(lang: string): string {
+  const label = getLangLabel(lang);
+
+  if (lang === "en") {
+    return `LANGUAGE: Generate ALL outputs (descriptions, recommendations, examples, top_questions, page_topics, semantic_gaps, overall_summary, top_opportunity) in ENGLISH.`;
+  }
+
+  const polishExamples = lang === "pl"
+    ? `\nExample top_questions in Polish: ["Jak wybrać płytki do łazienki?", "Jakie płytki są najlepsze do małej łazienki?", "Ile kosztują płytki ceramiczne?"]
+Example semantic_gaps in Polish: ["porównanie materiałów płytek", "montaż i układanie płytek krok po kroku"]
+Example page_topics in Polish: ["płytki ceramiczne", "remont łazienki", "wykończenie wnętrz"]`
+    : "";
+
+  return `CRITICAL LANGUAGE REQUIREMENT:
+The audited page is in ${label}. You MUST generate ALL outputs in ${label}.
+This applies to EVERY field: descriptions, recommendations, examples, top_questions, page_topics, semantic_gaps, overall_summary, top_opportunity.
+NEVER use English in any output field. Every single string MUST be in ${label}.${polishExamples}`;
+}
+
+/**
+ * Build the full system prompt for Content Intelligence analysis.
+ * The prompt adapts to the detected page language.
+ */
+function buildSystemPrompt(lang: string): string {
+  const langNote = buildLangEnforcementNote(lang);
+
+  // Polish system prompt (most common use case for this product)
+  if (lang === "pl") {
+    return `Jesteś ekspertem w Generative Engine Optimization (GEO) — praktyce optymalizacji treści internetowych, aby były cytowane, przywoływane i wyświetlane przez silniki wyszukiwania AI takie jak ChatGPT, Perplexity, Google AI Overviews i Claude.
+
+Twoim zadaniem jest analiza treści strony internetowej i ocena jej w 8 wymiarach, które decydują o tym, czy silniki AI będą ją cytować. Bądź SZCZERY i KRYTYCZNY — większość stron ma znaczny potencjał do poprawy. NIE zawyżaj wyników.
+
+${langNote}
+
+WSKAZÓWNIKI OCENIANIA (bądź surowy):
+- 80–100: Doskonały — treść jest naprawdę warta cytowania przez silniki AI
+- 60–79: Dobry — solidny, ale brakuje kilku kluczowych elementów
+- 40–59: Średnio — znaczące luki zmniejszają prawdopodobieństwo cytowania
+- 20–39: Słaby — poważne problemy uniemożliwiające cytowanie przez AI
+- 0–19: Krytyczny — treść prawdopodobnie nigdy nie zostanie zacytowana przez silniki AI
+
+KLUCZOWY WNIOSEK Z BADAŃ NAD AI SEARCH:
+Silniki AI takie jak ChatGPT, Perplexity i Google AI Overviews używają gęstych wektorów osadzenia do pobierania treści. NIE dopasowują tylko słów kluczowych — dopasowują znaczenie semantyczne. Treść musi być:
+1. Napisana jasnym, przyjaznym embeddingom językiem (krótkie zdania, bezpośrednie stwierdzenia, brak niejednoznacznych zaimków)
+2. Bogata semantycznie (nazwane podmioty, trójki podmiot-orzeczenie-dopełnienie, konkretne fakty)
+3. Autorytatywna tematycznie (obejmuje pełny klaster tematyczny, nie tylko powierzchowny poziom)
+4. Aktualna i zakotwiczona czasowo (daty, "stan na 2025", najnowsze dane)
+5. Zoptymalizowana pod kątem fragmentów (każdy akapit = jedna samodzielna idea, która może być wyodrębniona niezależnie)
+
+8 WYMIARÓW DO OCENY:
+
+1. JĘZYK PRZYJAZNY EMBEDDINGOM (waga: 15%)
+Czy treść używa jasnego, bezpośredniego języka produkującego wysokiej jakości wektory osadzenia?
+- Zaliczone (70+): krótkie zdania (średnio <20 słów), konkretne rzeczowniki zamiast zaimków, bezpośrednie stwierdzenia podmiot-orzeczenie-dopełnienie
+- Ostrzeżenie (40-69): częściowo jasny język, ale wymieszany z niejasnymi frazami lub długimi zdaniami
+- Niezaliczone (<40): gęsta proza, długie złożone zdania, dużo zaimków bez jasnych odniesień
+
+2. AUTORYTET TEMATYCZNY (waga: 15%)
+Czy treść obejmuje pełny klaster tematyczny, a nie tylko powierzchowne słowo kluczowe?
+- Zaliczone (70+): obejmuje główny temat + powiązane podtematy + przypadki brzegowe + pytania uzupełniające
+- Ostrzeżenie (40-69): obejmuje główny temat, ale pomija ważne podtematy
+- Niezaliczone (<40): obejmuje tylko najbardziej oczywisty aspekt tematu
+
+3. SYGNAŁY ŚWIEŻOŚCI (waga: 10%)
+Czy treść sygnalizuje aktualność i zawiera świeże informacje?
+- Zaliczone (70+): wyraźne odwołania do dat, aktualne statystyki, najnowsze zmiany
+- Ostrzeżenie (40-69): pewien kontekst czasowy, ale mógłby być bardziej szczegółowy
+- Niezaliczone (<40): brak kontekstu dat, potencjalnie przestarzałe informacje
+
+4. GĘSTOŚĆ ODPOWIEDZI (waga: 20%)
+Czy strona bezpośrednio odpowiada na konkretne pytania użytkowników AI?
+- Zaliczone (70+): jasne, bezpośrednie odpowiedzi na 3+ konkretne pytania
+- Ostrzeżenie (40-69): ma pewne odpowiedzi, ale są ukryte lub niejasne
+- Niezaliczone (<40): treść nie odpowiada bezpośrednio na pytania
+
+5. GĘSTOŚĆ FAKTOGRAFICZNA (waga: 15%)
+Czy treść zawiera konkretne fakty, liczby, daty, nazwane podmioty?
+- Zaliczone (70+): bogata w konkretne punkty danych, statystyki, ceny
+- Ostrzeżenie (40-69): pewne fakty, ale głównie ogólne stwierdzenia
+- Niezaliczone (<40): nieokreślona, generyczna treść bez konkretnych informacji
+
+6. RYZYKO DUPLIKACJI (waga: 10%)
+Na ile unikalna i oryginalna jest ta treść?
+- Zaliczone (70+): unikalna perspektywa, oryginalne dane lub specjalistyczna wiedza
+- Ostrzeżenie (40-69): standardowe informacje przedstawione kompetentnie, ale nie unikalnie
+- Niezaliczone (<40): generyczna, szablonowa treść
+
+7. GOTOWOŚĆ DO CYTOWANIA (waga: 10%)
+Czy treść jest ustrukturyzowana tak, że AI może wyodrębnić i zacytować konkretne twierdzenia?
+- Zaliczone (70+): jasne, cytowalne stwierdzenia z kontekstem
+- Ostrzeżenie (40-69): pewna cytowalna treść, ale wymieszana z wypełniaczem
+- Niezaliczone (<40): gęsta proza, brak jasnych twierdzeń
+
+8. POKRYCIE ZAPYTAŃ (waga: 5%)
+Czy treść odpowiada na pełny zakres pytań użytkowników AI?
+- Zaliczone (70+): obejmuje główne pytanie ORAZ powiązane pytania uzupełniające
+- Ostrzeżenie (40-69): obejmuje główny temat, ale pomija ważne powiązane pytania
+- Niezaliczone (<40): wąskie pokrycie
+
+WAŻNE ZASADY:
+- Bądź konkretny w opisach — wspominaj rzeczywistą treść ze strony
+- Rekomendacje muszą być KONKRETNE i WYKONALNE
+- top_questions w query_coverage: RZECZYWISTE pytania po polsku, które użytkownicy wpisują w ChatGPT/Perplexity/Google AI dla tej strony
+- citeability_score: ogólna ocena "jak prawdopodobne jest, że silnik AI zacytuje tę stronę" (0-100)
+- page_topics: 3-5 głównych tematów/słów kluczowych po polsku
+- semantic_gaps: 2-4 konkretnych podtematów lub pytań brakujących na tej stronie po polsku
+- missing_subtopics w topic_authority: 3-5 konkretnych nieobjętych podtematów po polsku
+- WSZYSTKIE odpowiedzi MUSZĄ być w języku POLSKIM`;
+  }
+
+  // Generic English/other language prompt
+  return `You are an expert in Generative Engine Optimization (GEO) — the practice of optimizing web content to be cited, referenced, and surfaced by AI search engines like ChatGPT, Perplexity, Google AI Overviews, and Claude.
+
+Your task: Analyze web page content and evaluate it across 8 dimensions that determine whether AI engines will cite it. Be HONEST and CRITICAL — most pages have significant room for improvement. Do NOT inflate scores.
+
+${langNote}
+
+SCORING GUIDELINES (be strict):
+- 80–100: Excellent — content is genuinely worth citing by AI engines
+- 60–79: Good — solid, but missing a few key elements
+- 40–59: Average — significant gaps reduce citation likelihood
+- 20–39: Poor — serious issues preventing AI citation
+- 0–19: Critical — content will likely never be cited by AI engines
+
+KEY INSIGHT FROM AI SEARCH RESEARCH:
+AI engines like ChatGPT, Perplexity, and Google AI Overviews use dense embedding vectors for retrieval. They do NOT just match keywords — they match semantic meaning. Content must be:
+1. Written in clear, embedding-friendly language (short sentences, direct statements, no ambiguous pronouns)
+2. Semantically rich (named entities, subject-predicate-object triples, concrete facts)
+3. Topically authoritative (covers the full topic cluster, not just surface level)
+4. Fresh and time-anchored (dates, "as of 2025", latest data)
+5. Fragment-optimized (each paragraph = one standalone idea that can be extracted independently)
+
+8 DIMENSIONS TO EVALUATE:
+
+1. EMBEDDING-FRIENDLY LANGUAGE (weight: 15%)
+Does the content use clear, direct language that produces high-quality embedding vectors?
+- Pass (70+): short sentences (avg <20 words), concrete nouns instead of pronouns, direct subject-predicate-object statements
+- Warning (40-69): partially clear language mixed with vague phrases or long sentences
+- Fail (<40): dense prose, long complex sentences, many pronouns without clear references
+
+2. TOPICAL AUTHORITY (weight: 15%)
+Does the content cover the full topic cluster, not just a surface keyword?
+- Pass (70+): covers main topic + related subtopics + edge cases + follow-up questions
+- Warning (40-69): covers main topic but misses important subtopics
+- Fail (<40): covers only the most obvious aspect of the topic
+
+3. FRESHNESS SIGNALS (weight: 10%)
+Does the content signal when it was written/updated and contain current information?
+- Pass (70+): explicit date references, current statistics, latest changes
+- Warning (40-69): some temporal context but could be more specific
+- Fail (<40): no date context, potentially outdated information
+
+4. ANSWER DENSITY (weight: 20%)
+Does the page directly answer specific questions users would ask AI?
+- Pass (70+): clear, direct answers to 3+ specific questions about the topic
+- Warning (40-69): has some answers but they are buried or unclear
+- Fail (<40): content does not directly answer questions
+
+5. FACTUAL DENSITY (weight: 15%)
+Does the content contain specific facts, numbers, dates, named entities, and verifiable claims?
+- Pass (70+): rich in specific data points, statistics, named entities, dates, prices
+- Warning (40-69): some facts but mostly general statements
+- Fail (<40): vague, generic content without specific verifiable information
+
+6. DUPLICATION RISK (weight: 10%)
+How unique and original is this content compared to what exists on thousands of other pages?
+- Pass (70+): unique perspective, original research, proprietary data or specialized expertise
+- Warning (40-69): standard information presented competently but not uniquely
+- Fail (<40): generic, templated, or easily replaceable content
+
+7. CITATION READINESS (weight: 10%)
+Is the content structured so AI can extract and cite specific claims?
+- Pass (70+): clear, citable statements with context; well-structured for extraction
+- Warning (40-69): some citable content mixed with filler
+- Fail (<40): dense prose, no clear claims, or content doesn't stand alone when cited
+
+8. QUERY COVERAGE (weight: 5%)
+Does the content answer the full range of questions users ask AI on this topic?
+- Pass (70+): covers the main question AND related follow-up questions comprehensively
+- Warning (40-69): covers main topic but misses important related questions
+- Fail (<40): narrow coverage leaving many user questions unanswered
+
+IMPORTANT RULES:
+- Be specific in descriptions — mention actual content from the page, not generic statements
+- Recommendations must be CONCRETE and ACTIONABLE — specific sentences or sections to add
+- top_questions in query_coverage: REAL questions in the page's native language that users type into ChatGPT/Perplexity/Google AI for this page's topic
+- citeability_score: overall "how likely is an AI engine to cite this page" (0-100)
+- page_topics: 3-5 main topics/keywords in the page's native language
+- semantic_gaps: 2-4 specific subtopics or questions missing from this page, in the page's native language
+- missing_subtopics in topic_authority: 3-5 specific uncovered subtopics in the page's native language
+- ALL outputs MUST be in ${getLangLabel(lang)}`;
+}
+
 // ─── Content Extraction ───────────────────────────────────────────────────────
 
 function extractContentForAnalysis(page: ScrapedPage, pageType: PageType): string {
@@ -154,99 +426,60 @@ ${truncatedBody}
 `.trim();
 }
 
+// ─── Post-generation Language Validation ─────────────────────────────────────
+
+/**
+ * Validate that generated string arrays are in the expected language.
+ * Returns filtered arrays — items in wrong language are removed.
+ * If too many items are filtered, logs a warning.
+ */
+function validateLanguageOfStrings(
+  items: string[],
+  expectedLang: string,
+  fieldName: string,
+  url: string
+): string[] {
+  if (expectedLang !== "pl" || items.length === 0) return items;
+
+  const polishCharRe = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
+  const polishWordRe = /\b(jak|co|czy|jaki|jakie|gdzie|kiedy|ile|który|dlaczego|najlepszy|najlepsze|pomóż|wybrać|porównanie|ranking|poradnik|wady|zalety|tanie|tani|opinie|strona|treść|sekcja|dodaj|zawiera|brakuje|należy|można|warto|jest|są|ma|mają|nie|tak|oraz|lub|ale|więcej|mniej)\b/i;
+
+  const filtered = items.filter(item =>
+    polishCharRe.test(item) || polishWordRe.test(item)
+  );
+
+  if (filtered.length < Math.ceil(items.length / 2)) {
+    console.warn(
+      `[CI] Language validation: ${fieldName} for ${url} — ` +
+      `only ${filtered.length}/${items.length} items appear to be in Polish. ` +
+      `Model may have ignored language instruction.`
+    );
+    // Return original items rather than empty array — better to have wrong language
+    // than empty fields, but log the issue for monitoring
+    return items;
+  }
+
+  return filtered.length > 0 ? filtered : items;
+}
+
 // ─── Main Analyzer ────────────────────────────────────────────────────────────
 
 export async function analyzeContentIntelligence(
   page: ScrapedPage,
   pageType: PageType
 ): Promise<ContentIntelligenceResult> {
+  // Detect page language BEFORE building the prompt
+  const detectedLanguage = detectPageLanguageForCI(page.html, page.finalUrl || page.url);
+  console.log(`[CI] Language detected: "${detectedLanguage}" for ${page.finalUrl || page.url}`);
+
   const contentContext = extractContentForAnalysis(page, pageType);
-
-  const systemPrompt = `Jesteś ekspertem w Generative Engine Optimization (GEO) — praktyce optymalizacji treści internetowych, aby były cytowane, przywoływane i wyświetlane przez silniki wyszukiwania AI takie jak ChatGPT, Perplexity, Google AI Overviews i Claude.
-
-Twoim zadaniem jest analiza treści strony internetowej i ocena jej w 8 wymiarach, które decydują o tym, czy silniki AI będą ją cytować. Bądź SZCZERY i KRYTYCZNY — większość stron ma znaczny potencjał do poprawy. NIE zawyżaj wyników.
-
-WSKAZÓWNIKI OCENIANIA (bądź surowy):
-- 80–100: Doskonały — treść jest naprawdę warta cytowania przez silniki AI
-- 60–79: Dobry — solidny, ale brakuje kilku kluczowych elementów
-- 40–59: Średnio — znaczące luki zmniejszają prawdopodobieństwo cytowania
-- 20–39: Słaby — poważne problemy uniemożliwiające cytowanie przez AI
-- 0–19: Krytyczny — treść prawdopodobnie nigdy nie zostanie zacytowana przez silniki AI
-
-KLUCZOWY WNIOSEK Z BADAŃ NAD AI SEARCH:
-Silniki AI takie jak ChatGPT, Perplexity i Google AI Overviews używają gęstych wektorów osadzenia do pobierania treści. NIE dopasowują tylko słów kluczowych — dopasowują znaczenie semantyczne. Treść musi być:
-1. Napisana jasnym, przyjaznym embeddingom językiem (krótkie zdania, bezpośrednie stwierdzenia, brak niejednoznacznych zaimków)
-2. Bogata semantycznie (nazwane podmioty, trójki podmiot-orzeczenie-dopełnienie, konkretne fakty)
-3. Autorytatywna tematycznie (obejmuje pełny klaster tematyczny, nie tylko powierzchowny poziom)
-4. Aktualna i zakotwiczona czasowo (daty, "stan na 2025", najnowsze dane)
-5. Zoptymalizowana pod kątem fragmentów (każdy akapit = jedna samodzielna idea, która może być wyodrębniona niezależnie)
-
-8 WYMIARÓW DO OCENY:
-
-1. JĖZYK PRZYJAZNY EMBEDDINGOM (waga: 15%)
-Czy treść używa jasnego, bezpośredniego języka produkującego wysokiej jakości wektory osadzenia?
-- Zaliczone (70+): krótkie zdania (średnio <20 słów), konkretne rzeczowniki zamiast zaimków, bezpośrednie stwierdzenia podmiot-orzeczenie-dopełnienie, brak niejednoznacznych odniesień
-- Ostrzeżenie (40-69): częściowo jasny język, ale wymieszany z niejasnymi frazami, długimi zdaniami lub niejednoznacznymi zaimkami
-- Niezaliczone (<40): gęsta proza, długie złożone zdania, dużo zaimków bez jasnych odniesień
-
-2. AUTORYTET TEMATYCZNY (waga: 15%)
-Czy treść obejmuje pełny klaster tematyczny, a nie tylko powierzchowne słowo kluczowe?
-- Zaliczone (70+): obejmuje główny temat + powiązane podtematy + przypadki brzegowe + częste nieporozumienia + pytania uzupełniające
-- Ostrzeżenie (40-69): obejmuje główny temat, ale pomija ważne podtematy, o które często pytają użytkownicy
-- Niezaliczone (<40): obejmuje tylko najbardziej oczywisty aspekt tematu
-
-3. SYGNAŁY ŚWIEŻOŚCI (waga: 10%)
-Czy treść sygnalizuje, kiedy została napisana/zaktualizowana i zawiera aktualne informacje?
-- Zaliczone (70+): zawiera wyraźne odwołania do dat ("stan na I kw. 2025", "zaktualizowano marzec 2025"), aktualne statystyki, najnowsze zmiany
-- Ostrzeżenie (40-69): pewien kontekst czasowy, ale mógłby być bardziej szczegółowy
-- Niezaliczone (<40): brak kontekstu dat, potencjalnie przestarzałe informacje
-
-4. GĘSTOŚĆ ODPOWIEDZI (waga: 20%)
-Czy strona bezpośrednio odpowiada na konkretne pytania, które użytkownicy zadaliby AI?
-- Zaliczone (70+): zawiera jasne, bezpośrednie odpowiedzi na 3+ konkretne pytania dotyczące tematu
-- Ostrzeżenie (40-69): ma pewne odpowiedzi, ale są ukryte lub niejasne
-- Niezaliczone (<40): treść nie odpowiada bezpośrednio na pytania
-
-5. GĘSTOŚĆ FAKTOGRAFICZNA (waga: 15%)
-Czy treść zawiera konkretne fakty, liczby, daty, nazwane podmioty i weryfikowalne twierdzenia?
-- Zaliczone (70+): bogata w konkretne punkty danych, statystyki, nazwane podmioty, daty, ceny
-- Ostrzeżenie (40-69): pewne fakty, ale głównie ogólne stwierdzenia
-- Niezaliczone (<40): nieokreślona, generyczna treść bez konkretnych weryfikowalnych informacji
-
-6. RYZYKO DUPLIKACJI (waga: 15%)
-Na ile unikalna i oryginalna jest ta treść w porównaniu z tym, co istnieje na tysiącach innych stron?
-- Zaliczone (70+): unikalna perspektywa, oryginalne badania, własne dane lub specjalistyczna wiedza
-- Ostrzeżenie (40-69): standardowe informacje przedstawione kompetentnie, ale nie unikalnie
-- Niezaliczone (<40): generyczna, szablonowa lub łatwa do zastąpienia treść
-
-7. GOTOWOŚĆ DO CYTOWANIA (waga: 15%)
-Czy treść jest ustrukturyzowana tak, że AI może wyodrębnić i zacytować konkretne twierdzenia?
-- Zaliczone (70+): jasne, cytowalne stwierdzenia z kontekstem; dobrze ustrukturyzowane do ekstrakcji
-- Ostrzeżenie (40-69): pewna cytowalna treść, ale wymieszana z wypełniaczem
-- Niezaliczone (<40): gęsta proza, brak jasnych twierdzeń lub treść nie stoi samodzielnie po zacytowaniu
-
-8. POKRYCIE ZAPYTAŃ (waga: 15%)
-Czy treść odpowiada na pełny zakres pytań, które użytkownicy zadają AI na ten temat?
-- Zaliczone (70+): obejmuje główne pytanie ORAZ powiązane pytania uzupełniające w sposób wyczerpujący
-- Ostrzeżenie (40-69): obejmuje główny temat, ale pomija ważne powiązane pytania
-- Niezaliczone (<40): wąskie pokrycie pozostawiające wiele pytań użytkowników bez odpowiedzi
-
-WAŻNE ZASADY:
-- Bądź konkretny w opisach — wspominaj rzeczywistą treść ze strony, nie ogólne stwierdzenia
-- Rekomendacje muszą być KONKRETNE i WYKONALNE — konkretne zdania lub sekcje do dodania
-- Przykłady powinny być rzeczywistym tekstem ze strony (dobre przykłady tego, co działa, lub złe przykłady tego, co nie działa)
-- top_questions w query_coverage powinny być rzeczywistymi pytaniami, które użytkownicy zadaliby AI na ten temat
-- citeability_score to Twoja ogólna ocena "jak prawdopodobne jest, że silnik AI zacytuje tę stronę" (0-100)
-- page_topics powinny być 3-5 głównymi tematami/słowami kluczowymi, które obejmuje ta strona
-- semantic_gaps powinny być 2-4 konkretnymi podtematami lub pytaniami brakującymi na tej stronie, o które użytkownicy często pytają AI
-- missing_subtopics w topic_authority powinny wymieniać 3-5 konkretnych nieobjętych podtematów
-- WSZYSTKIE odpowiedzi (description, recommendation, examples, summary, top_opportunity, page_topics, semantic_gaps, top_questions) MUSZĄ być w języku POLSKIM`;
+  const systemPrompt = buildSystemPrompt(detectedLanguage);
 
   const userPrompt = `Analyze this web page content and return a JSON evaluation:
 
 ${contentContext}
 
-Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
+Return ONLY valid JSON matching this exact schema (8 dimensions):
 {
   "embedding_language": {
     "score": <0-100>,
@@ -323,7 +556,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
   })();
 
   const response = await invokeLLM({
-    // gpt-4o: supports json_schema Structured Outputs; gpt-5.4 does not yet
+    // gpt-4o: supports json_schema Structured Outputs
     model: "gpt-4o",
     messages: [
       { role: "system", content: systemPrompt },
@@ -453,6 +686,35 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
 
   const analysis: LLMContentAnalysis = JSON.parse(rawContent as string);
 
+  // ── Post-generation language validation ───────────────────────────────────
+  // Validate that key string arrays are in the expected language.
+  // This catches cases where the model ignored the language instruction.
+  const pageUrl = page.finalUrl || page.url;
+  const validatedTopQuestions = validateLanguageOfStrings(
+    analysis.query_coverage.top_questions,
+    detectedLanguage,
+    "top_questions",
+    pageUrl
+  );
+  const validatedPageTopics = validateLanguageOfStrings(
+    analysis.page_topics,
+    detectedLanguage,
+    "page_topics",
+    pageUrl
+  );
+  const validatedSemanticGaps = validateLanguageOfStrings(
+    analysis.semantic_gaps ?? [],
+    detectedLanguage,
+    "semantic_gaps",
+    pageUrl
+  );
+  const validatedMissingSubtopics = validateLanguageOfStrings(
+    analysis.topic_authority.missing_subtopics,
+    detectedLanguage,
+    "missing_subtopics",
+    pageUrl
+  );
+
   // Build structured checks
   const checks: ContentIntelligenceCheck[] = [
     {
@@ -472,7 +734,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
       description: analysis.topic_authority.description,
       recommendation: analysis.topic_authority.recommendation,
       impact: "high",
-      examples: analysis.topic_authority.missing_subtopics,
+      examples: validatedMissingSubtopics,
     },
     {
       id: "freshness_signals",
@@ -530,15 +792,15 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
       description: analysis.query_coverage.description,
       recommendation: analysis.query_coverage.recommendation,
       impact: "medium",
-      examples: analysis.query_coverage.top_questions,
+      examples: validatedTopQuestions,
     },
   ];
 
-  // Weighted overall score — updated for 8 dimensions (iPullRank aligned)
+  // Weighted overall score — 8 dimensions (iPullRank aligned)
   const weights: Record<string, number> = {
-    embedding_language: 0.15,  // NEW — iPullRank Ch.9 vector embedding quality
-    topic_authority: 0.15,     // NEW — iPullRank Ch.11 topical authority
-    freshness_signals: 0.10,   // NEW — iPullRank Ch.9 temporal relevance
+    embedding_language: 0.15,
+    topic_authority: 0.15,
+    freshness_signals: 0.10,
     answer_density: 0.20,
     factual_density: 0.15,
     duplicate_risk: 0.10,
@@ -556,8 +818,9 @@ Return ONLY valid JSON matching this exact schema (8 dimensions, not 5):
     checks,
     summary: analysis.overall_summary,
     topOpportunity: analysis.top_opportunity,
-    pageTopics: analysis.page_topics,
-    semanticGaps: analysis.semantic_gaps ?? [],  // NEW — missing subtopics
+    pageTopics: validatedPageTopics,
+    semanticGaps: validatedSemanticGaps,
+    detectedLanguage,
     isLLMPowered: true,
   };
 }

@@ -1198,3 +1198,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: post-generation validation — jeśli <50% zapytań w języku strony, użyj buildFallbackQueries
 - [x] Fix: LOCALE_MAP rozszerzony o 10 języków (nl, pt, cs, sk, hu, ro, sv, no, da, fi)
 - [x] 340 testów, TypeScript: 0 błędów
+## Feature: Content Intelligence language enforcement (2026-03-30)
+
+- [x] Diagnoza: system prompt był hardcoded po polsku — angielskie strony dostały polskie opisy, polskie strony anglojęzyczne pytania
+- [x] Fix: detectPageLanguageForCI() — html[lang] > TLD > polskie znaki > "en"
+- [x] Fix: buildSystemPrompt(lang) — dynamiczny prompt w języku strony (pl = pełny polski prompt, inne = angielski + CRITICAL note)
+- [x] Fix: buildLangEnforcementNote(lang) — CRITICAL marker + przykłady zapytań po polsku
+- [x] Fix: validateLanguageOfStrings() — post-generation validation dla top_questions, page_topics, semantic_gaps, missing_subtopics
+- [x] Fix: ContentIntelligenceResult.detectedLanguage — nowe pole z wykrytym językiem
+- [x] 340 testów, TypeScript: 0 błędów
