@@ -201,38 +201,11 @@ export function analyzeEEAT(page: ScrapedPage, pageType: PageType = "generic"): 
     value: `privacy:${hasPrivacy},terms:${hasTerms}`,
   });
 
-  // ── 5. External citations ─────────────────────────────────────────────────
-  const pageHost = (() => {
-    try { return new URL(page.url).hostname; } catch { return ""; }
-  })();
-  let externalLinkCount = 0;
-  $("a[href]").each((_, el) => {
-    const href = $(el).attr("href") ?? "";
-    if (href.startsWith("http") && !href.includes(pageHost)) externalLinkCount++;
-  });
+  // NOTE: external_citations check removed from E-E-A-T (d) — already evaluated
+  // in contentStructure.ts. Keeping it here would double-count the same signal.
+  // Its weight is redistributed to experience_signals (a purer E-E-A-T signal).
 
-  const citationsRequired = ["article", "service"].includes(pageType);
-  checks.push({
-    id: "external_citations",
-    label: "Cytowania zewnętrzne",
-    status:
-      externalLinkCount >= 3 ? "pass"
-      : externalLinkCount >= 1 ? "warning"
-      : citationsRequired ? "fail"
-      : "info",
-    description:
-      externalLinkCount >= 3
-        ? `Znaleziono ${externalLinkCount} linków zewnętrznych — dobre sygnały cytowania.`
-        : externalLinkCount >= 1
-        ? `Tylko ${externalLinkCount} link zewnętrzny. Dodaj 3–5 linków do autorytatywnych źródeł.`
-        : citationsRequired
-        ? "Brak cytowań zewnętrznych. Linkowanie do autorytatywnych źródeł to krytyczny sygnał E-E-A-T dla tego typu strony."
-        : "Brak linków zewnętrznych. Rozważ cytowanie źródeł tam, gdzie jest to zasadne.",
-    impact: citationsRequired ? "high" : "medium",
-    value: externalLinkCount,
-  });
-
-  // ── 6. Page-type-specific trust signals ───────────────────────────────────
+  // ── 6. Page-type-specific trust signals ──────────────────────────────────────────────
   if (["product", "product-listing"].includes(pageType)) {
     const hasReviews =
       !!$('[itemprop="ratingValue"], [class*="rating"], [class*="review"], [class*="stars"], [class*="opinie"]').length ||
@@ -375,32 +348,30 @@ function computeScore(checks: AuditCheck[], pageType: PageType): number {
     about_page: 12,
     contact_info: 15,
     legal_pages: 12,
-    external_citations: 0,     // set dynamically
+    // external_citations removed — evaluated in contentStructure.ts
     review_signals: 15,        // e-commerce only
     trust_signals: 8,          // e-commerce only
     company_identity: 15,      // homepage only
     publication_date: 8,       // article only
-    experience_signals: 0,     // NEW — set dynamically (iPullRank Ch.9)
-    expertise_signals: 0,      // NEW — set dynamically (iPullRank Ch.9)
+    experience_signals: 0,     // set dynamically
+    expertise_signals: 0,      // set dynamically
   };
 
   if (["article", "service"].includes(pageType)) {
     weights.author_byline = 20;
-    weights.external_citations = 15;
-    weights.experience_signals = 15;  // NEW — high weight for articles
-    weights.expertise_signals = 10;   // NEW
+    // external_citations weight (15) redistributed to experience_signals
+    weights.experience_signals = 25;  // raised: pure E-E-A-T signal
+    weights.expertise_signals = 10;
   } else if (["homepage", "landing"].includes(pageType)) {
     weights.author_byline = 8;
-    weights.external_citations = 12;
-    weights.about_page = 18;
-    weights.experience_signals = 8;   // NEW
-    weights.expertise_signals = 5;    // NEW
+    weights.about_page = 22;          // raised from 18 (absorbed 4 from ext citations)
+    weights.experience_signals = 12;  // raised from 8
+    weights.expertise_signals = 5;
   } else {
     // product, product-listing, generic
     weights.author_byline = 5;
-    weights.external_citations = 10;
-    weights.experience_signals = 5;   // NEW
-    weights.expertise_signals = 3;    // NEW
+    weights.experience_signals = 8;   // raised from 5
+    weights.expertise_signals = 5;    // raised from 3
   }
 
   let earned = 0;

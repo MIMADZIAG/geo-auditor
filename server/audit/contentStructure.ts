@@ -1,15 +1,16 @@
 /**
- * Content Structure Module — v2 (iPullRank AI Search Manual aligned)
+ * Content Structure Module — v3 (Perplexity Ranking Patterns + iPullRank aligned)
  *
- * Key upgrades based on iPullRank Chapters 7, 9, 10, 11:
+ * Key upgrades:
  *  - Semantic chunking: one-idea-per-paragraph, self-contained blocks
  *  - Entity richness: named entities (brands, people, places, products)
  *  - Readability scoring: Flesch-Kincaid proxy for AI extractability
- *  - Semantic triples: subject-predicate-object clarity
+ *  - Semantic triples: NLP-quality SPO density (noun phrase + verb + complement)
  *  - Co-reference clarity: avoidance of ambiguous pronouns
  *  - Information gain: unique data points vs. generic statements
- *  - Topic clustering: internal link signals for topical authority
  *  - Passage optimization: query-answering headings
+ *  - First paragraph answer: direct answer in opening (Perplexity L3 reranker signal)
+ *  - Intent blocks: definition / steps / comparison coverage (context-aware)
  */
 
 import * as cheerio from "cheerio";
@@ -237,34 +238,58 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
     value: `avg ${Math.round(avgSentenceWords)} words/sentence`,
   });
 
-  // ── 9. Semantic Triples (iPullRank Ch.9) ──────────────────────────────────
-  // Subject-predicate-object statements: "X is Y", "X does Y", "X was created by Y"
-  // These are the building blocks of knowledge graphs
-  const triplePatterns = [
-    /\b\w+\s+(is|are|was|were|has|have|had|does|do|did|can|will|should|means?|refers?\s+to|is\s+defined\s+as|consists?\s+of|includes?|contains?|provides?|offers?|enables?|allows?|supports?|requires?)\s+\w+/gi,
-    // Polish patterns
-    /\b\w+\s+(jest|są|był|była|było|byli|były|ma|mają|miał|miała|oznacza|definiuje|zawiera|obejmuje|umożliwia|pozwala|wymaga)\s+\w+/gi,
-  ];
+  // ── 9. Semantic Triples — NLP-quality SPO density (f) ────────────────────
+  // Approach: count sentences that contain a NOUN PHRASE + VERB PHRASE + COMPLEMENT.
+  // This avoids the false-positive explosion of naive verb-matching on long texts.
+  //
+  // Algorithm (no external NLP library needed):
+  //  1. Split into sentences.
+  //  2. For each sentence, check that it has:
+  //     a) A subject candidate: a capitalised word or a known-noun pattern at the start.
+  //     b) A meaningful predicate verb (not a stopword verb like "do" alone).
+  //     c) A complement: at least one more content word after the verb.
+  //  3. Additionally count explicit definitional/factual sentence patterns (highest signal).
+  //  4. Normalise by sentence count (not word count) to avoid length bias.
 
-  let tripleCount = 0;
-  for (const pattern of triplePatterns) {
-    tripleCount += (bodyText.match(pattern) ?? []).length;
-  }
+  const spoSentences = sentences.filter(sentence => {
+    const s = sentence.trim();
+    if (s.split(/\s+/).length < 4) return false; // too short to form SPO
 
-  // Normalize by word count (per 100 words)
-  const triplesPerHundredWords = wordCount > 0 ? (tripleCount / wordCount) * 100 : 0;
+    // High-confidence definitional patterns ("X is defined as Y", "X means Y", "X refers to Y")
+    const definitional =
+      /\b(\w[\w\s]{1,30})\s+(is|are|was|were|means?|refers?\s+to|is\s+defined\s+as|consists?\s+of|is\s+known\s+as|jest|są|oznacza|definiuje\s+się|to\s+znaczy)\s+.{5,}/i.test(s) ||
+      /\b(\w[\w\s]{1,30})\s+(jest|są|był|była|oznacza|definiuje|zawiera|obejmuje|umożliwia|pozwala|wymaga)\s+.{5,}/i.test(s);
+    if (definitional) return true;
+
+    // Factual assertion: NOUN + strong-predicate-verb + COMPLEMENT (≥2 words)
+    // Strong predicates: verbs that carry semantic weight (not auxiliaries alone)
+    const strongPredicate =
+      /\b(\w+)\s+(provides?|offers?|enables?|allows?|supports?|requires?|includes?|contains?|produces?|creates?|improves?|increases?|reduces?|helps?|causes?|affects?|determines?|influences?|generates?|delivers?|ensures?|prevents?|describes?|explains?|represents?|indicates?|demonstrates?|shows?|proves?|confirms?)\s+\w+/i.test(s) ||
+      /\b(\w+)\s+(zapewnia|oferuje|umożliwia|pozwala|wspiera|wymaga|zawiera|produkuje|tworzy|poprawia|zwiększa|zmniejsza|pomaga|powoduje|wpływa|generuje|dostarcza|opisuje|wyjaśnia|przedstawia|wskazuje|pokazuje)\s+\w+/i.test(s);
+    if (strongPredicate) return true;
+
+    // Comparative/relational: "X is better/faster/more X than Y"
+    const comparative =
+      /\b\w+\s+(is|are|jest|są)\s+(better|faster|cheaper|more|less|higher|lower|larger|smaller|lepsz|szybsz|tańsz|więcej|mniej|wyższ|niższ)\b/i.test(s);
+    return comparative;
+  });
+
+  const spoRatio = sentences.length > 0 ? (spoSentences.length / sentences.length) * 100 : 0;
+
+  // Thresholds: ≥40% of sentences carry SPO = good; ≥20% = moderate; <20% = weak
+  const tripleStatus = spoRatio >= 40 ? "pass" : spoRatio >= 20 ? "warning" : "fail";
 
   checks.push({
     id: "semantic_triples",
-    label: "Gęstość trójek semantycznych",
-    status: triplesPerHundredWords >= 3 ? "pass" : triplesPerHundredWords >= 1.5 ? "warning" : "fail",
-    description: triplesPerHundredWords >= 3
-      ? `Dobra gęstość trójek semantycznych (${Math.round(triplesPerHundredWords)} na 100 słów). Jasne stwierdzenia podmiot-orzeczenie-dopełnienie pomagają silnikom AI budować połączenia grafu wiedzy.`
-      : triplesPerHundredWords >= 1.5
-      ? `Umiarkowana gęstość trójek semantycznych. Pisz więcej jasnych, bezpośrednich stwierdzeń: 'Schema markup poprawia wykrywalność treści', 'ChatGPT został stworzony przez OpenAI'. Te wzorce podmiot-orzeczenie-dopełnienie to budulec grafów wiedzy.`
-      : `Niska gęstość trójek semantycznych. Treści brakuje jasnych stwierdzeń faktycznych. Pisz w formacie podmiot-orzeczenie-dopełnienie: 'Paryż leży we Francji', 'Schema FAQPage poprawia wskaźniki cytowania przez AI'. Unikaj niejasnych zwrotów jak 'to może pomóc' — powiedz dokładnie co pomaga i jak.`,
+    label: "Gęstość trójek semantycznych (SPO)",
+    status: tripleStatus,
+    description: spoRatio >= 40
+      ? `Silna gęstość SPO: ${Math.round(spoRatio)}% zdań zawiera strukturę podmiot-orzeczenie-dopełnienie. Silniki AI budują grafy wiedzy z takich stwierdzeń — treść jest gotowa do ekstrakcji faktów.`
+      : spoRatio >= 20
+      ? `Umiarkowana gęstość SPO: ${Math.round(spoRatio)}% zdań. Pisz więcej stwierdzeń faktycznych: 'Schema markup poprawia widoczność w AI Search', 'Perplexity cytuje strony z bezpośrednimi odpowiedziami'. Każde zdanie powinno przenosić konkretny fakt.`
+      : `Niska gęstość SPO: tylko ${Math.round(spoRatio)}% zdań zawiera jasne stwierdzenia faktyczne. Unikaj zdań ogólnikowych ('to może pomóc'). Pisz konkretnie: podmiot + co robi/jest + dopełnienie. To fundament grafu wiedzy AI.`,
     impact: "medium",
-    value: `${Math.round(triplesPerHundredWords)} triples/100 words`,
+    value: `${Math.round(spoRatio)}% SPO sentences (${spoSentences.length}/${sentences.length})`,
   });
 
   // ── 10. Co-reference Clarity (iPullRank Ch.9) ─────────────────────────────
@@ -349,6 +374,136 @@ export function analyzeContentStructure(page: ScrapedPage, pageType: PageType = 
     impact: "high",
     value: `${informationGainScore}/3 signals`,
   });
+
+  // ── 13b. First paragraph direct answer (a) — Perplexity L3 reranker signal ──
+  // Perplexity's reranker strongly rewards pages where the first ≤150 words
+  // contain a direct, self-contained answer. This is the #1 citation signal.
+  //
+  // Page-type awareness:
+  //  - article/service/generic: full check — first para should answer directly
+  //  - homepage/landing: advisory only — hero copy often serves this role
+  //  - product/product-listing: not applicable — product specs replace prose answers
+  {
+    const firstParagraphs = $('p').toArray()
+      .map(el => $(el).text().trim())
+      .filter(t => t.split(/\s+/).length >= 15); // skip micro-captions
+
+    const firstPara = firstParagraphs[0] ?? "";
+    const firstParaWords = firstPara.split(/\s+/).filter(Boolean).length;
+
+    // Direct-answer signals: definitional openers, imperative starters, numeric facts
+    const hasDirectOpener =
+      /^(\w[\w\s]{0,40}\s+(is|are|was|were|jest|są|to|oznacza|refers?\s+to|is\s+defined\s+as)\s)/i.test(firstPara) ||
+      /^(how\s+to|what\s+is|why\s+does|when\s+to|jak\s+|co\s+to\s+|dlaczego\s+|kiedy\s+)/i.test(firstPara) ||
+      /\b(\d+%|\d+\s+(steps?|sposobów|kroków|tips?|wskazówek))\b/i.test(firstPara.slice(0, 200));
+
+    const isProductType = ["product", "product-listing"].includes(pageType);
+    const isAdvisoryType = ["homepage", "landing"].includes(pageType);
+
+    let firstParaStatus: AuditCheck["status"];
+    let firstParaDesc: string;
+
+    if (isProductType) {
+      // Not applicable — product pages use specs, not prose answers
+      firstParaStatus = "info";
+      firstParaDesc = "Strony produktowe nie wymagają akapitu z bezpośrednią odpowiedzią — opis produktu i specyfikacje pełnią tę rolę.";
+    } else if (firstParagraphs.length === 0) {
+      firstParaStatus = isAdvisoryType ? "warning" : "fail";
+      firstParaDesc = "Brak akapitu otwierającego. Dodaj 2–3 zdania bezpośrednio odpowiadające na główne pytanie strony — to najważniejszy sygnał dla rerankerów Perplexity i Google AI Overviews.";
+    } else if (firstParaWords > 150) {
+      firstParaStatus = "warning";
+      firstParaDesc = `Pierwszy akapit jest za długi (${firstParaWords} słów). Skróć go do ≤150 słów z bezpośrednią odpowiedzią na początku — Perplexity cytuje pierwsze zdania, nie środek akapitu.`;
+    } else if (hasDirectOpener) {
+      firstParaStatus = "pass";
+      firstParaDesc = `Pierwszy akapit (${firstParaWords} słów) zawiera bezpośrednią odpowiedź — silny sygnał dla rerankerów AI. Perplexity i Google AI Overviews preferują strony, które odpowiadają natychmiast.`;
+    } else {
+      firstParaStatus = isAdvisoryType ? "warning" : "warning";
+      firstParaDesc = `Pierwszy akapit (${firstParaWords} słów) nie zaczyna się od bezpośredniej odpowiedzi. Przesuń kluczową informację na sam początek: 'X jest/oznacza/pozwala...'. Perplexity nagradza strony, które odpowiadają w pierwszych 2 zdaniach.`;
+    }
+
+    checks.push({
+      id: "first_paragraph_answer",
+      label: "Bezpośrednia odpowiedź w pierwszym akapicie",
+      status: firstParaStatus,
+      description: firstParaDesc,
+      impact: isProductType ? "low" : "high",
+      value: firstParagraphs.length > 0 ? `${firstParaWords} words, direct opener: ${hasDirectOpener}` : "no paragraphs",
+    });
+  }
+
+  // ── 13c. Intent blocks — definition / steps / comparison (b) ─────────────
+  // Perplexity explicitly rewards content that covers 3 intent archetypes:
+  //  1. Definition block: "What is X" — definitional sentence or heading
+  //  2. Steps block: numbered list or HowTo-style sequence
+  //  3. Comparison block: "X vs Y" or comparative table/list
+  //
+  // Context-aware: not a hard requirement — advisory for non-article types.
+  // A page can rank well without all 3 if its intent is narrow (e.g. pure product).
+  {
+    const allText = bodyText;
+    const allHtml = fullHtml;
+
+    // 1. Definition block
+    const hasDefinitionBlock =
+      /\b(what\s+is|what\s+are|how\s+does|why\s+is|co\s+to\s+jest|czym\s+jest|co\s+oznacza|jak\s+działa)\b/i.test(allText) ||
+      /\b(\w[\w\s]{1,40}\s+(is\s+defined\s+as|refers?\s+to|means?|is\s+a\s+type\s+of|jest\s+to|oznacza|definiuje\s+się\s+jako))\b/i.test(allText);
+
+    // 2. Steps block: ordered list, or numbered headings, or "Step N" patterns
+    const hasStepsBlock =
+      $('ol li').length >= 3 ||
+      /\b(step\s+\d|krok\s+\d|\d+\.\s+\w|po\s+pierwsze|po\s+drugie|first[,:]|second[,:]|third[,:]|finally[,:]|następnie|najpierw|potem)\b/i.test(allText) ||
+      /\b(how\s+to\s+\w|jak\s+\w{3,}\s+(krok|step))\b/i.test(allText);
+
+    // 3. Comparison block: "X vs Y", "compared to", comparison table
+    const hasComparisonBlock =
+      /\b(vs\.?|versus|compared?\s+to|in\s+comparison|on\s+the\s+other\s+hand|alternatively|porównanie|w\s+porównaniu|natomiast|z\s+kolei|podczas\s+gdy)\b/i.test(allText) ||
+      $('table').length >= 1; // tables often represent comparisons
+
+    const intentBlocksFound = [hasDefinitionBlock, hasStepsBlock, hasComparisonBlock].filter(Boolean).length;
+
+    // Relevance: articles and service pages benefit most; product/listing pages less so
+    const intentRelevant = ["article", "service", "generic"].includes(pageType);
+    const intentAdvisory = ["homepage", "landing"].includes(pageType);
+
+    let intentStatus: AuditCheck["status"];
+    let intentDesc: string;
+    const foundLabels = [
+      hasDefinitionBlock ? "definicja" : null,
+      hasStepsBlock ? "kroki" : null,
+      hasComparisonBlock ? "porównanie" : null,
+    ].filter(Boolean).join(", ");
+    const missingLabels = [
+      !hasDefinitionBlock ? "definicja (co to jest X)" : null,
+      !hasStepsBlock ? "kroki (jak to zrobić)" : null,
+      !hasComparisonBlock ? "porównanie (X vs Y)" : null,
+    ].filter(Boolean).join(", ");
+
+    if (["product", "product-listing"].includes(pageType)) {
+      intentStatus = "info";
+      intentDesc = "Strony produktowe skupiają się na specyfikacjach i ofertach — bloki intencji nie są tu kluczowym sygnałem GEO.";
+    } else if (intentBlocksFound === 3) {
+      intentStatus = "pass";
+      intentDesc = `Wykryto wszystkie 3 bloki intencji: ${foundLabels}. Perplexity nagradza treści pokrywające pełen zakres intencji użytkownika — definicję, instrukcję i porównanie.`;
+    } else if (intentBlocksFound === 2) {
+      intentStatus = intentRelevant ? "warning" : "info";
+      intentDesc = `Wykryto ${intentBlocksFound}/3 bloków intencji (${foundLabels}). Brakuje: ${missingLabels}. Dodanie brakującego bloku może zwiększyć szansę cytowania przez Perplexity dla szerszego zakresu zapytań.`;
+    } else if (intentBlocksFound === 1) {
+      intentStatus = intentRelevant ? "warning" : "info";
+      intentDesc = `Wykryto tylko ${intentBlocksFound}/3 bloków intencji (${foundLabels}). Brakuje: ${missingLabels}. Treść pokrywa wąski zakres intencji — rozważ rozbudowę o sekcje definicji i/lub kroków.`;
+    } else {
+      intentStatus = intentRelevant ? "fail" : intentAdvisory ? "warning" : "info";
+      intentDesc = `Brak wykrytych bloków intencji. Perplexity preferuje treści, które jednocześnie definiują temat, pokazują jak coś zrobić i porównują opcje. Dodaj co najmniej jeden z bloków: definicja, lista kroków lub porównanie.`;
+    }
+
+    checks.push({
+      id: "intent_blocks",
+      label: "Pokrycie bloków intencji (definicja / kroki / porównanie)",
+      status: intentStatus,
+      description: intentDesc,
+      impact: intentRelevant ? "high" : "low",
+      value: `${intentBlocksFound}/3 (${foundLabels || "none"})`,
+    });
+  }
 
   // ── 14. Answer-pattern detection ───────────────────────────────────────────
   const hasAnswerPatterns =
@@ -439,7 +594,9 @@ function computeScore(checks: AuditCheck[]): number {
     semantic_chunking: 10,      // NEW — iPullRank Ch.9 core concept
     entity_richness: 8,         // NEW — iPullRank Ch.9 NER
     readability: 5,             // NEW — iPullRank Ch.9 Flesch-Kincaid
-    semantic_triples: 5,        // NEW — iPullRank Ch.9
+    semantic_triples: 5,        // v3 — NLP-quality SPO density
+    first_paragraph_answer: 8,  // NEW — Perplexity L3 reranker signal
+    intent_blocks: 6,           // NEW — Perplexity intent coverage
     coreference_clarity: 4,     // NEW — iPullRank Ch.9
     lists_present: 5,
     content_length: 8,

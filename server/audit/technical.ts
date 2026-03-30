@@ -339,23 +339,79 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     value: !hasNoAI,
   });
 
-  // 18. JavaScript-heavy page detection (iPullRank Ch.7 — JS rendering issues)
-  // If most content is in JS bundles and body text is thin, AI crawlers may miss content
+  // 18. JavaScript rendering check (e) — enhanced H1 + first paragraph source check
+  //
+  // The original check only detected JS-heavy pages by comparing body text length
+  // to inline script size. This misses the most important case for e-commerce:
+  // React/Vue/Next.js CSR pages where the HTML source has a shell but H1 and the
+  // first paragraph are injected by JavaScript at runtime.
+  //
+  // AI crawlers (GPTBot, PerplexityBot, ClaudeBot) do NOT execute JavaScript.
+  // If H1 or the first paragraph are absent from the raw HTML source, these crawlers
+  // cannot read the most critical content signals.
+  //
+  // Algorithm:
+  //  1. Parse the raw HTML source (not the cheerio-rendered DOM) to extract text
+  //     that is NOT inside <script> tags.
+  //  2. Check if the H1 text found in the DOM is also present in the non-script HTML.
+  //  3. Check if any <p> with ≥20 words exists outside of <script> tags.
+  //  4. Combine with the original JS-heavy heuristic for a multi-signal verdict.
+
   const bodyTextLength = $('body').text().replace(/\s+/g, ' ').trim().length;
   const inlineScriptLength = $('script:not([src]):not([type="application/ld+json"])').toArray()
     .reduce((sum, el) => sum + ($(el).html()?.length ?? 0), 0);
-  const jsRatio = bodyTextLength > 0 ? inlineScriptLength / bodyTextLength : 0;
   const isJsHeavy = bodyTextLength < 500 && inlineScriptLength > 2000;
+
+  // Strip all <script> content from raw HTML to get source-only text
+  const htmlWithoutScripts = page.html.replace(/<script[\s\S]*?<\/script>/gi, " ");
+
+  // H1 in source: get H1 text from DOM, then check raw HTML (without scripts) contains it
+  const h1DomText = $('h1').first().text().trim();
+  // Use first 40 chars of H1 to avoid false negatives from whitespace differences
+  const h1Snippet = h1DomText.slice(0, 40).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const h1InSource = h1Snippet.length >= 5
+    ? new RegExp(h1Snippet, 'i').test(htmlWithoutScripts)
+    : true; // no H1 to check — handled by contentStructure h1_present check
+
+  // First paragraph in source: look for a <p> tag with ≥20 words outside scripts
+  const sourceParagraphMatch = htmlWithoutScripts.match(/<p[^>]*>([^<]{80,})<\/p>/i);
+  const firstParaInSource = sourceParagraphMatch !== null;
+
+  // Determine overall status
+  const criticalMissing = !h1InSource || (!firstParaInSource && bodyTextLength < 1000);
+
+  let jsStatus: AuditCheck["status"];
+  let jsDescription: string;
+
+  if (isJsHeavy && criticalMissing) {
+    jsStatus = "fail";
+    jsDescription = [
+      `Strona jest JS-heavy (${bodyTextLength} zn. tekstu, ${Math.round(inlineScriptLength / 1024)}KB JS inline)`,
+      !h1InSource && h1DomText ? ` i H1 ("${h1DomText.slice(0, 50)}") nie jest obecny w źródle HTML` : "",
+      !firstParaInSource ? " — brak akapitów w źródle HTML" : "",
+      ". Crawlery AI (GPTBot, PerplexityBot, ClaudeBot) nie wykonują JavaScript — nie widzą tej treści. Wdroż SSR (Server-Side Rendering) lub pre-rendering.",
+    ].join("");
+  } else if (!h1InSource && h1DomText) {
+    jsStatus = "warning";
+    jsDescription = `H1 ("${h1DomText.slice(0, 60)}") jest renderowany przez JavaScript i może być niewidoczny dla crawlerów AI. Upewnij się, że H1 jest w źródle HTML (SSR/pre-render), nie tylko w bundle JS.`;
+  } else if (!firstParaInSource && bodyTextLength < 1000) {
+    jsStatus = "warning";
+    jsDescription = `Brak akapitów w źródle HTML przy małej ilości tekstu (${bodyTextLength} zn.). Pierwszy akapit może być renderowany przez JavaScript. Crawlery AI nie wykonują JS — wdroż SSR lub dodaj kluczową treść do HTML source.`;
+  } else if (isJsHeavy) {
+    jsStatus = "warning";
+    jsDescription = `Strona jest JS-heavy (${bodyTextLength} zn. tekstu, ${Math.round(inlineScriptLength / 1024)}KB JS inline). H1 i pierwszy akapit są obecne w źródle HTML — to dobry znak. Sprawdź jednak, czy cała krytyczna treść jest dostępna bez JavaScript.`;
+  } else {
+    jsStatus = "pass";
+    jsDescription = `H1 i treść są obecne w źródle HTML (${bodyTextLength} zn.) — crawlery AI mogą odczytać krytyczne sygnały bez wykonywania JavaScript.`;
+  }
 
   checks.push({
     id: "js_rendering",
-    label: "Treść nie wymaga JavaScript",
-    status: isJsHeavy ? "warning" : "pass",
-    description: isJsHeavy
-      ? `Mało tekstu w body (${bodyTextLength} znaków) przy dużej ilości JavaScript inline (${Math.round(inlineScriptLength / 1024)}KB). Treść może wymagać renderowania JavaScript, aby być widoczna. Wiele crawlerów AI nie wykonuje JavaScript — upewnij się, że krytyczna treść jest w źródle HTML.`
-      : `Tekst body jest obecny w źródle HTML (${bodyTextLength} znaków) — crawlery AI mogą uzyskać dostęp do treści bez wykonywania JavaScript.`,
+    label: "Krytyczna treść w HTML source (SSR/pre-render)",
+    status: jsStatus,
+    description: jsDescription,
     impact: "high",
-    value: !isJsHeavy,
+    value: `body:${bodyTextLength}ch, h1InSource:${h1InSource}, paraInSource:${firstParaInSource}, jsHeavy:${isJsHeavy}`,
   });
 
   const score = computeScore(checks);

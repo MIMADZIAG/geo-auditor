@@ -403,22 +403,86 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
     value: hasAuthor,
   });
 
-  // 9. dateModified + datePublished (freshness signals)
+  // 9. dateModified + datePublished — with freshness scoring (c)
+  // Strategy:
+  //  - Presence check: are dates declared at all?
+  //  - Freshness check: if declared, how old is the content?
+  //  - Context-aware: freshness warnings apply only to time-sensitive schema types
+  //    (Article, NewsArticle, BlogPosting). Evergreen types (Product, Organization,
+  //    WebSite, FAQPage, HowTo) are NOT penalised for age — absence of dates is also
+  //    not a failure for these types.
   const hasDateModified = schemas.some((s) => s.hasDateModified);
   const hasDatePublished = schemas.some((s) => s.hasDatePublished);
+
+  // Determine if any schema type is time-sensitive
+  const timeSensitiveTypes = new Set(["Article", "NewsArticle", "BlogPosting", "TechArticle", "ScholarlyArticle"]);
+  const hasTimeSensitiveSchema = schemas.some(s =>
+    s.type.split(",").map(t => t.trim()).some(t => timeSensitiveTypes.has(t))
+  );
+
+  // Extract the most recent date value for freshness scoring
+  let contentAgeMonths: number | null = null;
+  const dateFields = ["dateModified", "datePublished"];
+  for (const schema of schemas) {
+    for (const field of dateFields) {
+      const raw = schema.raw[field];
+      if (typeof raw === "string" && raw.length >= 4) {
+        try {
+          const parsed = new Date(raw);
+          if (!isNaN(parsed.getTime())) {
+            const months = (Date.now() - parsed.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+            if (contentAgeMonths === null || months < contentAgeMonths) {
+              contentAgeMonths = Math.round(months);
+            }
+          }
+        } catch { /* ignore unparseable dates */ }
+      }
+    }
+  }
+
+  // Build status and description
+  let dateStatus: AuditCheck["status"];
+  let dateDescription: string;
+  let dateImpact: AuditCheck["impact"] = "medium";
+
+  if (hasDateModified && hasDatePublished) {
+    // Dates present — check freshness only for time-sensitive types
+    if (hasTimeSensitiveSchema && contentAgeMonths !== null && contentAgeMonths > 24) {
+      dateStatus = "fail";
+      dateDescription = `Treść ma ${contentAgeMonths} miesięcy (ponad 2 lata). Silniki AI depriorytetyzują przestarzałe artykuły dla zapytań wymagających aktualności. Zaktualizuj treść i zmień dateModified.`;
+      dateImpact = "high";
+    } else if (hasTimeSensitiveSchema && contentAgeMonths !== null && contentAgeMonths > 12) {
+      dateStatus = "warning";
+      dateDescription = `Treść ma ${contentAgeMonths} miesięcy. Dla artykułów i poradników Perplexity i Google AI Overviews preferują treści zaktualizowane w ciągu ostatnich 12 miesięcy. Rozważ odświeżenie.`;
+    } else {
+      dateStatus = "pass";
+      dateDescription = contentAgeMonths !== null
+        ? `Znaleziono datePublished i dateModified (wiek: ${contentAgeMonths} mies.) — silniki AI mogą ocenić świeżość treści.`
+        : "Znaleziono datePublished i dateModified — silniki AI używają ich do oceny świeżości i trafności treści.";
+    }
+  } else if (hasDateModified || hasDatePublished) {
+    dateStatus = "warning";
+    dateDescription = hasDateModified
+      ? "Znaleziono dateModified, ale brak datePublished. Dodaj datePublished, aby uzupełnić sygnały świeżości."
+      : "Znaleziono datePublished, ale brak dateModified. Dodaj dateModified i aktualizuj go przy każdej zmianie treści.";
+  } else if (hasTimeSensitiveSchema) {
+    // Time-sensitive type but no dates — this is a real gap
+    dateStatus = "warning";
+    dateDescription = "Brak właściwości dat w schemacie Article/BlogPosting. Dodaj datePublished i dateModified — silniki AI używają ich do oceny świeżości. Treści bez dat mogą być depriorytetyzowane.";
+  } else {
+    // No dates, but not time-sensitive — informational only, no penalty
+    dateStatus = "info";
+    dateDescription = "Brak właściwości dat w schemacie. Dla stron evergreen (produkty, organizacje) daty nie są wymagane. Jeśli treść jest regularnie aktualizowana, dodaj dateModified dla lepszego sygnału świeżości.";
+    dateImpact = "low";
+  }
+
   checks.push({
     id: "date_signals",
-    label: "Sygnały dat (publikacja i modyfikacja)",
-    status: hasDateModified && hasDatePublished ? "pass" : hasDateModified || hasDatePublished ? "warning" : "warning",
-    description: hasDateModified && hasDatePublished
-      ? "Znaleziono datePublished i dateModified — silniki AI używają ich do oceny świeżości i trafności treści."
-      : hasDateModified
-      ? "Znaleziono dateModified, ale brak datePublished. Dodaj datePublished, aby uzupełnić sygnały świeżości."
-      : hasDatePublished
-      ? "Znaleziono datePublished, ale brak dateModified. Dodaj dateModified i aktualizuj go przy zmianach treści — silniki AI używają tego do oceny świeżości."
-      : "Brak właściwości dat. Dodaj datePublished i dateModified, aby pomóc silnikom AI ocenić świeżość treści. Przestarzałe treści są depriorytetyzowane w odpowiedziach AI.",
-    impact: "medium",
-    value: `published:${hasDatePublished}, modified:${hasDateModified}`,
+    label: "Sygnały dat i świeżości treści",
+    status: dateStatus,
+    description: dateDescription,
+    impact: dateImpact,
+    value: `published:${hasDatePublished}, modified:${hasDateModified}, age:${contentAgeMonths ?? "unknown"}mo`,
   });
 
   // 10. BreadcrumbList

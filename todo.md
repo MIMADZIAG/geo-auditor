@@ -1237,3 +1237,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 - [x] Diagnoza: useState(auditHistoryExpanded) wywoływany po early returns (linia 1212 > 1183)
 - [x] Fix: przeniesiono useState przed if(authLoading)/if(!isAuthenticated) — 340 testów, TS: 0 błędów
+
+## Audit Engine Improvements — v5 (Perplexity Ranking Patterns)
+
+- [x] a) contentStructure.ts: add first_paragraph_answer check (page-type-aware, advisory for non-article types)
+- [x] b) contentStructure.ts: add intent_blocks check (definition/steps/comparison — context-aware, not rigid)
+- [x] c) structuredData.ts: extend date_signals with freshness scoring (age warnings for time-sensitive content only)
+- [x] d) eeat.ts: remove duplicate external_citations check (already present in contentStructure.ts)
+- [x] e) technical.ts: enhance js_rendering to check H1 and first paragraph presence in HTML source
+- [x] f) contentStructure.ts: replace naive regex semantic_triples with NLP-quality SPO density algorithm
