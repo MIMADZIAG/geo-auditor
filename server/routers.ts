@@ -465,6 +465,50 @@ export const appRouter = router({
           history: rows.reverse(), // chronological order for chart
         }));
       }),
+
+    /**
+     * Phrase coverage: how many active phrases were cited at least once
+     * in the most recent citation run for this page.
+     * Returns { total, cited } — used by MonitoredPageCard coverage pill.
+     */
+    getPhraseCoverage: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        const db = await getDb();
+        if (!db) return { total: 0, cited: 0 };
+        const { phraseCitationHistory, monitoredPagePhrases } = await import("../drizzle/schema");
+        const { desc: descOp, and: andOp, eq: eqOp, inArray: inArrayOp } = await import("drizzle-orm");
+        // Get all active phrases
+        const phrases = await db
+          .select({ id: monitoredPagePhrases.id })
+          .from(monitoredPagePhrases)
+          .where(andOp(
+            eqOp(monitoredPagePhrases.monitoredPageId, input.monitoredPageId),
+            eqOp(monitoredPagePhrases.isActive, true)
+          ));
+        if (phrases.length === 0) return { total: 0, cited: 0 };
+        const phraseIds = phrases.map((p) => p.id);
+        // Fetch latest history row per phrase (most recent run)
+        const latestRows = await db
+          .select()
+          .from(phraseCitationHistory)
+          .where(inArrayOp(phraseCitationHistory.phraseId, phraseIds))
+          .orderBy(descOp(phraseCitationHistory.recordedAt));
+        // Keep only the most recent row per phrase
+        const seen = new Set<number>();
+        const latestPerPhrase: typeof latestRows = [];
+        for (const row of latestRows) {
+          if (!seen.has(row.phraseId)) {
+            seen.add(row.phraseId);
+            latestPerPhrase.push(row);
+          }
+        }
+        const cited = latestPerPhrase.filter((r) => r.citedEnginesCount > 0).length;
+        return { total: phrases.length, cited };
+      }),
    }),
   leads: router({
     captureEmail: publicProcedure
@@ -494,13 +538,39 @@ export const appRouter = router({
         // Use user id if logged in, otherwise use 0 (anonymous)
         const userId = ctx.user?.id ?? 0;
 
-        // Create job with empty prompts — worker generates queries via fanOutQueries()
+        // ── Seed phrases from monitoring (Feature 1) ──────────────────────────────
+        // If the user is authenticated and this URL is monitored, use the canonical
+        // phrase set from monitoring as the seed for round 1 queries.
+        // This ensures the same phrases shown in the UI are actually checked.
+        let seedPhrases: string[] = [];
+        if (ctx.user) {
+          try {
+            const monitoredPages = await getMonitoredPagesByUser(ctx.user.id);
+            const normalize = (u: string) => { try { return new URL(u).href.replace(/\/$/, ""); } catch { return u.replace(/\/$/, ""); } };
+            const normalizedAuditUrl = normalize(audit.url);
+            const matchedPage = monitoredPages.find((p) => normalize(p.url) === normalizedAuditUrl);
+            if (matchedPage) {
+              const { getActivePhrasesForPage } = await import("./monitoring/phrases");
+              const phrases = await getActivePhrasesForPage(matchedPage.id);
+              seedPhrases = phrases.map((p) => p.phrase).filter(Boolean);
+              if (seedPhrases.length > 0) {
+                console.log(`[Citation] startCheck: seeding ${seedPhrases.length} monitoring phrases for ${audit.url}`);
+              }
+            }
+          } catch (err) {
+            // Non-fatal — fall back to LLM-generated queries
+            console.warn("[Citation] startCheck: phrase seed lookup failed (non-fatal):", err);
+          }
+        }
+
+        // Create job — if seedPhrases available, worker uses them as round 1 queries;
+        // otherwise worker generates queries via LLM from live page content.
         const jobId = await createCitationJob({
           auditId: input.auditId,
           userId,
           url: audit.url,
-          prompts: [],   // worker generates via fanOutQueries() from live page content
-          language: "auto", // worker auto-detects from page HTML
+          prompts: seedPhrases,  // empty = LLM-generated; non-empty = monitoring seed
+          language: "auto",       // worker auto-detects from page HTML
         });
 
         if (!jobId) {

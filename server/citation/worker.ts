@@ -1121,6 +1121,19 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
     const usedQueries: string[] = [];
     let foundCitation = false;
 
+    // ── Monitoring seed phrases (Feature 1) ──────────────────────────────────
+    // job.prompts contains canonical phrases from monitoring (set by startCheck).
+    // When present, these are used as the primary round 1 queries for ALL engines.
+    // This ensures the UI-visible phrases are the ones actually tested.
+    // When empty, the worker falls back to LLM-generated queries as before.
+    const monitoringSeedPhrases: string[] = Array.isArray(job.prompts)
+      ? (job.prompts as string[]).filter((p): p is string => typeof p === "string" && p.trim().length > 2)
+      : [];
+    const hasSeedPhrases = monitoringSeedPhrases.length > 0;
+    if (hasSeedPhrases) {
+      console.log(`[Citation] Job ${jobId}: using ${monitoringSeedPhrases.length} monitoring seed phrases for round 1`);
+    }
+
     for (let round = 1; round <= MAX_ROUNDS; round++) {
       if (foundCitation) break;
 
@@ -1162,14 +1175,28 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
         cacheTag = round === 1 && Object.keys(cachedQueries.citedFirst).length > 0
           ? "CACHED+CITED_FIRST" : "CACHED";
       } else {
-        // Fresh generation: beyond previous maxRound or no cache
-        [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
-          generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
-          round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
-          round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
-          round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
-        ]);
-        cacheTag = cachedQueries ? `FRESH_FANOUT_R${round}` : "FRESH";
+        // Fresh generation: beyond previous maxRound or no cache.
+        // Round 1 with seed phrases: use monitoring phrases directly (skip LLM generation).
+        // Seed phrases are shared across all engines in round 1 — each engine checks the same
+        // canonical set, ensuring consistent per-phrase citation results.
+        if (round === 1 && hasSeedPhrases) {
+          // Use monitoring seed phrases as round 1 queries for all engines.
+          // Deduplicate and cap at 8 per engine (consistent with LLM-generated cap).
+          const seedSet = monitoringSeedPhrases.slice(0, 8);
+          googleQueries = seedSet;
+          chatgptQueries = seedSet;
+          perplexityQueries = seedSet;
+          geminiQueries = seedSet;
+          cacheTag = "SEED_PHRASES";
+        } else {
+          [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
+            generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
+            round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
+            round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
+            round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
+          ]);
+          cacheTag = cachedQueries ? `FRESH_FANOUT_R${round}` : "FRESH";
+        }
       }
 
       // Track all queries used (deduplicated) for avoid-repetition in next rounds

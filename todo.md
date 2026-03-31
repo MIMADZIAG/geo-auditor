@@ -1292,3 +1292,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Results.tsx: remove query_coverage top_questions display from Content Intelligence section (backend data preserved)
 - [ ] citation router startCheck: use canonical phrases from monitored_page_phrases as seed queries in round 1 (if page is monitored) [future]
 - [ ] citation router startCheck: if not monitored, generate phrases via phraseGenerator and pass as seed (fire-and-forget store) [future]
+
+## Three Phrase Unification Follow-ups (2026-04-01)
+
+- [x] Feature 1: citation startCheck seeds monitoring phrases into round 1 (worker uses them as first query set)
+- [x] Feature 1: worker: inject seedPhrases from job.prompts into round 1 queries per engine (cacheTag=SEED_PHRASES)
+- [x] Feature 2: AICitationPanel — "Zarządzaj" button opens inline PhraseManager in idle state
+- [x] Feature 3: monitoring router — getPhraseCoverage(monitoredPageId) procedure added
+- [x] Feature 3: MonitoredPageCard — phrase coverage pill X/N with color coding (zinc/amber/emerald)

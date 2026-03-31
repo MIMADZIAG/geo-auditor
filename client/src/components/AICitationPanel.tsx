@@ -16,10 +16,11 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ENGINE_CONFIG, ALL_ENGINES, getVisibilityScoreResult } from "../../../shared/visibilityScore";
 import { GapAnalysisPanel } from "./GapAnalysisPanel";
 import { CitationOpportunityPanel } from "./CitationOpportunityPanel";
+import { PhraseManager } from "./PhraseManager";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1108,8 +1109,9 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 ) {
   const { user } = useAuth();
   const isPro = user?.role === "admin" || user?.plan === "pro" || user?.plan === "business";
+  const [, navigate] = useLocation();
 
-  // ── Core fix: always query DB for existing jobs ───────────────────────────────────
+  // ── Core fix: always query DB for existing jobs ──────────────────────────────────
   // Previously: enabled: jobStarted (local state) — reset to false on every remount
   // (switching tabs unmounts AICitationPanel, so existing completed jobs were invisible).
   // Fix: always enable the query. Use `userStartedJob` only to distinguish
@@ -1117,6 +1119,8 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
   const [userStartedJob, setUserStartedJob] = useState(false);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [competitorUrlsNotified, setCompetitorUrlsNotified] = useState(false);
+  // Feature 2: inline PhraseManager toggle
+  const [showPhraseManager, setShowPhraseManager] = useState(false);
 
   // ── Canonical phrases from monitoring (single source of truth) ──────────────
   // Same set of phrases used in Monitoring dashboard — unifies phrase source across the app.
@@ -1287,21 +1291,47 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
           {/* Canonical phrases preview — shown before running the check */}
           {canonicalPhrases && canonicalPhrases.length > 0 && (
             <div className="bg-zinc-800/30 border border-white/8 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2.5">
-                <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                <span className="text-xs font-semibold text-zinc-300">Frazy do sprawdzenia ({canonicalPhrases.length})</span>
-              </div>
-              <p className="text-[11px] text-zinc-500 mb-2.5 leading-relaxed">Te same frazy, które monitorujesz w dashboardzie — jeden spójny zestaw dla tej podstrony.</p>
-              <div className="flex flex-wrap gap-1.5">
-                {canonicalPhrases.slice(0, 8).map((p) => (
-                  <span key={p.id} className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">{p.phrase}</span>
-                ))}
-                {canonicalPhrases.length > 8 && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-700/50 border border-white/5 text-zinc-500">+{canonicalPhrases.length - 8} więcej</span>
+              <div className="flex items-center justify-between gap-2 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  <span className="text-xs font-semibold text-zinc-300">Frazy do sprawdzenia ({canonicalPhrases.length})</span>
+                </div>
+                {/* Feature 2: Manage phrases inline */}
+                {monitoringPhrasesData && (
+                  <button
+                    onClick={() => setShowPhraseManager((v) => !v)}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {showPhraseManager ? "Ukryj" : "Zarządzaj"}
+                  </button>
                 )}
               </div>
+              <p className="text-[11px] text-zinc-500 mb-2.5 leading-relaxed">Te same frazy, które monitorujesz w dashboardzie — jeden spójny zestaw dla tej podstrony.</p>
+              {/* Inline PhraseManager — Feature 2 */}
+              {showPhraseManager && monitoringPhrasesData ? (
+                <div className="mt-2">
+                  <PhraseManager
+                    monitoredPageId={monitoringPhrasesData.monitoredPageId}
+                    plan={user?.plan ?? "free"}
+                    compact={false}
+                    className="bg-transparent border-0 p-0"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {canonicalPhrases.slice(0, 8).map((p) => (
+                    <span key={p.id} className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">{p.phrase}</span>
+                  ))}
+                  {canonicalPhrases.length > 8 && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-700/50 border border-white/5 text-zinc-500">+{canonicalPhrases.length - 8} więcej</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

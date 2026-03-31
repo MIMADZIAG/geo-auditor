@@ -538,6 +538,13 @@ function MonitoredPageCard({
   const score = page.lastScore;
   const domain = (() => { try { return new URL(page.url).hostname; } catch { return page.url; } })();
 
+  // Feature 3: Phrase coverage indicator — how many monitored phrases were cited
+  const phraseCoverageQuery = trpc.monitoring.getPhraseCoverage.useQuery(
+    { monitoredPageId: page.id },
+    { staleTime: 60_000 }
+  );
+  const phraseCoverage = phraseCoverageQuery.data;
+
   const historyQuery = trpc.monitoring.getRunHistory.useQuery(
     { monitoredPageId: page.id, limit: 10 },
     { enabled: showHistory }
@@ -624,6 +631,28 @@ function MonitoredPageCard({
               citedEngines={hasCitationData ? citedEngines : null}
               totalEngines={hasCitationData ? totalEngines : null}
             />
+            {/* Feature 3: Phrase coverage pill */}
+            {phraseCoverage && phraseCoverage.total > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border cursor-help ${
+                    phraseCoverage.cited === 0
+                      ? "bg-zinc-500/10 border-zinc-500/20 text-zinc-400"
+                      : phraseCoverage.cited === phraseCoverage.total
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                      : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                  }`}>
+                    <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    {phraseCoverage.cited}/{phraseCoverage.total}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-xs max-w-48">
+                  {phraseCoverage.cited} z {phraseCoverage.total} monitorowanych fraz zostało ostatnio zacytowanych przez AI.
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
