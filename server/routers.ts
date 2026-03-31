@@ -13,7 +13,7 @@ import { createCheckoutSession, createBillingPortalSession } from "./stripe/hand
 import { PLANS, getPlanLimits } from "./stripe/products";
 import { getDb } from "./db";
 import { users, audits } from "../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import {
   createAudit,
   updateAudit,
@@ -36,7 +36,7 @@ import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
 import { normalizePolishCapitalization, isPolishText } from "./utils/textNormalization";
 import { runPageCreatorPipeline } from "./pageCreator/index";
-import { pageCreations, aiExposureCache } from "../drizzle/schema";
+import { pageCreations, aiExposureCache, citationJobs, citationChecks } from "../drizzle/schema";
 import { computeAiExposureScore, type AiExposureResult } from "./aiExposure/index";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
@@ -649,6 +649,58 @@ export const appRouter = router({
      * Level 1: always available (free + pro)
      * Level 2: Pro/Business only (includeSemanticInsights=true)
      */
+    /**
+     * Per-phrase citation matrix — for each monitored phrase, shows which engines
+     * cited the page and which competitor domains appeared in those queries.
+     * Used by PhraseCitationComparisonTable in Tab 2.
+     */
+    getPhraseCitationMatrix: publicProcedure
+      .input(z.object({ auditId: z.number() }))
+      .query(async ({ input }) => {
+        const { getCitationResultsForAudit } = await import("./citation/db");
+        const { job, checks } = await getCitationResultsForAudit(input.auditId);
+        if (!job || checks.length === 0) return null;
+
+        // Group checks by query (phrase), then by engine
+        const phraseMap = new Map<string, {
+          phrase: string;
+          engines: Record<string, { isCited: string; competitorDomains: string[] }>;
+          competitorDomains: string[]; // union across all engines
+        }>();
+
+        for (const check of checks) {
+          const phrase = check.query;
+          if (!phraseMap.has(phrase)) {
+            phraseMap.set(phrase, { phrase, engines: {}, competitorDomains: [] });
+          }
+          const entry = phraseMap.get(phrase)!;
+          const domains = (check.competitorDomains as string[] | null) ?? [];
+          entry.engines[check.engine] = {
+            isCited: check.isCited,
+            competitorDomains: domains,
+          };
+          // Union competitor domains across all engines
+          for (const d of domains) {
+            if (!entry.competitorDomains.includes(d)) entry.competitorDomains.push(d);
+          }
+        }
+
+        // Convert to array, sort: not-cited first (opportunity), then domain, then yes
+        const PRIORITY: Record<string, number> = { no: 0, domain: 1, yes: 2 };
+        const rows = Array.from(phraseMap.values()).map((entry) => {
+          // Overall citation status = best result across all engines
+          const statuses = Object.values(entry.engines).map((e) => e.isCited);
+          const best = statuses.includes("yes") ? "yes" : statuses.includes("domain") ? "domain" : "no";
+          return { ...entry, overallStatus: best };
+        });
+        rows.sort((a, b) => (PRIORITY[a.overallStatus] ?? 0) - (PRIORITY[b.overallStatus] ?? 0));
+
+        return {
+          rows: rows.slice(0, 30), // cap at 30 phrases
+          engines: ["chatgpt", "google", "perplexity", "gemini"] as const,
+        };
+      }),
+
     getOpportunities: publicProcedure
       .input(z.object({
         auditId: z.number(),
@@ -1521,6 +1573,40 @@ ${cleanedContent.slice(0, 20000)}
         if (topOpportunity) contextParts.push(`Główna szansa: ${topOpportunity}`);
         if (topQuestions.length > 0) contextParts.push(`Pytania użytkowników: ${topQuestions.slice(0, 5).join(" | ")}`);
         if (input.additionalInstructions) contextParts.push(`Wskazówki: ${input.additionalInstructions}`);
+        // Enrich with competitor citation data from the latest citation job for this audit
+        try {
+          const citationJobRows = await db.select()
+            .from(citationJobs)
+            .where(eq(citationJobs.auditId, input.auditId))
+            .orderBy(desc(citationJobs.createdAt))
+            .limit(1);
+          if (citationJobRows.length > 0) {
+            const jobId = citationJobRows[0].id;
+            const checks = await db.select({
+              query: citationChecks.query,
+              isCited: citationChecks.isCited,
+              allCitedUrls: citationChecks.allCitedUrls,
+              competitorDomains: citationChecks.competitorDomains,
+            }).from(citationChecks)
+              .where(eq(citationChecks.jobId, jobId))
+              .limit(30);
+            const citedCompetitors = Array.from(new Set(
+              checks
+                .filter(c => !c.isCited && c.competitorDomains)
+                .flatMap(c => {
+                  try { return JSON.parse(c.competitorDomains as string) as string[]; } catch { return []; }
+                })
+                .filter(Boolean)
+            )).slice(0, 5);
+            const missedPhrases = checks.filter(c => !c.isCited).map(c => c.query).slice(0, 5);
+            if (citedCompetitors.length > 0) {
+              contextParts.push(`Cytowani konkurenci w AI Search (na frazach, gdzie ta strona nie jest cytowana): ${citedCompetitors.join(", ")}`);
+            }
+            if (missedPhrases.length > 0) {
+              contextParts.push(`Frazy, na które strona nie jest cytowana (do wzmocnienia): ${missedPhrases.join(" | ")}`);
+            }
+          }
+        } catch { /* non-critical — citation data is optional enrichment */ }
         const topic = `Aktualizacja treści strony: ${pageTitle}\nURL: ${audit.url}`;
         const [inserted] = await db.insert(pageCreations).values({
           userId: ctx.user.id,

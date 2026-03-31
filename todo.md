@@ -1300,3 +1300,24 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Feature 2: AICitationPanel — "Zarządzaj" button opens inline PhraseManager in idle state
 - [x] Feature 3: monitoring router — getPhraseCoverage(monitoredPageId) procedure added
 - [x] Feature 3: MonitoredPageCard — phrase coverage pill X/N with color coding (zinc/amber/emerald)
+
+## Workflow Closure — Full Loop (2026-04-01)
+
+### Phase A — Results page: 3-step workflow bar + Tab 3 Content Creator
+- [x] Results.tsx: WorkflowProgressBar (Audyt → Widoczność → Treść) at top of all tabs
+- [x] Results.tsx: Tab 3 "Treść AI" — WhatIfSection + ContentCreatorRewriteWidget + workflow context banner
+- [x] Tab 3: monitoring phrases as target queries, cited competitors as context (via WhatIfSection)
+- [x] Tab 3: one-click "Przepisz z AI" → createRewrite with full enriched context
+
+### Phase B — Per-phrase competitor comparison in Tab 2
+- [x] server: getPhraseCitationMatrix(auditId) — per canonical phrase: your status + cited competitor domains per engine
+- [x] Results.tsx: PhraseCitationComparisonTable component in Tab 2 between AiExposurePanel and Monitoring CTA
+
+### Phase C — Content Creator enrichment + feedback loop
+- [x] createRewrite enrichment: fetch latest citation job → extract cited competitors + missed phrases → add to LLM context
+- [x] PageCreatorResult: 3-step workflow CTA (Treść → Audyt → Monitoring) with pre-filled URL
+- [x] PageCreatorResult: "Dodaj do monitoringu" CTA for the created page
+
+### Phase D — Dashboard workflow status per page
+- [x] MonitoredPageCard: 3-krokowy workflow status mini-bar (Audyt · score → Widoczność · X/N → Treść AI link)
+- [x] Dashboard: "Stwórz treść" button per monitored page → PageCreator with auditId context

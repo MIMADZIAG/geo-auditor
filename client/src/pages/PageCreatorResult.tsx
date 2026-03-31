@@ -210,6 +210,12 @@ export default function PageCreatorResult() {
 
   const result = data.result as unknown as PageCreationResult;
   const tech = result.technicalSpec;
+  // Extract URL from topic field (format: "Aktualizacja treści strony: <title>\nURL: <url>" or just topic)
+  const extractedUrl = (() => {
+    const topic = data.topic ?? "";
+    const urlMatch = topic.match(/URL:\s*(https?:\/\/[^\s]+)/);
+    return urlMatch ? urlMatch[1] : null;
+  })();
 
   const allContent = [
     result.pageTitle,
@@ -646,29 +652,70 @@ export default function PageCreatorResult() {
           </div>
         )}
 
-        {/* CTA — add to auditor */}
-        <div className="mt-10 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 border border-violet-500/20 rounded-2xl p-8 text-center">
-          <Sparkles className="w-10 h-10 text-violet-400 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-white mb-2">Gotowe! Co dalej?</h3>
-          <p className="text-zinc-400 mb-6 max-w-lg mx-auto">
-            Wdróż tę stronę na swoim serwisie, a następnie dodaj jej URL do GEO Auditora,
-            żeby śledzić widoczność w AI Search i otrzymywać rekomendacje optymalizacyjne.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        {/* CTA — 3-step workflow loop */}
+        <div className="mt-10 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 border border-violet-500/20 rounded-2xl p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Sparkles className="w-8 h-8 text-violet-400 shrink-0" />
+            <div>
+              <h3 className="text-xl font-bold text-white">Gotowe! Zamknij pętlę optymalizacji</h3>
+              <p className="text-zinc-400 text-sm mt-0.5">Wdróż treść, a następnie audytuj i monitoruj stronę w AI Search.</p>
+            </div>
+          </div>
+          {/* Workflow steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-center">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-xs font-semibold text-white">Krok 1: Treść</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Wdroż wygenerow. treść na stronie</div>
+            </div>
+            <div className="bg-zinc-900/60 border border-violet-500/20 rounded-xl p-4 text-center">
+              <div className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center mx-auto mb-2">
+                <Search className="w-4 h-4 text-violet-400" />
+              </div>
+              <div className="text-xs font-semibold text-white">Krok 2: Audyt</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Sprawdź AI-Readiness Score</div>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-center">
+              <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mx-auto mb-2">
+                <Globe className="w-4 h-4 text-blue-400" />
+              </div>
+              <div className="text-xs font-semibold text-white">Krok 3: Monitoring</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Śledź widoczność w AI Search</div>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button
-              onClick={() => navigate("/")}
-              className="bg-violet-600 hover:bg-violet-500 text-white px-6"
+              onClick={() => {
+                if (extractedUrl) {
+                  navigate(`/?url=${encodeURIComponent(extractedUrl)}`);
+                } else {
+                  navigate("/");
+                }
+              }}
+              className="bg-violet-600 hover:bg-violet-500 text-white px-6 flex-1 sm:flex-none"
             >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              Audytuj URL po wdrożeniu
+              <Search className="w-4 h-4 mr-2" />
+              {extractedUrl ? "Audytuj tę stronę" : "Audytuj URL po wdrożeniu"}
             </Button>
+            {extractedUrl && (
+              <Button
+                onClick={() => navigate("/dashboard")}
+                variant="outline"
+                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6 flex-1 sm:flex-none"
+              >
+                <Globe className="w-4 h-4 mr-2" />
+                Dodaj do monitoringu
+              </Button>
+            )}
             <Button
               onClick={() => navigate("/page-creator")}
               variant="outline"
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6"
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6 flex-1 sm:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Stwórz kolejną stronę
+              Nowa strona
             </Button>
           </div>
         </div>

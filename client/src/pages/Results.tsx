@@ -330,8 +330,13 @@ export default function Results() {
   });
 
   // ── Tab state — supports ?tab=visibility deep link ──
-  const [activeTab, setActiveTab] = useState<"optimization" | "visibility">(
-    () => new URLSearchParams(window.location.search).get("tab") === "visibility" ? "visibility" : "optimization"
+  const [activeTab, setActiveTab] = useState<"optimization" | "visibility" | "content">(
+    () => {
+      const tab = new URLSearchParams(window.location.search).get("tab");
+      if (tab === "visibility") return "visibility";
+      if (tab === "content") return "content";
+      return "optimization";
+    }
   );
 
   // ── Citation status for Sticky Bar ──
@@ -527,6 +532,46 @@ export default function Results() {
           </div>
         </div>
 
+        {/* Workflow Progress Bar ── 3-step journey: Audit → Visibility → Content */}
+        <div className="container border-t border-border/20 py-1.5">
+          <div className="flex items-center gap-1 max-w-sm">
+            {([
+              { id: "optimization" as const, label: "Audyt", icon: Shield, done: true },
+              { id: "visibility" as const, label: "Widoczność", icon: Eye, done: citationStatus === "done" },
+              { id: "content" as const, label: "Treść AI", icon: Sparkles, done: false },
+            ] as const).map((step, i, arr) => {
+              const isActive = activeTab === step.id;
+              const isPast = (step.id === "optimization") || (step.id === "visibility" && (activeTab === "visibility" || activeTab === "content"));
+              return (
+                <>
+                  <button
+                    key={step.id}
+                    onClick={() => step.id === "visibility" ? handleSwitchToVisibility(true) : setActiveTab(step.id)}
+                    className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                      isActive
+                        ? "bg-primary/15 text-primary border border-primary/30"
+                        : isPast
+                        ? "text-emerald-400 hover:text-emerald-300"
+                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                    }`}
+                  >
+                    {step.done && !isActive
+                      ? <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      : <step.icon className="w-3 h-3" />
+                    }
+                    <span>{step.label}</span>
+                  </button>
+                  {i < arr.length - 1 && (
+                    <div className={`h-px flex-1 max-w-6 transition-colors ${
+                      isPast && step.done ? "bg-emerald-500/40" : "bg-border/40"
+                    }`} />
+                  )}
+                </>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Tab Bar with Dual Score ── */}
         <div className="container border-t border-border/30">
           <div className="flex items-center justify-between h-11">
@@ -566,6 +611,18 @@ export default function Results() {
                 {citationStatus === "done" && citationCitedCount === 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-red-500/10 text-red-400">0</span>
                 )}
+              </button>
+              <button
+                onClick={() => setActiveTab("content")}
+                className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "content"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Treść AI</span>
+                <span className="sm:hidden">Treść</span>
               </button>
             </div>
 
@@ -703,6 +760,87 @@ export default function Results() {
         </main>
       )}
 
+      {/* ── Tab 3: Treść AI ── */}
+      {activeTab === "content" && (
+        <main className="container max-w-5xl mx-auto py-10 space-y-8">
+
+          {/* Workflow context banner */}
+          <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 to-indigo-500/5 p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-sm font-bold">Content Creator — Krok 3 z 3</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">AI-Powered</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Fundament: wyniki audytu (Krok 1) + analiza widoczności i cytowani konkurenci (Krok 2) — wszystko wczytane jako kontekst. AI przepisze Twoją stronę tak, żeby była cytowana.
+                </p>
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-muted-foreground">Audyt: <span className="text-foreground font-medium">{overallScore}/100</span></span>
+                  </div>
+                  {citationStatus === "done" && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-muted-foreground">Widoczność: <span className="text-foreground font-medium">{citationCitedCount}/{citationTotalEngines} AI</span></span>
+                    </div>
+                  )}
+                  {citedCompetitorUrls.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-muted-foreground">Konkurenci: <span className="text-foreground font-medium">{citedCompetitorUrls.length} URL</span></span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Rewrite CTA — for paid users, jump straight to PageCreator */}
+          <ContentCreatorRewriteWidget auditId={audit.id} navigate={navigate} isPaid={hasPaidPlan} />
+
+          {/* Full AI Co-Pilot — inline rewrite with competitor context */}
+          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
+
+          {/* New page CTA */}
+          <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Plus className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold">Stwórz nową podstronę od zera</div>
+              <div className="text-xs text-muted-foreground mt-0.5">AI Page Creator generuje kompletną podstronę zoptymalizowaną pod AI Search — z FAQ, schema.org i strukturą cytowaną przez modele AI.</div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => navigate("/page-creator")}
+              className="bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs shrink-0"
+            >
+              <Sparkles className="w-3 h-3" /> Page Creator
+            </Button>
+          </div>
+
+          {/* Bridge back */}
+          <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Eye className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold">Sprawdź widoczność po wdrożeniu</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Po opublikowaniu zmian wróć do zakładki Widoczność AI i uruchom nową analizę cytowań.</div>
+            </div>
+            <Button size="sm" onClick={() => handleSwitchToVisibility(true)} variant="outline" className="gap-1.5 text-xs shrink-0">
+              <Eye className="w-3 h-3" /> Widoczność AI
+            </Button>
+          </div>
+
+        </main>
+      )}
+
       {/* ── Tab 2: Widoczność AI ── */}
       {activeTab === "visibility" && (
         <main className="container max-w-5xl mx-auto py-10 space-y-8">
@@ -729,6 +867,9 @@ export default function Results() {
 
           {/* AI Search Exposure Score — domain-level */}
           <AiExposurePanel url={audit.url} />
+
+          {/* Per-Phrase Citation Comparison Matrix — shows competitor domains per phrase */}
+          <PhraseCitationComparisonTable auditId={auditId} citationStatus={citationStatus} />
 
           {/* Competitor Analysis Teaser */}
           {!hasPaidPlan && <CompetitorAnalysisTeaser navigate={navigate} />}
@@ -763,18 +904,23 @@ export default function Results() {
             );
           })()}
 
-          {/* Bridge back to Tab 1 */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Shield className="w-4 h-4 text-primary" />
+          {/* Bridge to Tab 3 — Content Creator */}
+          <div className="rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/8 to-primary/4 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">Gotowy na poprawki?</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Wróć do zakładki Optymalizacja — tam znajdziesz konkretne rekomendacje i AI Content Co-Pilot.</div>
+              <div className="text-sm font-semibold">Przepisz treść z uwzględnieniem tych danych</div>
+              <div className="text-xs text-muted-foreground mt-0.5">AI Content Creator wykorzysta wyniki audytu, frazy z monitoringu i dane o cytowanych konkurentach, aby stworzyć treść gotową do cytowania.</div>
             </div>
-            <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs shrink-0">
-              <Shield className="w-3 h-3" /> Przejdź do Optymalizacji
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs">
+                <Shield className="w-3 h-3" /> Optymalizacja
+              </Button>
+              <Button size="sm" onClick={() => setActiveTab("content")} className="gap-1.5 text-xs bg-primary hover:bg-primary/90">
+                <Sparkles className="w-3 h-3" /> Treść AI
+              </Button>
+            </div>
           </div>
 
         </main>
@@ -2984,6 +3130,217 @@ function AiExposurePanel({ url }: { url: string }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Per-Phrase Citation Comparison Table ─────────────────────────────────────
+// Shows for each checked phrase: which engines cited the page, and which competitor
+// domains appeared in those queries when the page was NOT cited.
+// This is the "analiza porównawcza" — the core competitive intelligence layer.
+
+const ENGINE_LABELS: Record<string, string> = {
+  chatgpt: "ChatGPT",
+  google: "Google AI",
+  perplexity: "Perplexity",
+  gemini: "Gemini",
+};
+
+const ENGINE_COLORS: Record<string, { cited: string; domain: string; no: string }> = {
+  chatgpt:    { cited: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", domain: "bg-amber-500/15 text-amber-400 border-amber-500/25", no: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20" },
+  google:     { cited: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", domain: "bg-amber-500/15 text-amber-400 border-amber-500/25", no: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20" },
+  perplexity: { cited: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", domain: "bg-amber-500/15 text-amber-400 border-amber-500/25", no: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20" },
+  gemini:     { cited: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", domain: "bg-amber-500/15 text-amber-400 border-amber-500/25", no: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20" },
+};
+
+function CitationStatusBadge({ status, engine }: { status: string; engine: string }) {
+  const colors = ENGINE_COLORS[engine] ?? ENGINE_COLORS.chatgpt;
+  const cls = status === "yes" ? colors.cited : status === "domain" ? colors.domain : colors.no;
+  const label = status === "yes" ? "✓ Cytowana" : status === "domain" ? "~ Domena" : "✗ Brak";
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+export function PhraseCitationComparisonTable({ auditId, citationStatus }: { auditId: number; citationStatus: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const { data, isLoading } = trpc.citation.getPhraseCitationMatrix.useQuery(
+    { auditId },
+    { enabled: citationStatus === "done", staleTime: 120_000 }
+  );
+
+  if (citationStatus !== "done") return null;
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-border/50 bg-card p-5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <RefreshCwIcon className="w-3.5 h-3.5 animate-spin" />
+          <span>Ładowanie analizy porównawczej…</span>
+        </div>
+      </div>
+    );
+  }
+  if (!data || data.rows.length === 0) return null;
+
+  const notCited = data.rows.filter((r) => r.overallStatus === "no");
+  const partialCited = data.rows.filter((r) => r.overallStatus === "domain");
+  const fullyCited = data.rows.filter((r) => r.overallStatus === "yes");
+  const displayRows = showAll ? data.rows : data.rows.slice(0, 8);
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      {/* Header */}
+      <button
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-muted/30 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-4 h-4 text-violet-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold">Analiza porównawcza fraz</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25 text-violet-300 font-semibold">
+                {data.rows.length} fraz
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Które frazy cytują konkurenci, a Twoja strona nie jest widoczna
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Summary pills */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            {notCited.length > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">
+                {notCited.length} szans
+              </span>
+            )}
+            {partialCited.length > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold">
+                {partialCited.length} częściowo
+              </span>
+            )}
+            {fullyCited.length > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold">
+                {fullyCited.length} cytowanych
+              </span>
+            )}
+          </div>
+          {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border/50">
+          {/* Legend */}
+          <div className="flex items-center gap-4 px-5 py-2.5 bg-muted/20 border-b border-border/30 flex-wrap">
+            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Legenda:</span>
+            <span className="flex items-center gap-1 text-[10px] text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-500/60 inline-block" /> Cytowana (URL)</span>
+            <span className="flex items-center gap-1 text-[10px] text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-500/60 inline-block" /> Domena cytowana (inna podstrona)</span>
+            <span className="flex items-center gap-1 text-[10px] text-zinc-500"><span className="w-2 h-2 rounded-full bg-zinc-500/60 inline-block" /> Brak cytowania</span>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/30">
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-64">Fraza</th>
+                  {data.engines.map((engine) => (
+                    <th key={engine} className="text-center px-3 py-2.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {ENGINE_LABELS[engine] ?? engine}
+                    </th>
+                  ))}
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Konkurenci widoczni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayRows.map((row, i) => {
+                  const isOpportunity = row.overallStatus === "no";
+                  const isPartial = row.overallStatus === "domain";
+                  return (
+                    <tr
+                      key={i}
+                      className={`border-b border-border/20 transition-colors ${
+                        isOpportunity ? "hover:bg-red-500/5" : isPartial ? "hover:bg-amber-500/5" : "hover:bg-emerald-500/5"
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-start gap-2">
+                          {isOpportunity && <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-500/70 shrink-0 mt-1" />}
+                          {isPartial && <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-amber-500/70 shrink-0 mt-1" />}
+                          {!isOpportunity && !isPartial && <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0 mt-1" />}
+                          <span className="text-xs font-medium leading-snug">{row.phrase}</span>
+                        </div>
+                      </td>
+                      {data.engines.map((engine) => {
+                        const engineData = row.engines[engine];
+                        if (!engineData) return <td key={engine} className="px-3 py-3 text-center"><span className="text-[10px] text-muted-foreground/40">—</span></td>;
+                        return (
+                          <td key={engine} className="px-3 py-3 text-center">
+                            <CitationStatusBadge status={engineData.isCited} engine={engine} />
+                          </td>
+                        );
+                      })}
+                      <td className="px-4 py-3">
+                        {row.competitorDomains.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {row.competitorDomains.slice(0, 4).map((domain, di) => (
+                              <span key={di} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-300 font-mono">
+                                {domain.replace("www.", "")}
+                              </span>
+                            ))}
+                            {row.competitorDomains.length > 4 && (
+                              <span className="text-[10px] text-muted-foreground">+{row.competitorDomains.length - 4}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/40">Brak danych</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {data.rows.length > 8 && (
+            <div className="px-5 py-3 border-t border-border/30">
+              <button
+                onClick={() => setShowAll((v) => !v)}
+                className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+              >
+                {showAll ? "Pokaż mniej" : `Pokaż wszystkie ${data.rows.length} fraz`}
+              </button>
+            </div>
+          )}
+
+          {/* Action CTA */}
+          {notCited.length > 0 && (
+            <div className="px-5 py-4 border-t border-border/30 bg-red-500/5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-red-300">
+                    {notCited.length} {notCited.length === 1 ? "fraza bez cytowania" : "frazy bez cytowania"} — konkurenci są widoczni
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Przejdź do zakładki Treść AI, aby przepisać stronę z uwzględnieniem tych fraz i kontekstu cytowanych konkurentów.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

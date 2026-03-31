@@ -12,12 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
-  Zap, Eye, Clock, BarChart2, Plus, AlertTriangle, CheckCircle,
+  Zap, Eye, Clock, BarChart2, Plus, AlertTriangle, CheckCircle, CheckCircle2, XCircle,
   Lock, ChevronRight, RefreshCw, Star, Target, Sparkles, Shield,
   Globe, ArrowUpRight, Activity, FileText, Search, Bot, Trophy,
   Flame, Info, Brain, LogIn, History, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronUp,
 } from "lucide-react";
+// Note: CheckCircle2 and XCircle are imported above for workflow status pills
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -739,6 +740,58 @@ function MonitoredPageCard({
             >
               Usuń
             </Button>
+          </div>
+        </div>
+
+        {/* Workflow Status — 3-step progress: Audit → Visibility → Content */}
+        <div className="mt-3 border-t border-border/50 pt-3">
+          <div className="flex items-center gap-1.5">
+            {/* Step 1: Audyt */}
+            <div className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+              score != null
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                : "bg-zinc-500/10 border-zinc-500/20 text-zinc-500"
+            }`}>
+              {score != null
+                ? <CheckCircle2 className="w-2.5 h-2.5" />
+                : <Shield className="w-2.5 h-2.5" />
+              }
+              <span>Audyt{score != null ? ` · ${Math.round(score)}` : ""}</span>
+            </div>
+            <div className={`h-px w-3 ${
+              hasCitationData ? "bg-emerald-500/40" : "bg-border/40"
+            }`} />
+            {/* Step 2: Widoczność */}
+            <div className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+              hasCitationData
+                ? citedEngines > 0
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/10 border-red-500/20 text-red-400"
+                : "bg-zinc-500/10 border-zinc-500/20 text-zinc-500"
+            }`}>
+              {hasCitationData
+                ? citedEngines > 0
+                  ? <CheckCircle2 className="w-2.5 h-2.5" />
+                  : <XCircle className="w-2.5 h-2.5" />
+                : <Eye className="w-2.5 h-2.5" />
+              }
+              <span>Widoczność{hasCitationData ? ` · ${citedEngines}/${totalEngines}` : ""}</span>
+            </div>
+            <div className="h-px w-3 bg-border/40" />
+            {/* Step 3: Treść */}
+            {page.lastAuditId ? (
+              <Link href={`/results/${page.lastAuditId}?tab=content`}>
+                <div className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-primary/8 border-primary/20 text-primary/70 hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>Treść AI</span>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-zinc-500/10 border-zinc-500/20 text-zinc-500">
+                <Sparkles className="w-2.5 h-2.5" />
+                <span>Treść AI</span>
+              </div>
+            )}
           </div>
         </div>
 
