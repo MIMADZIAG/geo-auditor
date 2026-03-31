@@ -682,6 +682,7 @@ export default function Results() {
             contentIntelligence={contentIntelligence}
             isAuthenticated={isAuthenticated}
             auditStatus={audit.status}
+            url={audit.url}
           />
 
           {/* AI Content Creator — Aktualizacja treści */}
@@ -1211,12 +1212,22 @@ function ContentIntelligencePanel({
   contentIntelligence,
   isAuthenticated,
   auditStatus,
+  url,
 }: {
   contentIntelligence: ContentIntelligenceResult | null;
   isAuthenticated: boolean;
   auditStatus?: string;
+  url?: string;
 }) {
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+
+  // ── Canonical phrases from monitoring (single source of truth) ──────────────
+  // Only fetch if user is authenticated and url is available
+  const phrasesQuery = trpc.monitoring.getPhrasesForUrl.useQuery(
+    { url: url ?? "" },
+    { enabled: isAuthenticated && !!url }
+  );
+  const monitoringPhrases = phrasesQuery.data?.phrases?.filter(p => p.isActive) ?? null;
 
   // If audit is done but CI is null — it failed after retries
   const isAuditDone = auditStatus === "completed" || auditStatus === "done" || !auditStatus;
@@ -1298,25 +1309,25 @@ function ContentIntelligencePanel({
           </div>
         </div>
 
-        {/* Query Coverage — shown FIRST so user sees what queries the page can rank for */}
-        {(() => {
-          const qc = contentIntelligence.checks.find(c => c.id === "query_coverage");
-          const questions = qc?.examples?.filter(Boolean) ?? [];
-          if (questions.length === 0) return null;
-          return (
-            <div className="mb-5 p-4 rounded-xl bg-background/50 border border-border/40">
-              <div className="flex items-center gap-2 mb-3">
-                <Search className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Queries this page can rank for in AI search</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {questions.map((q, i) => (
-                  <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300">{q}</span>
-                ))}
-              </div>
+        {/* Canonical Phrases — single source of truth from Monitoring ─────────────
+           If page is monitored: show monitoring phrases (same set used in AI Visibility Check).
+           If not monitored: section is hidden here (shown in AI Visibility Check tab instead). */}
+        {monitoringPhrases && monitoringPhrases.length > 0 && (
+          <div className="mb-5 p-4 rounded-xl bg-background/50 border border-border/40">
+            <div className="flex items-center gap-2 mb-3">
+              <Search className="w-3.5 h-3.5 text-violet-400" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Frazy monitorowane w AI Search</span>
             </div>
-          );
-        })()}
+            <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+              To te same frazy, które są sprawdzane w analizie AI Visibility Check — jeden spójny zestaw dla tej podstrony.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {monitoringPhrases.map((p) => (
+                <span key={p.id} className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300">{p.phrase}</span>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Three-column metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           {/* Citeability Score Gauge */}

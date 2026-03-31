@@ -873,7 +873,15 @@ function PLGUpsell({ url }: { url?: string }) {
 
 // ─── Queries Checked Panel ───────────────────────────────────────────────────────
 
-function QueriesCheckedPanel({ checks, isPro }: { checks: CitationCheck[]; isPro: boolean }) {
+function QueriesCheckedPanel({
+  checks,
+  isPro,
+  canonicalPhrases,
+}: {
+  checks: CitationCheck[];
+  isPro: boolean;
+  canonicalPhrases: Array<{ id: number; phrase: string; isActive: boolean }> | null;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   // Deduplicate queries globally (same query may appear across multiple engines/rounds)
@@ -892,6 +900,12 @@ function QueriesCheckedPanel({ checks, isPro }: { checks: CitationCheck[]; isPro
   const citedCount = uniqueQueries.filter(q => queryStatus(q) === "yes").length;
   const domainCount = uniqueQueries.filter(q => queryStatus(q) === "domain").length;
 
+  // ── Canonical phrases from monitoring ───────────────────────────────────────────────────
+  // If monitoring phrases are available, they are the authoritative set.
+  // The uniqueQueries from checks are the actual queries sent to AI engines
+  // (which may be generated from CI or from monitoring phrases).
+  const hasCanonicalPhrases = canonicalPhrases && canonicalPhrases.length > 0;
+
   return (
     <div className="bg-zinc-900/40 border border-white/8 rounded-2xl overflow-hidden">
       {/* Header with copywriting */}
@@ -905,7 +919,10 @@ function QueriesCheckedPanel({ checks, isPro }: { checks: CitationCheck[]; isPro
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-white">Jak AI widzi Twoją stronę?</h3>
             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              Przeanalizowaliśmy treść Twojej strony tak samo, jak robią to duże modele językowe — wyodrębniając tematy, intencje i pytania, które Twoi odbiorcy zadają AI. Następnie sprawdziliśmy każde z nich w 4 silnikach AI, żeby zobaczyć, czy Twoja strona pojawia się w odpowiedziach.
+              {hasCanonicalPhrases
+                ? "Sprawdziliśmy Twoje monitorowane frazy w 4 silnikach AI — poniżej widzisz, na które z nich Twoja strona pojawia się w odpowiedziach."
+                : "Przeanalizowaliśmy treść Twojej strony tak samo, jak robią to duże modele językowe — wyodrębniając tematy, intencje i pytania, które Twoi odbiorcy zadają AI. Następnie sprawdziliśmy każde z nich w 4 silnikach AI."
+              }
             </p>
           </div>
         </div>
@@ -928,8 +945,40 @@ function QueriesCheckedPanel({ checks, isPro }: { checks: CitationCheck[]; isPro
         </div>
       </div>
 
-      {/* Collapsible list */}
+      {/* Canonical phrase set from monitoring — shown as the authoritative reference */}
+      {hasCanonicalPhrases && (
+        <div className="px-5 pt-4 pb-2">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">Monitorowane frazy — wiążący zestaw dla tej podstrony</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mb-1">
+            {canonicalPhrases!.map((p) => {
+              const st = queryStatus(p.phrase);
+              return (
+                <span key={p.id} className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                  st === "yes" ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" :
+                  st === "domain" ? "bg-amber-500/10 border-amber-500/30 text-amber-300" :
+                  "bg-indigo-500/10 border-indigo-500/20 text-indigo-300"
+                }`}>{p.phrase}</span>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-zinc-600 mt-1.5 mb-1">
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> cytowana</span>
+            {" "}<span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> inna podstrona domeny</span>
+            {" "}<span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" /> brak cytowania</span>
+          </p>
+        </div>
+      )}
+
+      {/* Collapsible list of all queries sent to AI engines */}
       <div className="p-5">
+        {hasCanonicalPhrases && (
+          <p className="text-[10px] text-zinc-600 mb-2">Wszystkie zapytania wysłane do silników AI:</p>
+        )}
         <div className={`space-y-1.5 ${!expanded ? "max-h-[200px] overflow-hidden relative" : ""}`}>
           {uniqueQueries.map((q, i) => {
             const st = queryStatus(q);
@@ -939,7 +988,7 @@ function QueriesCheckedPanel({ checks, isPro }: { checks: CitationCheck[]; isPro
                   st === "yes" ? "bg-emerald-400" :
                   st === "domain" ? "bg-amber-400" : "bg-zinc-700"
                 }`} />
-                <span className="text-xs text-zinc-300 leading-relaxed">„{q}"</span>
+                <span className="text-xs text-zinc-300 leading-relaxed">„{q}“</span>
               </div>
             );
           })}
@@ -1068,6 +1117,21 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
   const [userStartedJob, setUserStartedJob] = useState(false);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [competitorUrlsNotified, setCompetitorUrlsNotified] = useState(false);
+
+  // ── Canonical phrases from monitoring (single source of truth) ──────────────
+  // Same set of phrases used in Monitoring dashboard — unifies phrase source across the app.
+  // Only fetched when user is authenticated (protected procedure).
+  const phrasesForUrlQuery = trpc.monitoring.getPhrasesForUrl.useQuery(
+    { url: url ?? "" },
+    { enabled: !!user && !!url }
+  );
+  const monitoringPhrasesData = phrasesForUrlQuery.data;
+  // canonicalPhrases is null when: query not yet loaded, user not authenticated, or page not monitored
+  // When page IS monitored, monitoringPhrasesData is { monitoredPageId, phrases[] }
+  // When page is NOT monitored, monitoringPhrasesData is null (server returns null)
+  const canonicalPhrases = monitoringPhrasesData?.phrases?.filter(p => p.isActive) ?? null;
+  // isPageMonitored: true only when query has resolved AND returned a non-null result
+  const isPageMonitored = phrasesForUrlQuery.isFetched && monitoringPhrasesData != null;
 
   const startCheck = trpc.citation.startCheck.useMutation();
   const resultsQuery = trpc.citation.getResults.useQuery(
@@ -1219,6 +1283,27 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
               </div>
             ))}
           </div>
+
+          {/* Canonical phrases preview — shown before running the check */}
+          {canonicalPhrases && canonicalPhrases.length > 0 && (
+            <div className="bg-zinc-800/30 border border-white/8 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                <span className="text-xs font-semibold text-zinc-300">Frazy do sprawdzenia ({canonicalPhrases.length})</span>
+              </div>
+              <p className="text-[11px] text-zinc-500 mb-2.5 leading-relaxed">Te same frazy, które monitorujesz w dashboardzie — jeden spójny zestaw dla tej podstrony.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {canonicalPhrases.slice(0, 8).map((p) => (
+                  <span key={p.id} className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">{p.phrase}</span>
+                ))}
+                {canonicalPhrases.length > 8 && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-700/50 border border-white/5 text-zinc-500">+{canonicalPhrases.length - 8} więcej</span>
+                )}
+              </div>
+            </div>
+          )}
 
           {!user ? (
             <div className="space-y-3">
@@ -1423,7 +1508,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
       })()}
 
       {/* Queries checked — global list without round breakdown */}
-      <QueriesCheckedPanel checks={checks} isPro={isPro} />
+      <QueriesCheckedPanel checks={checks} isPro={isPro} canonicalPhrases={canonicalPhrases} />
 
 
 

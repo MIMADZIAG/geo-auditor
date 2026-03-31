@@ -1282,3 +1282,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Citation Pulse: show last run date + status clearly per page
 - [x] Citation Pulse: show "running" state when citation job is in progress
 - [ ] Dashboard: ensure add-to-monitoring button is visible and accessible for additional pages
+
+## Unified Phrase Architecture (2026-04-01)
+
+- [x] monitoring router: add getPhrasesForUrl(url) — looks up monitoredPageId by URL+userId, returns canonical phrases
+- [x] AICitationPanel: show canonical phrases (from monitoring) before/during citation check — idle + completed states
+- [x] AICitationPanel QueriesCheckedPanel: show monitoring phrases as authoritative set with per-phrase citation status
+- [x] Results.tsx ContentIntelligencePanel: add url prop + fetch getPhrasesForUrl — show monitoring phrases instead of CI top_questions
+- [x] Results.tsx: remove query_coverage top_questions display from Content Intelligence section (backend data preserved)
+- [ ] citation router startCheck: use canonical phrases from monitored_page_phrases as seed queries in round 1 (if page is monitored) [future]
+- [ ] citation router startCheck: if not monitored, generate phrases via phraseGenerator and pass as seed (fire-and-forget store) [future]

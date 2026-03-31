@@ -328,6 +328,28 @@ export const appRouter = router({
       }),
 
     // ── Phrase management ─────────────────────────────────────────────────────
+    /**
+     * Get canonical phrases for a URL — used by AICitationPanel to show the
+     * same phrase set that Monitoring uses, unifying the phrase source of truth.
+     * Returns null if the URL is not monitored by this user.
+     */
+    getPhrasesForUrl: protectedProcedure
+      .input(z.object({ url: z.string().url() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        // Normalize URL for comparison (strip trailing slash)
+        const normalize = (u: string) => {
+          try { return new URL(u).href.replace(/\/$/, ""); }
+          catch { return u.replace(/\/$/, ""); }
+        };
+        const normalizedInput = normalize(input.url);
+        const page = pages.find((p) => normalize(p.url) === normalizedInput);
+        if (!page) return null; // not monitored — caller shows CTA
+        const { getPhrasesForPage } = await import("./monitoring/phrases");
+        const phrases = await getPhrasesForPage(page.id);
+        return { monitoredPageId: page.id, phrases };
+      }),
+
     getPhrases: protectedProcedure
       .input(z.object({ monitoredPageId: z.number() }))
       .query(async ({ ctx, input }) => {
