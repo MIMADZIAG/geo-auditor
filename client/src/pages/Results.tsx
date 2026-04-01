@@ -1,3 +1,4 @@
+import React from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -543,9 +544,8 @@ export default function Results() {
               const isActive = activeTab === step.id;
               const isPast = (step.id === "optimization") || (step.id === "visibility" && (activeTab === "visibility" || activeTab === "content"));
               return (
-                <>
+                <React.Fragment key={step.id}>
                   <button
-                    key={step.id}
                     onClick={() => step.id === "visibility" ? handleSwitchToVisibility(true) : setActiveTab(step.id)}
                     className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
                       isActive
@@ -566,7 +566,7 @@ export default function Results() {
                       isPast && step.done ? "bg-emerald-500/40" : "bg-border/40"
                     }`} />
                   )}
-                </>
+                </React.Fragment>
               );
             })}
           </div>
