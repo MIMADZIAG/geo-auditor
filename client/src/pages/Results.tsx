@@ -497,7 +497,7 @@ export default function Results() {
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">New Audit</span>
+              <span className="hidden sm:inline">Nowy audyt</span>
             </Button>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-2">
@@ -586,7 +586,7 @@ export default function Results() {
                 }`}
               >
                 <Shield className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Optymalizacja</span>
+                <span className="hidden sm:inline">01 · Audyt</span>
                 <span className="sm:hidden">Audyt</span>
               </button>
               <button
@@ -598,7 +598,7 @@ export default function Results() {
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Widoczność AI</span>
+                <span className="hidden sm:inline">02 · Widoczność</span>
                 <span className="sm:hidden">Widoczność</span>
                 {citationStatus === "running" && (
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -621,7 +621,7 @@ export default function Results() {
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Treść AI</span>
+                <span className="hidden sm:inline">03 · Treść AI</span>
                 <span className="sm:hidden">Treść</span>
               </button>
             </div>

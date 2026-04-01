@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -100,6 +100,12 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3 {
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+    letter-spacing: -0.02em;
   }
   code, pre {
     font-family: "JetBrains Mono", monospace;
@@ -123,6 +129,34 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+  .gradient-text-warm {
+    background: linear-gradient(135deg, oklch(0.78 0.20 280), oklch(0.72 0.18 145));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .workflow-step-active {
+    background: linear-gradient(135deg, oklch(0.65 0.22 280 / 0.12), oklch(0.65 0.22 280 / 0.06));
+    border-color: oklch(0.65 0.22 280 / 0.35);
+  }
+  .hero-glow {
+    background: radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.65 0.22 280 / 0.15), transparent);
+  }
+  @keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.08); opacity: 0.3; }
+    100% { transform: scale(1); opacity: 0.6; }
+  }
+  .animate-pulse-ring {
+    animation: pulse-ring 2.5s ease-in-out infinite;
+  }
+  @keyframes float-up {
+    0% { transform: translateY(6px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .animate-float-up {
+    animation: float-up 0.5s ease-out forwards;
   }
   .glass-card {
     background: oklch(0.14 0.015 250 / 0.85);

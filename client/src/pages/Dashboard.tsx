@@ -965,15 +965,16 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
         <nav className="hidden md:flex items-center gap-5 text-sm text-muted-foreground">
           <Link href="/dashboard" className="text-foreground font-medium flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5 text-violet-400" />
-            Widoczność AI
+            Monitoring
           </Link>
           <Link href="/pulse" className="hover:text-foreground transition-colors flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-            Citation Pulse
+            <Activity className="w-3.5 h-3.5" />
+            Widoczność
           </Link>
-          <Link href="/dashboard#audits" className="hover:text-foreground transition-colors">Audyty</Link>
-          <Link href="/sandbox" className="hover:text-foreground transition-colors">AI Sandbox</Link>
-          <Link href="/page-creator" className="hover:text-foreground transition-colors">Page Creator</Link>
+          <Link href="/page-creator" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            Kreator treści
+          </Link>
           <Link href="/pricing" className="hover:text-foreground transition-colors">Plany</Link>
         </nav>
         <div className="flex items-center gap-3">
@@ -1598,14 +1599,9 @@ export default function Dashboard() {
                     <Search className="w-4 h-4 text-violet-400" /> Nowy audyt URL
                   </Button>
                 </Link>
-                <Link href="/sandbox">
-                  <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9">
-                    <Bot className="w-4 h-4 text-blue-400" /> AI Sandbox
-                  </Button>
-                </Link>
                 <Link href="/page-creator">
                   <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9">
-                    <FileText className="w-4 h-4 text-emerald-400" /> AI Page Creator
+                    <Sparkles className="w-4 h-4 text-emerald-400" /> Kreator treści AI
                   </Button>
                 </Link>
                 <Link href="/pricing">

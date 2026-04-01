@@ -1321,3 +1321,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 ### Phase D — Dashboard workflow status per page
 - [x] MonitoredPageCard: 3-krokowy workflow status mini-bar (Audyt · score → Widoczność · X/N → Treść AI link)
 - [x] Dashboard: "Stwórz treść" button per monitored page → PageCreator with auditId context
+
+## UI Rebuild — Workflow Loop (2026-04-01)
+
+- [x] Home.tsx: new workflow-loop narrative hero ("Twoja strona jest niewidoczna w AI Search. Naprawiamy to w 4 krokach.")
+- [x] Home.tsx: simplified navigation (no AI Sandbox), 4-step workflow section with animated cards
+- [x] Home.tsx: social proof strip, FAQ, pricing CTA, trust signals
+- [x] Results.tsx: numbered tab labels (01 · Audyt / 02 · Widoczność / 03 · Treść AI)
+- [x] Results.tsx: "Nowy audyt" back button (was "New Audit")
+- [x] Dashboard.tsx: removed AI Sandbox from nav + quick actions
+- [x] Dashboard.tsx: simplified nav (Monitoring / Widoczność / Kreator treści / Plany)
+- [x] index.css: Plus Jakarta Sans for headings, antialiasing, hero-glow, workflow-step-active, animate-pulse-ring utilities

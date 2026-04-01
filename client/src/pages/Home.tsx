@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -13,12 +13,10 @@ import {
   Zap,
   Shield,
   BarChart3,
-  FileText,
   ArrowRight,
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Code2,
   Brain,
   LayoutDashboard,
   LogIn,
@@ -28,32 +26,19 @@ import {
   ChevronDown,
   ChevronUp,
   Globe,
-  Lock,
   Eye,
   RefreshCw,
   Star,
-  Layers,
   MessageSquare,
   Link2,
   Cpu,
   BadgeCheck,
+  Activity,
+  Lock,
+  ArrowUpRight,
+  Layers,
+  FileText,
 } from "lucide-react";
-
-// ─── Animated counter hook ─────────────────────────────────────────────────────
-function useCounter(target: number, duration = 1800) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const step = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) { setValue(target); clearInterval(timer); }
-      else setValue(Math.floor(start));
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target, duration]);
-  return value;
-}
 
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
 function FAQItem({ q, a }: { q: string; a: string }) {
@@ -72,367 +57,283 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-// ─── Score Ring ───────────────────────────────────────────────────────────────
-function ScoreRing({ score, color }: { score: number; color: string }) {
-  const r = 36;
-  const circ = 2 * Math.PI * r;
-  return (
-    <div className="relative w-20 h-20">
-      <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
-        <circle cx="40" cy="40" r={r} fill="none" stroke="oklch(0.22 0.015 250)" strokeWidth="6" />
-        <circle cx="40" cy="40" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - score / 100)}
-          style={{ transition: "stroke-dashoffset 1.2s ease-out" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-black" style={{ color }}>{score}</span>
-        <span className="text-[8px] text-muted-foreground">/100</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── AI Engines Animated Strip ──────────────────────────────────────────────────────────────────────────────────────
-
-const AI_ENGINES = [
-  {
-    name: "ChatGPT",
-    color: "#10a37f",
-    // Official OpenAI / ChatGPT logo
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
-        <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.403-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
-      </svg>
-    ),
-  },
-  {
-    // Google AI Overviews — separate badge from generic Google
-    name: "Google AI Overviews",
-    color: "#4285f4",
-    // Official Google 4-color G logo
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-      </svg>
-    ),
-  },
-  {
-    name: "Perplexity",
-    color: "#22B8CD",
-    // Official Perplexity logo from lobehub.com/icons/perplexity
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z" fill="#22B8CD" fillRule="nonzero"/>
-      </svg>
-    ),
-  },
-  {
-    name: "Gemini",
-    color: "#3186FF",
-    // Official Gemini logo from lobehub.com/icons/gemini
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient gradientUnits="userSpaceOnUse" id="gemini-fill-0" x1="7" x2="11" y1="15.5" y2="12">
-            <stop stopColor="#08B962"/>
-            <stop offset="1" stopColor="#08B962" stopOpacity="0"/>
-          </linearGradient>
-          <linearGradient gradientUnits="userSpaceOnUse" id="gemini-fill-1" x1="8" x2="11.5" y1="5.5" y2="11">
-            <stop stopColor="#F94543"/>
-            <stop offset="1" stopColor="#F94543" stopOpacity="0"/>
-          </linearGradient>
-          <linearGradient gradientUnits="userSpaceOnUse" id="gemini-fill-2" x1="3.5" x2="17.5" y1="13.5" y2="12">
-            <stop stopColor="#FABC12"/>
-            <stop offset=".46" stopColor="#FABC12" stopOpacity="0"/>
-          </linearGradient>
-        </defs>
-        <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"/>
-        <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-fill-0)"/>
-        <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-fill-1)"/>
-        <path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-fill-2)"/>
-      </svg>
-    ),
-  },
-  {
-    name: "Claude",
-    color: "#D97757",
-    // Official Claude logo from lobehub.com/icons/claude
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fillRule="nonzero"/>
-      </svg>
-    ),
-  },
-];
-
-function AIEnginesStrip() {
-  const [visible, setVisible] = useState(false);
+// ─── Animated counter hook ────────────────────────────────────────────────────
+function useCounter(target: number, duration = 1800) {
+  const [value, setValue] = useState(0);
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 200);
-    return () => clearTimeout(t);
-  }, []);
+    let start = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) { setValue(target); clearInterval(timer); }
+      else setValue(Math.floor(start));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration]);
+  return value;
+}
 
+// ─── Workflow Step Card ────────────────────────────────────────────────────────
+function WorkflowStep({
+  number, icon: Icon, title, desc, color, isLast,
+}: {
+  number: string; icon: React.ElementType; title: string; desc: string; color: string; isLast?: boolean;
+}) {
   return (
-    <div className="mt-8">
-      <p className="text-[11px] text-muted-foreground/60 uppercase tracking-widest mb-3 font-medium">
-        Sprawdzamy widoczność w
-      </p>
-      <div className="flex items-center gap-3 flex-wrap">
-        {AI_ENGINES.map((engine, i) => (
-          <div
-            key={engine.name}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/8 bg-zinc-800/40 transition-all duration-500"
-            style={{
-              opacity: visible ? 1 : 0,
-              transform: visible ? "translateY(0)" : "translateY(6px)",
-              transitionDelay: `${i * 80}ms`,
-            }}
-          >
-            <span style={{ color: engine.color }}>{engine.icon}</span>
-            <span className="text-xs font-medium text-zinc-300">{engine.name}</span>
-          </div>
-        ))}
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${color}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        {!isLast && <div className="w-px flex-1 bg-border/40 mt-2 mb-0 min-h-[32px]" />}
+      </div>
+      <div className="pb-6">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-0.5">{number}</div>
+        <div className="font-bold text-sm mb-1">{title}</div>
+        <div className="text-xs text-muted-foreground leading-relaxed">{desc}</div>
       </div>
     </div>
   );
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scanStep, setScanStep] = useState(0);
   const [annual, setAnnual] = useState(false);
   const [, navigate] = useLocation();
-  const { isAuthenticated } = useAuth();
-  // Auto-run pending audit after OAuth login
-  const { isPending: isPendingAudit } = usePendingAudit(isAuthenticated);
-  const globalStats = trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
-  const realAuditsCount = globalStats.data?.totalAudits ?? 0;
-  // Use real count if available, otherwise fall back to animated counter seeded at a plausible base
-  const auditsCount = useCounter(realAuditsCount > 0 ? realAuditsCount : 0);
-  const pagesCount = useCounter(94);
+  const { isAuthenticated, user } = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const auditMutation = trpc.audit.run.useMutation({
-    onSuccess: (data) => navigate(`/results/${data.auditId}`),
-    onError: (err) => toast.error(err.message || "Audit failed. Please try again."),
+  const { data: statsData } = trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 60_000 });
+  const realAuditsCount = statsData?.totalAudits ?? 0;
+  const auditsCount = useCounter(realAuditsCount > 0 ? realAuditsCount : 0);
+
+  usePendingAudit(isAuthenticated);
+
+  const createAuditMutation = trpc.audit.run.useMutation({
+    onSuccess: (data: { auditId: number }) => {
+      navigate(`/results/${data.auditId}`);
+    },
+    onError: (error: { message?: string }) => {
+      setIsSubmitting(false);
+      setScanStep(0);
+      toast.error(error.message || "Błąd podczas tworzenia audytu");
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim()) { toast.error("Wklej URL strony do audytu."); return; }
-    let normalized = url.trim();
-    if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) normalized = "https://" + normalized;
+  useEffect(() => {
+    if (!isSubmitting) return;
+    const interval = setInterval(() => {
+      setScanStep((s) => (s + 1) % SCAN_STEPS.length);
+    }, 900);
+    return () => clearInterval(interval);
+  }, [isSubmitting]);
 
-    if (!isAuthenticated) {
-      // Save the pending audit URL so usePendingAudit can auto-run it after login
-      sessionStorage.setItem(PENDING_AUDIT_KEY, normalized);
-      toast.info("Zaloguj się kontem Google — jeden klik i wrócimy do audytu.", { duration: 4000 });
-      // Small delay so the toast is visible before redirect
-      setTimeout(() => { window.location.href = getLoginUrl(); }, 600);
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const trimmed = url.trim();
+    if (!trimmed) { toast.error("Wklej URL strony do audytu"); return; }
+    let normalized = trimmed;
+    if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
+      normalized = "https://" + normalized;
+    }
+    try { new URL(normalized); } catch {
+      toast.error("Nieprawidłowy URL — sprawdź format");
       return;
     }
-
-    auditMutation.mutate({ url: normalized });
-  };
-
-  const isLoading = auditMutation.isPending || isPendingAudit;
-
-  const [showStickyBar, setShowStickyBar] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setShowStickyBar(window.scrollY > 500);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setTimeout(() => document.querySelector<HTMLInputElement>("input[type='text']")?.focus(), 500);
+    if (!isAuthenticated) {
+      localStorage.setItem(PENDING_AUDIT_KEY, normalized);
+      window.location.href = getLoginUrl();
+      return;
+    }
+    setIsSubmitting(true);
+    setScanStep(0);
+    createAuditMutation.mutate({ url: normalized });
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground">
 
-      {/* ── Sticky CTA Bar ── */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
-          showStickyBar ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div className="bg-background/95 backdrop-blur-xl border-t border-border/50 shadow-2xl shadow-black/20">
-          <div className="container max-w-4xl mx-auto py-3 px-4 flex items-center justify-between gap-4">
-            <p className="text-sm font-semibold hidden sm:block">
-              Sprawdź, czy AI Cię cytuje —{" "}
-              <span className="text-muted-foreground font-normal">bezpłatnie, jeden klik Google</span>
-            </p>
-            <Button
-              onClick={scrollToTop}
-              size="sm"
-              className="gap-2 shrink-0 font-bold px-6"
-            >
-              <Search className="w-4 h-4" />
-              Sprawdź swoją stronę →
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Navigation ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/85 backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Bot className="w-4 h-4 text-primary-foreground" />
+      {/* ── Nav ── */}
+      <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/90 backdrop-blur-md">
+        <div className="container max-w-6xl mx-auto flex items-center justify-between h-14">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+              <Bot className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
-            <span className="font-black text-lg tracking-tight">GEO-Auditor</span>
+            <span className="font-black text-base tracking-tight">GEO-Auditor</span>
           </div>
-          <div className="flex items-center gap-6">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden md:block">Funkcje</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden md:block">Cennik</a>
-            <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden md:block">FAQ</a>
+          <div className="flex items-center gap-1">
+            <a href="#how-it-works" className="hidden sm:block text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">Jak działa</a>
+            <a href="#pricing" className="hidden sm:block text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">Cennik</a>
             {isAuthenticated ? (
-              <Button size="sm" onClick={() => navigate("/dashboard")} variant="outline" className="gap-1.5">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8">
                 <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
               </Button>
             ) : (
-              <Button size="sm" onClick={() => { window.location.href = getLoginUrl(); }} variant="ghost" className="gap-1.5">
+              <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 text-primary">
                 <LogIn className="w-3.5 h-3.5" /> Zaloguj się
               </Button>
             )}
+            <Button size="sm" onClick={() => inputRef.current?.focus()} className="h-8 text-xs gap-1.5 ml-1">
+              <Search className="w-3 h-3" /> Audytuj URL
+            </Button>
           </div>
         </div>
       </nav>
 
       {/* ── Hero ── */}
-      <section className="pt-28 pb-16 px-4 relative overflow-hidden">
+      <section className="pt-16 pb-12 px-4 relative overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute top-40 left-1/4 w-[300px] h-[300px] bg-violet-500/5 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/4 rounded-full blur-3xl" />
+          <div className="absolute top-20 right-1/4 w-[300px] h-[300px] bg-violet-500/3 rounded-full blur-3xl" />
         </div>
 
         <div className="container max-w-6xl mx-auto relative">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
 
-            {/* Left: copy + form */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary font-semibold mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Nowa era wyszukiwania. Czy Twoja strona jest na nią gotowa?
+            {/* Left — headline + input */}
+            <div className="pt-4">
+              {/* Trust badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/20 text-xs text-primary font-semibold mb-6">
+                <Zap className="w-3 h-3" />
+                Jedyne narzędzie audytu AI Search na poziomie URL
               </div>
 
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-[1.06]">
-                AI odpowiada na pytania<br />
-                <span className="text-primary">Twoich klientów.</span><br />
-                Bez Ciebie.
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-[1.1] tracking-tight mb-5">
+                Twoja strona jest<br />
+                <span className="gradient-text">niewidoczna w AI.</span><br />
+                <span className="text-foreground/80">Naprawiamy to.</span>
               </h1>
 
-              <p className="text-lg text-muted-foreground/90 font-medium mb-3 leading-snug max-w-lg">
-                ChatGPT, Gemini i Perplexity cytują źródła, które spełniają ich kryteria. Większość stron ich nie spełnia — i nigdy się o tym nie dowiaduje.
-              </p>
-
-              <p className="text-sm text-muted-foreground mb-8 leading-relaxed max-w-lg">
-                Wklej adres dowolnej podstrony. GEO-Auditor przeanalizuje ją pod kątem 40+ czynników widoczności w AI Search i pokaże — punkt po punkcie — co zmienić, żeby AI zaczął Cię cytować.
+              <p className="text-base text-muted-foreground leading-relaxed mb-8 max-w-md">
+                Wklej URL dowolnej podstrony. W kilkadziesiąt sekund dostaniesz pełną analizę — co blokuje Cię w ChatGPT, Gemini i Google AI Overviews — i gotowy plan naprawy.
               </p>
 
               {/* URL Input */}
-              <form onSubmit={handleSubmit} className="max-w-lg">
-                <div className="flex items-center gap-2 p-2 rounded-2xl bg-card border border-border/60 shadow-xl focus-within:border-primary/60 focus-within:shadow-primary/10 transition-all">
-                  <div className="flex items-center pl-2 text-muted-foreground">
-                    <Search className="w-4 h-4" />
+              <form onSubmit={handleSubmit} className="mb-4">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      ref={inputRef}
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://twojasklep.pl/produkt/..."
+                      className="pl-9 h-12 text-sm bg-card border-border/60 focus:border-primary/60"
+                      disabled={isSubmitting}
+                      autoComplete="url"
+                    />
                   </div>
-                  <Input
-                    type="text"
-                    placeholder="https://twojadomena.pl/strona"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/50"
-                    disabled={isLoading}
-                  />
-                  <Button type="submit" disabled={isLoading} className="gap-2 rounded-xl px-5 shrink-0">
-                    {isLoading ? (
-                      <><div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />Skanuję…</>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="h-12 px-6 font-bold gap-2 shrink-0"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                        <span className="hidden sm:inline text-xs">{SCAN_STEPS[scanStep]}</span>
+                        <span className="sm:hidden">Skanuje…</span>
+                      </>
                     ) : (
-                      <>Sprawdź teraz — za darmo <ArrowRight className="w-4 h-4" /></>
+                      <>
+                        <Search className="w-4 h-4" />
+                        <span>Audytuj</span>
+                      </>
                     )}
                   </Button>
                 </div>
-                <div className="flex items-center gap-4 mt-3">
-                  <p className="text-xs text-muted-foreground">✓ Bezpłatnie · ✓ Jeden klik — zaloguj się kontem Google · ✓ Wynik w 60 sekund</p>
-                </div>
               </form>
 
-              {/* Loading steps */}
-              {isLoading && (
-                <div className="mt-6 space-y-2">
-                  {SCAN_STEPS.map((step, i) => (
-                    <div key={step} className="flex items-center gap-3 text-sm text-muted-foreground animate-pulse" style={{ animationDelay: `${i * 0.25}s` }}>
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />{step}
+              {/* Trust signals */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  Bez rejestracji
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  Wyniki w &lt;60 sekund
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  {realAuditsCount > 0 ? `${auditsCount.toLocaleString("pl-PL")}+ audytów wykonanych` : "Pierwsze 5 audytów gratis"}
+                </span>
+              </div>
+
+              {/* AI Engines strip */}
+              <div className="mt-8 pt-6 border-t border-border/30">
+                <div className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-semibold mb-3">Sprawdzamy widoczność w</div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {AI_ENGINES.map((e) => (
+                    <div key={e.name} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card border border-border/50 text-xs font-medium" style={{ color: e.color }}>
+                      {e.icon}
+                      <span className="text-foreground/80">{e.name}</span>
                     </div>
                   ))}
                 </div>
-              )}
-
-              {/* AI engines animated strip */}
-              <AIEnginesStrip />
+              </div>
             </div>
 
-            {/* Right: mock audit result card */}
-            <div className="hidden lg:block">
-              <div className="rounded-2xl border border-border/60 bg-card shadow-2xl overflow-hidden">
-                {/* Card header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40 bg-muted/20">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
-                  </div>
-                  <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">twojadomena.pl/strona</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">Gotowe</span>
-                </div>
-
-                {/* Score row */}
-                <div className="px-5 py-4 flex items-center gap-5 border-b border-border/30">
-                  <ScoreRing score={38} color="oklch(0.65 0.22 25)" />
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">AI Visibility Score</div>
-                    <div className="text-2xl font-black text-red-400">38 / 100</div>
-                    <div className="text-xs text-red-400/80 mt-0.5">Krytyczne problemy — AI Cię ignoruje</div>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Potencjał</div>
-                    <div className="text-lg font-bold text-emerald-400">+47 pkt</div>
-                    <div className="text-[10px] text-muted-foreground">po poprawkach</div>
+            {/* Right — workflow loop diagram */}
+            <div className="lg:pt-4">
+              <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-semibold text-muted-foreground">Pętla widoczności AI</span>
+                  <div className="ml-auto">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold border border-primary/20">4 kroki</span>
                   </div>
                 </div>
 
-                {/* Issues list */}
-                <div className="px-5 py-3 space-y-2">
-                  {MOCK_HERO_ISSUES.map((issue, i) => (
-                    <div key={i} className={`flex items-start gap-3 p-2.5 rounded-lg border ${issue.bg}`}>
-                      <issue.icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${issue.color}`} />
-                      <div className="min-w-0">
-                        <div className={`text-xs font-semibold ${issue.color}`}>{issue.label}</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{issue.fix}</div>
-                      </div>
+                <WorkflowStep
+                  number="Krok 01"
+                  icon={Shield}
+                  title="Audyt AI-Readiness"
+                  desc="40+ sprawdzeń technicznych i contentowych. Dowiedz się co blokuje Cię w AI Search — robots.txt, schema.org, struktura treści, E-E-A-T."
+                  color="border-primary/30 bg-primary/8 text-primary"
+                />
+                <WorkflowStep
+                  number="Krok 02"
+                  icon={Eye}
+                  title="Analiza widoczności"
+                  desc="Sprawdź czy jesteś cytowany w ChatGPT, Gemini i Google AI Overviews. Zobacz kto Cię wyprzedza i na jakich frazach."
+                  color="border-violet-500/30 bg-violet-500/8 text-violet-400"
+                />
+                <WorkflowStep
+                  number="Krok 03"
+                  icon={Sparkles}
+                  title="AI Content Creator"
+                  desc="Przepisz treść z AI — oparty na danych z audytu i analizie cytowanych konkurentów. Gotowy tekst do wdrożenia."
+                  color="border-blue-500/30 bg-blue-500/8 text-blue-400"
+                />
+                <WorkflowStep
+                  number="Krok 04"
+                  icon={Activity}
+                  title="Monitoring & pętla"
+                  desc="Śledź widoczność automatycznie. Alerty gdy konkurent Cię wyprzedza. Wróć do kroku 1 gdy score spada."
+                  color="border-emerald-500/30 bg-emerald-500/8 text-emerald-400"
+                  isLast
+                />
+
+                {/* Mock score preview */}
+                <div className="mt-4 pt-4 border-t border-border/30 flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">Przykładowy wynik audytu</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted-foreground mb-0.5">Przed</div>
+                      <div className="text-lg font-black text-red-400">31</div>
                     </div>
-                  ))}
-                </div>
-
-                {/* AI Citations teaser */}
-                <div className="mx-5 mb-4 mt-1 rounded-xl border border-violet-500/30 bg-violet-950/20 p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Brain className="w-3.5 h-3.5 text-violet-400" />
-                    <span className="text-xs font-semibold text-violet-300">AI Citations — kto cytuje zamiast Ciebie?</span>
-                  </div>
-                  <div className="space-y-1">
-                    {MOCK_COMPETITORS.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between text-[10px]">
-                        <span className="text-zinc-400 truncate">{c.url}</span>
-                        <span className="text-violet-400 font-semibold ml-2 shrink-0">{c.count}× cytowany</span>
-                      </div>
-                    ))}
+                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted-foreground mb-0.5">Po</div>
+                      <div className="text-lg font-black text-emerald-400">78</div>
+                    </div>
+                    <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">+47 pkt</div>
                   </div>
                 </div>
               </div>
@@ -442,43 +343,68 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Persuasion strip ── */}
-      <section className="py-10 px-4 border-y border-border/30 bg-muted/10">
-        <div className="container max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-            {[
-              {
-                icon: "🧠",
-                headline: "AI Search zmienia zasady",
-                body: "ChatGPT, Gemini i Perplexity nie indeksują stron jak Google. Mają własne kryteria cytowania — i większość stron ich nie zna.",
-              },
-              {
-                icon: "🔍",
-                headline: "Audyt na poziomie URL",
-                body: "Nie domena, nie ogólna widoczność — konkretna podstrona. Produkt, artykuł, landing. Dokładnie tam, gdzie tracisz klientów.",
-              },
-              {
-                icon: "⚡",
-                headline: "Konkretne kroki, nie ogólniki",
-                body: "Nie \"popraw content\". Dostaniesz listę zadań: co dodać, co zmienić, co usunąć — razem z gotowym tekstem po poprawkach.",
-              },
-            ].map((item) => (
-              <div key={item.headline} className="flex flex-col items-center gap-2 px-4">
-                <div className="text-3xl mb-1">{item.icon}</div>
-                <div className="font-bold text-sm text-foreground">{item.headline}</div>
-                <div className="text-xs text-muted-foreground leading-relaxed">{item.body}</div>
+      {/* ── Problem strip ── */}
+      <section className="py-10 px-4 border-y border-border/30 bg-muted/5">
+        <div className="container max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {PROBLEM_ITEMS.map((item) => (
+              <div key={item.headline} className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}>
+                  <item.icon className={`w-5 h-5 ${item.iconColor}`} />
+                </div>
+                <div>
+                  <div className="font-bold text-sm mb-1">{item.headline}</div>
+                  <div className="text-xs text-muted-foreground leading-relaxed">{item.body}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Emotional hook: competitors are being cited ── */}
-      <section className="py-16 px-4">
+      {/* ── How it works ── */}
+      <section id="how-it-works" className="py-20 px-4">
+        <div className="container max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/20 text-xs text-primary font-semibold mb-4">
+              <RefreshCw className="w-3.5 h-3.5" /> Jak działa pętla
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black mb-3">Od niewidoczności do cytowania — w 4 krokach</h2>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto">Każdy krok buduje na poprzednim. Im dłużej działasz w pętli, tym wyższy score i więcej cytowań.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {WORKFLOW_CARDS.map((card, i) => (
+              <div key={card.title} className={`rounded-2xl border p-5 flex flex-col gap-3 relative ${card.featured ? "border-primary/40 bg-gradient-to-br from-primary/6 to-background" : "border-border/50 bg-card"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${card.iconBg}`}>
+                  <card.icon className={`w-5 h-5 ${card.iconColor}`} />
+                </div>
+                <div className="absolute top-4 right-4 text-[10px] font-black text-muted-foreground/30 tabular-nums">0{i + 1}</div>
+                <div>
+                  <h3 className="font-bold text-sm mb-1.5">{card.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{card.desc}</p>
+                </div>
+                {card.bullets && (
+                  <ul className="space-y-1 mt-auto pt-2 border-t border-border/30">
+                    {card.bullets.map((b) => (
+                      <li key={b} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />{b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Emotional hook ── */}
+      <section className="py-16 px-4 border-t border-border/30 bg-muted/5">
         <div className="container max-w-4xl mx-auto">
-          <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-background p-8 sm:p-10">
+          <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/4 to-background p-8 sm:p-10">
             <div className="flex flex-col sm:flex-row items-start gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/12 border border-amber-500/25 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-6 h-6 text-amber-400" />
               </div>
               <div>
@@ -486,16 +412,12 @@ export default function Home() {
                   Każde zapytanie w ChatGPT to szansa sprzedażowa.<br />
                   <span className="text-amber-400">Twój konkurent ją właśnie zgarnął.</span>
                 </h2>
-                <p className="text-muted-foreground leading-relaxed mb-5 max-w-xl">
+                <p className="text-muted-foreground leading-relaxed mb-6 max-w-xl text-sm">
                   AI nie cytuje losowo. Wybiera strony, które spełniają konkretne kryteria techniczne i contentowe. GEO-Auditor pokazuje Ci dokładnie co robią lepiej Twoi rywale — i daje gotowy tekst, który odwraca tę sytuację.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { icon: Eye, label: "Kto Cię wyprzedza", desc: "Pełna lista URL-i cytowanych przez AI zamiast Ciebie" },
-                    { icon: Target, label: "Dlaczego ich cytuje", desc: "Konkretne powody: struktura, fakty, schema.org" },
-                    { icon: Sparkles, label: "Jak ich pobić", desc: "Przepisany tekst gotowy do wdrożenia w 1 klik" },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/40">
+                  {EMOTIONAL_ITEMS.map((item) => (
+                    <div key={item.label} className="flex items-start gap-3 p-3 rounded-xl bg-background/60 border border-border/40">
                       <item.icon className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="text-xs font-semibold mb-0.5">{item.label}</div>
@@ -510,90 +432,25 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="py-16 px-4 border-t border-border/30">
-        <div className="container max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary font-semibold mb-4">
-              <Layers className="w-3.5 h-3.5" /> Co dostajesz
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black mb-3">Kompletny audyt AI Search w jednym miejscu</h2>
-            <p className="text-muted-foreground text-sm max-w-lg mx-auto">Nie tylko lista błędów — pełna analiza techniczna, contentowa i konkurencyjna z gotowymi poprawkami.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f) => (
-              <div key={f.title} className={`rounded-2xl border p-6 flex flex-col gap-3 ${f.featured ? "border-violet-500/40 bg-gradient-to-br from-violet-500/8 to-background" : "border-border/50 bg-card"}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${f.iconBg}`}>
-                  <f.icon className={`w-5 h-5 ${f.iconColor}`} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-sm">{f.title}</h3>
-                    {f.badge && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide ${f.badgeStyle}`}>{f.badge}</span>}
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
-                </div>
-                {f.bullets && (
-                  <ul className="space-y-1 mt-1">
-                    {f.bullets.map((b) => (
-                      <li key={b} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />{b}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── How it works ── */}
-      <section className="py-16 px-4 border-t border-border/30 bg-muted/5">
-        <div className="container max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-black mb-3">Jak to działa</h2>
-            <p className="text-muted-foreground text-sm">Od URL do gotowych poprawek — w mniej niż minutę.</p>
-          </div>
-          <div className="relative">
-            {/* Connector line */}
-            <div className="hidden sm:block absolute top-8 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {HOW_IT_WORKS.map((step, i) => (
-                <div key={i} className="flex flex-col items-center text-center relative">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center mb-4 relative z-10 bg-background">
-                    <step.icon className="w-6 h-6 text-primary mb-0.5" />
-                    <span className="text-[9px] text-primary/60 font-bold">0{i + 1}</span>
-                  </div>
-                  <h3 className="font-bold mb-2 text-sm">{step.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Full Rewrite AI showcase ── */}
+      {/* ── Before / After content rewrite ── */}
       <section className="py-16 px-4 border-t border-border/30">
         <div className="container max-w-5xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs text-violet-400 font-semibold mb-5">
-                <Sparkles className="w-3.5 h-3.5" /> AI Content Co-Pilot
+                <Sparkles className="w-3.5 h-3.5" /> AI Content Creator
               </div>
               <h2 className="text-2xl sm:text-3xl font-black mb-4 leading-tight">
                 Nie tylko "co poprawić" —<br />
                 <span className="text-violet-400">gotowy tekst do wdrożenia</span>
               </h2>
-              <p className="text-muted-foreground leading-relaxed mb-6">
-                Full Rewrite AI crawluje 3–6 stron konkurencji cytowanych przez Google AI Overviews i ChatGPT, wyciąga kluczowe fakty i encje, a następnie pisze nowy tekst zgodny z zasadami Helpful Content — lepszy od oryginału, zoptymalizowany pod AI Search.
+              <p className="text-muted-foreground leading-relaxed mb-6 text-sm">
+                AI Content Creator analizuje cytowanych przez AI konkurentów, wyciąga kluczowe fakty i encje, a następnie pisze nowy tekst zgodny z zasadami Helpful Content — lepszy od oryginału, zoptymalizowany pod AI Search.
               </p>
               <div className="space-y-3 mb-6">
                 {REWRITE_BULLETS.map((b) => (
                   <div key={b.label} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-violet-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-violet-500/12 flex items-center justify-center shrink-0 mt-0.5">
                       <b.icon className="w-3 h-3 text-violet-400" />
                     </div>
                     <div>
@@ -603,14 +460,11 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <Button onClick={() => document.querySelector("input")?.focus()} className="gap-2 bg-violet-600 hover:bg-violet-500">
-                <Sparkles className="w-4 h-4" /> Wypróbuj za darmo
-              </Button>
             </div>
 
-            {/* Before/After mock */}
+            {/* Before / After */}
             <div className="space-y-3">
-              <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-4">
+              <div className="rounded-xl border border-red-500/20 bg-red-950/8 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <XCircle className="w-3.5 h-3.5 text-red-400" />
                   <span className="text-xs font-semibold text-red-400">Przed — oryginalny tekst</span>
@@ -621,10 +475,10 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <div className="h-px flex-1 bg-border/30" />
-                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-violet-400" /> Zaawansowane AI Agenty + analiza AI Search + E-E-A-T</span>
+                <span className="flex items-center gap-1.5 text-[10px]"><Sparkles className="w-3 h-3 text-violet-400" /> AI Agents + analiza AI Search + E-E-A-T</span>
                 <div className="h-px flex-1 bg-border/30" />
               </div>
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-4">
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/8 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span className="text-xs font-semibold text-emerald-400">Po — przepisany przez AI</span>
@@ -638,96 +492,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Testimonials (hidden until real reviews collected) ── */}
-      <section className="py-16 px-4 border-t border-border/30" style={{ display: "none" }}>
-        <div className="container max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold mb-4">
-              <Star className="w-3.5 h-3.5" /> Wyniki naszych użytkowników
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black mb-3">Realni ludzie. Realne wyniki.</h2>
-            <p className="text-muted-foreground text-sm">Nie obiecujemy — pokazujemy co się stało po wdrożeniu rekomendacji.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="rounded-2xl border border-border/50 bg-card p-6 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full ${t.color} flex items-center justify-center text-white text-sm font-bold shrink-0`}>{t.avatar}</div>
-                  <div>
-                    <div className="font-semibold text-sm">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">{t.role}</div>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed flex-1">„{t.text}”</p>
-                <div className="flex items-center gap-3 pt-2 border-t border-border/30">
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-0.5">Score przed</div>
-                    <div className="text-lg font-black text-red-400">{t.score.before}</div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-0.5">Score po</div>
-                    <div className="text-lg font-black text-emerald-400">{t.score.after}</div>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <div className="text-xs text-muted-foreground mb-0.5">Wzrost</div>
-                    <div className="text-sm font-bold text-emerald-400">+{t.score.after - t.score.before} pkt</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Comparison table (hidden until product is mature) ── */}
-      <section className="py-16 px-4 border-t border-border/30 bg-muted/5" style={{ display: "none" }}>
-        <div className="container max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-black mb-3">GEO-Auditor vs reszta świata</h2>
-            <p className="text-muted-foreground text-sm">Jedyne narzędzie zbudowane specjalnie pod AI Search — nie adaptacja starego SEO.</p>
-          </div>
-          <div className="rounded-2xl border border-border/50 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 bg-muted/20">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Funkcja</th>
-                  <th className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold">GEO-Auditor</span>
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs text-muted-foreground font-medium">Semrush</th>
-                  <th className="px-4 py-3 text-center text-xs text-muted-foreground font-medium">Ahrefs</th>
-                  <th className="px-4 py-3 text-center text-xs text-muted-foreground font-medium">Profound</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON.map((row, i) => (
-                  <tr key={i} className="border-b border-border/30 last:border-0 hover:bg-muted/10 transition-colors">
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{row.feature}</td>
-                    {(["geo", "semrush", "ahrefs", "profound"] as const).map((tool) => (
-                      <td key={tool} className="px-4 py-3 text-center">
-                        {typeof row[tool] === "boolean" ? (
-                          row[tool] ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-400/50 mx-auto" />
-                        ) : (
-                          <span className={`text-xs font-semibold ${tool === "geo" ? "text-primary" : "text-muted-foreground"}`}>{row[tool] as string}</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-16 px-4 border-t border-border/30">
+      <section id="pricing" className="py-20 px-4 border-t border-border/30 bg-muted/5">
         <div className="container max-w-5xl mx-auto">
-          <div className="text-center mb-10">
+          <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-black mb-3">Prosty cennik. Żadnych niespodzianek.</h2>
             <p className="text-muted-foreground text-sm mb-6">Zacznij za darmo. Przejdź na wyższy plan gdy zobaczysz wyniki.</p>
-            {/* Annual toggle */}
             <div className="inline-flex items-center gap-3 p-1 rounded-full bg-muted/30 border border-border/40">
               <button
                 onClick={() => setAnnual(false)}
@@ -746,13 +516,13 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {PRICING_PLANS.map((plan) => (
-              <div key={plan.name} className={`rounded-2xl border p-6 flex flex-col relative ${plan.featured ? "border-primary/60 bg-gradient-to-b from-primary/8 to-background shadow-lg shadow-primary/10" : "border-border/50 bg-card"}`}>
+              <div key={plan.name} className={`rounded-2xl border p-6 flex flex-col relative ${plan.featured ? "border-primary/50 bg-gradient-to-b from-primary/6 to-background shadow-lg shadow-primary/8" : "border-border/50 bg-card"}`}>
                 {plan.badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wide">
                     {plan.badge}
                   </div>
                 )}
-                <div className="mb-4">
+                <div className="mb-5">
                   <h3 className="font-black text-lg mb-1">{plan.name}</h3>
                   <div className="flex items-baseline gap-1 mb-1">
                     {annual && plan.name !== "Free" && (
@@ -777,7 +547,6 @@ export default function Home() {
                 <Button
                   onClick={() => {
                     if (plan.name === "Free") {
-                      document.querySelector("input")?.focus();
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     } else {
                       window.location.href = "/pricing";
@@ -814,7 +583,7 @@ export default function Home() {
       {/* ── Final CTA ── */}
       <section className="py-20 px-4 border-t border-border/30 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/4 rounded-full blur-3xl" />
         </div>
         <div className="container max-w-2xl mx-auto text-center relative">
           <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
@@ -824,11 +593,15 @@ export default function Home() {
             Twoja konkurencja już to wie.<br />
             <span className="text-primary">Ty możesz wiedzieć za darmo.</span>
           </h2>
-          <p className="text-muted-foreground mb-8 leading-relaxed">
+          <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
             Jeden URL. Kilkadziesiąt sekund. Pełna analiza — bez rejestracji, bez karty.<br />
             Dowiedz się, dlaczego AI Cię ignoruje i co konkretnie zmienić.
           </p>
-          <Button size="lg" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => document.querySelector("input")?.focus(), 400); }} className="gap-2 px-10 h-12 text-base font-bold">
+          <Button
+            size="lg"
+            onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => inputRef.current?.focus(), 400); }}
+            className="gap-2 px-10 h-12 text-base font-bold"
+          >
             <Search className="w-5 h-5" /> Sprawdź swoją stronę teraz
           </Button>
           <p className="text-xs text-muted-foreground mt-4">
@@ -858,7 +631,7 @@ export default function Home() {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Produkt</div>
               <div className="space-y-2">
-                <a href="#features" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Funkcje</a>
+                <a href="#how-it-works" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Jak działa</a>
                 <a href="#pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Cennik</a>
                 <a href="/dashboard" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</a>
               </div>
@@ -894,103 +667,115 @@ const SCAN_STEPS = [
   "Uruchamianie analizy LLM…",
 ];
 
-const MOCK_HERO_ISSUES = [
-  { icon: XCircle, color: "text-red-400", bg: "bg-red-500/8 border-red-500/20", label: "GPTBot zablokowany w robots.txt", fix: "ChatGPT nie może indeksować Twojej strony" },
-  { icon: XCircle, color: "text-red-400", bg: "bg-red-500/8 border-red-500/20", label: "Brak JSON-LD (schema.org)", fix: "AI nie rozumie o czym jest Twoja strona" },
-  { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/8 border-amber-500/20", label: "Treść bez faktów i dat", fix: "Dodaj konkretne liczby i daty — AI preferuje fakty" },
-];
-
-const MOCK_COMPETITORS = [
-  { url: "strona-1.pl/kategoria", count: 7 },
-  { url: "strona-2.pl/produkty", count: 5 },
-  { url: "strona-3.pl/oferta", count: 4 },
-];
-
-const FEATURES = [
+const AI_ENGINES = [
   {
-    icon: BarChart3,
+    name: "ChatGPT",
+    color: "#10a37f",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+        <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.843-3.372L15.115 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.403-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
+      </svg>
+    ),
+  },
+  {
+    name: "Google AI",
+    color: "#4285f4",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-4 h-4">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+    ),
+  },
+  {
+    name: "Perplexity",
+    color: "#20b2aa",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" style={{ color: "#20b2aa" }}>
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    ),
+  },
+  {
+    name: "Gemini",
+    color: "#8b5cf6",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" style={{ color: "#8b5cf6" }}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+      </svg>
+    ),
+  },
+];
+
+const PROBLEM_ITEMS = [
+  {
+    icon: AlertTriangle,
+    iconBg: "bg-amber-500/10",
+    iconColor: "text-amber-400",
+    headline: "AI Search zmienia zasady",
+    body: "ChatGPT, Gemini i Perplexity nie indeksują stron jak Google. Mają własne kryteria cytowania — i większość stron ich nie zna.",
+  },
+  {
+    icon: Target,
     iconBg: "bg-primary/10",
     iconColor: "text-primary",
-    title: "AI Visibility Score",
-    badge: null,
-    badgeStyle: "",
-    featured: false,
-    desc: "Jeden wynik 0–100 pokazujący jak widoczna jest Twoja strona dla AI. Obliczany z 6 wymiarów: techniczny, content, schema, dostępność, cytowania, E-E-A-T.",
-    bullets: null,
-  },
-  {
-    icon: Brain,
-    iconBg: "bg-violet-500/15",
-    iconColor: "text-violet-400",
-    title: "Content Intelligence",
-    badge: "AI",
-    badgeStyle: "bg-violet-500/20 text-violet-400",
-    featured: true,
-    desc: "LLM analizuje Twój tekst w 5 wymiarach: Answer Density, Factual Density, Citation Readiness, Query Coverage, Duplicate Risk.",
-    bullets: ["Citeability Score 0–100", "Konkretne rekomendacje per wymiar", "Porównanie z benchmarkiem branżowym"],
-  },
-  {
-    icon: Globe,
-    iconBg: "bg-blue-500/10",
-    iconColor: "text-blue-400",
-    title: "AI Citations",
-    badge: "Nowe",
-    badgeStyle: "bg-emerald-500/20 text-emerald-400",
-    featured: false,
-    desc: "Sprawdza które strony są cytowane przez Google AI Overviews i ChatGPT dla zapytań związanych z Twoją stroną. Pełne URL-e konkurencji.",
-    bullets: null,
-  },
-  {
-    icon: Sparkles,
-    iconBg: "bg-violet-500/15",
-    iconColor: "text-violet-400",
-    title: "Full Rewrite AI",
-    badge: "AI Agents",
-    badgeStyle: "bg-violet-500/20 text-violet-400",
-    featured: false,
-    desc: "Analizuje wzorce AI Search, tworzy nowy tekst przez zespół AI Agentów i weryfikuje jakość E-E-A-T & Helpful Content — gotowy do wdrożenia.",
-    bullets: null,
-  },
-  {
-    icon: Shield,
-    iconBg: "bg-emerald-500/10",
-    iconColor: "text-emerald-400",
-    title: "Audyt techniczny",
-    badge: null,
-    badgeStyle: "",
-    featured: false,
-    desc: "40+ sprawdzeń: robots.txt, crawl budget, Core Web Vitals, HTTPS, canonical, hreflang, szybkość ładowania, mobile-friendly.",
-    bullets: null,
-  },
-  {
-    icon: TrendingUp,
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    title: "Monitoring & Historia",
-    badge: "Starter+",
-    badgeStyle: "bg-primary/20 text-primary",
-    featured: false,
-    desc: "Śledź postęp swojego score w czasie. Cotygodniowe re-audyty, alerty o zmianach, historia poprawek.",
-    bullets: null,
-  },
-];
-
-const HOW_IT_WORKS = [
-  {
-    icon: Link2,
-    title: "Wklej URL",
-    description: "Dowolna podstrona — produkt, blog, landing page, kategoria. Bez rejestracji, bez karty.",
-  },
-  {
-    icon: Cpu,
-    title: "40+ checks w kilkadziesiąt sekund",
-    description: "Silnik skanuje każdy znany powód dla którego AI ignoruje lub cytuje strony — technicznie i contentowo.",
+    headline: "Audyt na poziomie URL",
+    body: "Nie domena, nie ogólna widoczność — konkretna podstrona. Produkt, artykuł, landing. Dokładnie tam, gdzie tracisz klientów.",
   },
   {
     icon: Zap,
-    title: "Gotowe poprawki",
-    description: "Priorytetowa lista problemów z konkretnym opisem i gotowym przepisanym tekstem od AI.",
+    iconBg: "bg-emerald-500/10",
+    iconColor: "text-emerald-400",
+    headline: "Konkretne kroki, nie ogólniki",
+    body: "Nie \"popraw content\". Dostaniesz listę zadań: co dodać, co zmienić, co usunąć — razem z gotowym tekstem po poprawkach.",
   },
+];
+
+const WORKFLOW_CARDS = [
+  {
+    icon: Shield,
+    iconBg: "bg-primary/10",
+    iconColor: "text-primary",
+    title: "Audyt AI-Readiness",
+    featured: true,
+    desc: "40+ sprawdzeń technicznych i contentowych. Jeden score 0–100 pokazujący jak widoczna jest Twoja strona dla AI.",
+    bullets: ["robots.txt, schema.org, Core Web Vitals", "Content Intelligence (5 wymiarów)", "E-E-A-T & Helpful Content"],
+  },
+  {
+    icon: Eye,
+    iconBg: "bg-violet-500/10",
+    iconColor: "text-violet-400",
+    title: "Analiza widoczności",
+    featured: false,
+    desc: "Sprawdź czy jesteś cytowany w AI Search na frazach, które mają znaczenie dla Twojego biznesu.",
+    bullets: ["ChatGPT, Gemini, Perplexity, Google AI", "Pełna lista URL-i konkurencji", "Per-frazowa analiza porównawcza"],
+  },
+  {
+    icon: Sparkles,
+    iconBg: "bg-blue-500/10",
+    iconColor: "text-blue-400",
+    title: "AI Content Creator",
+    featured: false,
+    desc: "Przepisz treść z AI opartym na danych z audytu i analizie cytowanych konkurentów.",
+    bullets: ["Analiza wzorców AI Search", "Ekstrakcja wiedzy z konkurentów", "Gotowy tekst do wdrożenia"],
+  },
+  {
+    icon: Activity,
+    iconBg: "bg-emerald-500/10",
+    iconColor: "text-emerald-400",
+    title: "Monitoring & pętla",
+    featured: false,
+    desc: "Śledź widoczność automatycznie. Wróć do kroku 1 gdy score spada lub pojawi się nowy konkurent.",
+    bullets: ["Cotygodniowe re-audyty", "Alerty o zmianach widoczności", "Historia postępu"],
+  },
+];
+
+const EMOTIONAL_ITEMS = [
+  { icon: Eye, label: "Kto Cię wyprzedza", desc: "Pełna lista URL-i cytowanych przez AI zamiast Ciebie" },
+  { icon: Target, label: "Dlaczego ich cytuje", desc: "Konkretne powody: struktura, fakty, schema.org" },
+  { icon: Sparkles, label: "Jak ich pobić", desc: "Przepisany tekst gotowy do wdrożenia w 1 klik" },
 ];
 
 const REWRITE_BULLETS = [
@@ -1058,64 +843,29 @@ const PRICING_PLANS = [
   },
 ];
 
-// ─── Testimonials ────────────────────────────────────────────────────────────
-const TESTIMONIALS = [
-  {
-    name: "Marta Kowalczyk",
-    role: "Właścicielka sklepu z biżuterią",
-    avatar: "MK",
-    color: "bg-violet-500",
-    text: "Po audycie i wdrożeniu poprawek moja strona produktowa zaczęła pojawiać się w Google AI Overviews. Narzędzie pokazało mi dokładnie co zmienić — konkretne punkty, nie ogólniki.",
-    score: { before: 31, after: 78 },
-  },
-  {
-    name: "Tomasz Wiśniewski",
-    role: "SEO Manager, agencja e-commerce",
-    avatar: "TW",
-    color: "bg-blue-500",
-    text: "Używam GEO-Auditor dla kilkunastu klientów. Rekomendacje są konkretne — nie 'popraw content' ale 'dodaj FAQ z 5 pytaniami o cenę i dostawę'. Starter zwraca się w pierwszym miesiącu.",
-    score: { before: 44, after: 82 },
-  },
-  {
-    name: "Anna Dąbrowska",
-    role: "Content Manager, sklep meblowy",
-    avatar: "AD",
-    color: "bg-emerald-500",
-    text: "Konkurencja dosłownie znikała mi sprzed nosa w ChatGPT. Po audycie okazało się że GPTBot był zablokowany w robots.txt od 2 lat. Jedna zmiana, tydzień czekania — i już jestem cytowana zamiast nich.",
-    score: { before: 22, after: 71 },
-  },
-];
-
-// ─── Competitor comparison ────────────────────────────────────────────────────
-const COMPARISON = [
-  { feature: "Audyt na poziomie URL (nie domeny)", geo: true, semrush: false, ahrefs: false, profound: false },
-  { feature: "AI Visibility Score 0–100", geo: true, semrush: false, ahrefs: false, profound: true },
-  { feature: "Wykrywanie kto Cię cytuje w ChatGPT", geo: true, semrush: false, ahrefs: false, profound: true },
-  { feature: "Full Rewrite AI (gotowy tekst)", geo: true, semrush: false, ahrefs: false, profound: false },
-  { feature: "Content Intelligence (5 wymiarów LLM)", geo: true, semrush: false, ahrefs: false, profound: false },
-  { feature: "Wyniki po polsku", geo: true, semrush: true, ahrefs: false, profound: false },
-  { feature: "Cena od", geo: "0 zł", semrush: "1 200 zł", ahrefs: "700 zł", profound: "2 100 zł" },
-];
-
 const FAQ = [
   {
-    q: "Czym różni się GEO-Auditor od narzędzi SEO takich jak Semrush czy Ahrefs?",
-    a: "Semrush i Ahrefs analizują widoczność w tradycyjnych wynikach Google (blue links). GEO-Auditor skupia się wyłącznie na widoczności w odpowiedziach AI — ChatGPT, Perplexity, Gemini i Google AI Overviews. To zupełnie inne algorytmy i inne kryteria. Możesz mieć świetne SEO i być całkowicie niewidoczny dla AI Search.",
+    q: "Czym różni się GEO-Auditor od narzędzi SEO jak Semrush czy Ahrefs?",
+    a: "Semrush i Ahrefs analizują widoczność w tradycyjnym Google Search. GEO-Auditor skupia się wyłącznie na AI Search — ChatGPT, Gemini, Perplexity, Google AI Overviews. To zupełnie inne kryteria: AI cytuje strony za jakość treści, fakty, strukturę i E-E-A-T — nie za linki.",
   },
   {
-    q: "Jak działa AI Citations — czy naprawdę sprawdza Google AI Overviews?",
-    a: "Tak. Używamy SerpApi z parametrami zoptymalizowanymi pod polskie wyniki (lokalizacja Warszawa, urządzenie mobilne) do pobierania rzeczywistych odpowiedzi Google AI Overviews. Dla ChatGPT używamy oficjalnego API z włączonym web search. Wyniki odzwierciedlają to co widzi realny użytkownik w danym momencie — AI Search jest dynamiczny i może się różnić między sesjami.",
+    q: "Czy mogę audytować dowolną podstronę — nie tylko homepage?",
+    a: "Tak — to jest nasza główna przewaga. Audytujesz konkretny URL: stronę produktu, artykuł, kategorię, landing page. Każda podstrona ma swój własny score i rekomendacje.",
   },
   {
-    q: "Czy Full Rewrite AI naprawdę pisze lepszy tekst od oryginału?",
-    a: "Full Rewrite AI działa w 4 etapach: głęboka analiza Twojej strony → analiza wzorców AI Search (co AI aktualnie cytuje) → tworzenie treści przez zespół AI Agentów sekcja po sekcji → wielopoziomowa weryfikacja E-E-A-T & Helpful Content. Każdy tekst musi uzyskać minimum 7.5/10 w ocenie jakości. Nie gwarantujemy wyników, ale tekst jest zawsze bogatszy w fakty i lepiej ustrukturyzowany niż oryginał.",
+    q: "Jak działa AI Content Creator?",
+    a: "Po audycie i analizie widoczności, AI Content Creator analizuje strony cytowanych przez AI konkurentów, wyciąga kluczowe fakty i encje, a następnie pisze nowy tekst zoptymalizowany pod AI Search. Wynik jest gotowy do skopiowania i wdrożenia.",
   },
   {
-    q: "Ile kosztuje i czy mogę anulować?",
-    a: "Plan Free jest bezpłatny na zawsze (5 audytów/mies.). Plany płatne są rozliczane miesięcznie przez Stripe — możesz anulować w dowolnym momencie bez żadnych opłat za wcześniejsze rozwiązanie umowy.",
+    q: "Co to jest monitoring i jak działa?",
+    a: "Monitoring automatycznie sprawdza widoczność Twojej strony w AI Search co tydzień. Dostaniesz alert gdy Twój score spada, gdy pojawi się nowy konkurent cytowany na Twoich frazach, lub gdy Twoja strona zostanie po raz pierwszy zacytowana.",
   },
   {
-    q: "Czy narzędzie działa dla stron w języku polskim?",
-    a: "Tak — GEO-Auditor jest zoptymalizowany pod polskie strony. AI Citations sprawdza wyniki dla polskich zapytań z lokalizacją Warszawa. Full Rewrite AI pisze teksty po polsku, weryfikowane pod kątem poprawności językowej i stylistycznej. Rekomendacje z audytu są po polsku.",
+    q: "Czy mogę używać GEO-Auditor bez rejestracji?",
+    a: "Tak — pierwsze 5 audytów jest dostępnych bez rejestracji. Rejestracja jest wymagana do zapisywania historii, monitoringu i korzystania z AI Content Creator.",
+  },
+  {
+    q: "Jak szybko zobaczę wyniki?",
+    a: "Audyt techniczny i Content Intelligence są gotowe w 30–60 sekund. Analiza widoczności AI (sprawdzanie cytowań w ChatGPT, Gemini, Google AI) trwa 2–5 minut, bo odpytujemy rzeczywiste silniki AI.",
   },
 ];
