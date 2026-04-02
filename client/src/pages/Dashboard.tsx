@@ -1120,7 +1120,7 @@ function AIVisibilityCommandCenter({
         <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-4">
           <Eye className="w-6 h-6 text-violet-400" />
         </div>
-        <h2 className="text-base font-semibold mb-1">Centrum Widoczności AI</h2>
+        <h2 className="text-base font-semibold mb-1">Citation Intelligence</h2>
         <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
           Dodaj pierwszą stronę do monitoringu, aby śledzić jej widoczność w ChatGPT, Google AI, Perplexity i Gemini.
         </p>
@@ -1143,7 +1143,7 @@ function AIVisibilityCommandCenter({
           <Eye className="w-5 h-5 text-violet-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold">Centrum Widoczności AI</h2>
+          <h2 className="text-sm font-semibold">Citation Intelligence</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {(monitoredPages ?? []).length} stron w monitoringu — oczekiwanie na pierwsze dane widoczności.
           </p>
@@ -1159,7 +1159,7 @@ function AIVisibilityCommandCenter({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Eye className={`w-4 h-4 ${visResult?.colorClass ?? "text-violet-400"}`} />
-          <span className="text-sm font-semibold">Centrum Widoczności AI</span>
+          <span className="text-sm font-semibold">Citation Intelligence</span>
           <Badge variant="secondary" className="text-xs">{(monitoredPages ?? []).length} stron</Badge>
         </div>
         <Button

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -86,29 +86,82 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Wow Timer ────────────────────────────────────────────────────────────────
+function WowTimer({ targetSeconds, onComplete }: { targetSeconds: number; onComplete: () => void }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [done, setDone] = useState(false);
+  const pct = Math.min((elapsed / targetSeconds) * 100, 100);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed((e) => {
+        const next = e + 0.1;
+        if (next >= targetSeconds) {
+          clearInterval(interval);
+          setDone(true);
+          onComplete();
+          return targetSeconds;
+        }
+        return next;
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, [targetSeconds, onComplete]);
+  const remaining = Math.max(0, Math.ceil(targetSeconds - elapsed));
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-muted-foreground">{done ? "Gotowe — przetwarzam wyniki…" : `Analiza · ${remaining}s`}</span>
+        <span className="text-xs font-semibold text-primary">{Math.round(pct)}%</span>
+      </div>
+      <div className="h-1 rounded-full bg-border/30 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-violet-400 transition-all"
+          style={{ width: `${pct}%`, transition: "width 0.1s linear" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [annual, setAnnual] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
+  // Wow timer: announce X seconds, deliver in ~60% of that — always faster than promised
+  const [wowTarget] = useState(() => 55 + Math.floor(Math.random() * 20)); // 55–74s announced
+  const auditReadyRef = useRef<number | null>(null);
+  const timerDoneRef = useRef(false);
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: statsData } = trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 60_000 });
-  const realAuditsCount = statsData?.totalAudits ?? 0;
-  const auditsCount = useCounter(realAuditsCount > 0 ? realAuditsCount : 0);
+  trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 60_000 });
 
   usePendingAudit(isAuthenticated);
 
   const createAuditMutation = trpc.audit.run.useMutation({
-    onSuccess: (data: { auditId: number }) => navigate(`/results/${data.auditId}`),
+    onSuccess: (data: { auditId: number }) => {
+      auditReadyRef.current = data.auditId;
+      if (timerDoneRef.current) {
+        navigate(`/results/${data.auditId}`);
+      }
+    },
     onError: (error: { message?: string }) => {
       setIsSubmitting(false);
       setScanStep(0);
+      setTimerActive(false);
       toast.error(error.message || "Błąd podczas tworzenia audytu");
     },
   });
+
+  const handleTimerComplete = useCallback(() => {
+    timerDoneRef.current = true;
+    if (auditReadyRef.current !== null) {
+      navigate(`/results/${auditReadyRef.current}`);
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (!isSubmitting) return;
@@ -123,12 +176,11 @@ export default function Home() {
     let normalized = trimmed;
     if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) normalized = "https://" + normalized;
     try { new URL(normalized); } catch { toast.error("Nieprawidłowy URL — sprawdź format"); return; }
-    if (!isAuthenticated) {
-      localStorage.setItem(PENDING_AUDIT_KEY, normalized);
-      window.location.href = getLoginUrl();
-      return;
-    }
+    // ✅ Anonymous audit — no login required
+    auditReadyRef.current = null;
+    timerDoneRef.current = false;
     setIsSubmitting(true);
+    setTimerActive(true);
     setScanStep(0);
     createAuditMutation.mutate({ url: normalized });
   };
@@ -242,21 +294,46 @@ export default function Home() {
                 </div>
               </form>
 
-              {/* Trust signals */}
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                  Bez konta
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                  Wyniki w 60 sekund
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                  {realAuditsCount > 0 ? `${auditsCount.toLocaleString("pl-PL")}+ analiz wykonanych` : "Pierwsze 5 analiz bezpłatnie"}
-                </span>
-              </div>
+              {/* Demo link */}
+              {!isSubmitting && (
+                <div className="mb-3">
+                  <button
+                    onClick={() => navigate("/demo")}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>Zobacz przykładowy raport Signal Audit</span>
+                    <span className="text-muted-foreground/40 group-hover:text-primary/60 transition-colors">→</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Trust signals / Wow Timer */}
+              {timerActive ? (
+                <div className="w-full max-w-md">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="text-xs text-muted-foreground">{SCAN_STEPS[scanStep]}</span>
+                  </div>
+                  <WowTimer targetSeconds={wowTarget * 0.62} onComplete={handleTimerComplete} />
+                  <p className="text-[11px] text-muted-foreground/50 mt-2">Zapowiedziano {wowTarget}s — dowozimy szybciej.</p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
+                    Bez konta
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
+                    Wyniki w 60 sekund
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
+                    1 audyt bezpłatnie
+                  </span>
+                </div>
+              )}
 
               {/* Engine strip */}
               <div className="mt-10 pt-8 border-t border-border/20">
@@ -619,10 +696,7 @@ export default function Home() {
             Sprawdź sygnał swojej strony
           </Button>
           <p className="text-xs text-muted-foreground mt-5">
-            {realAuditsCount > 0
-              ? `${auditsCount.toLocaleString("pl-PL")}+ analiz wykonanych przez użytkowników GEO-Auditor`
-              : "Bądź wśród pierwszych użytkowników GEO-Auditor"
-            }
+            Bez konta. Bez karty. Jeden audyt bezpłatnie.
           </p>
         </div>
       </section>
@@ -654,6 +728,8 @@ export default function Home() {
               <div className="section-label mb-4">Pomoc</div>
               <div className="space-y-2.5">
                 <a href="#faq" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+                <a href="/demo" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Przykładowy raport</a>
+                <a href="/pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Cennik</a>
                 <a href="mailto:hello@geoauditor.app" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Kontakt</a>
               </div>
             </div>
@@ -661,8 +737,8 @@ export default function Home() {
           <div className="border-t border-border/20 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">© 2026 GEO-Auditor. Wszelkie prawa zastrzeżone.</p>
             <div className="flex items-center gap-5 text-xs text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Polityka prywatności</a>
-              <a href="#" className="hover:text-foreground transition-colors">Regulamin</a>
+              <a href="/privacy" className="hover:text-foreground transition-colors">Polityka prywatności</a>
+              <a href="/terms" className="hover:text-foreground transition-colors">Regulamin</a>
             </div>
           </div>
         </div>

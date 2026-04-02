@@ -13,38 +13,17 @@ import { toast } from "sonner";
 
 const plans = [
   {
-    id: "free",
-    name: "Free",
-    price: { monthly: 0, yearly: 0 },
-    description: "Pełny Signal Audit. Bez konta, bez karty.",
-    cta: "Sprawdź sygnał",
+    id: "starter",
+    name: "Starter",
+    price: { monthly: 79, yearly: 59 },
+    description: "Dla właścicieli sklepów, content managerów i specjalistów SEO.",
+    cta: "Wybierz Starter",
     highlight: false,
     badge: null,
     features: [
-      "5 analiz Signal Audit / mies.",
+      "50 analiz Signal Audit / mies.",
       "40+ sprawdzeń technicznych i contentowych",
       "AI Readiness Score 0–100",
-      "Content Intelligence (Citeability Score)",
-      "Udostępnialny raport diagnostyczny",
-    ],
-    missing: [
-      "Signal Rewrite",
-      "Pulse Monitor i alerty",
-      "Eksport PDF",
-      "Historia AI Readiness Score",
-    ],
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    price: { monthly: 39, yearly: 29 },
-    description: "Dla właścicieli sklepów i content managerów.",
-    cta: "Zacznij 7-dniowy trial",
-    highlight: true,
-    badge: "Najpopularniejszy",
-    features: [
-      "50 analiz Signal Audit / mies.",
-      "Wszystko z Free",
       "Signal Rewrite — 10 przepisań/mies.",
       "Pulse Monitor — 10 stron (re-audyt co 7 dni)",
       "Historia AI Readiness Score",
@@ -53,47 +32,25 @@ const plans = [
     ],
     missing: [
       "Citation Intelligence Pro (3 konkurenci)",
-      "Raporty white-label",
-      "Dostęp do API",
+      "Signal Rewrite bez limitu",
+      "Pulse Monitor 50 stron",
     ],
   },
   {
     id: "pro",
     name: "Pro",
     price: { monthly: 129, yearly: 99 },
-    description: "Dla specjalistów SEO i e-commerce z rosnącą skalą.",
-    cta: "Zacznij 7-dniowy trial",
-    highlight: false,
-    badge: null,
+    description: "Pełna moc GEO-Auditor. Dla e-commerce i agencji z rosnącą skalą.",
+    cta: "Wybierz Pro",
+    highlight: true,
+    badge: "Najlepsza wartość",
     features: [
       "200 analiz Signal Audit / mies.",
       "Wszystko ze Starter",
       "Pulse Monitor — 50 stron",
       "Citation Intelligence Pro — 3 konkurenci",
       "Signal Rewrite bez limitu",
-      "Wsparcie priorytetowe",
-    ],
-    missing: [
-      "Raporty white-label",
-      "Dostęp do API",
-    ],
-  },
-  {
-    id: "agency",
-    name: "Agency",
-    price: { monthly: 349, yearly: 299 },
-    description: "Dla agencji SEO i teamów enterprise.",
-    cta: "Skontaktuj się",
-    highlight: false,
-    badge: null,
-    features: [
-      "Nielimitowane analizy Signal Audit",
-      "Wszystko z Pro",
-      "Pulse Monitor — bez limitu stron",
-      "Raporty PDF white-label",
-      "Dostęp do REST API",
-      "Integracja Shopify / WooCommerce",
-      "Dedykowany opiekun konta",
+      "Priorytetowe wsparcie",
     ],
     missing: [],
   },
@@ -110,15 +67,15 @@ const faqs = [
   },
   {
     q: "Czy mogę anulować w dowolnym momencie?",
-    a: "Tak. Wszystkie płatne plany są miesięczne lub roczne z rabatem 25%. Anulujesz w dowolnym momencie z poziomu Command Center — bez formularzy, bez czekania.",
+    a: "Tak. Plany Starter i Pro są miesięczne lub roczne z rabatem 25%. Anulujesz w dowolnym momencie z poziomu Command Center — bez formularzy, bez czekania. Dostęp do płatnych funkcji pozostaje aktywny do końca opłaconego okresu.",
   },
   {
-    q: "Czy Starter i Pro mają trial?",
-    a: "Tak — 7 dni bez karty kredytowej. Po upływie trialu przechodzą na wybrany plan lub wracasz do Free.",
+    q: "Czy jest bezpłatna wersja?",
+    a: "Tak — jeden pełny Signal Audit bezpłatnie, bez rejestracji i bez karty. Obejmuje pełną diagnostykę: 40+ sprawdzeń, AI Readiness Score i Content Intelligence. Aby korzystać z historii, Pulse Monitor i Signal Rewrite, wybierz plan Starter lub Pro.",
   },
   {
-    q: "Ile analiz Signal Audit zawiera plan Free?",
-    a: "5 pełnych analiz Signal Audit miesięcznie bez limitu czasowego. Możesz korzystać z Free bezterminowo — bez karty, bez rejestracji.",
+    q: "Jaka jest różnica między Starter a Pro?",
+    a: "Starter to 50 audytów Signal Audit miesięcznie, Pulse Monitor dla 10 stron i 10 przepisań Signal Rewrite. Pro to 200 audytów, Pulse Monitor dla 50 stron, Signal Rewrite bez limitu i Citation Intelligence Pro z analizą 3 konkurentów. Jeśli prowadzisz sklep lub agencję z więcej niż 10 monitorowanymi stronami — Pro jest właściwym wyborem.",
   },
 ];
 
@@ -143,20 +100,14 @@ export default function Pricing() {
   });
 
   const handleCta = (planId: string) => {
-    if (planId === "free") {
-      navigate("/");
-    } else if (planId === "agency") {
-      window.location.href = "mailto:hello@geo-auditor.com?subject=Agency Plan Inquiry";
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
     } else {
-      if (!isAuthenticated) {
-        window.location.href = getLoginUrl();
-      } else {
-        setLoadingPlan(planId);
-        createCheckout.mutate({
-          planId: planId as "starter" | "pro" | "business",
-          origin: window.location.origin,
-        });
-      }
+      setLoadingPlan(planId);
+      createCheckout.mutate({
+        planId: planId as "starter" | "pro" | "business",
+        origin: window.location.origin,
+      });
     }
   };
 
@@ -213,7 +164,7 @@ export default function Pricing() {
         </div>
 
         {/* Plans */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto mb-16">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -296,7 +247,7 @@ export default function Pricing() {
         {/* Bottom CTA */}
         <div className="text-center mt-16">
           <h3 className="text-2xl font-black mb-3">Jeden URL. 60 sekund. Pełna diagnostyka.</h3>
-          <p className="text-sm text-muted-foreground mb-6">Bez konta, bez karty. Pierwsze 5 analiz Signal Audit bezpłatnie.</p>
+          <p className="text-sm text-muted-foreground mb-6">Bez konta, bez karty. Jeden Signal Audit bezpłatnie.</p>
           <Button onClick={() => navigate("/")} className="gap-2 text-base px-8 py-3 h-auto">
             <Zap className="w-4 h-4" /> Sprawdź sygnał swojej strony
           </Button>

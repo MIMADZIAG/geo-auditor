@@ -1332,3 +1332,27 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Dashboard.tsx: removed AI Sandbox from nav + quick actions
 - [x] Dashboard.tsx: simplified nav (Monitoring / Widoczność / Kreator treści / Plany)
 - [x] index.css: Plus Jakarta Sans for headings, antialiasing, hero-glow, workflow-step-active, animate-pulse-ring utilities
+
+## Sprint inwestorski — 8 poprawek
+
+- [ ] Anonimowy audyt bez logowania — uruchomić audyt bez konta, login zaproponować po wynikach
+- [ ] Demo Audit — publiczny przykładowy raport dla wymyślonej domeny (statyczny, bez API)
+- [ ] Timer wow — animowany countdown podczas analizy, zawsze szybszy niż zapowiedź
+- [ ] Pricing: Starter $59/mies. + Pro $99/mies. — usunąć Agency, usunąć trial, naprawić niespójność Agency/business
+- [ ] Usunąć "Bądź wśród pierwszych" z hero (traction counter)
+- [ ] Naprawić "Centrum Widoczności AI" → spójne z naming systemem
+- [ ] Usunąć "Zacznij 7-dniowy trial" z Pricing CTA
+- [ ] Naprawić martwe linki Polityka prywatności / Regulamin w stopce
+
+## Sprint inwestorski — ukończone
+
+- [x] #1 Anonimowy audyt bez logowania — usunięto wymóg logowania przed uruchomieniem
+- [x] #2 Demo Audit — stworzono DemoAudit.tsx z przykładowym raportem velora-fashion.pl
+- [x] #3 Usunąć trial — usunięto "7-dniowy trial" z Pricing i copy
+- [x] #4 Privacy /privacy i Terms /terms — nowe strony z pełną treścią
+- [x] #5 Naming — "Centrum Widoczności AI" → "Citation Intelligence" w Dashboard
+- [x] #6 Usunąć traction counter — usunięto "Bądź wśród pierwszych"
+- [x] #7 Wow timer — animowany timer podczas analizy, zawsze szybszy niż zapowiedź
+- [x] #8 Pricing 2 plany — Starter $59/$79 i Pro $99/$129, usunięto Free i Agency
+- [x] #9 Footer linki — /privacy i /terms działają, dodano /demo i /pricing
+- [x] #10 Usunąć Agency CTA — usunięto plan Agency i "Skontaktuj się"

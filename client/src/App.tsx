@@ -13,6 +13,9 @@ import Sandbox from "./pages/Sandbox";
 import PageCreator from "./pages/PageCreator";
 import PageCreatorResult from "./pages/PageCreatorResult";
 import CitationPulse from "./pages/CitationPulse";
+import DemoAudit from "./pages/DemoAudit";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 function Router() {
   return (
     <Switch>
@@ -53,6 +56,9 @@ function Router() {
           <CitationPulse />
         </ErrorBoundary>
       </Route>
+      <Route path="/demo" component={DemoAudit} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
