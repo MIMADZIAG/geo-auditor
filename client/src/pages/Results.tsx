@@ -75,27 +75,25 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 83) return "Dominujący";
+  if (score >= 83) return "Dominuje";
   if (score >= 70) return "Widoczny";
-  if (score >= 55) return "Rozwijający się";
+  if (score >= 55) return "Wschodzi";
   if (score >= 36) return "Startujący";
   return "Niewidoczny";
 }
-
 function getNextLevelMessage(score: number): { points: number; action: string } | null {
-  if (score >= 83) return { points: 0, action: "Włącz monitoring — konkurenci mogą Cię wyprzedzić bez ostrzeżenia" };
-  if (score >= 70) return { points: 83 - score, action: "Dodaj analizę treści AI" };
-  if (score >= 55) return { points: 70 - score, action: "Dodaj FAQ + dane strukturalne" };
-  if (score >= 36) return { points: 55 - score, action: "Dodaj TL;DR, nagłówki i FAQ" };
-  return { points: 36 - score, action: "Napraw dostęp techniczny i meta tagi" };
+  if (score >= 83) return { points: 0, action: "Uruchom Pulse Monitor — algorytmy AI zmieniają się co tydzień" };
+  if (score >= 70) return { points: 83 - score, action: "Dodaj FAQ ze schematem, TL;DR i dane strukturalne" };
+  if (score >= 55) return { points: 70 - score, action: "Wzmocnij strukturę treści i sygnały E-E-A-T" };
+  if (score >= 36) return { points: 55 - score, action: "Dodaj TL;DR, nagłówki H2/H3 i sekcję FAQ" };
+  return { points: 36 - score, action: "Napraw dostęp techniczny i meta tagi — to fundament" };
 }
-
 function getScoreSublabel(score: number): string {
-  if (score >= 83) return "Twoja strona dominuje w AI Search — jesteś w czołówce. Monitoruj pozycję, bo konkurenci mogą Cię gonić.";
-  if (score >= 70) return "Dobra widoczność w AI Search. Kilka precyzyjnych poprawek (FAQ, dane strukturalne, TL;DR) może wynieść Cię do poziomu Dominującego.";
-  if (score >= 55) return "Twoja strona jest zauważalna przez AI, ale traci cytowania na rzecz konkurentów. Masz solidne podstawy — czas na optymalizację treści.";
-  if (score >= 36) return "Wyszukiwarki AI rzadko cytują Twoją stronę. Brakuje kluczowych sygnałów GEO — ale to właśnie te zmiany dają największy skok widoczności.";
-  return "Twoja strona jest praktycznie niewidoczna dla AI Search. Kilka fundamentalnych zmian może radykalnie zmienić sytuację — zacznij od rekomendacji poniżej.";
+  if (score >= 83) return "Ta strona dostarcza sygnały, które AI Search aktywnie cytuje. Monitoruj pozycję — algorytmy się zmieniają, a konkurenci nie śpią.";
+  if (score >= 70) return "Strona jest widoczna w AI Search, ale traci część cytowań. Precyzyjne uzupełnienie FAQ, danych strukturalnych i TL;DR może przesuąć ją do poziomu Dominuje.";
+  if (score >= 55) return "AI Search zauważa tę stronę, ale częściej cytuje konkurencję. Solidna baza techniczna — brakuje sygnałów contentowych, które decydują o cytowaniu.";
+  if (score >= 36) return "Strona rzadko pojawia się w odpowiedziach AI. Kluczowe sygnały GEO są słabe lub nieobecne — to właśnie te poprawki dają największy skok widoczności.";
+  return "Strona jest praktycznie niewidoczna dla AI Search. Crawlery AI napotykają bariery techniczne lub nie znajdują sygnałów wystarczających do cytowania. Zacznij od listy krytycznych poprawek poniżej.";
 }
 
 /**
@@ -2238,10 +2236,10 @@ const AI_COPILOT_MODES = [
 // ─── Upsell Paywall for Free plan users ───────────────────────────────────────
 function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
   const BENEFITS = [
-    { icon: "✨", title: "Pełny rewrite AI", desc: "AI przepisuje całą stronę zgodnie z zasadami Helpful Content" },
-    { icon: "🧠", title: "Analiza wzorców AI Search", desc: "Rewrite oparty na tym, co AI aktualnie cytuje i rekomenduje" },
-    { icon: "🛡️", title: "Weryfikacja E-E-A-T & Helpful Content", desc: "Wielopoziomowa kontrola jakości, wiarygodności i zgodności z algorytmami" },
-    { icon: "📊", title: "5 trybów optymalizacji", desc: "Full Rewrite, Answer First, FAQ, Statystyki, Struktura" },
+    { icon: "✨", title: "Pełny rewrite AI", desc: "Kompletna nowa wersja treści — gotowa do wklejenia, nie lista sugestii" },
+    { icon: "🧠", title: "Oparty na danych z AI Search", desc: "Rewrite uwzględnia URL-e aktualnie cytowane przez ChatGPT i Gemini" },
+    { icon: "🛡️", title: "Weryfikacja E-E-A-T", desc: "Wielopoziomowa kontrola: wiarygodność, autorstwo, zgodność z Helpful Content" },
+    { icon: "🎯", title: "Encje i Answer-First Opening", desc: "Kluczowe encje wplecione w treść, otwieranie odpowiedzią — wzorzec AI snippet" },
   ];
   return (
     <div className="rounded-2xl border-2 border-violet-500/40 overflow-hidden relative">
@@ -2767,11 +2765,11 @@ function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string)
 // ─── Loading / Error ──────────────────────────────────────────────────────────────────────────────────
 function LoadingState() {
   const steps = [
-    { label: "Sprawdzanie dostępu crawlerów", sub: "robots.txt, sitemap, meta tags" },
-    { label: "Analiza danych strukturalnych", sub: "schema.org, JSON-LD, Open Graph" },
-    { label: "Skanowanie jakości treści", sub: "nagłówki, gęstość, czytelność" },
-    { label: "Ocena sygnałów zaufania", sub: "E-E-A-T, autorstwo, linki" },
-    { label: "Uruchamianie analizy AI", sub: "scoring, rekomendacje" },
+    { label: "Pobieranie i parsowanie strony", sub: "HTML, JavaScript, zasoby zewnętrzne" },
+    { label: "Weryfikacja dostępu crawlerów AI", sub: "robots.txt, sitemap, meta robots, User-Agent" },
+    { label: "Analiza danych strukturalnych", sub: "schema.org, JSON-LD, Open Graph, Twitter Card" },
+    { label: "Ocena sygnałów contentowych", sub: "nagłówki, gęstość, czytelność, E-E-A-T" },
+    { label: "Generowanie AI Readiness Score", sub: "scoring, priorytety, rekomendacje" },
   ];
   const [activeStep, setActiveStep] = useState(0);
   useEffect(() => {
@@ -2790,8 +2788,8 @@ function LoadingState() {
             <div className="absolute -inset-1 rounded-2xl bg-primary/5 animate-ping" style={{ animationDuration: "2s" }} />
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-bold">Analizuję Twoją stronę</h2>
-            <p className="text-xs text-muted-foreground mt-1">Signal Audit w toku…</p>
+            <h2 className="text-xl font-bold">Signal Audit w toku</h2>
+            <p className="text-xs text-muted-foreground mt-1">Skanujemy 40+ sygnałów AI Search…</p>
           </div>
         </div>
 

@@ -816,7 +816,7 @@ function MonitoredPageCard({
               </div>
             ) : runs.length === 0 ? (
               <p className="text-xs text-muted-foreground py-2">
-                Brak historii audytów. Pierwszy audyt zostanie wykonany automatycznie.
+                Brak historii Signal Audit. Uruchom analizę z poziomu strony głównej.
               </p>
             ) : (
               <>
@@ -1336,11 +1336,11 @@ export default function Dashboard() {
         {/* ── HERO GREETING ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">{greeting}, {firstName}!</h1>
+            <h1 className="text-xl font-bold tracking-tight">{greeting}, {firstName}.</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {totalAudits === 0
-                ? "Uruchom pierwszą analizę i sprawdź sygnały swojej strony."
-                : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · Plan ${planLabel(plan)}`}
+                ? "Wklej URL i uruchom pierwszy Signal Audit — wyniki za 60 sekund."
+                : `${totalAudits} Signal Audit${totalAudits === 1 ? "" : totalAudits < 5 ? "y" : "ów"} · ${planLabel(plan)}`}
             </p>
           </div>
           <Link href="/">
@@ -1362,7 +1362,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             icon={BarChart2}
-            label="Średnio wynik AI"
+            label="Średni AI Readiness Score"
             value={avgScore != null ? `${avgScore}/100` : "–"}
             sub={scoreLabel(avgScore)}
             colorClass={scoreColor(avgScore)}
@@ -1370,15 +1370,15 @@ export default function Dashboard() {
           />
           <StatCard
             icon={Trophy}
-            label="Najlepszy wynik"
+            label="Najwyższy wynik"
             value={bestScore != null ? `${bestScore}/100` : "–"}
-            sub={bestScore != null ? "Twój rekord" : "Brak danych"}
+            sub={bestScore != null ? "Rekord konta" : "Brak danych"}
             colorClass={bestScore != null && bestScore >= 75 ? "text-emerald-400" : bestScore != null ? "text-amber-400" : undefined}
             iconColor={bestScore != null && bestScore >= 75 ? "text-emerald-400" : "text-amber-400"}
           />
           <StatCard
             icon={Flame}
-            label="Analizy w tym mies."
+            label="Signal Audits w tym mies."
             value={`${auditsUsed}/${auditsLimit > 9999 ? "∞" : auditsLimit}`}
             sub={`Limit planu ${planLabel(plan)}`}
             iconColor="text-orange-400"
@@ -1503,7 +1503,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm font-medium text-violet-300">Widzisz tylko ostatnie analizy</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Starter odblokuje pełną historię Signal Audit, eksport PDF i Pulse Monitor dla 10 stron.
+                        Starter odblokowuje pełną historię Signal Audit, eksport PDF i Pulse Monitor dla 10 podstron.
                       </p>
                     </div>
                     <Link href="/pricing">
@@ -1530,7 +1530,7 @@ export default function Dashboard() {
 
             {!history || history.length === 0 && (
               <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                <p className="text-sm text-muted-foreground">Brak analiz — wklej URL i uruchom pierwszą poniżej.</p>
+                <p className="text-sm text-muted-foreground">Brak analiz — każdy Signal Audit pojawi się tutaj z wynikiem i listą poprawek.</p>
                 <Link href="/"><Button size="sm" className="mt-3 bg-violet-600 hover:bg-violet-700 text-white">Analizuj stronę</Button></Link>
               </div>
             )}

@@ -16,8 +16,8 @@ const plans = [
     id: "starter",
     name: "Starter",
     price: { monthly: 79, yearly: 59 },
-    description: "Dla właścicieli sklepów, content managerów i specjalistów SEO.",
-    cta: "Wybierz Starter",
+    description: "Dla właścicieli sklepów e-commerce, content managerów i specjalistów SEO.",
+    cta: "Zacznij z Starter",
     highlight: false,
     badge: null,
     features: [
@@ -40,8 +40,8 @@ const plans = [
     id: "pro",
     name: "Pro",
     price: { monthly: 129, yearly: 99 },
-    description: "Pełna moc GEO-Auditor. Dla e-commerce i agencji z rosnącą skalą.",
-    cta: "Wybierz Pro",
+    description: "Pełna moc platformy. Dla e-commerce i agencji z rosnącą skalą.",
+    cta: "Zacznij z Pro",
     highlight: true,
     badge: "Najlepsza wartość",
     features: [
@@ -138,11 +138,11 @@ export default function Pricing() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-black mb-4 leading-tight">
-            AI Search cytuje Twoją stronę.<br />
-            <span className="gradient-text">Lub nie.</span>
+            Jeden URL. Pełna diagnostyka.<br />
+            <span className="gradient-text">Gotowy plan naprawy.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-            Zacznij od bezpłatnego Signal Audit. Skaluj do Pulse Monitor i Citation Intelligence gdy wyniki rosną.
+            Pierwszy Signal Audit bezpłatnie — bez rejestracji i bez karty. Skaluj do Pulse Monitor i Citation Intelligence gdy wyniki rosną.
           </p>
 
           {/* Billing toggle */}
@@ -246,8 +246,8 @@ export default function Pricing() {
 
         {/* Bottom CTA */}
         <div className="text-center mt-16">
-          <h3 className="text-2xl font-black mb-3">Jeden URL. 60 sekund. Pełna diagnostyka.</h3>
-          <p className="text-sm text-muted-foreground mb-6">Bez konta, bez karty. Jeden Signal Audit bezpłatnie.</p>
+          <h3 className="text-2xl font-black mb-3">Zacznij od jednego URL.</h3>
+          <p className="text-sm text-muted-foreground mb-6">Bez konta. Bez karty. Pełny Signal Audit w 60 sekund.</p>
           <Button onClick={() => navigate("/")} className="gap-2 text-base px-8 py-3 h-auto">
             <Zap className="w-4 h-4" /> Sprawdź sygnał swojej strony
           </Button>

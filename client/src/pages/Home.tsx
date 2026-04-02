@@ -129,6 +129,8 @@ export default function Home() {
   const [scanStep, setScanStep] = useState(0);
   const [annual, setAnnual] = useState(false);
   const [timerActive, setTimerActive] = useState(false);
+  const [urlFocused, setUrlFocused] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
   // Wow timer: announce X seconds, deliver in ~60% of that — always faster than promised
   const [wowTarget] = useState(() => 55 + Math.floor(Math.random() * 20)); // 55–74s announced
   const auditReadyRef = useRef<number | null>(null);
@@ -136,6 +138,20 @@ export default function Home() {
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+  // Rotating placeholder — conversational, Perplexity-style
+  const PLACEHOLDERS = [
+    "https://twojasklep.pl/produkt/kurtka-zimowa",
+    "https://example.com/blog/jak-wybrac-materac",
+    "https://sklep.pl/kategoria/buty-do-biegania",
+    "https://marka.pl/o-nas",
+    "https://agencja.pl/uslugi/seo",
+  ];
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  useEffect(() => {
+    if (urlFocused || url) return;
+    const t = setInterval(() => setPlaceholderIdx(i => (i + 1) % PLACEHOLDERS.length), 3000);
+    return () => clearInterval(t);
+  }, [urlFocused, url]);
 
   trpc.audit.getGlobalStats.useQuery(undefined, { staleTime: 60_000 });
 
@@ -172,10 +188,11 @@ export default function Home() {
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmed = url.trim();
-    if (!trimmed) { toast.error("Wklej URL strony do audytu"); return; }
+    if (!trimmed) { setUrlError("Wklej URL strony do audytu"); return; }
     let normalized = trimmed;
     if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) normalized = "https://" + normalized;
-    try { new URL(normalized); } catch { toast.error("Nieprawidłowy URL — sprawdź format"); return; }
+    try { new URL(normalized); } catch { setUrlError("Nieprawidłowy URL — np. https://twojasklep.pl/produkt"); return; }
+    setUrlError(null);
     // ✅ Anonymous audit — no login required
     auditReadyRef.current = null;
     timerDoneRef.current = false;
@@ -244,31 +261,38 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 pill pill-primary mb-8">
                 <Zap className="w-3 h-3" />
-                <span>Audyt na poziomie podstrony</span>
+                <span>Audyt na poziomie podstrony · GEO / AEO</span>
               </div>
 
-              {/* Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight mb-6">
-                AI Search nie cytuje<br />
-                <span className="gradient-text">Twojej strony.</span><br />
-                <span className="text-foreground/60">Teraz wiesz dlaczego.</span>
+              {/* Headline — answer first, precise, no fluff */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight mb-5">
+                Twoja strona istnieje.<br />
+                <span className="gradient-text">AI Search jej nie widzi.</span>
               </h1>
 
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-                Wklej URL dowolnej podstrony. 60 sekund później masz pełną diagnostykę — które sygnały techniczne i contentowe blokują Cię w ChatGPT, Gemini i Google AI Overviews — oraz gotowy plan naprawy.
+                GEO-Auditor skanuje konkretny URL i zwraca precyzyjną diagnostykę: które sygnały blokują Cię w ChatGPT, Gemini i Google AI Overviews — z gotową listą poprawek i przepisaną treścią.
               </p>
 
-              {/* URL Input */}
-              <form onSubmit={handleSubmit} className="mb-5">
-                <div className="flex gap-2 p-1.5 rounded-xl bg-card border border-border/50 shadow-xl shadow-black/20 focus-within:border-primary/40 transition-colors">
+              {/* URL Input — dominant, Perplexity-style */}
+              <form onSubmit={handleSubmit} className="mb-3">
+                <div className={`relative flex gap-2 p-1.5 rounded-2xl bg-card border shadow-2xl shadow-black/30 transition-all duration-200 ${
+                  urlError ? "border-red-500/50 shadow-red-500/5" :
+                  urlFocused ? "border-primary/50 shadow-primary/8" :
+                  "border-border/50"
+                }`}>
                   <div className="relative flex-1">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
+                    <Globe className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors ${
+                      urlFocused ? "text-primary/60" : "text-muted-foreground/40"
+                    }`} />
                     <Input
                       ref={inputRef}
                       value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://twojasklep.pl/produkt/..."
-                      className="pl-9 h-10 text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      onChange={(e) => { setUrl(e.target.value); if (urlError) setUrlError(null); }}
+                      onFocus={() => setUrlFocused(true)}
+                      onBlur={() => setUrlFocused(false)}
+                      placeholder={PLACEHOLDERS[placeholderIdx]}
+                      className="pl-10 h-12 text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono"
                       disabled={isSubmitting}
                       autoComplete="url"
                     />
@@ -276,7 +300,7 @@ export default function Home() {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="h-10 px-5 font-semibold gap-2 shrink-0 shadow-md shadow-primary/20"
+                    className="h-12 px-6 font-semibold gap-2 shrink-0 shadow-lg shadow-primary/25 rounded-xl"
                   >
                     {isSubmitting ? (
                       <>
@@ -287,16 +311,43 @@ export default function Home() {
                     ) : (
                       <>
                         <Search className="w-3.5 h-3.5" />
-                        <span>Sprawdź sygnał</span>
+                        <span className="hidden sm:inline">Analizuj stronę</span>
+                        <span className="sm:hidden">Analizuj</span>
                       </>
                     )}
                   </Button>
                 </div>
+                {/* Inline error */}
+                {urlError && (
+                  <p className="text-xs text-red-400 mt-2 flex items-center gap-1.5 pl-1">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />{urlError}
+                  </p>
+                )}
               </form>
+
+              {/* Quick-fill example URLs — conversational, delight on click */}
+              {!isSubmitting && !url && (
+                <div className="flex flex-wrap items-center gap-2 mb-5">
+                  <span className="text-[11px] text-muted-foreground/50">Przykłady:</span>
+                  {[
+                    { label: "Strona produktu", url: "https://twojasklep.pl/produkt/kurtka-zimowa" },
+                    { label: "Artykuł blogowy", url: "https://example.com/blog/jak-wybrac-materac" },
+                    { label: "Strona usługi", url: "https://agencja.pl/uslugi/seo" },
+                  ].map((hint) => (
+                    <button
+                      key={hint.label}
+                      onClick={() => { setUrl(hint.url); inputRef.current?.focus(); }}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border/40 text-muted-foreground hover:border-primary/30 hover:text-primary transition-colors"
+                    >
+                      {hint.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Demo link */}
               {!isSubmitting && (
-                <div className="mb-3">
+                <div className="mb-4">
                   <button
                     onClick={() => navigate("/demo")}
                     className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
@@ -811,22 +862,22 @@ const PROBLEM_ITEMS = [
     icon: AlertTriangle,
     iconBg: "bg-amber-500/10",
     iconColor: "text-amber-400",
-    headline: "AI Search ma własne kryteria",
-    body: "ChatGPT, Gemini i Perplexity nie rankingują jak Google. Cytują strony spełniające konkretne sygnały techniczne i contentowe. Większość stron ich nie spełnia.",
+    headline: "AI Search nie jest Google",
+    body: "ChatGPT, Gemini i Perplexity cytują strony na podstawie sygnałów semantycznych, struktury treści i danych maszynowych — nie pozycji w SERP. Twoje SEO nie przekłada się automatycznie na widoczność w AI.",
   },
   {
     icon: Target,
     iconBg: "bg-primary/10",
     iconColor: "text-primary",
-    headline: "Diagnostyka na poziomie URL",
-    body: "Nie domena, nie ogólna widoczność. Konkretna podstrona: produkt, artykuł, kategoria. Dokładnie tam, gdzie tracisz klientów na rzecz AI Search.",
+    headline: "Audyt na poziomie podstrony",
+    body: "Nie domena. Konkretny URL: strona produktu, artykuł, kategoria, landing page. Każda podstrona dostaje własny AI Readiness Score i oddzielną listę poprawek.",
   },
   {
     icon: Zap,
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-400",
-    headline: "Lista zadań, nie ogólniki",
-    body: "Nie \"popraw treść\". Dostajesz priorytetowaną listę: co dodać, co zmienić, co usunąć — z gotowym tekstem po poprawkach Signal Rewrite.",
+    headline: "Gotowe do wdrożenia",
+    body: "Nie \"popraw treść\". Konkretna instrukcja: co dodać, co zmienić, co usunąć. Signal Rewrite generuje przepisaną wersję strony — gotową do wklejenia.",
   },
 ];
 
@@ -936,26 +987,30 @@ const PRICING_PLANS = [
 const FAQ = [
   {
     q: "Czym różni się GEO-Auditor od Semrush czy Ahrefs?",
-    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search — rankingi, linki, ruch organiczny. GEO-Auditor analizuje wyłącznie sygnały AI Search: czy ChatGPT, Gemini i Perplexity cytują Twoją stronę i dlaczego nie. To różne metryki, różne algorytmy, różne rekomendacje.",
+    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search — rankingi, linki, ruch organiczny. GEO-Auditor analizuje wyłącznie sygnały AI Search: czy ChatGPT, Gemini i Perplexity cytują Twoją stronę i dlaczego nie. To różne metryki, różne algorytmy, różne rekomendacje. Jedno narzędzie nie zastępuje drugiego — uzupełniają się.",
   },
   {
     q: "Czy mogę analizować dowolną podstronę — nie tylko stronę główną?",
-    a: "Tak — to jest fundament platformy. Analizujesz konkretny URL: stronę produktu, artykuł, kategorię, landing page. Każda podstrona dostaje własny AI Readiness Score i priorytetowaną listę poprawek.",
+    a: "Tak — i to jest fundament całej platformy. Analizujesz konkretny URL: stronę produktu, artykuł, kategorię, landing page. Każda podstrona dostaje własny AI Readiness Score i oddzielną listę poprawek. Domena to kontekst — podstrona to miejsce, gdzie tracisz lub zdobywasz cytowania.",
   },
   {
     q: "Jak działa Signal Rewrite?",
-    a: "Po Signal Audit i Citation Intelligence, Signal Rewrite analizuje URL-e cytowane przez AI na Twoich frazach, wyciąga kluczowe encje, fakty i strukturę, a następnie generuje nową wersję treści zoptymalizowaną pod sygnały AI Search. Wynik jest gotowy do skopiowania i wdrożenia.",
+    a: "Signal Rewrite pobiera treść Twojej strony, analizuje URL-e cytowane przez AI na Twoich frazach, wyciąga kluczowe encje i fakty — a następnie generuje nową wersję treści zoptymalizowaną pod sygnały AI Search. Wynik to gotowy tekst do wklejenia, nie lista sugestii do samodzielnego wdrożenia.",
   },
   {
     q: "Jak działa Pulse Monitor?",
-    a: "Pulse Monitor automatycznie re-audytuje monitorowane podstrony co 7 dni. Otrzymujesz alert gdy AI Readiness Score spada poniżej progu, gdy nowy konkurent przejmuje cytowania na Twoich frazach, lub gdy Twoja strona po raz pierwszy zostaje zacytowana przez AI.",
+    a: "Pulse Monitor re-audytuje monitorowane podstrony automatycznie co 7 dni. Dostajesz alert gdy AI Readiness Score spada, gdy nowy konkurent przejmuje cytowania na Twoich frazach, lub gdy Twoja strona po raz pierwszy zostaje zacytowana przez AI. Nie musisz pamiętać o ręcznym sprawdzaniu.",
   },
   {
     q: "Czy mogę korzystać z GEO-Auditor bez zakładania konta?",
-    a: "Tak — pierwsze 5 analiz Signal Audit dostępnych jest bez rejestracji. Konto jest wymagane do zapisu historii wyników, Pulse Monitor i Signal Rewrite.",
+    a: "Tak — pierwsze 5 analiz Signal Audit dostępnych jest bez rejestracji i bez podawania karty. Konto jest wymagane do zapisu historii wyników, Pulse Monitor i Signal Rewrite.",
   },
   {
     q: "Ile czasu zajmuje pełna analiza?",
-    a: "Signal Audit i Content Intelligence są gotowe w 30–60 sekund. Citation Intelligence — weryfikacja cytowań w ChatGPT, Gemini i Google AI — trwa 2–5 minut, ponieważ odpytujemy rzeczywiste silniki AI w czasie rzeczywistym.",
+    a: "Signal Audit jest gotowy w 30–60 sekund. Citation Intelligence — weryfikacja cytowań w ChatGPT, Gemini i Google AI — trwa 2–5 minut, ponieważ odpytujemy rzeczywiste silniki AI w czasie rzeczywistym, nie bazę danych. Signal Rewrite generuje się w 30–90 sekund w zależności od długości strony.",
+  },
+  {
+    q: "Czy GEO-Auditor działa dla stron w języku polskim?",
+    a: "Tak — platforma obsługuje strony w języku polskim i angielskim. Signal Audit, Citation Intelligence i Signal Rewrite działają w obu językach. Rekomendacje są generowane w języku analizowanej strony.",
   },
 ];
