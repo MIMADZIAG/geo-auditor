@@ -163,20 +163,24 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-border/40">
-        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Wróć</span>
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-            <Bot className="w-3 h-3 text-primary-foreground" />
+      <nav className="sticky top-0 z-40">
+        <div className="glass-strong border-b border-border/30">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <button onClick={() => navigate("/")} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">Powrót</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
+                <Bot className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+            </div>
+            <Button size="sm" onClick={() => navigate("/")} className="gap-1.5 text-xs h-8 shadow-md shadow-primary/20">
+              Spróbuj za darmo <ArrowRight className="w-3 h-3" />
+            </Button>
           </div>
-          <span className="text-sm font-bold">GEO-Auditor</span>
         </div>
-        <Button size="sm" onClick={() => navigate("/")} className="gap-1.5 text-xs">
-          Spróbuj za darmo <ArrowRight className="w-3 h-3" />
-        </Button>
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 py-16">

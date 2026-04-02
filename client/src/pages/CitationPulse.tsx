@@ -475,27 +475,31 @@ export default function CitationPulse() {
     <TooltipProvider>
       <div className="min-h-screen bg-background">
         {/* Top nav */}
-        <header className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-40">
-          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/">
-                <div className="flex items-center gap-2 font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity">
-                  <Brain className="w-5 h-5 text-violet-400" />
-                  <span>GEO<span className="text-violet-400">-Auditor</span></span>
+        <header className="sticky top-0 z-40">
+          <div className="glass-strong border-b border-border/30">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Link href="/">
+                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
+                      <Brain className="w-4 h-4 text-primary-foreground" />
+                    </div>
+                    <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+                  </div>
+                </Link>
+                <span className="text-border/60">/</span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  Citation Pulse
                 </div>
-              </Link>
-              <span className="text-muted-foreground/40">/</span>
-              <div className="flex items-center gap-1.5 text-sm font-medium">
-                <Sparkles className="w-4 h-4 text-violet-400" />
-                Citation Pulse
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/dashboard">
-                <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground">
-                  Dashboard
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/dashboard">
+                  <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground hover:text-foreground">
+                    Dashboard
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </header>

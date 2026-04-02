@@ -231,37 +231,39 @@ export default function PageCreatorResult() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-background">
       {/* Hero header */}
-      <div className="border-b border-zinc-800/50 bg-zinc-950/80 sticky top-0 z-20 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-violet-400" />
+      <div className="sticky top-0 z-20">
+        <div className="glass-strong border-b border-border/30">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground mb-0.5 font-medium uppercase tracking-wide">AI Page Creator</p>
+                <h1 className="text-foreground font-semibold text-sm truncate">{result.pageTitle}</h1>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs text-zinc-500 mb-0.5">AI Page Creator</p>
-              <h1 className="text-white font-semibold text-sm truncate">{result.pageTitle}</h1>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => copy(allContent, "all")}
+                className="text-xs h-8"
+              >
+                {copied === "all" ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+                Kopiuj całość
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate(`/?url=${encodeURIComponent("https://example.com")}`)}
+                className="text-xs h-8 shadow-md shadow-primary/20"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Audytuj tę stronę
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => copy(allContent, "all")}
-              className="border-zinc-700 text-zinc-300 hover:text-white text-xs"
-            >
-              {copied === "all" ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-              Kopiuj całość
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate(`/?url=${encodeURIComponent("https://example.com")}`)}
-              className="bg-violet-600 hover:bg-violet-500 text-white text-xs"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Audytuj tę stronę
-            </Button>
           </div>
         </div>
       </div>

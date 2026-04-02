@@ -491,184 +491,153 @@ export default function Results() {
         score={overallScore}
       />
 
-      {/* ── Sticky Header with Dual Score Bar ── */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-xl">
-        {/* Top row: nav */}
-        <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Nowy audyt</span>
-            </Button>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium hidden sm:inline">GEO-Auditor</span>
+      {/* ── Sticky Header ── */}
+      <header className="sticky top-0 z-40">
+        <div className="glass-strong border-b border-border/30">
+          {/* Top row: nav */}
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8 px-2">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Nowy audyt</span>
+              </Button>
+              <div className="h-4 w-px bg-border/50" />
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
+                  <Bot className="w-3 h-3 text-primary-foreground" />
+                </div>
+                <span className="text-xs font-bold hidden sm:inline tracking-tight">GEO-Auditor</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 max-w-[200px] overflow-hidden ml-1">
+                <div className="w-px h-3.5 bg-border/50" />
+                <ExternalLink className="w-3 h-3 text-muted-foreground/50 shrink-0 ml-1" />
+                <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors truncate">
+                  {audit.url}
+                </a>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 max-w-[180px] overflow-hidden">
-              <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
-              <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate">
-                {audit.url}
+            <div className="flex items-center gap-1.5">
+              <Button variant="ghost" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+              <a href={`/api/audit/${auditId}/pdf`} download>
+                <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8 px-2.5 text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/8">
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">PDF</span>
+                </Button>
               </a>
+              {isAuthenticated ? (
+                <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 shadow-md shadow-primary/20">
+                  <LogIn className="w-3.5 h-3.5" /> Zaloguj
+                </Button>
+              )}
             </div>
-            <Button variant="outline" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs h-8">
-              <Share2 className="w-3.5 h-3.5" /> Share
-            </Button>
-            <a href={`/api/audit/${auditId}/pdf`} download>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
-                <Download className="w-3.5 h-3.5" /> PDF
-              </Button>
-            </a>
-            {isAuthenticated ? (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8">
-                <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 text-primary">
-                <LogIn className="w-3.5 h-3.5" /> Sign In
-              </Button>
-            )}
           </div>
-        </div>
 
-        {/* Workflow Progress Bar ── 3-step journey: Audit → Visibility → Content */}
-        <div className="container border-t border-border/20 py-1.5">
-          <div className="flex items-center gap-1 max-w-sm">
-            {([
-              { id: "optimization" as const, label: "Audyt", icon: Shield, done: true },
-              { id: "visibility" as const, label: "Widoczność", icon: Eye, done: citationStatus === "done" },
-              { id: "content" as const, label: "Treść AI", icon: Sparkles, done: false },
-            ] as const).map((step, i, arr) => {
-              const isActive = activeTab === step.id;
-              const isPast = (step.id === "optimization") || (step.id === "visibility" && (activeTab === "visibility" || activeTab === "content"));
-              return (
-                <React.Fragment key={step.id}>
+          {/* Tab Bar */}
+          <div className="border-t border-border/20">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6">
+              <div className="flex items-center justify-between h-11">
+                {/* Tabs */}
+                <div className="flex items-center">
                   <button
-                    onClick={() => step.id === "visibility" ? handleSwitchToVisibility(true) : setActiveTab(step.id)}
-                    className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                      isActive
-                        ? "bg-primary/15 text-primary border border-primary/30"
-                        : isPast
-                        ? "text-emerald-400 hover:text-emerald-300"
-                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                    onClick={() => setActiveTab("optimization")}
+                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                      activeTab === "optimization"
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {step.done && !isActive
-                      ? <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      : <step.icon className="w-3 h-3" />
-                    }
-                    <span>{step.label}</span>
+                    <Shield className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">01 · Audyt</span>
+                    <span className="sm:hidden">Audyt</span>
                   </button>
-                  {i < arr.length - 1 && (
-                    <div className={`h-px flex-1 max-w-6 transition-colors ${
-                      isPast && step.done ? "bg-emerald-500/40" : "bg-border/40"
-                    }`} />
+                  <button
+                    onClick={() => handleSwitchToVisibility(true)}
+                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                      activeTab === "visibility"
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">02 · Widoczność</span>
+                    <span className="sm:hidden">Widoczność</span>
+                    {citationStatus === "running" && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    )}
+                    {citationStatus === "done" && citationCitedCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
+                        {citationCitedCount}/{citationTotalEngines}
+                      </span>
+                    )}
+                    {citationStatus === "done" && citationCitedCount === 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-red-500/10 text-red-400">0</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("content")}
+                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                      activeTab === "content"
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">03 · Treść AI</span>
+                    <span className="sm:hidden">Treść</span>
+                  </button>
+                </div>
+
+                {/* Dual Score Pills */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                    style={{ color: scoreColor, background: `${scoreColor}15`, borderColor: `${scoreColor}35` }}
+                  >
+                    <span className="text-sm font-black tabular-nums">{overallScore}</span>
+                    <span className="font-normal text-[10px] opacity-70">AI Score</span>
+                  </div>
+                  {citationStatus === "idle" && (
+                    <button
+                      onClick={() => handleSwitchToVisibility(true)}
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Widoczność</span>
+                    </button>
                   )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tab Bar with Dual Score ── */}
-        <div className="container border-t border-border/30">
-          <div className="flex items-center justify-between h-11">
-            {/* Tabs */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setActiveTab("optimization")}
-                className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "optimization"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">01 · Audyt</span>
-                <span className="sm:hidden">Audyt</span>
-              </button>
-              <button
-                onClick={() => handleSwitchToVisibility(true)}
-                className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "visibility"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">02 · Widoczność</span>
-                <span className="sm:hidden">Widoczność</span>
-                {citationStatus === "running" && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                )}
-                {citationStatus === "done" && citationCitedCount > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
-                    {citationCitedCount}/{citationTotalEngines}
-                  </span>
-                )}
-                {citationStatus === "done" && citationCitedCount === 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-red-500/10 text-red-400">0</span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab("content")}
-                className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "content"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">03 · Treść AI</span>
-                <span className="sm:hidden">Treść</span>
-              </button>
-            </div>
-
-            {/* Dual Score Pills */}
-            <div className="flex items-center gap-2">
-              {/* AI-Readiness Score */}
-              <div
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                style={{ color: scoreColor, background: `${scoreColor}15`, borderColor: `${scoreColor}35` }}
-              >
-                <span className="text-base font-black tabular-nums">{overallScore}</span>
-                <span className="font-normal text-[10px] opacity-70">Readiness</span>
+                  {citationStatus === "running" && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-primary/25 bg-primary/8 text-primary">
+                      <div className="w-2.5 h-2.5 border border-primary border-t-transparent rounded-full animate-spin" />
+                      <span className="hidden sm:inline">Analizuję…</span>
+                    </div>
+                  )}
+                  {citationStatus === "done" && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                      style={{
+                        color: citationCitedCount > 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)",
+                        background: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)",
+                        borderColor: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)",
+                      }}
+                    >
+                      {citationCitedCount > 0
+                        ? <CheckCircle2 className="w-3 h-3" />
+                        : <XCircle className="w-3 h-3" />
+                      }
+                      <span className="text-sm font-black tabular-nums">{citationCitedCount}/{citationTotalEngines}</span>
+                      <span className="font-normal text-[10px] opacity-70">Cytowania</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              {/* Citation Score Pill */}
-              {citationStatus === "idle" && (
-                <button
-                  onClick={() => handleSwitchToVisibility(true)}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
-                >
-                  <Eye className="w-3 h-3" />
-                  <span>Sprawdź widoczność</span>
-                </button>
-              )}
-              {citationStatus === "running" && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-primary/25 bg-primary/8 text-primary">
-                  <div className="w-2.5 h-2.5 border border-primary border-t-transparent rounded-full animate-spin" />
-                  <span>Analizuję…</span>
-                </div>
-              )}
-              {citationStatus === "done" && (
-                <div
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                  style={{
-                    color: citationCitedCount > 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)",
-                    background: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)",
-                    borderColor: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)",
-                  }}
-                >
-                  {citationCitedCount > 0
-                    ? <CheckCircle2 className="w-3 h-3" />
-                    : <XCircle className="w-3 h-3" />
-                  }
-                  <span className="text-base font-black tabular-nums">{citationCitedCount}/{citationTotalEngines}</span>
-                  <span className="font-normal text-[10px] opacity-70">Cytowania</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -676,7 +645,7 @@ export default function Results() {
 
       {/* ── Tab 1: Optymalizacja ── */}
       {activeTab === "optimization" && (
-        <main className="container max-w-5xl mx-auto py-10 space-y-8">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
           {/* Score Hero */}
           <ScoreHero
@@ -762,7 +731,7 @@ export default function Results() {
 
       {/* ── Tab 3: Treść AI ── */}
       {activeTab === "content" && (
-        <main className="container max-w-5xl mx-auto py-10 space-y-8">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
           {/* Workflow context banner */}
           <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 to-indigo-500/5 p-5">
@@ -843,7 +812,7 @@ export default function Results() {
 
       {/* ── Tab 2: Widoczność AI ── */}
       {activeTab === "visibility" && (
-        <main className="container max-w-5xl mx-auto py-10 space-y-8">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
           {/* Spinner fallback — shown for 2s while onStatusChange hasn't fired yet */}
           {isTabInitializing && (
@@ -2797,7 +2766,13 @@ function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string)
 
 // ─── Loading / Error ──────────────────────────────────────────────────────────────────────────────────
 function LoadingState() {
-  const steps = ["Sprawdzanie dostępu crawlerów", "Analiza danych strukturalnych", "Skanowanie jakości treści", "Ocena sygnałów zaufania", "Uruchamianie analizy AI"];
+  const steps = [
+    { label: "Sprawdzanie dostępu crawlerów", sub: "robots.txt, sitemap, meta tags" },
+    { label: "Analiza danych strukturalnych", sub: "schema.org, JSON-LD, Open Graph" },
+    { label: "Skanowanie jakości treści", sub: "nagłówki, gęstość, czytelność" },
+    { label: "Ocena sygnałów zaufania", sub: "E-E-A-T, autorstwo, linki" },
+    { label: "Uruchamianie analizy AI", sub: "scoring, rekomendacje" },
+  ];
   const [activeStep, setActiveStep] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => setActiveStep((s) => (s + 1) % steps.length), 2200);
@@ -2805,18 +2780,64 @@ function LoadingState() {
   }, []);
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-6 max-w-sm px-4">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-          <Brain className="w-8 h-8 text-primary animate-pulse" />
+      <div className="w-full max-w-sm mx-auto px-6 space-y-8">
+        {/* Animated logo */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-xl shadow-primary/10">
+              <Brain className="w-8 h-8 text-primary" />
+            </div>
+            <div className="absolute -inset-1 rounded-2xl bg-primary/5 animate-ping" style={{ animationDuration: "2s" }} />
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-bold">Analizuję Twoją stronę</h2>
+            <p className="text-xs text-muted-foreground mt-1">Audyt AI Search w toku…</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Analizuję Twoją stronę…</h2>
-          <p className="text-muted-foreground text-sm">{steps[activeStep]}</p>
+
+        {/* Steps */}
+        <div className="space-y-2">
+          {steps.map((step, i) => {
+            const isDone = i < activeStep;
+            const isActive = i === activeStep;
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-500 ${
+                  isActive
+                    ? "border-primary/30 bg-primary/5"
+                    : isDone
+                    ? "border-emerald-500/20 bg-emerald-500/3"
+                    : "border-border/20 bg-transparent opacity-40"
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                  isDone ? "bg-emerald-500/20" : isActive ? "bg-primary/20" : "bg-muted/30"
+                }`}>
+                  {isDone
+                    ? <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    : isActive
+                    ? <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                  }
+                </div>
+                <div className="min-w-0">
+                  <div className={`text-xs font-medium ${
+                    isDone ? "text-emerald-400" : isActive ? "text-foreground" : "text-muted-foreground"
+                  }`}>{step.label}</div>
+                  {isActive && <div className="text-[10px] text-muted-foreground mt-0.5">{step.sub}</div>}
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <div className="flex justify-center gap-2">
-          {steps.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === activeStep ? "w-6 bg-primary" : i < activeStep ? "w-3 bg-primary/40" : "w-3 bg-muted"}`} />
-          ))}
+
+        {/* Progress bar */}
+        <div className="h-px bg-border/30 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-700"
+            style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }}
+          />
         </div>
       </div>
     </div>
@@ -2827,15 +2848,15 @@ function ErrorState({ message }: { message: string }) {
   const [, navigate] = useLocation();
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4 max-w-md px-4">
-        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
+      <div className="w-full max-w-sm mx-auto px-6 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto shadow-xl shadow-destructive/10">
           <AlertCircle className="w-8 h-8 text-destructive" />
         </div>
         <div>
           <h2 className="text-xl font-bold mb-2">Audyt nie powiódł się</h2>
-          <p className="text-muted-foreground text-sm">{message}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
         </div>
-        <Button onClick={() => navigate("/")} className="gap-2">
+        <Button onClick={() => navigate("/")} className="gap-2 shadow-md shadow-primary/20">
           <ArrowLeft className="w-4 h-4" /> Sprawdź inny URL
         </Button>
       </div>

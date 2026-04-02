@@ -954,49 +954,66 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
   const { logout } = useAuth();
 
   return (
-    <header className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-40">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/">
-          <div className="flex items-center gap-2 font-bold text-lg cursor-pointer hover:opacity-80 transition-opacity">
-            <Brain className="w-5 h-5 text-violet-400" />
-            <span>GEO<span className="text-violet-400">-Auditor</span></span>
+    <header className="sticky top-0 z-40">
+      <div className="glass-strong border-b border-border/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
+                  <Bot className="w-4 h-4 text-primary-foreground" />
+                </div>
+                <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+              </div>
+            </Link>
+            <div className="h-4 w-px bg-border/50 hidden md:block" />
+            <nav className="hidden md:flex items-center gap-1">
+              <Link href="/dashboard">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/8 text-primary">
+                  <Eye className="w-3.5 h-3.5" />
+                  Monitoring
+                </div>
+              </Link>
+              <Link href="/pulse">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                  <Activity className="w-3.5 h-3.5" />
+                  Widoczność
+                </div>
+              </Link>
+              <Link href="/page-creator">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Kreator
+                </div>
+              </Link>
+              <Link href="/pricing">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                  Plany
+                </div>
+              </Link>
+            </nav>
           </div>
-        </Link>
-        <nav className="hidden md:flex items-center gap-5 text-sm text-muted-foreground">
-          <Link href="/dashboard" className="text-foreground font-medium flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-violet-400" />
-            Monitoring
-          </Link>
-          <Link href="/pulse" className="hover:text-foreground transition-colors flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5" />
-            Widoczność
-          </Link>
-          <Link href="/page-creator" className="hover:text-foreground transition-colors flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
-            Kreator treści
-          </Link>
-          <Link href="/pricing" className="hover:text-foreground transition-colors">Plany</Link>
-        </nav>
-        <div className="flex items-center gap-3">
-          {user?.name && (
-            <span className="text-xs text-muted-foreground hidden sm:block">{user.name}</span>
-          )}
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${planColorClass(plan)}`}>
-            {planLabel(plan)}
-          </span>
-          <Link href="/">
-            <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5 h-8 text-xs">
-              <Plus className="w-3.5 h-3.5" /> Nowy audyt
+          <div className="flex items-center gap-2">
+            {user?.name && (
+              <span className="text-xs text-muted-foreground hidden sm:block">{user.name}</span>
+            )}
+            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${planColorClass(plan)}`}>
+              {planLabel(plan)}
+            </span>
+            <Link href="/">
+              <Button size="sm" className="gap-1.5 h-8 text-xs shadow-md shadow-primary/20">
+                <Plus className="w-3.5 h-3.5" /> Nowy audyt
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={logout}
+              className="text-xs text-muted-foreground h-8 hidden sm:flex hover:text-foreground"
+            >
+              Wyloguj
             </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={logout}
-            className="text-xs text-muted-foreground h-8 hidden sm:flex"
-          >
-            Wyloguj
-          </Button>
+          </div>
         </div>
       </div>
     </header>
@@ -1314,12 +1331,12 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background text-foreground">
       <DashboardTopNav plan={plan} user={user} />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
         {/* ── HERO GREETING ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">{greeting}, {firstName}!</h1>
+            <h1 className="text-xl font-bold tracking-tight">{greeting}, {firstName}!</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {totalAudits === 0
                 ? "Uruchom pierwszy audyt i sprawdź widoczność w AI Search."
@@ -1327,8 +1344,8 @@ export default function Dashboard() {
             </p>
           </div>
           <Link href="/">
-            <Button className="bg-violet-600 hover:bg-violet-700 text-white gap-2 h-10 px-5 text-sm font-semibold shadow-lg shadow-violet-900/30">
-              <Zap className="w-4 h-4" /> Nowy audyt
+            <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
+              <Zap className="w-3.5 h-3.5" /> Nowy audyt
             </Button>
           </Link>
         </div>
@@ -1341,11 +1358,11 @@ export default function Dashboard() {
           onAddMonitoring={() => setShowAddMonitoring(true)}
         />
 
-        {/* ── STATS ROW — simplified to 3 cards ── */}
+        {/* ── STATS ROW ── */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             icon={BarChart2}
-            label="Średni wynik AI"
+            label="Średnio wynik AI"
             value={avgScore != null ? `${avgScore}/100` : "–"}
             sub={scoreLabel(avgScore)}
             colorClass={scoreColor(avgScore)}
