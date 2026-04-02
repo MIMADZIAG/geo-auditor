@@ -971,19 +971,19 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
               <Link href="/dashboard">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/8 text-primary">
                   <Eye className="w-3.5 h-3.5" />
-                  Monitoring
+                  Pulse Monitor
                 </div>
               </Link>
               <Link href="/pulse">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
                   <Activity className="w-3.5 h-3.5" />
-                  Widoczność
+                  Citation Intelligence
                 </div>
               </Link>
               <Link href="/page-creator">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Kreator
+                  Signal Rewrite
                 </div>
               </Link>
               <Link href="/pricing">
@@ -1002,7 +1002,7 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
             </span>
             <Link href="/">
               <Button size="sm" className="gap-1.5 h-8 text-xs shadow-md shadow-primary/20">
-                <Plus className="w-3.5 h-3.5" /> Nowy audyt
+                <Plus className="w-3.5 h-3.5" /> Nowa analiza
               </Button>
             </Link>
             <Button
@@ -1339,13 +1339,13 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold tracking-tight">{greeting}, {firstName}!</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {totalAudits === 0
-                ? "Uruchom pierwszy audyt i sprawdź widoczność w AI Search."
-                : `${totalAudits} audyt${totalAudits === 1 ? "" : totalAudits < 5 ? "y" : "ów"} · Plan ${planLabel(plan)}`}
+                ? "Uruchom pierwszą analizę i sprawdź sygnały swojej strony."
+                : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · Plan ${planLabel(plan)}`}
             </p>
           </div>
           <Link href="/">
             <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
-              <Zap className="w-3.5 h-3.5" /> Nowy audyt
+              <Zap className="w-3.5 h-3.5" /> Nowa analiza
             </Button>
           </Link>
         </div>
@@ -1378,7 +1378,7 @@ export default function Dashboard() {
           />
           <StatCard
             icon={Flame}
-            label="Audyty w tym mies."
+            label="Analizy w tym mies."
             value={`${auditsUsed}/${auditsLimit > 9999 ? "∞" : auditsLimit}`}
             sub={`Limit planu ${planLabel(plan)}`}
             iconColor="text-orange-400"
@@ -1393,7 +1393,7 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
-                <Eye className="w-4 h-4" /> Monitorowane strony
+                <Eye className="w-4 h-4" /> Pulse Monitor
               </h2>
               <Button
                 size="sm"
@@ -1461,7 +1461,7 @@ export default function Dashboard() {
               onClick={() => setAuditHistoryExpanded(!auditHistoryExpanded)}
             >
               <span className="flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Historia audytów
+                <Clock className="w-4 h-4" /> Historia analiz
                 {history && history.length > 0 && (
                   <Badge variant="secondary" className="text-xs">{history.length}</Badge>
                 )}
@@ -1475,17 +1475,17 @@ export default function Dashboard() {
               <>
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
                   {historyLoading ? (
-                    <div className="p-8 text-center text-muted-foreground text-sm">Ładowanie historii...</div>
+                    <div className="p-8 text-center text-muted-foreground text-sm">Wczytuję historię…</div>
                   ) : !history || history.length === 0 ? (
                     <div className="p-10 text-center">
                       <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                      <p className="text-sm font-medium">Brak audytów</p>
+                      <p className="text-sm font-medium">Brak analiz</p>
                       <p className="text-xs text-muted-foreground mt-1 mb-4">
-                        Uruchom pierwszy audyt i sprawdź widoczność swojej strony w AI Search.
+                        Wklej URL dowolnej podstrony i uruchom pierwszą analizę Signal Audit.
                       </p>
                       <Link href="/">
                         <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
-                          Uruchom audyt
+                          Analizuj stronę
                         </Button>
                       </Link>
                     </div>
@@ -1501,9 +1501,9 @@ export default function Dashboard() {
                 {!isPaid && history && history.length >= 3 && (
                   <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-medium text-violet-300">Widzisz tylko ostatnie audyty</p>
+                      <p className="text-sm font-medium text-violet-300">Widzisz tylko ostatnie analizy</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Plan Starter odblokuje pełną historię, eksport PDF i monitoring 10 stron.
+                        Starter odblokuje pełną historię Signal Audit, eksport PDF i Pulse Monitor dla 10 stron.
                       </p>
                     </div>
                     <Link href="/pricing">
@@ -1523,15 +1523,15 @@ export default function Dashboard() {
                   className="w-full py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors flex items-center justify-center gap-1"
                   onClick={() => setAuditHistoryExpanded(true)}
                 >
-                  <ChevronDown className="w-3 h-3" /> Pokaż wszystkie {history.length} audytów
+                  <ChevronDown className="w-3 h-3" /> Pokaż wszystkie {history.length} analiz
                 </button>
               </div>
             )}
 
             {!history || history.length === 0 && (
               <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                <p className="text-sm text-muted-foreground">Brak audytów — uruchom pierwszy poniżej.</p>
-                <Link href="/"><Button size="sm" className="mt-3 bg-violet-600 hover:bg-violet-700 text-white">Uruchom audyt</Button></Link>
+                <p className="text-sm text-muted-foreground">Brak analiz — wklej URL i uruchom pierwszą poniżej.</p>
+                <Link href="/"><Button size="sm" className="mt-3 bg-violet-600 hover:bg-violet-700 text-white">Analizuj stronę</Button></Link>
               </div>
             )}
           </div>
@@ -1559,9 +1559,9 @@ export default function Dashboard() {
 
               {plan === "free" && (
                 <>
-                  <p className="text-xs text-muted-foreground mb-3">Odblokuj pełne możliwości GEO-Auditora</p>
+                  <p className="text-xs text-muted-foreground mb-3">Odblokuj pełną platformę Signal Audit</p>
                   <div className="space-y-1.5 mb-4">
-                    {["50 audytów/mies.", "Pełna historia audytów", "Monitoring 10 stron", "Eksport PDF"].map((f) => (
+                    {["50 analiz/mies.", "Pełna historia Signal Audit", "Pulse Monitor — 10 stron", "Eksport PDF"].map((f) => (
                       <div key={f} className="flex items-center gap-2 text-xs">
                         <CheckCircle className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                         <span>{f}</span>
@@ -1578,7 +1578,7 @@ export default function Dashboard() {
 
               {plan === "starter" && (
                 <>
-                  <p className="text-xs text-muted-foreground mb-3">Odblokuj analizę konkurencji i 200 audytów miesięcznie</p>
+                  <p className="text-xs text-muted-foreground mb-3">Odblokuj Citation Intelligence dla 3 konkurentów i 200 analiz/mies.</p>
                   <Link href="/pricing">
                     <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold gap-1.5">
                       <ArrowUpRight className="w-3.5 h-3.5" /> Upgrade do Pro — $99/mies.
@@ -1589,7 +1589,7 @@ export default function Dashboard() {
 
               {isPro && !isBusiness && (
                 <>
-                  <p className="text-xs text-muted-foreground mb-3">Odblokuj white-label raporty, API i integracje</p>
+                  <p className="text-xs text-muted-foreground mb-3">Odblokuj white-label raporty, API i integracje Shopify/WooCommerce.</p>
                   <Link href="/pricing">
                     <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold gap-1.5">
                       <Trophy className="w-3.5 h-3.5" /> Upgrade do Business
@@ -1600,7 +1600,7 @@ export default function Dashboard() {
 
               {isBusiness && (
                 <p className="text-xs text-emerald-400 flex items-center gap-1.5 mt-1">
-                  <CheckCircle className="w-3.5 h-3.5" /> Masz dostęp do wszystkich funkcji
+                  <CheckCircle className="w-3.5 h-3.5" /> Pełny dostęp do platformy
                 </p>
               )}
             </div>
@@ -1613,17 +1613,17 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <Link href="/">
                   <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9">
-                    <Search className="w-4 h-4 text-violet-400" /> Nowy audyt URL
+                    <Search className="w-4 h-4 text-violet-400" /> Uruchom Signal Audit
                   </Button>
                 </Link>
                 <Link href="/page-creator">
                   <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9">
-                    <Sparkles className="w-4 h-4 text-emerald-400" /> Kreator treści AI
+                    <Sparkles className="w-4 h-4 text-emerald-400" /> Signal Rewrite
                   </Button>
                 </Link>
                 <Link href="/pricing">
                   <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9">
-                    <Star className="w-4 h-4 text-amber-400" /> Plany i cennik
+                    <Star className="w-4 h-4 text-amber-400" /> Plany
                   </Button>
                 </Link>
               </div>
@@ -1636,7 +1636,7 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold flex items-center gap-2">
-                <Lock className="w-4 h-4 text-muted-foreground" /> Odblokuj więcej możliwości
+                <Lock className="w-4 h-4 text-muted-foreground" /> Moduły Pro i Business
               </h2>
               <Link href="/pricing">
                 <Button size="sm" variant="ghost" className="text-xs text-violet-400 hover:text-violet-300 gap-1 h-7">
@@ -1647,20 +1647,20 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               <LockedFeatureCard
                 icon={BarChart2}
-                title="Analiza konkurencji"
-                description="Porównaj widoczność AI swojej domeny z 3 konkurentami."
+                title="Citation Intelligence Pro"
+                description="Porównaj cytowania AI swojej domeny z 3 wybranymi konkurentami na tych samych frazach."
                 requiredPlan="Pro"
               />
               <LockedFeatureCard
                 icon={FileText}
                 title="Eksport PDF"
-                description="Pobierz profesjonalny raport PDF gotowy do prezentacji klientowi."
+                description="Pobierz pełny raport Signal Audit w formacie PDF gotowy do prezentacji klientowi."
                 requiredPlan="Starter"
               />
               <LockedFeatureCard
                 icon={Globe}
-                title="Monitoring 50 stron"
-                description="Śledź zmiany wyników AI-Readiness dla całego sklepu."
+                title="Pulse Monitor — 50 stron"
+                description="Cotygodniowy re-audyt dla całego sklepu. Alert gdy AI Readiness Score spada."
                 requiredPlan="Pro"
               />
             </div>
@@ -1673,15 +1673,14 @@ export default function Dashboard() {
             <Sparkles className="w-5 h-5 text-violet-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold">Wskazówka: Optymalizuj strony produktowe jako pierwsze</p>
+            <p className="text-sm font-semibold">Zacznij od stron produktowych z najniższym AI Readiness Score</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Google AI Overviews najczęściej cytuje strony z jasną strukturą H1/H2, FAQ i schema.org.
-              Zacznij od stron z najniższym wynikiem AI-Readiness.
+              Google AI Overviews i ChatGPT najczęściej cytują strony z jasną strukturą H1/H2, sekcją FAQ i schema.org Product. Tam jest największy potencjał wzrostu cytowań.
             </p>
           </div>
           <Link href="/">
             <Button size="sm" variant="outline" className="shrink-0 text-xs gap-1">
-              Sprawdź stronę <ArrowUpRight className="w-3 h-3" />
+              Analizuj stronę <ArrowUpRight className="w-3 h-3" />
             </Button>
           </Link>
         </div>

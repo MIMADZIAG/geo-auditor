@@ -150,8 +150,8 @@ export default function Home() {
 
             {/* Nav links */}
             <nav className="hidden md:flex items-center gap-1">
-              <a href="#how-it-works" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Jak działa</a>
-              <a href="#pricing" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Cennik</a>
+              <a href="#how-it-works" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Jak to działa</a>
+              <a href="#pricing" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Plany</a>
               <a href="#faq" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">FAQ</a>
             </nav>
 
@@ -168,9 +168,9 @@ export default function Home() {
                   <span className="hidden sm:inline">Zaloguj</span>
                 </Button>
               )}
-              <Button size="sm" onClick={() => inputRef.current?.focus()} className="h-8 text-xs gap-1.5 shadow-md shadow-primary/20">
+                <Button size="sm" onClick={() => inputRef.current?.focus()} className="h-8 text-xs gap-1.5 shadow-md shadow-primary/20">
                 <Search className="w-3 h-3" />
-                <span>Audytuj URL</span>
+                <span>Analizuj stronę</span>
               </Button>
             </div>
           </div>
@@ -192,18 +192,18 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 pill pill-primary mb-8">
                 <Zap className="w-3 h-3" />
-                <span>Audyt AI Search na poziomie URL</span>
+                <span>Audyt na poziomie podstrony</span>
               </div>
 
               {/* Headline */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight mb-6">
-                Twoja strona jest<br />
-                <span className="gradient-text">niewidoczna w AI.</span><br />
-                <span className="text-foreground/60">Naprawiamy to.</span>
+                AI Search nie cytuje<br />
+                <span className="gradient-text">Twojej strony.</span><br />
+                <span className="text-foreground/60">Teraz wiesz dlaczego.</span>
               </h1>
 
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-                Wklej URL dowolnej podstrony. W kilkadziesiąt sekund dostaniesz pełną analizę — co blokuje Cię w ChatGPT, Gemini i Google AI Overviews — i gotowy plan naprawy.
+                Wklej URL dowolnej podstrony. 60 sekund później masz pełną diagnostykę — które sygnały techniczne i contentowe blokują Cię w ChatGPT, Gemini i Google AI Overviews — oraz gotowy plan naprawy.
               </p>
 
               {/* URL Input */}
@@ -230,12 +230,12 @@ export default function Home() {
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                         <span className="hidden sm:inline text-xs">{SCAN_STEPS[scanStep]}</span>
-                        <span className="sm:hidden text-xs">Skanuje…</span>
+                        <span className="sm:hidden text-xs">Analiza…</span>
                       </>
                     ) : (
                       <>
                         <Search className="w-3.5 h-3.5" />
-                        <span>Audytuj</span>
+                        <span>Sprawdź sygnał</span>
                       </>
                     )}
                   </Button>
@@ -246,21 +246,21 @@ export default function Home() {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                  Bez rejestracji
+                  Bez konta
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                  Wyniki w &lt;60 sekund
+                  Wyniki w 60 sekund
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                  {realAuditsCount > 0 ? `${auditsCount.toLocaleString("pl-PL")}+ audytów` : "Pierwsze 5 audytów gratis"}
+                  {realAuditsCount > 0 ? `${auditsCount.toLocaleString("pl-PL")}+ analiz wykonanych` : "Pierwsze 5 analiz bezpłatnie"}
                 </span>
               </div>
 
               {/* Engine strip */}
               <div className="mt-10 pt-8 border-t border-border/20">
-                <p className="section-label mb-3">Sprawdzamy widoczność w</p>
+                <p className="section-label mb-3">Weryfikujemy cytowania w</p>
                 <div className="flex flex-wrap gap-2">
                   {AI_ENGINES.map((e) => (
                     <EngineBadge key={e.name} {...e} />
@@ -295,10 +295,10 @@ export default function Home() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-red-400">Krytyczne problemy</span>
-                        <span className="pill pill-red text-[10px] py-0.5">Słaby</span>
+                        <span className="text-xs font-semibold text-red-400">12 blokad sygnału</span>
+                        <span className="pill pill-red text-[10px] py-0.5">Niewidoczny</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">AI ignoruje tę stronę. 12 krytycznych problemów do naprawy.</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">Crawlery AI pomijają tę stronę. Brak schema.org, słaba struktura treści.</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                     <div className="relative">
@@ -309,7 +309,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">Po wdrożeniu rekomendacji</span>
+                    <span className="text-[11px] text-muted-foreground">Po wdrożeniu poprawek Signal Audit</span>
                     <span className="pill pill-emerald text-[10px] py-0.5">+47 pkt</span>
                   </div>
                 </div>
@@ -326,7 +326,7 @@ export default function Home() {
                         <div className="text-[10px] text-muted-foreground truncate">{step.sub}</div>
                       </div>
                       {i === 0 ? (
-                        <span className="pill pill-primary text-[10px] py-0.5 shrink-0">Aktywny</span>
+                        <span className="pill pill-primary text-[10px] py-0.5 shrink-0">W toku</span>
                       ) : (
                         <div className="w-4 h-4 rounded-full border border-border/50 shrink-0" />
                       )}
@@ -366,14 +366,14 @@ export default function Home() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 pill pill-primary mb-5">
               <RefreshCw className="w-3 h-3" />
-              <span>Pętla widoczności AI</span>
+              <span>Cztery moduły. Jeden cel.</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">
-              Od niewidoczności do cytowania<br />
-              <span className="text-muted-foreground/60">— w 4 krokach</span>
+              Od diagnozy do cytowania<br />
+              <span className="text-muted-foreground/60">— w jednej platformie</span>
             </h2>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed">
-              Każdy krok buduje na poprzednim. Im dłużej działasz w pętli, tym wyższy score.
+              Każdy moduł zasila następny. Signal Audit wykrywa problem— Signal Rewrite go naprawia — Pulse Monitor pilnuje wyniku.
             </p>
           </div>
 
@@ -426,15 +426,15 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-2 pill pill-amber mb-6">
                 <AlertTriangle className="w-3 h-3" />
-                <span>Twoja konkurencja już to wie</span>
+                <span>Twój konkurent jest cytowany. Ty nie.</span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight leading-tight">
                 Każde zapytanie w ChatGPT<br />
-                to szansa sprzedażowa.<br />
-                <span className="text-amber-400/80">Twój konkurent ją zgarnął.</span>
+                to transakcja sprzedażowa.<br />
+                <span className="text-amber-400/80">Ktoś ją właśnie zamknął.</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8 text-sm max-w-md">
-                AI nie cytuje losowo. Wybiera strony spełniające konkretne kryteria techniczne i contentowe. GEO-Auditor pokazuje dokładnie co robią lepiej Twoi rywale — i daje gotowy tekst, który odwraca tę sytuację.
+                AI nie cytuje losowo. Wybiera strony, które spełniają konkretne kryteria techniczne i contentowe. Citation Intelligence pokazuje które URL-e Cię wyprzedzają, dlaczego AI je preferuje i co zmienić, żeby odwrócić tę relację.
               </p>
               <div className="space-y-3">
                 {EMOTIONAL_ITEMS.map((item) => (
@@ -459,7 +459,7 @@ export default function Home() {
                   <div className="w-5 h-5 rounded-full bg-red-500/15 flex items-center justify-center">
                     <XCircle className="w-3 h-3 text-red-400" />
                   </div>
-                  <span className="text-xs font-semibold text-red-400/80">Przed — oryginalny tekst</span>
+                  <span className="text-xs font-semibold text-red-400/80">Przed — niewidoczny w AI Search</span>
                 </div>
                 <p className="text-xs text-muted-foreground/60 leading-relaxed italic font-mono">
                   "Oferujemy szeroki wybór produktów w atrakcyjnych cenach. Nasza firma działa od wielu lat na rynku i cieszy się zaufaniem klientów. Zapraszamy do zakupów."
@@ -469,9 +469,9 @@ export default function Home() {
               {/* Arrow */}
               <div className="flex items-center justify-center gap-3 py-1">
                 <div className="flex-1 h-px bg-border/30" />
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/20">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/20">
                   <Sparkles className="w-3 h-3 text-primary" />
-                  <span className="text-[11px] font-semibold text-primary">AI Content Creator</span>
+                  <span className="text-[11px] font-semibold text-primary">Signal Rewrite</span>
                 </div>
                 <div className="flex-1 h-px bg-border/30" />
               </div>
@@ -482,7 +482,7 @@ export default function Home() {
                   <div className="w-5 h-5 rounded-full bg-emerald-500/15 flex items-center justify-center">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                   </div>
-                  <span className="text-xs font-semibold text-emerald-400/80">Po — zoptymalizowany pod AI Search</span>
+                  <span className="text-xs font-semibold text-emerald-400/80">Po — Signal Rewrite · cytowany przez Perplexity</span>
                 </div>
                 <p className="text-xs text-muted-foreground/80 leading-relaxed font-mono">
                   "Kurtka zimowa damska Parka Arctic Pro (model 2025) wykonana z materiału Gore-Tex 3L (wodoodporność 20 000 mm H₂O). Temperatura komfortu: -20°C. Certyfikat RDS (puch etyczny). Dostępna w rozmiarach XS–3XL. Darmowa dostawa i zwrot 365 dni."
@@ -502,12 +502,12 @@ export default function Home() {
         <div className="absolute inset-0 hero-glow opacity-50 pointer-events-none" />
         <div className="max-w-5xl mx-auto relative">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 pill pill-primary mb-5">
+              <div className="inline-flex items-center gap-2 pill pill-primary mb-5">
               <BarChart3 className="w-3 h-3" />
-              <span>Cennik</span>
+              <span>Plany</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">Zacznij za darmo.<br />
-              <span className="text-muted-foreground/60">Skaluj gdy rośniesz.</span>
+              <span className="text-muted-foreground/60">Skaluj gdy wyniki rosną.</span>
             </h2>
 
             {/* Toggle */}
@@ -604,11 +604,11 @@ export default function Home() {
             <Zap className="w-6 h-6 text-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight">
-            Twoja konkurencja już to wie.<br />
-            <span className="gradient-text">Ty możesz wiedzieć za darmo.</span>
+            Jeden URL.<br />
+            <span className="gradient-text">Pełna diagnostyka AI Search.</span>
           </h2>
           <p className="text-muted-foreground mb-10 leading-relaxed text-sm max-w-md mx-auto">
-            Jeden URL. Kilkadziesiąt sekund. Pełna analiza — bez rejestracji, bez karty. Dowiedz się, dlaczego AI Cię ignoruje i co konkretnie zmienić.
+            60 sekund. Bez konta. Bez karty. Dowiesz się dokładnie, które sygnały blokują Cię w ChatGPT i Gemini — i co zmienić jako pierwsze.
           </p>
           <Button
             size="lg"
@@ -616,11 +616,11 @@ export default function Home() {
             className="gap-2.5 px-10 h-12 text-base font-semibold shadow-xl shadow-primary/25"
           >
             <Search className="w-4.5 h-4.5" />
-            Sprawdź swoją stronę teraz
+            Sprawdź sygnał swojej strony
           </Button>
           <p className="text-xs text-muted-foreground mt-5">
             {realAuditsCount > 0
-              ? `Dołącz do ${auditsCount.toLocaleString("pl-PL")}+ audytów już wykonanych`
+              ? `${auditsCount.toLocaleString("pl-PL")}+ analiz wykonanych przez użytkowników GEO-Auditor`
               : "Bądź wśród pierwszych użytkowników GEO-Auditor"
             }
           </p>
@@ -639,15 +639,15 @@ export default function Home() {
                 <span className="font-bold text-sm">GEO-Auditor</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                Jedyne narzędzie audytujące pojedyncze podstrony pod kątem widoczności w AI Search — na poziomie URL, nie domeny.
+                Platforma do AI Search Optimization na poziomie podstrony. Signal Audit, Citation Intelligence, Signal Rewrite i Pulse Monitor — w jednym miejscu.
               </p>
             </div>
             <div>
-              <div className="section-label mb-4">Produkt</div>
+              <div className="section-label mb-4">Platforma</div>
               <div className="space-y-2.5">
-                <a href="#how-it-works" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Jak działa</a>
-                <a href="#pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Cennik</a>
-                <a href="/dashboard" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</a>
+                <a href="#how-it-works" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Jak to działa</a>
+                <a href="#pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Plany</a>
+                <a href="/dashboard" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Command Center</a>
               </div>
             </div>
             <div>
@@ -674,18 +674,18 @@ export default function Home() {
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const SCAN_STEPS = [
-  "Głęboka analiza strony…",
-  "Sprawdzanie dostępu crawlerów AI…",
-  "Analiza danych strukturalnych…",
-  "Ocena jakości contentu…",
-  "Uruchamianie analizy LLM…",
+  "Pobieranie strony…",
+  "Weryfikacja dostępu crawlerów…",
+  "Analiza schema.org i metadanych…",
+  "Ocena sygnałów contentowych…",
+  "Generowanie rekomendacji…",
 ];
 
 const WORKFLOW_PREVIEW = [
-  { icon: Shield, label: "Audyt AI-Readiness", sub: "40+ sprawdzeń · score 0–100" },
-  { icon: Eye, label: "Analiza widoczności", sub: "Cytowania w ChatGPT, Gemini" },
-  { icon: Sparkles, label: "AI Content Creator", sub: "Gotowy tekst do wdrożenia" },
-  { icon: Activity, label: "Monitoring", sub: "Alerty o zmianach widoczności" },
+  { icon: Shield, label: "Signal Audit", sub: "40+ sprawdzeń · AI Readiness Score" },
+  { icon: Eye, label: "Citation Intelligence", sub: "Cytowania w ChatGPT, Gemini, Perplexity" },
+  { icon: Sparkles, label: "Signal Rewrite", sub: "Przepisany tekst gotowy do wdrożenia" },
+  { icon: Activity, label: "Pulse Monitor", sub: "Cotygodniowy re-audyt i alerty" },
 ];
 
 const AI_ENGINES = [
@@ -735,22 +735,22 @@ const PROBLEM_ITEMS = [
     icon: AlertTriangle,
     iconBg: "bg-amber-500/10",
     iconColor: "text-amber-400",
-    headline: "AI Search zmienia zasady",
-    body: "ChatGPT, Gemini i Perplexity nie indeksują stron jak Google. Mają własne kryteria cytowania — i większość stron ich nie zna.",
+    headline: "AI Search ma własne kryteria",
+    body: "ChatGPT, Gemini i Perplexity nie rankingują jak Google. Cytują strony spełniające konkretne sygnały techniczne i contentowe. Większość stron ich nie spełnia.",
   },
   {
     icon: Target,
     iconBg: "bg-primary/10",
     iconColor: "text-primary",
-    headline: "Audyt na poziomie URL",
-    body: "Nie domena, nie ogólna widoczność — konkretna podstrona. Produkt, artykuł, landing. Dokładnie tam, gdzie tracisz klientów.",
+    headline: "Diagnostyka na poziomie URL",
+    body: "Nie domena, nie ogólna widoczność. Konkretna podstrona: produkt, artykuł, kategoria. Dokładnie tam, gdzie tracisz klientów na rzecz AI Search.",
   },
   {
     icon: Zap,
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-400",
-    headline: "Konkretne kroki, nie ogólniki",
-    body: "Nie \"popraw content\". Dostaniesz listę zadań: co dodać, co zmienić, co usunąć — razem z gotowym tekstem po poprawkach.",
+    headline: "Lista zadań, nie ogólniki",
+    body: "Nie \"popraw treść\". Dostajesz priorytetowaną listę: co dodać, co zmienić, co usunąć — z gotowym tekstem po poprawkach Signal Rewrite.",
   },
 ];
 
@@ -759,44 +759,44 @@ const WORKFLOW_CARDS = [
     icon: Shield,
     iconBg: "bg-primary/10",
     iconColor: "text-primary",
-    title: "Audyt AI-Readiness",
+    title: "Signal Audit",
     featured: true,
-    desc: "40+ sprawdzeń technicznych i contentowych. Jeden score 0–100 pokazujący jak widoczna jest Twoja strona dla AI.",
-    bullets: ["robots.txt, schema.org, Core Web Vitals", "Content Intelligence (5 wymiarów)", "E-E-A-T & Helpful Content"],
+    desc: "40+ sprawdzeń technicznych i contentowych. Jeden AI Readiness Score 0–100 z priorytetowaną listą blokad.",
+    bullets: ["robots.txt, schema.org, Core Web Vitals", "Content Intelligence (5 wymiarów)", "E-E-A-T & Helpful Content Signal"],
   },
   {
     icon: Eye,
     iconBg: "bg-violet-500/10",
     iconColor: "text-violet-400",
-    title: "Analiza widoczności",
+    title: "Citation Intelligence",
     featured: false,
-    desc: "Sprawdź czy jesteś cytowany w AI Search na frazach, które mają znaczenie dla Twojego biznesu.",
-    bullets: ["ChatGPT, Gemini, Perplexity, Google AI", "Pełna lista URL-i konkurencji", "Per-frazowa analiza porównawcza"],
+    desc: "Weryfikacja cytowań w ChatGPT, Gemini, Perplexity i Google AI na frazach istotnych dla Twojego biznesu.",
+    bullets: ["Per-frazowa analiza czterech silników AI", "Pełna lista URL-i cytowanych zamiast Ciebie", "Analiza porównawcza z konkurentami"],
   },
   {
     icon: Sparkles,
     iconBg: "bg-blue-500/10",
     iconColor: "text-blue-400",
-    title: "AI Content Creator",
+    title: "Signal Rewrite",
     featured: false,
-    desc: "Przepisz treść z AI opartym na danych z audytu i analizie cytowanych konkurentów.",
-    bullets: ["Analiza wzorców AI Search", "Ekstrakcja wiedzy z konkurentów", "Gotowy tekst do wdrożenia"],
+    desc: "Nowa wersja treści napisana pod sygnały AI Search — na podstawie danych z Signal Audit i wzorców cytowanych stron.",
+    bullets: ["Ekstrakcja encji i faktów z cytowanych URL-i", "Struktura zoptymalizowana pod LLM", "Gotowy tekst do wdrożenia w 1 klik"],
   },
   {
     icon: Activity,
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-400",
-    title: "Monitoring & pętla",
+    title: "Pulse Monitor",
     featured: false,
-    desc: "Śledź widoczność automatycznie. Wróć do kroku 1 gdy score spada lub pojawi się nowy konkurent.",
-    bullets: ["Cotygodniowe re-audyty", "Alerty o zmianach widoczności", "Historia postępu"],
+    desc: "Cotygodniowy re-audyt monitorowanych podstron. Alert gdy score spada lub nowy konkurent przejmuje cytowania.",
+    bullets: ["Automatyczne re-audyty co 7 dni", "Alerty o zmianach cytowań", "Historia AI Readiness Score"],
   },
 ];
 
 const EMOTIONAL_ITEMS = [
-  { icon: Eye, label: "Kto Cię wyprzedza", desc: "Pełna lista URL-i cytowanych przez AI zamiast Ciebie" },
-  { icon: Target, label: "Dlaczego ich cytuje", desc: "Konkretne powody: struktura, fakty, schema.org" },
-  { icon: Sparkles, label: "Jak ich pobić", desc: "Przepisany tekst gotowy do wdrożenia w 1 klik" },
+  { icon: Eye, label: "Które URL-e Cię wyprzedzają", desc: "Pełna lista adresów cytowanych przez AI na Twoich frazach" },
+  { icon: Target, label: "Dlaczego AI je preferuje", desc: "Konkretne sygnały: gęstość encji, struktura, schema.org, E-E-A-T" },
+  { icon: Sparkles, label: "Co zmienić, żeby ich wyprzedzić", desc: "Signal Rewrite generuje nową wersję treści gotową do wdrożenia" },
 ];
 
 const PRICING_PLANS = [
@@ -805,16 +805,16 @@ const PRICING_PLANS = [
     price: "0 zł",
     priceAnnual: "0 zł",
     period: "",
-    desc: "Idealne do pierwszego audytu",
+    desc: "Pełny Signal Audit bez konta i karty",
     featured: false,
-    cta: "Zacznij za darmo",
+    cta: "Sprawdź sygnał",
     badge: null,
     features: [
-      "5 audytów / miesiąc",
-      "AI Visibility Score",
-      "Audyt techniczny (40+ checks)",
+      "5 analiz / miesiąc",
+      "AI Readiness Score (0–100)",
+      "Signal Audit — 40+ sprawdzeń",
       "Content Intelligence",
-      "1 monitorowana strona",
+      "1 strona w Pulse Monitor",
     ],
   },
   {
@@ -824,16 +824,16 @@ const PRICING_PLANS = [
     period: "/ mies.",
     desc: "Dla właścicieli sklepów i content managerów",
     featured: true,
-    cta: "Wybierz Starter",
+    cta: "Zacznij 7-dniowy trial",
     badge: "Najpopularniejszy",
     features: [
-      "50 audytów / miesiąc",
-      "AI Citations (Google + ChatGPT)",
-      "Full Rewrite AI (10 rewrite/mies.)",
-      "Historia audytów",
-      "Monitoring 10 podstron",
+      "50 analiz / miesiąc",
+      "Citation Intelligence (Google + ChatGPT)",
+      "Signal Rewrite — 10 przepisań/mies.",
+      "Historia AI Readiness Score",
+      "Pulse Monitor — 10 podstron",
       "Eksport PDF",
-      "Priorytetowe wsparcie",
+      "Wsparcie priorytetowe",
     ],
   },
   {
@@ -841,45 +841,45 @@ const PRICING_PLANS = [
     price: "399 zł",
     priceAnnual: "319 zł",
     period: "/ mies.",
-    desc: "Dla agencji i specjalistów SEO",
+    desc: "Dla agencji SEO i e-commerce z rosnącą skalą",
     featured: false,
-    cta: "Wybierz Pro",
+    cta: "Zacznij 7-dniowy trial",
     badge: null,
     features: [
-      "200 audytów / miesiąc",
-      "Analiza 3 konkurentów",
-      "Full Rewrite AI bez limitu",
-      "Monitoring 50 podstron",
-      "Zaawansowane rekomendacje",
-      "API dostęp",
-      "White-label raporty",
+      "200 analiz / miesiąc",
+      "Citation Intelligence — 3 konkurenci",
+      "Signal Rewrite bez limitu",
+      "Pulse Monitor — 50 podstron",
+      "Zaawansowane rekomendacje contentowe",
+      "Dostęp do API",
+      "Raporty white-label",
     ],
   },
 ];
 
 const FAQ = [
   {
-    q: "Czym różni się GEO-Auditor od narzędzi SEO jak Semrush czy Ahrefs?",
-    a: "Semrush i Ahrefs analizują widoczność w tradycyjnym Google Search. GEO-Auditor skupia się wyłącznie na AI Search — ChatGPT, Gemini, Perplexity, Google AI Overviews. To zupełnie inne kryteria: AI cytuje strony za jakość treści, fakty, strukturę i E-E-A-T — nie za linki.",
+    q: "Czym różni się GEO-Auditor od Semrush czy Ahrefs?",
+    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search — rankingi, linki, ruch organiczny. GEO-Auditor analizuje wyłącznie sygnały AI Search: czy ChatGPT, Gemini i Perplexity cytują Twoją stronę i dlaczego nie. To różne metryki, różne algorytmy, różne rekomendacje.",
   },
   {
-    q: "Czy mogę audytować dowolną podstronę — nie tylko homepage?",
-    a: "Tak — to jest nasza główna przewaga. Audytujesz konkretny URL: stronę produktu, artykuł, kategorię, landing page. Każda podstrona ma swój własny score i rekomendacje.",
+    q: "Czy mogę analizować dowolną podstronę — nie tylko stronę główną?",
+    a: "Tak — to jest fundament platformy. Analizujesz konkretny URL: stronę produktu, artykuł, kategorię, landing page. Każda podstrona dostaje własny AI Readiness Score i priorytetowaną listę poprawek.",
   },
   {
-    q: "Jak działa AI Content Creator?",
-    a: "Po audycie i analizie widoczności, AI Content Creator analizuje strony cytowanych przez AI konkurentów, wyciąga kluczowe fakty i encje, a następnie pisze nowy tekst zoptymalizowany pod AI Search. Wynik jest gotowy do skopiowania i wdrożenia.",
+    q: "Jak działa Signal Rewrite?",
+    a: "Po Signal Audit i Citation Intelligence, Signal Rewrite analizuje URL-e cytowane przez AI na Twoich frazach, wyciąga kluczowe encje, fakty i strukturę, a następnie generuje nową wersję treści zoptymalizowaną pod sygnały AI Search. Wynik jest gotowy do skopiowania i wdrożenia.",
   },
   {
-    q: "Co to jest monitoring i jak działa?",
-    a: "Monitoring automatycznie sprawdza widoczność Twojej strony w AI Search co tydzień. Dostaniesz alert gdy Twój score spada, gdy pojawi się nowy konkurent cytowany na Twoich frazach, lub gdy Twoja strona zostanie po raz pierwszy zacytowana.",
+    q: "Jak działa Pulse Monitor?",
+    a: "Pulse Monitor automatycznie re-audytuje monitorowane podstrony co 7 dni. Otrzymujesz alert gdy AI Readiness Score spada poniżej progu, gdy nowy konkurent przejmuje cytowania na Twoich frazach, lub gdy Twoja strona po raz pierwszy zostaje zacytowana przez AI.",
   },
   {
-    q: "Czy mogę używać GEO-Auditor bez rejestracji?",
-    a: "Tak — pierwsze 5 audytów jest dostępnych bez rejestracji. Rejestracja jest wymagana do zapisywania historii, monitoringu i korzystania z AI Content Creator.",
+    q: "Czy mogę korzystać z GEO-Auditor bez zakładania konta?",
+    a: "Tak — pierwsze 5 analiz Signal Audit dostępnych jest bez rejestracji. Konto jest wymagane do zapisu historii wyników, Pulse Monitor i Signal Rewrite.",
   },
   {
-    q: "Jak szybko zobaczę wyniki?",
-    a: "Audyt techniczny i Content Intelligence są gotowe w 30–60 sekund. Analiza widoczności AI (sprawdzanie cytowań w ChatGPT, Gemini, Google AI) trwa 2–5 minut, bo odpytujemy rzeczywiste silniki AI.",
+    q: "Ile czasu zajmuje pełna analiza?",
+    a: "Signal Audit i Content Intelligence są gotowe w 30–60 sekund. Citation Intelligence — weryfikacja cytowań w ChatGPT, Gemini i Google AI — trwa 2–5 minut, ponieważ odpytujemy rzeczywiste silniki AI w czasie rzeczywistym.",
   },
 ];

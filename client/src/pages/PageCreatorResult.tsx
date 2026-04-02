@@ -190,7 +190,7 @@ export default function PageCreatorResult() {
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Nie znaleziono wyników</h2>
           <Button onClick={() => navigate("/page-creator")} variant="outline" className="border-zinc-700 text-zinc-300">
-            Wróć do kreatora
+              Wróć do Signal Rewrite
           </Button>
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function PageCreatorResult() {
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground mb-0.5 font-medium uppercase tracking-wide">AI Page Creator</p>
+                <p className="text-[10px] text-muted-foreground mb-0.5 font-medium uppercase tracking-wide">Signal Rewrite</p>
                 <h1 className="text-foreground font-semibold text-sm truncate">{result.pageTitle}</h1>
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function PageCreatorResult() {
                 className="text-xs h-8 shadow-md shadow-primary/20"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Audytuj tę stronę
+                Uruchom Signal Audit
               </Button>
             </div>
           </div>
@@ -659,8 +659,8 @@ export default function PageCreatorResult() {
           <div className="flex items-center gap-3 mb-4">
             <Sparkles className="w-8 h-8 text-violet-400 shrink-0" />
             <div>
-              <h3 className="text-xl font-bold text-white">Gotowe! Zamknij pętlę optymalizacji</h3>
-              <p className="text-zinc-400 text-sm mt-0.5">Wdróż treść, a następnie audytuj i monitoruj stronę w AI Search.</p>
+              <h3 className="text-xl font-bold text-white">Treść gotowa. Zamknij pętlę sygnałów.</h3>
+              <p className="text-zinc-400 text-sm mt-0.5">Wdroż treść, uruchom Signal Audit i dodaj stronę do Pulse Monitor.</p>
             </div>
           </div>
           {/* Workflow steps */}
@@ -669,22 +669,22 @@ export default function PageCreatorResult() {
               <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               </div>
-              <div className="text-xs font-semibold text-white">Krok 1: Treść</div>
-              <div className="text-[11px] text-zinc-500 mt-1">Wdroż wygenerow. treść na stronie</div>
+              <div className="text-xs font-semibold text-white">01 · Wdrożenie</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Wdroż wygenerowane sygnały na stronie</div>
             </div>
             <div className="bg-zinc-900/60 border border-violet-500/20 rounded-xl p-4 text-center">
               <div className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center mx-auto mb-2">
                 <Search className="w-4 h-4 text-violet-400" />
               </div>
-              <div className="text-xs font-semibold text-white">Krok 2: Audyt</div>
-              <div className="text-[11px] text-zinc-500 mt-1">Sprawdź AI-Readiness Score</div>
+              <div className="text-xs font-semibold text-white">02 · Signal Audit</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Sprawdź AI Readiness Score po wdrożeniu</div>
             </div>
             <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-center">
               <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mx-auto mb-2">
                 <Globe className="w-4 h-4 text-blue-400" />
               </div>
-              <div className="text-xs font-semibold text-white">Krok 3: Monitoring</div>
-              <div className="text-[11px] text-zinc-500 mt-1">Śledź widoczność w AI Search</div>
+              <div className="text-xs font-semibold text-white">03 · Pulse Monitor</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Śledź cytowania w ChatGPT, Gemini, Perplexity</div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -699,7 +699,7 @@ export default function PageCreatorResult() {
               className="bg-violet-600 hover:bg-violet-500 text-white px-6 flex-1 sm:flex-none"
             >
               <Search className="w-4 h-4 mr-2" />
-              {extractedUrl ? "Audytuj tę stronę" : "Audytuj URL po wdrożeniu"}
+              {extractedUrl ? "Uruchom Signal Audit" : "Signal Audit po wdrożeniu"}
             </Button>
             {extractedUrl && (
               <Button
@@ -708,7 +708,7 @@ export default function PageCreatorResult() {
                 className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6 flex-1 sm:flex-none"
               >
                 <Globe className="w-4 h-4 mr-2" />
-                Dodaj do monitoringu
+                Dodaj do Pulse Monitor
               </Button>
             )}
             <Button
@@ -717,7 +717,7 @@ export default function PageCreatorResult() {
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6 flex-1 sm:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Nowa strona
+              Nowy Signal Rewrite
             </Button>
           </div>
         </div>

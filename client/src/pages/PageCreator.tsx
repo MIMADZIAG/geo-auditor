@@ -339,9 +339,9 @@ export default function PageCreator() {
                     </p>
                     {isCurrent && (
                       <p className="text-xs text-zinc-500 mt-0.5">
-                        {stage.key === "researching" && "Scrapuję najlepsze materiały w sieci..."}
-                        {stage.key === "generating" && "Generuję treść, nagłówki, FAQ i specyfikację techniczną..."}
-                        {stage.key === "pending" && "Inicjalizacja pipeline'u..."}
+                        {stage.key === "researching" && "Analizuję sygnały i zbieraję dane referencyjne…"}
+                        {stage.key === "generating" && "Generuję strukturę H1–H3, FAQ, schema.org i specyfikację techniczną…"}
+                        {stage.key === "pending" && "Inicjalizacja Signal Rewrite…"}
                       </p>
                     )}
                   </div>
@@ -368,14 +368,13 @@ export default function PageCreator() {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-2 mb-6">
               <Sparkles className="w-4 h-4 text-violet-400" />
-              <span className="text-violet-300 text-sm font-medium">AI Page Creator — krok 1 z 2</span>
+              <span className="text-violet-300 text-sm font-medium">Signal Rewrite — krok 1 z 2</span>
             </div>
             <h1 className="text-4xl font-bold text-white mb-4">
-              Jaki typ podstrony chcesz stworzyć?
+              Który typ podstrony optymalizujesz?
             </h1>
             <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
-              Wybierz typ strony, a AI dopasuje strukturę, treść i wytyczne techniczne,
-              żeby zmaksymalizować widoczność w Google AI Overviews, ChatGPT i Perplexity.
+              Signal Rewrite dopasowuje strukturę, nagłówki, FAQ i schema.org do wymagań konkretnego typu strony — tak, żeby ChatGPT, Gemini i Google AI Overviews cytowały ją z nazwy.
             </p>
           </div>
 
@@ -427,8 +426,7 @@ export default function PageCreator() {
                   </span>
                 </p>
                 <p className="text-zinc-500 text-xs">
-                  AI dopasuje strukturę nagłówków, schemat FAQ, schema.org i wytyczne techniczne
-                  specyficzne dla tego typu strony.
+                  Signal Rewrite generuje strukturę H1–H3, schemat FAQ, schema.org i wytyczne techniczne specyficzne dla tego typu podstrony.
                 </p>
               </div>
             </div>
@@ -440,7 +438,7 @@ export default function PageCreator() {
               disabled={!selectedType}
               className="bg-violet-600 hover:bg-violet-500 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-40"
             >
-              Dalej — Opisz temat
+              Dalej — Szczegóły
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -488,7 +486,7 @@ export default function PageCreator() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-2 mb-6">
             <Sparkles className="w-4 h-4 text-violet-400" />
-            <span className="text-violet-300 text-sm font-medium">AI Page Creator — krok 2 z 2</span>
+              <span className="text-violet-300 text-sm font-medium">Signal Rewrite — krok 2 z 2</span>
           </div>
           <div className="flex items-center justify-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400">
@@ -496,7 +494,7 @@ export default function PageCreator() {
             </div>
             <span className="text-zinc-400 text-sm">{selectedTypeInfo?.label}</span>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">Opisz swoją stronę</h1>
+          <h1 className="text-3xl font-bold text-white mb-3">Dane do analizy</h1>
           <p className="text-zinc-400">
             Im więcej szczegółów podasz, tym lepsza i bardziej trafna będzie wygenerowana treść.
             AI wykorzysta te informacje do stworzenia strony klasy premium.
@@ -579,13 +577,13 @@ export default function PageCreator() {
               {/* Auto-filled audit context — read-only, collapsible */}
               <div>
                 <Label className="text-zinc-200 font-semibold mb-2 block">
-                  Dane z audytu
+                  Dane z Signal Audit
                   <span className="text-emerald-400 font-normal ml-2 text-xs">✔ Auto-wypełnione</span>
                 </Label>
                 <div className="bg-zinc-900/60 border border-emerald-500/20 rounded-xl p-4 text-zinc-400 text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
                   {additionalContext || "Brak danych z audytu"}
                 </div>
-                <p className="text-zinc-600 text-xs mt-1.5">Wnioski z analizy Content Intelligence — AI użyje ich jako kontekst aktualizacji.</p>
+                <p className="text-zinc-600 text-xs mt-1.5">Wyniki Content Intelligence z Signal Audit — Signal Rewrite użyje ich jako kontekst optymalizacji.</p>
               </div>
               {/* User additional instructions */}
               <div>
@@ -650,10 +648,9 @@ export default function PageCreator() {
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex gap-3">
             <Zap className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-amber-300 text-sm font-medium mb-1">Wskazówka AI</p>
+              <p className="text-amber-300 text-sm font-medium mb-1">Sygnał AI</p>
               <p className="text-amber-400/70 text-xs">
-                {selectedTypeInfo?.aiTip}. AI przebada internet w poszukiwaniu najlepszych materiałów,
-                wygeneruje zapytania badawcze i stworzy treść zoptymalizowaną pod cytowania przez modele AI.
+                {selectedTypeInfo?.aiTip}. Signal Rewrite analizuje sygnały z Signal Audit, dobiera schemat danych strukturalnych i generuje treść zoptymalizowaną pod cytowania przez ChatGPT, Gemini i Google AI Overviews.
               </p>
             </div>
           </div>
@@ -682,12 +679,12 @@ export default function PageCreator() {
             ) : isRewriteMode ? (
               <>
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Aktualizuj treść AI
+                Uruchom Signal Rewrite
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Stwórz stronę AI
+                Wygeneruj stronę
               </>
             )}
           </Button>

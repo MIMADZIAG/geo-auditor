@@ -400,7 +400,7 @@ function EmptyState({ plan }: { plan: string }) {
       <h3 className="text-lg font-semibold mb-2">Brak monitorowanych stron</h3>
       <p className="text-sm text-muted-foreground max-w-sm mb-6">
         {isFree
-          ? "Monitoring wymaga planu Starter lub wyższego. Dodaj stronę do monitoringu i śledź jej widoczność w AI Search."
+          ? "Pulse Monitor wymaga planu Starter lub wyższego. Dodaj stronę do Pulse Monitor i śledź cytowania w AI Search."
           : "Dodaj pierwszą stronę do monitoringu, aby śledzić jej widoczność w ChatGPT, Perplexity, Google AI i Gemini."}
       </p>
       {isFree ? (
@@ -412,7 +412,7 @@ function EmptyState({ plan }: { plan: string }) {
       ) : (
         <Link href="/dashboard">
           <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
-            <Target className="w-4 h-4" /> Dodaj stronę w Dashboard
+            <Target className="w-4 h-4" /> Dodaj stronę w Command Center
           </Button>
         </Link>
       )}
@@ -496,7 +496,7 @@ export default function CitationPulse() {
               <div className="flex items-center gap-2">
                 <Link href="/dashboard">
                   <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground hover:text-foreground">
-                    Dashboard
+                    Command Center
                   </Button>
                 </Link>
               </div>
@@ -512,7 +512,7 @@ export default function CitationPulse() {
               Citation Pulse
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Śledź widoczność każdej podstrony w ChatGPT, Perplexity, Google AI i Gemini — per fraza, per silnik.
+              Weryfikacja cytowań każdej monitorowanej podstrony w ChatGPT, Perplexity, Google AI i Gemini — per fraza, per silnik.
             </p>
           </div>
 
@@ -521,7 +521,7 @@ export default function CitationPulse() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-2xl font-bold text-foreground tabular-nums">{pages.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Monitorowanych stron</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Stron w Pulse Monitor</p>
               </div>
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-400 tabular-nums">{citedPages.length}</p>
@@ -570,7 +570,7 @@ export default function CitationPulse() {
           ) : !isEligible ? (
             <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-8 text-center">
               <Lock className="w-8 h-8 text-violet-400 mx-auto mb-3" />
-              <h3 className="text-base font-semibold mb-1">Monitoring wymaga planu Starter</h3>
+              <h3 className="text-base font-semibold mb-1">Pulse Monitor wymaga planu Starter</h3>
               <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
                 Śledź widoczność swoich stron w AI Search co tydzień. Pierwszy krok do dominacji w AI Search.
               </p>

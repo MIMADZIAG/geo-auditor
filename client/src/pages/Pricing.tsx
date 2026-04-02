@@ -16,43 +16,43 @@ const plans = [
     id: "free",
     name: "Free",
     price: { monthly: 0, yearly: 0 },
-    description: "Spróbuj teraz — bez karty kredytowej.",
-    cta: "Zacznij za darmo",
+    description: "Pełny Signal Audit. Bez konta, bez karty.",
+    cta: "Sprawdź sygnał",
     highlight: false,
     badge: null,
     features: [
-      "5 audytów miesięcznie",
-      "40+ testów widoczności AI",
-      "Lista krytycznych problemów z poprawkami",
+      "5 analiz Signal Audit / mies.",
+      "40+ sprawdzeń technicznych i contentowych",
+      "AI Readiness Score 0–100",
       "Content Intelligence (Citeability Score)",
       "Udostępnialny raport diagnostyczny",
     ],
     missing: [
-      "Rekomendacje AI",
-      "Monitoring stron i alerty",
+      "Signal Rewrite",
+      "Pulse Monitor i alerty",
       "Eksport PDF",
-      "Historia i śledzenie postępów",
+      "Historia AI Readiness Score",
     ],
   },
   {
     id: "starter",
     name: "Starter",
     price: { monthly: 39, yearly: 29 },
-    description: "Dla freelancerów, bloggerów i małych sklepów.",
+    description: "Dla właścicieli sklepów i content managerów.",
     cta: "Zacznij 7-dniowy trial",
     highlight: true,
     badge: "Najpopularniejszy",
     features: [
-      "50 audytów miesięcznie",
+      "50 analiz Signal Audit / mies.",
       "Wszystko z Free",
-      "Rekomendacje naprawcze AI",
-      "Monitoring 10 stron (re-audyt co tydzień)",
-      "Historia wyników i śledzenie postępów",
+      "Signal Rewrite — 10 przepisań/mies.",
+      "Pulse Monitor — 10 stron (re-audyt co 7 dni)",
+      "Historia AI Readiness Score",
       "Eksport PDF",
       "Alerty email przy spadku wyniku",
     ],
     missing: [
-      "Analiza konkurencji",
+      "Citation Intelligence Pro (3 konkurenci)",
       "Raporty white-label",
       "Dostęp do API",
     ],
@@ -61,16 +61,16 @@ const plans = [
     id: "pro",
     name: "Pro",
     price: { monthly: 129, yearly: 99 },
-    description: "Dla specjalistów SEO i rosnącego e-commerce.",
+    description: "Dla specjalistów SEO i e-commerce z rosnącą skalą.",
     cta: "Zacznij 7-dniowy trial",
     highlight: false,
     badge: null,
     features: [
-      "200 audytów miesięcznie",
+      "200 analiz Signal Audit / mies.",
       "Wszystko ze Starter",
-      "Monitoring 50 stron",
-      "Analiza konkurencji (3 rywali)",
-      "Zaawansowane rekomendacje contentowe",
+      "Pulse Monitor — 50 stron",
+      "Citation Intelligence Pro — 3 konkurenci",
+      "Signal Rewrite bez limitu",
       "Wsparcie priorytetowe",
     ],
     missing: [
@@ -82,14 +82,14 @@ const plans = [
     id: "agency",
     name: "Agency",
     price: { monthly: 349, yearly: 299 },
-    description: "Dla agencji i teamów enterprise.",
+    description: "Dla agencji SEO i teamów enterprise.",
     cta: "Skontaktuj się",
     highlight: false,
     badge: null,
     features: [
-      "Nieograniczone audyty",
+      "Nielimitowane analizy Signal Audit",
       "Wszystko z Pro",
-      "Monitoring nieograniczonej liczby stron",
+      "Pulse Monitor — bez limitu stron",
       "Raporty PDF white-label",
       "Dostęp do REST API",
       "Integracja Shopify / WooCommerce",
@@ -101,24 +101,24 @@ const plans = [
 
 const faqs = [
   {
-    q: "Czym jest widoczność w AI Search?",
-    a: "Widoczność w AI Search mierzy, jak bardzo prawdopodobne jest, że Twoja strona zostanie zacytowana lub przywołana przez asystentów AI, takich jak ChatGPT, Perplexity, Google AI Overviews czy Claude, gdy użytkownicy zadają pytania związane z Twoją treścią.",
+    q: "Czym jest AI Readiness Score?",
+    a: "AI Readiness Score (0–100) to wynik Signal Audit — agregat 40+ sprawdzeń technicznych i contentowych, które decydują o tym, czy ChatGPT, Gemini, Perplexity i Google AI Overviews cytują daną podstronę. Im wyższy score, tym wyższa szansa na cytowanie.",
   },
   {
-    q: "Czym GEO-Auditor różni się od zwykłych narzędzi SEO?",
-    a: "Tradycyjne narzędzia SEO skupiają się na algorytmie rankingowym Google. GEO-Auditor diagnozuje konkretnie, dlaczego crawlery AI mogą pomijać Twoją stronę i co uniemożliwia cytowanie Twojej treści w odpowiedziach generowanych przez AI.",
+    q: "Czym GEO-Auditor różni się od Semrush czy Ahrefs?",
+    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search. GEO-Auditor analizuje wyłącznie sygnały AI Search na poziomie konkretnej podstrony — nie domeny. To różne metryki, różne algorytmy, różne rekomendacje.",
   },
   {
     q: "Czy mogę anulować w dowolnym momencie?",
-    a: "Tak. Wszystkie płatne plany są miesięczne (lub roczne z rabatem). Możesz anulować w dowolnym momencie z poziomu dashboardu — bez zbędnych pytań.",
+    a: "Tak. Wszystkie płatne plany są miesięczne lub roczne z rabatem 25%. Anulujesz w dowolnym momencie z poziomu Command Center — bez formularzy, bez czekania.",
   },
   {
-    q: "Czy oferujecie darmowy okres próbny?",
-    a: "Tak — plany Starter i Pro zawierają 7-dniowy darmowy trial. Karta kredytowa nie jest wymagana na początku.",
+    q: "Czy Starter i Pro mają trial?",
+    a: "Tak — 7 dni bez karty kredytowej. Po upływie trialu przechodzą na wybrany plan lub wracasz do Free.",
   },
   {
-    q: "Czy plan darmowy ma jakieś limity?",
-    a: "Plan darmowy pozwala na 5 audytów miesięcznie bez limitu czasowego. Możesz korzystać z niego bezterminowo.",
+    q: "Ile analiz Signal Audit zawiera plan Free?",
+    a: "5 pełnych analiz Signal Audit miesięcznie bez limitu czasowego. Możesz korzystać z Free bezterminowo — bez karty, bez rejestracji.",
   },
 ];
 
@@ -187,10 +187,11 @@ export default function Pricing() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-black mb-4 leading-tight">
-            Przestań być niewidoczny dla AI Search
+            AI Search cytuje Twoją stronę.<br />
+            <span className="gradient-text">Lub nie.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-            Zacznij za darmo. Przejdź na wyższy plan, gdy będziesz gotowy monitorować, śledzić postępy i korzystać z rekomendacji AI.
+            Zacznij od bezpłatnego Signal Audit. Skaluj do Pulse Monitor i Citation Intelligence gdy wyniki rosną.
           </p>
 
           {/* Billing toggle */}
@@ -271,7 +272,7 @@ export default function Pricing() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-black text-center mb-8">Najczęściej zadawane pytania</h2>
+          <h2 className="text-2xl font-black text-center mb-8">Pytania</h2>
           <div className="space-y-3">
             {faqs.map((faq, i) => (
               <div key={i} className="rounded-xl border border-border/50 bg-card overflow-hidden">
@@ -294,10 +295,10 @@ export default function Pricing() {
 
         {/* Bottom CTA */}
         <div className="text-center mt-16">
-          <h3 className="text-2xl font-black mb-3">Gotowy, żeby znaleźć swoje problemy?</h3>
-          <p className="text-sm text-muted-foreground mb-6">Zacznij od darmowej diagnostyki — bez karty kredytowej, bez rejestracji.</p>
+          <h3 className="text-2xl font-black mb-3">Jeden URL. 60 sekund. Pełna diagnostyka.</h3>
+          <p className="text-sm text-muted-foreground mb-6">Bez konta, bez karty. Pierwsze 5 analiz Signal Audit bezpłatnie.</p>
           <Button onClick={() => navigate("/")} className="gap-2 text-base px-8 py-3 h-auto">
-            <Zap className="w-4 h-4" /> Zdiagnozuj swoją stronę za darmo
+            <Zap className="w-4 h-4" /> Sprawdź sygnał swojej strony
           </Button>
         </div>
       </div>

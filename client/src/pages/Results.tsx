@@ -499,7 +499,7 @@ export default function Results() {
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8 px-2">
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Nowy audyt</span>
+                <span className="hidden sm:inline">Nowa analiza</span>
               </Button>
               <div className="h-4 w-px bg-border/50" />
               <div className="flex items-center gap-2">
@@ -528,10 +528,10 @@ export default function Results() {
                 </Button>
               </a>
               {isAuthenticated ? (
-                <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Dashboard</span>
-                </Button>
+                  <span className="hidden sm:inline">Command Center</span>
+              </Button>
               ) : (
                 <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 shadow-md shadow-primary/20">
                   <LogIn className="w-3.5 h-3.5" /> Zaloguj
@@ -555,7 +555,7 @@ export default function Results() {
                     }`}
                   >
                     <Shield className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">01 · Audyt</span>
+                    <span className="hidden sm:inline">01 · Signal Audit</span>
                     <span className="sm:hidden">Audyt</span>
                   </button>
                   <button
@@ -567,8 +567,8 @@ export default function Results() {
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">02 · Widoczność</span>
-                    <span className="sm:hidden">Widoczność</span>
+                    <span className="hidden sm:inline">02 · Citation Intelligence</span>
+                    <span className="sm:hidden">Cytowania</span>
                     {citationStatus === "running" && (
                       <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                     )}
@@ -590,8 +590,8 @@ export default function Results() {
                     }`}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">03 · Treść AI</span>
-                    <span className="sm:hidden">Treść</span>
+                    <span className="hidden sm:inline">03 · Signal Rewrite</span>
+                    <span className="sm:hidden">Rewrite</span>
                   </button>
                 </div>
 
@@ -610,7 +610,7 @@ export default function Results() {
                       className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
                     >
                       <Eye className="w-3 h-3" />
-                      <span>Widoczność</span>
+                      <span>Cytowania</span>
                     </button>
                   )}
                   {citationStatus === "running" && (
@@ -643,7 +643,7 @@ export default function Results() {
         </div>
       </header>
 
-      {/* ── Tab 1: Optymalizacja ── */}
+      {/* ── Tab 1: Signal Audit ── */}
       {activeTab === "optimization" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
@@ -729,7 +729,7 @@ export default function Results() {
         </main>
       )}
 
-      {/* ── Tab 3: Treść AI ── */}
+      {/* ── Tab 3: Signal Rewrite ── */}
       {activeTab === "content" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
@@ -745,7 +745,7 @@ export default function Results() {
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">AI-Powered</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Fundament: wyniki audytu (Krok 1) + analiza widoczności i cytowani konkurenci (Krok 2) — wszystko wczytane jako kontekst. AI przepisze Twoją stronę tak, żeby była cytowana.
+                  Signal Rewrite łączy dane z Signal Audit i cytowanych URL-i z Citation Intelligence. Generuje nową wersję treści zoptymalizowaną pod sygnały AI Search — gotową do wdrożenia.
                 </p>
                 <div className="flex items-center gap-4 mt-2">
                   <div className="flex items-center gap-1.5 text-xs">
@@ -799,18 +799,18 @@ export default function Results() {
               <Eye className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">Sprawdź widoczność po wdrożeniu</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Po opublikowaniu zmian wróć do zakładki Widoczność AI i uruchom nową analizę cytowań.</div>
+              <div className="text-sm font-semibold">Zweryfikuj cytowania po wdrożeniu</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Po opublikowaniu zmian wróć do Citation Intelligence i uruchom nową weryfikację cytowań.</div>
             </div>
-            <Button size="sm" onClick={() => handleSwitchToVisibility(true)} variant="outline" className="gap-1.5 text-xs shrink-0">
-              <Eye className="w-3 h-3" /> Widoczność AI
+            <Button onClick={() => handleSwitchToVisibility(true)} variant="outline" className="gap-1.5 text-xs shrink-0">
+              <Eye className="w-3 h-3" /> Citation Intelligence
             </Button>
           </div>
 
         </main>
       )}
 
-      {/* ── Tab 2: Widoczność AI ── */}
+      {/* ── Tab 2: Citation Intelligence ── */}
       {activeTab === "visibility" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
@@ -854,7 +854,7 @@ export default function Results() {
                   <Eye className="w-4 h-4 text-violet-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold">Śledź widoczność tej strony w czasie</div>
+                  <div className="text-sm font-semibold">Monitoruj cytowania tej strony w czasie</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     Dodaj tę stronę do monitoringu, aby automatycznie sprawdzać czy ChatGPT, Google AI, Perplexity i Gemini Cię cytują — i otrzymywać alerty o zmianach.
                   </div>
@@ -880,14 +880,14 @@ export default function Results() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold">Przepisz treść z uwzględnieniem tych danych</div>
-              <div className="text-xs text-muted-foreground mt-0.5">AI Content Creator wykorzysta wyniki audytu, frazy z monitoringu i dane o cytowanych konkurentach, aby stworzyć treść gotową do cytowania.</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Signal Rewrite użyje danych z Signal Audit, fraz z Pulse Monitor i wzorców cytowanych URL-i, aby wygenerować nową wersję treści.</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs">
-                <Shield className="w-3 h-3" /> Optymalizacja
+                <Shield className="w-3 h-3" /> Signal Audit
               </Button>
               <Button size="sm" onClick={() => setActiveTab("content")} className="gap-1.5 text-xs bg-primary hover:bg-primary/90">
-                <Sparkles className="w-3 h-3" /> Treść AI
+                <Sparkles className="w-3 h-3" /> Signal Rewrite
               </Button>
             </div>
           </div>
@@ -1367,7 +1367,7 @@ function ContentIntelligencePanel({
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-amber-300 font-medium">Analiza AI chwilowo niedostępna</p>
-              <p className="text-xs text-muted-foreground mt-1">Serwer AI był przeciążony podczas tego audytu. Uruchom audyt ponownie, aby uzyskać pełną analizę Content Intelligence.</p>
+              <p className="text-xs text-muted-foreground mt-1">Serwer AI był przeciążony podczas tej analizy. Uruchom Signal Audit ponownie, aby uzyskać pełną analizę Content Intelligence.</p>
             </div>
           </div>
         </div>
@@ -1999,7 +1999,7 @@ function SharePanel({ score, onShare, reportUrl }: { score: number; onShare: (p:
             <Share2 className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-semibold">Udostępnij swój AI Visibility Score</div>
+            <div className="text-sm font-semibold">Udostępnij swój AI Readiness Score</div>
             <div className="text-xs text-muted-foreground">Pokaż zespołowi lub klientom jak Twoja strona wypada w AI Search</div>
           </div>
         </div>
@@ -2071,7 +2071,7 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
     <div className="rounded-2xl bg-gradient-to-br from-primary/8 via-violet-500/4 to-background border border-primary/20 p-6">
       <div className="text-center mb-6">
         <h3 className="text-lg font-bold mb-1">Gotowy, żeby naprawić te problemy — na stałe?</h3>
-        <p className="text-sm text-muted-foreground">Jednorazowe audyty wykrywają problemy. Monitoring utrzymuje Cię o krok przed zmianami AI Search.</p>
+        <p className="text-sm text-muted-foreground">Jednorazowy Signal Audit wykrywa blokady. Pulse Monitor pilnuje, żeby nikt Cię nie wyprzedził.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {plans.map((plan) => (
@@ -2253,8 +2253,8 @@ function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-white">✨ AI Content Co-Pilot</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">Full Rewrite AI</span>
+                <span className="text-sm font-bold text-white">✨ Signal Rewrite</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">Pro</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
                 <Lock className="w-3 h-3" /> Starter+
               </span>
@@ -2515,7 +2515,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
             <div className="flex flex-col items-center gap-4 py-10">
               <p className="text-sm text-zinc-400">Kliknij, aby pobrać treść strony i przygotować rewrite</p>
               <Button onClick={handleAnalyze} className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
-                <Sparkles className="w-4 h-4" /> Pobierz treść strony
+                <Sparkles className="w-4 h-4" /> Wczytaj treść strony
               </Button>
             </div>
           )}
@@ -2680,7 +2680,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
                   {isRewriting ? (
                     <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generowanie...(30–60 sek)</>
                   ) : (
-                    <><Sparkles className="w-3.5 h-3.5" /> {rewrittenText ? "Przepisz ponownie" : "Uruchom Full Rewrite AI"}</>
+                    <><Sparkles className="w-3.5 h-3.5" /> {rewrittenText ? "Generuj ponownie" : "Uruchom Signal Rewrite"}</>
                   )}
                 </Button>
                 {rewrittenText && (
@@ -2791,7 +2791,7 @@ function LoadingState() {
           </div>
           <div className="text-center">
             <h2 className="text-xl font-bold">Analizuję Twoją stronę</h2>
-            <p className="text-xs text-muted-foreground mt-1">Audyt AI Search w toku…</p>
+            <p className="text-xs text-muted-foreground mt-1">Signal Audit w toku…</p>
           </div>
         </div>
 
@@ -3354,7 +3354,7 @@ export function PhraseCitationComparisonTable({ auditId, citationStatus }: { aud
                     {notCited.length} {notCited.length === 1 ? "fraza bez cytowania" : "frazy bez cytowania"} — konkurenci są widoczni
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Przejdź do zakładki Treść AI, aby przepisać stronę z uwzględnieniem tych fraz i kontekstu cytowanych konkurentów.
+                    Przejdź do Signal Rewrite, aby wygenerować nową wersję treści z uwzględnieniem tych fraz i wzorców cytowanych URL-i.
                   </div>
                 </div>
               </div>
