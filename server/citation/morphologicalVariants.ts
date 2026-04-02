@@ -19,6 +19,7 @@
  */
 
 import { invokeLLM } from "../_core/llm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ Return ONLY a JSON object: { "variants": ["variant1", "variant2", "variant3"] }`
     const text = result.choices[0]?.message?.content;
     if (!text) return [];
 
-    const parsed = JSON.parse(typeof text === "string" ? text : JSON.stringify(text));
+    const parsed = safeParseLLMJson(typeof text === "string" ? text : JSON.stringify(text));
     return Array.isArray(parsed.variants)
       ? parsed.variants
           .filter((v: unknown) => typeof v === "string" && v.trim().length > 3 && v.trim() !== query)

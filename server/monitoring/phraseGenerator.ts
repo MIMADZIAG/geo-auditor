@@ -22,6 +22,7 @@ import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
 import { audits } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -222,7 +223,7 @@ Zwróć dokładnie ${maxPhrases} fraz (lub mniej jeśli treść strony jest zbyt
     const text = result.choices[0]?.message?.content;
     if (!text) throw new Error("Empty LLM response");
 
-    const parsed = JSON.parse(typeof text === "string" ? text : JSON.stringify(text));
+    const parsed = safeParseLLMJson(typeof text === "string" ? text : JSON.stringify(text));
     const rawPhrases = Array.isArray(parsed.phrases) ? parsed.phrases : [];
 
     const phrases: GeneratedPhrase[] = rawPhrases

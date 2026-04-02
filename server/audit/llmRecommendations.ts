@@ -1,4 +1,5 @@
 import { invokeLLM, type Message } from "../_core/llm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 import type { AuditFindings, AuditCheck } from "./types";
 import type { ScrapedPage } from "./scraper";
 
@@ -300,7 +301,7 @@ The code must be immediately usable — fill in real values based on the page ti
   if (!rawContent) {
     throw new Error("LLM returned empty response");
   }
-  const parsed = JSON.parse(rawContent as string) as {
+  const parsed = safeParseLLMJson<{
     aiInsight: string;
     topPriority: string;
     scoreGain: number;
@@ -318,7 +319,7 @@ The code must be immediately usable — fill in real values based on the page ti
       codeSnippetLabel: string;
       codeSnippetCode: string;
     }>;
-  };
+  }>(rawContent as string, { aiInsight: "", topPriority: "", scoreGain: 0, difficulty: "medium", recommendations: [] });
 
   const recommendations: LLMRecommendation[] = parsed.recommendations.map((rec) => ({
     id: `llm_${rec.id}`,

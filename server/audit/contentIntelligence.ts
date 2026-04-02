@@ -11,6 +11,7 @@
  */
 
 import { invokeLLM } from "../_core/llm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 import type { ScrapedPage } from "./scraper";
 import type { PageType } from "./pageTypeDetector";
 import type { CheckStatus } from "./types";
@@ -684,7 +685,7 @@ Return ONLY valid JSON matching this exact schema (8 dimensions):
   const rawContent = response.choices?.[0]?.message?.content;
   if (!rawContent) throw new Error("LLM returned empty content for Content Intelligence");
 
-  const analysis: LLMContentAnalysis = JSON.parse(rawContent as string);
+  const analysis: LLMContentAnalysis = safeParseLLMJson<LLMContentAnalysis>(rawContent as string, {} as LLMContentAnalysis);
 
   // ── Post-generation language validation ───────────────────────────────────
   // Validate that key string arrays are in the expected language.

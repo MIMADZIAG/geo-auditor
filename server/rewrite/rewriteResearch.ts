@@ -12,6 +12,7 @@
  */
 
 import { invokeLLM } from "../_core/llm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ export async function generateRewriteQueries(meta: PageMetadata): Promise<string
     } as any);
 
     const raw = response.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+    const parsed = safeParseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw));
     return Array.isArray(parsed.queries) ? parsed.queries.slice(0, 8) : [];
   } catch (e) {
     console.warn("[RewriteResearch] Query fan-out failed:", (e as Error).message);
@@ -253,7 +254,7 @@ export async function synthesizeRewriteResearch(
     } as any);
 
     const raw = response.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+    const parsed = safeParseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw));
 
     return {
       researchBrief: String(parsed.researchBrief ?? ""),

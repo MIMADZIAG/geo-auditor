@@ -11,6 +11,7 @@
 
 import { invokeLLM } from "../_core/llm";
 import { normalizePageCreatorResult } from "../utils/textNormalization";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ export async function generateQueryFanOut(brief: PageCreatorBrief): Promise<stri
   } as any);
 
   const raw = response.choices[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+  const parsed = safeParseLLMJson<{ queries?: string[] }>(raw, { queries: [] });
   return Array.isArray(parsed.queries) ? parsed.queries.slice(0, 10) : [];
 }
 
@@ -414,7 +415,17 @@ export async function generatePageBlueprint(
   } as any);
 
   const raw = response.choices[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+  const parsed = safeParseLLMJson<{
+    pageTitle?: string;
+    answerFirstParagraph?: string;
+    sections?: PageSection[];
+    faq?: FAQItem[];
+    callToAction?: string;
+    keyEntities?: string[];
+    aiReadinessTips?: string[];
+    aiReadinessScore?: number;
+    estimatedWordCount?: number;
+  }>(raw, {});
 
   // ─── Step 5: Technical Spec Generation ────────────────────────────────────
   const techSpec = await generateTechnicalSpec(brief, parsed, primaryQuery, lang);
@@ -514,7 +525,19 @@ async function generateTechnicalSpec(
   } as any);
 
   const raw = response.choices[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+  const parsed = safeParseLLMJson<{
+    metaTitle?: string;
+    metaDescription?: string;
+    ogTitle?: string;
+    ogDescription?: string;
+    ogType?: string;
+    canonicalUrl?: string;
+    robotsDirective?: string;
+    internalLinkingSuggestions?: string[];
+    wordCountTarget?: number;
+    readabilityTarget?: string;
+    schemaOrgJsonLd?: string;
+  }>(raw, {});
 
   return {
     metaTitle: parsed.metaTitle || pageTitle.slice(0, 60),

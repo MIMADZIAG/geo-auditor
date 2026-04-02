@@ -1,3 +1,4 @@
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 /**
  * Hallucination Guard — post-generation validator
  *
@@ -121,10 +122,10 @@ async function verifyWithLLM(
 
   try {
     const raw = result.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+    const parsed = safeParseLLMJson<{ issues?: unknown[]; findings?: unknown[] } | unknown[]>(typeof raw === "string" ? raw : JSON.stringify(raw), []);
     // Handle both {issues: [...]} and direct array
-    const arr = Array.isArray(parsed) ? parsed : (parsed.issues ?? parsed.findings ?? []);
-    return arr.filter((i: any) => i.type && i.excerpt).slice(0, 10);
+    const arr = Array.isArray(parsed) ? parsed : ((parsed as { issues?: unknown[]; findings?: unknown[] }).issues ?? (parsed as { issues?: unknown[]; findings?: unknown[] }).findings ?? []);
+    return (arr as HallucinationIssue[]).filter((i) => i.type && i.excerpt).slice(0, 10);
   } catch {
     return [];
   }

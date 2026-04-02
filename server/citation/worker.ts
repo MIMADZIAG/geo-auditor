@@ -28,6 +28,7 @@ import { expandQueriesWithVariants } from "./morphologicalVariants";
 import { getQueriesForUrl, type CachedQueryMap } from "./db";
 import { runCompetitorAudits, extractTopCompetitorUrls } from "../competitor/engine";
 import { insertCompetitorAudit, getCompetitorAuditsForAudit, competitorAuditsExist } from "../competitor/db";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -353,7 +354,7 @@ Return ONLY a JSON object: { "queries": ["query1", "query2", "query3", "query4",
     const text = result.choices[0]?.message?.content;
     if (!text) return buildFallbackQueries(content, url, round, engine);
 
-    const parsed = JSON.parse(typeof text === "string" ? text : JSON.stringify(text));
+    const parsed = safeParseLLMJson(typeof text === "string" ? text : JSON.stringify(text));
     const queries: string[] = Array.isArray(parsed.queries)
       ? parsed.queries
           .filter((q: unknown) => typeof q === "string" && q.trim().length > 3)

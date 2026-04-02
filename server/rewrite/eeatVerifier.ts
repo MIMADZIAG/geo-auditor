@@ -10,6 +10,7 @@
  */
 
 import type { Message } from "../_core/llm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 export interface EEATScore {
   verifiableFacts: number;      // 1-10: contains specific, checkable facts
@@ -71,7 +72,7 @@ async function evaluateEEAT(
     } as any);
 
   const raw = result.choices[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+  const parsed = safeParseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw));
 
   const vf = Number(parsed.verifiableFacts) || 7;
   const ev = Number(parsed.expertVoice) || 7;

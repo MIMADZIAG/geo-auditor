@@ -30,6 +30,7 @@ import { eq } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import type { AuditFindings } from "../audit/types";
 import type { CompetitorAudit } from "../../drizzle/schema";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -420,13 +421,21 @@ Rules:
     const content = response?.choices?.[0]?.message?.content;
     if (!content) return null;
 
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    const parsed = safeParseLLMJson<{
+      queryIntent?: string;
+      responseType?: string;
+      winningFragment?: string;
+      whyCompetitorWon?: string;
+      contentBrief?: string;
+      estimatedWordCount?: number;
+      isQuickWin?: boolean;
+    }>(typeof content === "string" ? content : JSON.stringify(content), {});
     const result: SemanticInsight = {
-      queryIntent: parsed.queryIntent as QueryIntent,
-      responseType: parsed.responseType as ResponseType,
-      winningFragment: parsed.winningFragment,
-      whyCompetitorWon: parsed.whyCompetitorWon,
-      contentBrief: parsed.contentBrief,
+      queryIntent: (parsed.queryIntent ?? "informational") as QueryIntent,
+      responseType: (parsed.responseType ?? "paragraph") as ResponseType,
+      winningFragment: parsed.winningFragment ?? "",
+      whyCompetitorWon: parsed.whyCompetitorWon ?? "",
+      contentBrief: parsed.contentBrief ?? "",
       estimatedWordCount: Math.max(50, Math.min(500, parsed.estimatedWordCount ?? 150)),
       isQuickWin: Boolean(parsed.isQuickWin),
     };

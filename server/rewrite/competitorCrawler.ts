@@ -8,6 +8,7 @@
  */
 
 import * as cheerio from "cheerio";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -193,10 +194,10 @@ async function extractSemanticTriples(
     } as any);
 
     const raw = result.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+    const parsed = safeParseLLMJson<{ triples?: unknown[]; data?: unknown[] } | unknown[]>(typeof raw === "string" ? raw : JSON.stringify(raw), []);
 
     // Handle both {triples: [...]} and [...] formats
-    const arr: unknown[] = Array.isArray(parsed) ? parsed : (parsed.triples ?? parsed.data ?? []);
+    const arr: unknown[] = Array.isArray(parsed) ? parsed : ((parsed as { triples?: unknown[]; data?: unknown[] }).triples ?? (parsed as { triples?: unknown[]; data?: unknown[] }).data ?? []);
 
     return arr
       .filter((t): t is SemanticTriple =>
