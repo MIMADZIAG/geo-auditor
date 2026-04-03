@@ -1405,3 +1405,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 - [ ] Backend: contentRescore tRPC procedure — LLM scores rewritten content on 7 GEO dimensions, returns estimated score delta vs original
 - [ ] Frontend: ScoreImpactPanel — animated score delta display after rewrite completes, with per-dimension breakdown
+
+## Celebration Moments — Per-Signal (Anton Osika / Lovable)
+
+- [x] Signal Audit celebration: confetti burst + banner on every score reveal (not just delta)
+- [x] Citation Intelligence celebration: confetti + banner when citationStatus running→done
+- [x] Signal Rewrite celebration: confetti burst + banner after pushVersion (new version generated)

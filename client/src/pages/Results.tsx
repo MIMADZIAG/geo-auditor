@@ -377,6 +377,10 @@ export default function Results() {
   // B1 — Celebration moment: detect score improvement vs previous audit of same URL
   const [celebrationData, setCelebrationData] = useState<{ prevScore: number; delta: number } | null>(null);
   const celebrationFiredRef = useRef(false);
+  // Per-signal celebration moments
+  const [citationCelebration, setCitationCelebration] = useState<{ citedEngines: number; totalEngines: number } | null>(null);
+  const citationCelebrationFiredRef = useRef(false);
+  const [rewriteCelebration, setRewriteCelebration] = useState<{ delta: number | null } | null>(null);
 
   // Stable callback for AICitationPanel — avoids setState-in-render warning
   // (AICitationPanel calls this from a useEffect, but React can still warn if the
@@ -390,6 +394,24 @@ export default function Results() {
         setCitationStatus(status);
         if (citedCount !== undefined) setCitationCitedCount(citedCount);
         if (totalEngines !== undefined) setCitationTotalEngines(totalEngines);
+        // Citation celebration: fire once when status transitions to "done"
+        if (status === "done" && !citationCelebrationFiredRef.current) {
+          citationCelebrationFiredRef.current = true;
+          const cited = citedCount ?? 0;
+          const total = totalEngines ?? 3;
+          setTimeout(() => {
+            setCitationCelebration({ citedEngines: cited, totalEngines: total });
+            confetti({
+              particleCount: 80,
+              spread: 60,
+              origin: { y: 0.4 },
+              colors: ["#6366f1", "#8b5cf6", "#10b981", "#ffffff"],
+              gravity: 0.8,
+              scalar: 0.9,
+            });
+            setTimeout(() => setCitationCelebration(null), 7000);
+          }, 600);
+        }
       });
     },
     []
@@ -496,16 +518,18 @@ export default function Results() {
     const prevScore = prev ? parseInt(prev, 10) : null;
     // Save current score for next comparison
     localStorage.setItem(storageKey, String(score));
-    if (prevScore !== null && score - prevScore >= 5) {
+    const isFirstAudit = prevScore === null;
+    const hasDelta = prevScore !== null && score - prevScore >= 5;
+    if (isFirstAudit || hasDelta) {
       celebrationFiredRef.current = true;
-      const delta = score - prevScore;
+      const delta = hasDelta ? score - prevScore! : null;
       // Delay slightly so the score animation plays first
       setTimeout(() => {
-        setCelebrationData({ prevScore, delta });
+        setCelebrationData(delta !== null ? { prevScore: prevScore!, delta } : { prevScore: 0, delta: score });
         // Fire confetti burst
         confetti({
-          particleCount: 120,
-          spread: 80,
+          particleCount: isFirstAudit ? 100 : 120,
+          spread: 75,
           origin: { y: 0.55 },
           colors: ["#7c3aed", "#6366f1", "#10b981", "#f59e0b", "#ffffff"],
           gravity: 0.9,
@@ -733,9 +757,18 @@ export default function Results() {
               🎉
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold text-emerald-300">Wynik wzrósł o +{celebrationData.delta} pkt!</div>
+              <div className="text-sm font-bold text-emerald-300">
+                {celebrationData.prevScore === 0
+                  ? `Signal Audit gotowy — AI Readiness: ${celebrationData.delta}/100`
+                  : `Wynik wzrósł o +${celebrationData.delta} pkt!`}
+              </div>
               <div className="text-xs text-zinc-400 mt-0.5">
-                {celebrationData.prevScore} → <span className="text-white font-semibold">{celebrationData.prevScore + celebrationData.delta}</span> — wdrożone rekomendacje działają.
+                {celebrationData.prevScore === 0
+                  ? "Twoja strona ma teraz pełną diagnozę widoczności w AI Search."
+                  : `${celebrationData.prevScore} → `}
+                {celebrationData.prevScore !== 0 && (
+                  <><span className="text-white font-semibold">{celebrationData.prevScore + celebrationData.delta}</span> — wdrożone rekomendacje działają.</>
+                )}
               </div>
             </div>
             <button
@@ -748,6 +781,64 @@ export default function Results() {
         </div>
       )}
 
+      {/* Citation Intelligence Celebration Banner */}
+      {citationCelebration && (
+        <div
+          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-500"
+          style={{ maxWidth: "520px", width: "calc(100% - 2rem)" }}
+        >
+          <div className="rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/95 via-zinc-900/98 to-violet-950/95 backdrop-blur-xl shadow-2xl shadow-indigo-500/20 p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 text-2xl">
+              🔍
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-indigo-300">
+                Citation Intelligence gotowy — {citationCelebration.citedEngines}/{citationCelebration.totalEngines} silników AI
+              </div>
+              <div className="text-xs text-zinc-400 mt-0.5">
+                {citationCelebration.citedEngines > 0
+                  ? "Twoja strona jest cytowana. Przejdź do Tab 3, aby wygenerować Signal Rewrite."
+                  : "Znaleziono luki widoczności. Signal Rewrite wypełni je automatycznie."}
+              </div>
+            </div>
+            <button
+              onClick={() => setCitationCelebration(null)}
+              className="text-zinc-500 hover:text-zinc-300 transition-colors text-lg leading-none flex-shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Signal Rewrite Celebration Banner */}
+      {rewriteCelebration && (
+        <div
+          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-500"
+          style={{ maxWidth: "520px", width: "calc(100% - 2rem)" }}
+        >
+          <div className="rounded-2xl border border-violet-500/40 bg-gradient-to-r from-violet-950/95 via-zinc-900/98 to-purple-950/95 backdrop-blur-xl shadow-2xl shadow-violet-500/20 p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0 text-2xl">
+              ✨
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-violet-300">
+                {rewriteCelebration.delta !== null && rewriteCelebration.delta > 0
+                  ? `Signal Rewrite gotowy — szacowany wzrost +${rewriteCelebration.delta} pkt`
+                  : "Signal Rewrite gotowy — nowa wersja treści wygenerowana"}
+              </div>
+              <div className="text-xs text-zinc-400 mt-0.5">
+                Treść zoptymalizowana pod sygnały AI Search. Skopiuj i wdróż na stronie.
+              </div>
+            </div>
+            <button
+              onClick={() => setRewriteCelebration(null)}
+              className="text-zinc-500 hover:text-zinc-300 transition-colors text-lg leading-none flex-shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {/* ── Tab 1: Signal Audit ── */}
       {activeTab === "optimization" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -868,8 +959,8 @@ export default function Results() {
               overall: overallScore,
             }}
             navigate={navigate}
+            onRewriteCelebration={setRewriteCelebration}
           />
-
           {/* New page CTA */}
           <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -3056,6 +3147,7 @@ function WhatIfSection({
   auditId,
   baselineScores,
   navigate,
+  onRewriteCelebration,
 }: {
   url: string;
   citedCompetitorUrls?: string[];
@@ -3065,6 +3157,7 @@ function WhatIfSection({
   auditId?: number;
   baselineScores?: BaselineScores;
   navigate: (path: string) => void;
+  onRewriteCelebration?: (data: { delta: number | null } | null) => void;
 }) {
   const { user } = useAuth();
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
@@ -3073,6 +3166,7 @@ function WhatIfSection({
   // Re-scoring result after rewrite (uses module-level RescoreResult type)
   const [rescoreResult, setRescoreResult] = useState<RescoreResult | null>(null);
   const [isRescoring, setIsRescoring] = useState(false);
+  const rewriteCelebrationFiredRef = useRef(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
@@ -3215,6 +3309,29 @@ function WhatIfSection({
       pushVersion(rewrittenStr, versionLabel);
       setCopied(false);
       setRescoreResult(null); // clear previous rescore
+      // Signal Rewrite celebration — fires immediately, delta updated when rescore completes
+      if (!rewriteCelebrationFiredRef.current) {
+        rewriteCelebrationFiredRef.current = true;
+        setTimeout(() => {
+          onRewriteCelebration?.({ delta: null });
+          confetti({
+            particleCount: 90,
+            spread: 65,
+            origin: { y: 0.5 },
+            colors: ["#8b5cf6", "#a78bfa", "#c4b5fd", "#ffffff", "#10b981"],
+            gravity: 0.85,
+            scalar: 1.0,
+          });
+          setTimeout(() => onRewriteCelebration?.(null), 7000);
+        }, 400);
+      } else {
+        // Subsequent rewrites: always fire
+        setTimeout(() => {
+          onRewriteCelebration?.({ delta: null });
+          confetti({ particleCount: 60, spread: 50, origin: { y: 0.5 }, colors: ["#8b5cf6", "#a78bfa", "#ffffff"] });
+          setTimeout(() => onRewriteCelebration?.(null), 6000);
+        }, 400);
+      }
       // Fire-and-forget: trigger re-scoring in background (non-blocking)
       if (cleanText) {
         setIsRescoring(true);
@@ -3227,6 +3344,9 @@ function WhatIfSection({
           setRescoreResult(r);
           if (r.delta > 0) {
             toast.success(`📈 Szacowany wzrost AI-Readiness: +${r.delta} pkt (${r.baselineOverall} → ${r.estimatedOverall}/100)`);
+            // Update rewrite celebration banner with actual delta
+            onRewriteCelebration?.({ delta: r.delta });
+            setTimeout(() => onRewriteCelebration?.(null), 8000);
           }
         }).catch(() => {
           // Non-fatal — rescore is a bonus feature
