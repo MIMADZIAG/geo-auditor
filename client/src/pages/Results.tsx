@@ -845,7 +845,24 @@ export default function Results() {
           <ContentCreatorRewriteWidget auditId={audit.id} navigate={navigate} isPaid={hasPaidPlan} />
 
           {/* Full AI Co-Pilot — inline rewrite with competitor context */}
-          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} citationOpportunities={citationOpportunities} citationStatus={citationStatus} overallScore={overallScore} navigate={navigate} />
+          <WhatIfSection
+            url={audit.url}
+            citedCompetitorUrls={citedCompetitorUrls}
+            citationOpportunities={citationOpportunities}
+            citationStatus={citationStatus}
+            overallScore={overallScore}
+            auditId={auditId}
+            baselineScores={{
+              technical: audit.technicalScore ?? undefined,
+              structuredData: audit.structuredDataScore ?? undefined,
+              contentStructure: audit.contentStructureScore ?? undefined,
+              eeat: audit.eeatScore ?? undefined,
+              aiCrawlers: audit.aiCrawlerScore ?? undefined,
+              metaTags: audit.metaTagsScore ?? undefined,
+              overall: overallScore,
+            }}
+            navigate={navigate}
+          />
 
           {/* New page CTA */}
           <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -2820,13 +2837,218 @@ function CitationIntelligenceGate({ navigate }: { navigate: (path: string) => vo
   );
 }
 
+// ─── ScoreImpactPanel — shows estimated AI-Readiness score delta after rewrite ───────────────
+type RescoreResult = {
+  estimatedOverall: number;
+  baselineOverall: number;
+  delta: number;
+  dimensionDeltas: Record<string, { before: number; after: number; delta: number; label: string }>;
+  topImprovements: string[];
+  confidence: string;
+};
+
+function ScoreImpactPanel({
+  result,
+  isLoading,
+  baselineOverall,
+}: {
+  result: RescoreResult | null;
+  isLoading: boolean;
+  baselineOverall: number;
+}) {
+  // Animated counter for delta
+  const [displayDelta, setDisplayDelta] = React.useState(0);
+  const [displayScore, setDisplayScore] = React.useState(baselineOverall);
+
+  React.useEffect(() => {
+    if (!result) { setDisplayDelta(0); setDisplayScore(baselineOverall); return; }
+    // Animate from 0 to result.delta over 1.2s
+    const start = Date.now();
+    const duration = 1200;
+    const fromDelta = 0;
+    const toDelta = result.delta;
+    const fromScore = result.baselineOverall;
+    const toScore = result.estimatedOverall;
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayDelta(Math.round(fromDelta + (toDelta - fromDelta) * eased));
+      setDisplayScore(Math.round(fromScore + (toScore - fromScore) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [result]);
+
+  const DIMENSION_ORDER = ["contentStructure", "eeat", "structuredData", "metaTags", "aiCrawlers", "technical", "brandAuthority"];
+  const DIMENSION_ICONS: Record<string, string> = {
+    contentStructure: "📝",
+    eeat: "🏅",
+    structuredData: "🔧",
+    metaTags: "🏷️",
+    aiCrawlers: "🤖",
+    technical: "⚡",
+    brandAuthority: "📊",
+  };
+
+  if (isLoading && !result) {
+    return (
+      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-950/40 to-indigo-950/30 p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-violet-200">Szacowanie wzrostu AI-Readiness…</p>
+            <p className="text-xs text-zinc-500">AI analizuje przepisaną treść w 7 wymiarach GEO (~5 sek)</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {DIMENSION_ORDER.map((key) => (
+            <div key={key} className="h-1.5 rounded-full bg-zinc-800 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!result) return null;
+
+  const deltaPositive = result.delta > 0;
+  const deltaColor = deltaPositive ? "text-emerald-400" : result.delta < 0 ? "text-red-400" : "text-zinc-400";
+  const deltaBg = deltaPositive ? "from-emerald-950/40 to-indigo-950/30 border-emerald-500/20" : "from-zinc-900/60 to-zinc-900/40 border-zinc-700/30";
+  const confidenceLabel = result.confidence === "high" ? "Wysoka pewność" : result.confidence === "medium" ? "Średnio pewne" : "Szacunek";
+
+  // Sort dimensions by absolute delta descending
+  const sortedDimensions = DIMENSION_ORDER
+    .map(key => ({ key, ...result.dimensionDeltas[key] }))
+    .filter(d => d && d.label)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+  return (
+    <div className={`rounded-2xl border bg-gradient-to-r ${deltaBg} p-5 space-y-4`}>
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${deltaPositive ? "bg-emerald-500/15" : "bg-zinc-800"}`}>
+            <span className="text-lg">{deltaPositive ? "📈" : "📊"}</span>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Szacowany wzrost AI-Readiness</p>
+            <p className="text-xs text-zinc-500">{confidenceLabel} · na podstawie 7 wymiarów GEO</p>
+          </div>
+        </div>
+        {/* Score counter */}
+        <div className="text-right shrink-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-black tabular-nums" style={{ color: deltaPositive ? "#34d399" : deltaPositive === false && result.delta < 0 ? "#f87171" : "#a1a1aa" }}>
+              {displayScore}
+            </span>
+            <span className="text-sm text-zinc-500">/100</span>
+          </div>
+          <div className={`text-xs font-bold tabular-nums ${deltaColor}`}>
+            {result.delta > 0 ? "+" : ""}{displayDelta} pkt vs oryginalna
+          </div>
+        </div>
+      </div>
+
+      {/* Before → After visual bar */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <span>Przed rewrite</span>
+          <span>Po rewrite (szacunek)</span>
+        </div>
+        <div className="relative h-2 rounded-full bg-zinc-800 overflow-hidden">
+          <div
+            className="absolute left-0 top-0 h-full rounded-full bg-zinc-600 transition-all duration-1000"
+            style={{ width: `${result.baselineOverall}%` }}
+          />
+          <div
+            className="absolute left-0 top-0 h-full rounded-full transition-all duration-1000"
+            style={{
+              width: `${displayScore}%`,
+              background: deltaPositive
+                ? "linear-gradient(90deg, #6d28d9, #34d399)"
+                : "linear-gradient(90deg, #6d28d9, #a1a1aa)",
+            }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-[10px] font-mono">
+          <span className="text-zinc-500">{result.baselineOverall}</span>
+          <span className={deltaColor}>{displayScore}</span>
+        </div>
+      </div>
+
+      {/* Per-dimension breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {sortedDimensions.slice(0, 6).map(({ key, label, before, after, delta: d }) => (
+          <div key={key} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-black/20 border border-white/5">
+            <span className="text-base shrink-0">{DIMENSION_ICONS[key] ?? "📌"}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] font-medium text-zinc-300 truncate">{label}</span>
+                <span className={`text-[11px] font-bold tabular-nums shrink-0 ${
+                  d > 0 ? "text-emerald-400" : d < 0 ? "text-red-400" : "text-zinc-500"
+                }`}>
+                  {d > 0 ? "+" : ""}{d}
+                </span>
+              </div>
+              <div className="relative h-1 rounded-full bg-zinc-800 mt-1 overflow-hidden">
+                <div className="absolute left-0 top-0 h-full rounded-full bg-zinc-600" style={{ width: `${before}%` }} />
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${after}%`,
+                    background: d > 0 ? "#34d399" : d < 0 ? "#f87171" : "#6d28d9",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Top improvements */}
+      {result.topImprovements.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">Główne zmiany wykryte przez AI</p>
+          {result.topImprovements.slice(0, 3).map((imp, i) => (
+            <div key={i} className="flex items-start gap-2 text-[11px] text-zinc-400">
+              <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+              <span>{imp}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Disclaimer */}
+      <p className="text-[10px] text-zinc-600 border-t border-white/5 pt-3">
+        ⚠️ Szacunek oparty na analizie treści przez AI. Rzeczywisty wzrost widoczności zależy od wdrożenia zmian technicznych i indeksowania przez crawlery AI.
+      </p>
+    </div>
+  );
+}
+
 type CitationOpportunityBrief = { keyword: string; contentBrief: string; isQuickWin: boolean };
+type BaselineScores = {
+  technical?: number;
+  structuredData?: number;
+  contentStructure?: number;
+  eeat?: number;
+  aiCrawlers?: number;
+  metaTags?: number;
+  brandAuthority?: number;
+  overall?: number;
+};
 function WhatIfSection({
   url,
   citedCompetitorUrls = [],
   citationOpportunities = [],
   citationStatus = "idle",
   overallScore = 0,
+  auditId,
+  baselineScores,
   navigate,
 }: {
   url: string;
@@ -2834,11 +3056,17 @@ function WhatIfSection({
   citationOpportunities?: CitationOpportunityBrief[];
   citationStatus?: CitationStatus;
   overallScore?: number;
+  auditId?: number;
+  baselineScores?: BaselineScores;
   navigate: (path: string) => void;
 }) {
   const { user } = useAuth();
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
   const rewriteMutation = trpc.sandbox.rewrite.useMutation();
+  const rescoreMutation = trpc.sandbox.contentRescore.useMutation();
+  // Re-scoring result after rewrite (uses module-level RescoreResult type)
+  const [rescoreResult, setRescoreResult] = useState<RescoreResult | null>(null);
+  const [isRescoring, setIsRescoring] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
@@ -2980,6 +3208,26 @@ function WhatIfSection({
       const versionLabel = `Wersja ${rewriteHistory.length + 1}`;
       pushVersion(rewrittenStr, versionLabel);
       setCopied(false);
+      setRescoreResult(null); // clear previous rescore
+      // Fire-and-forget: trigger re-scoring in background (non-blocking)
+      if (cleanText) {
+        setIsRescoring(true);
+        rescoreMutation.mutateAsync({
+          originalContent: cleanText,
+          rewrittenContent: rewrittenStr,
+          auditId: auditId ?? undefined,
+          baselineScores: baselineScores ?? undefined,
+        }).then((r) => {
+          setRescoreResult(r);
+          if (r.delta > 0) {
+            toast.success(`📈 Szacowany wzrost AI-Readiness: +${r.delta} pkt (${r.baselineOverall} → ${r.estimatedOverall}/100)`);
+          }
+        }).catch(() => {
+          // Non-fatal — rescore is a bonus feature
+        }).finally(() => {
+          setIsRescoring(false);
+        });
+      }
       // Store research data if available
       if ((result as any).researchData) {
         setResearchData((result as any).researchData);
@@ -3293,10 +3541,17 @@ function WhatIfSection({
                 )}
               </div>
 
-              {isRewriting && (
+               {isRewriting && (
                 <RewriteProgressIndicator step={rewriteStep} sectionProgress={rewriteSectionProgress} />
               )}
-
+              {/* ─── Feature: Score Impact Panel ─── */}
+              {(isRescoring || rescoreResult) && (
+                <ScoreImpactPanel
+                  result={rescoreResult}
+                  isLoading={isRescoring}
+                  baselineOverall={overallScore}
+                />
+              )}
             </div>
           )}
         </div>
@@ -3304,8 +3559,7 @@ function WhatIfSection({
     </div>
   );
 }
-
-// ─── Old AISandboxCTA (kept for reference, replaced by WhatIfSection) ────────────────────
+// ─── Old AISandboxCTAA (kept for reference, replaced by WhatIfSection) ────────────────────
 function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string) => void }) {
   return (
     <div

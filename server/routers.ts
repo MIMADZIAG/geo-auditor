@@ -1593,6 +1593,135 @@ ${cleanedContent.slice(0, 20000)}
         }
       }),
 
+    // ─── contentRescore: fast LLM-based re-scoring of rewritten content ────────
+    // Scores rewritten content on 7 GEO dimensions and returns estimated score delta.
+    // Uses structured JSON output for determinism. Runs in ~3–5s (single LLM call).
+    contentRescore: protectedProcedure
+      .input(z.object({
+        originalContent: z.string().max(20000),
+        rewrittenContent: z.string().max(20000),
+        auditId: z.number().optional(),
+        baselineScores: z.object({
+          technical: z.number().optional(),
+          structuredData: z.number().optional(),
+          contentStructure: z.number().optional(),
+          eeat: z.number().optional(),
+          aiCrawlers: z.number().optional(),
+          metaTags: z.number().optional(),
+          brandAuthority: z.number().optional(),
+          overall: z.number().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Gate: only paid plans
+        const db = await getDb();
+        if (db) {
+          const userRows = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+          const userPlan = userRows[0]?.plan ?? "free";
+          if (userPlan === "free") {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Re-scoring requires a paid plan." });
+          }
+        }
+
+        // Fetch baseline from DB if auditId provided and baselineScores not given
+        let baseline = input.baselineScores ?? {};
+        if (input.auditId && !(input.baselineScores?.overall) && db) {
+          const auditRow = await db.select().from(audits).where(eq(audits.id, input.auditId)).limit(1);
+          if (auditRow[0]) {
+            const a = auditRow[0];
+            baseline = {
+              technical: a.technicalScore ?? undefined,
+              structuredData: a.structuredDataScore ?? undefined,
+              contentStructure: a.contentStructureScore ?? undefined,
+              eeat: a.eeatScore ?? undefined,
+              aiCrawlers: a.aiCrawlerScore ?? undefined,
+              metaTags: a.metaTagsScore ?? undefined,
+              overall: a.overallScore ?? undefined,
+            };
+          }
+        }
+
+        const { invokeLLM } = await import("./_core/llm");
+
+        const systemPrompt = `You are a GEO (Generative Engine Optimization) scoring expert.\nYou evaluate web page content for AI Search visibility across 7 dimensions.\nEach dimension is scored 0-100. Be precise and consistent.\n\nDimensions:\n- contentStructure (0-100): FAQ sections, TL;DR, clear headings, answer-first format, semantic chunking\n- eeat (0-100): Author credentials, first-person experience signals, citations, expertise markers\n- structuredData (0-100): JSON-LD schema presence, FAQPage, Article, Product, BreadcrumbList\n- metaTags (0-100): Title tag quality, meta description, Open Graph, canonical\n- aiCrawlers (0-100): No crawler blocks, sitemap directive, robots.txt friendly\n- technical (0-100): HTTPS signals, page speed signals, mobile-friendly signals in content\n- brandAuthority (0-100): Brand mentions, social proof, trust signals, external references\n\nReturn ONLY valid JSON matching the schema. No markdown, no explanation.`;
+
+        const userPrompt = `Score the REWRITTEN content below on all 7 GEO dimensions.\n\nREWRITTEN CONTENT (to score):\n${input.rewrittenContent.slice(0, 8000)}\n\nFor context, the ORIGINAL content was:\n${input.originalContent.slice(0, 3000)}\n\nReturn JSON with this exact structure:\n{\n  "scores": {\n    "contentStructure": <0-100>,\n    "eeat": <0-100>,\n    "structuredData": <0-100>,\n    "metaTags": <0-100>,\n    "aiCrawlers": <0-100>,\n    "technical": <0-100>,\n    "brandAuthority": <0-100>\n  },\n  "topImprovements": ["<dimension>: <one-line reason>"],\n  "confidence": "high"\n}`;
+
+        const llmResponse = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "geo_rescore",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  scores: {
+                    type: "object",
+                    properties: {
+                      contentStructure: { type: "number" },
+                      eeat: { type: "number" },
+                      structuredData: { type: "number" },
+                      metaTags: { type: "number" },
+                      aiCrawlers: { type: "number" },
+                      technical: { type: "number" },
+                      brandAuthority: { type: "number" },
+                    },
+                    required: ["contentStructure", "eeat", "structuredData", "metaTags", "aiCrawlers", "technical", "brandAuthority"],
+                    additionalProperties: false,
+                  },
+                  topImprovements: { type: "array", items: { type: "string" } },
+                  confidence: { type: "string" },
+                },
+                required: ["scores", "topImprovements", "confidence"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const rawContent = llmResponse.choices[0]?.message?.content ?? "{}";
+        const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        let parsed: { scores: Record<string, number>; topImprovements: string[]; confidence: string };
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Re-scoring LLM returned invalid JSON" });
+        }
+
+        // Compute weighted overall score using same weights as scorer.ts (no CI)
+        const WEIGHTS: Record<string, number> = {
+          technical: 11, structuredData: 20, contentStructure: 24,
+          eeat: 14, aiCrawlers: 8, metaTags: 5, brandAuthority: 10,
+        };
+        const s = parsed.scores;
+        let total = 0; let totalW = 0;
+        for (const [key, w] of Object.entries(WEIGHTS)) {
+          if (s[key] != null) { total += (s[key] / 100) * w; totalW += w; }
+        }
+        const estimatedOverall = Math.round(totalW > 0 ? (total / totalW) * 100 : 0);
+        const baselineOverall = (baseline as Record<string, number | undefined>).overall ?? 0;
+        const delta = estimatedOverall - baselineOverall;
+
+        const LABELS: Record<string, string> = {
+          contentStructure: "Struktura treści", eeat: "E-E-A-T",
+          structuredData: "Dane strukturalne", metaTags: "Meta tagi",
+          aiCrawlers: "Dostęp crawlerów AI", technical: "Techniczny",
+          brandAuthority: "Autorytet marki",
+        };
+        const dimensionDeltas: Record<string, { before: number; after: number; delta: number; label: string }> = {};
+        for (const key of Object.keys(WEIGHTS)) {
+          const before = (baseline as Record<string, number | undefined>)[key] ?? 50;
+          const after = Math.round(s[key] ?? before);
+          dimensionDeltas[key] = { before, after, delta: after - before, label: LABELS[key] ?? key };
+        }
+
+        return { estimatedOverall, baselineOverall, delta, dimensionDeltas, topImprovements: parsed.topImprovements ?? [], confidence: parsed.confidence ?? "medium" };
+      }),
     // Fetch raw HTML + robots.txt for a given URL so the client-side simulation engine can run
     // Requires login — prevents anonymous abuse of the proxy
     fetchPage: protectedProcedure

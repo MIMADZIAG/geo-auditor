@@ -1400,3 +1400,8 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Feature A: Signal Rewrite Readiness Dashboard — mini-dashboard in Tab 3 showing loaded context (audit score, citation status, N opportunities injected, N competitor URLs)
 - [x] Feature B: Before/After Diff — side-by-side view after rewrite, with highlighted sentences that address Citation Opportunities
 - [x] Feature C: Citation Intelligence Gate — if citationStatus is idle/not run, show CTA block instead of WhatIfSection form
+
+## Signal Rewrite — AI-Readiness Re-Scoring
+
+- [ ] Backend: contentRescore tRPC procedure — LLM scores rewritten content on 7 GEO dimensions, returns estimated score delta vs original
+- [ ] Frontend: ScoreImpactPanel — animated score delta display after rewrite completes, with per-dimension breakdown
