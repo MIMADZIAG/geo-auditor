@@ -591,15 +591,17 @@ export const appRouter = router({
         if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
         const db = await getDb();
         if (!db) return null;
-        const { visibilitySnapshots } = await import("../drizzle/schema");
-        const { desc: descComp, eq: eqComp } = await import("drizzle-orm");
+        const { visibilitySnapshots, citationChecks, citationJobs, audits } = await import("../drizzle/schema");
+        const { desc: descComp, eq: eqComp, and: andComp, inArray: inArrayComp } = await import("drizzle-orm");
+
+        // ── Primary path: visibility_snapshots (populated by monitoring worker) ──
         const [latestSnap] = await db
           .select()
           .from(visibilitySnapshots)
           .where(eqComp(visibilitySnapshots.monitoredPageId, input.monitoredPageId))
           .orderBy(descComp(visibilitySnapshots.recordedAt))
           .limit(1);
-        if (!latestSnap) return null;
+
         const sovTrend = await db
           .select({
             recordedAt: visibilitySnapshots.recordedAt,
@@ -611,13 +613,195 @@ export const appRouter = router({
           .where(eqComp(visibilitySnapshots.monitoredPageId, input.monitoredPageId))
           .orderBy(descComp(visibilitySnapshots.recordedAt))
           .limit(10);
+
+        // ── Fallback path: aggregate competitorDomains directly from citation_checks ──
+        // Used when visibility_snapshots is empty (no monitoring cycle yet) but
+        // the user has run Citation Intelligence from the audit results page.
+        // Also enriches the primary path with fresh citation data.
+        let liveCompetitorDomains: Array<{ domain: string; count: number }> = [];
+        let liveEngineBreakdown: Record<string, { cited: boolean; citedCount: number; totalQueries: number }> = {};
+        let liveCitedCount = 0;
+        let liveTotalEngines = 0;
+        try {
+          // Get all audits for this URL (owned by this user)
+          const userAudits = await db
+            .select({ id: audits.id })
+            .from(audits)
+            .where(andComp(eqComp(audits.url, owned.url), eqComp(audits.userId, ctx.user.id)))
+            .orderBy(descComp(audits.createdAt))
+            .limit(5);
+
+          if (userAudits.length > 0) {
+            // Get citation jobs for these audits
+            const auditIds = userAudits.map((a) => a.id);
+            const jobs = await db
+              .select()
+              .from(citationJobs)
+              .where(inArrayComp(citationJobs.auditId, auditIds))
+              .orderBy(descComp(citationJobs.createdAt))
+              .limit(3);
+
+            if (jobs.length > 0) {
+              const jobIds = jobs.map((j) => j.id);
+              // Get all citation checks for these jobs
+              const checks = await db
+                .select({
+                  engine: citationChecks.engine,
+                  isCited: citationChecks.isCited,
+                  competitorDomains: citationChecks.competitorDomains,
+                })
+                .from(citationChecks)
+                .where(inArrayComp(citationChecks.jobId, jobIds));
+
+              // Aggregate competitor domains with frequency count
+              const domainFreq = new Map<string, number>();
+              const engineStats: Record<string, { cited: number; total: number }> = {};
+
+              for (const check of checks) {
+                // Engine stats
+                if (!engineStats[check.engine]) engineStats[check.engine] = { cited: 0, total: 0 };
+                engineStats[check.engine].total++;
+                if (check.isCited === "yes" || check.isCited === "domain") {
+                  engineStats[check.engine].cited++;
+                }
+                // Competitor domains
+                const domains = (check.competitorDomains as string[] | null) ?? [];
+                for (const domain of domains) {
+                  if (!domain || domain.length < 4) continue;
+                  domainFreq.set(domain, (domainFreq.get(domain) ?? 0) + 1);
+                }
+              }
+
+              // Sort by frequency, take top 10
+              liveCompetitorDomains = Array.from(domainFreq.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([domain, count]) => ({ domain, count }));
+
+              // Build engine breakdown
+              for (const [engine, stats] of Object.entries(engineStats)) {
+                liveEngineBreakdown[engine] = {
+                  cited: stats.cited > 0,
+                  citedCount: stats.cited,
+                  totalQueries: stats.total,
+                };
+              }
+
+              const citedEngineNames = Object.entries(engineStats).filter(([, s]) => s.cited > 0);
+              liveCitedCount = citedEngineNames.length;
+              liveTotalEngines = Object.keys(engineStats).length || 4;
+            }
+          }
+        } catch (err) {
+          console.warn("[getCompetitorBenchmark] live aggregation failed (non-fatal):", err);
+        }
+
+        // ── Merge: prefer snapshot data, enrich with live citation data ──
+        if (!latestSnap && liveCompetitorDomains.length === 0) return null;
+
+        // If snapshot exists, use it as base; enrich competitors with live data if snapshot has none
+        const topCompetitorDomains = latestSnap?.topCompetitorDomains && (latestSnap.topCompetitorDomains as unknown[]).length > 0
+          ? (latestSnap.topCompetitorDomains as Array<{ domain: string; count: number; sentimentScore?: number }>)
+          : liveCompetitorDomains;
+
+        const engineBreakdown = latestSnap?.engineBreakdown && Object.keys(latestSnap.engineBreakdown as object).length > 0
+          ? (latestSnap.engineBreakdown as Record<string, { cited: boolean; sentimentScore?: number }>)
+          : Object.fromEntries(
+              Object.entries(liveEngineBreakdown).map(([engine, data]) => [
+                engine,
+                { cited: data.cited, citedCount: data.citedCount, totalQueries: data.totalQueries },
+              ])
+            );
+
         return {
-          shareOfVoice: latestSnap.shareOfVoice,
-          competitorCitationCount: latestSnap.competitorCitationCount,
-          topCompetitorDomains: (latestSnap.topCompetitorDomains as Array<{ domain: string; count: number; sentimentScore?: number }>) ?? [],
-          engineBreakdown: latestSnap.engineBreakdown as Record<string, { cited: boolean; sentimentScore?: number }> | null,
+          shareOfVoice: latestSnap?.shareOfVoice ?? (
+            liveTotalEngines > 0 ? liveCitedCount / liveTotalEngines : null
+          ),
+          competitorCitationCount: latestSnap?.competitorCitationCount ?? liveCompetitorDomains.reduce((s, c) => s + c.count, 0),
+          topCompetitorDomains,
+          engineBreakdown,
           sovTrend: [...sovTrend].reverse(),
-          recordedAt: latestSnap.recordedAt,
+          recordedAt: latestSnap?.recordedAt ?? null,
+          // Flag indicating data source — frontend can show appropriate label
+          dataSource: latestSnap ? "monitoring" : "citation_checks",
+          liveCompetitorCount: liveCompetitorDomains.length,
+        };
+      }),
+
+    // ── Run Citation Intelligence directly from Pulse Monitor ──────────────────
+    // Starts a citation job for the last audit of a monitored page.
+    // Returns { jobId, auditId } immediately — poll citation.getStatus for progress.
+    runCitationCheck: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        if (!owned.lastAuditId) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Brak audytu dla tej strony. Uruchom najpierw audyt." });
+        }
+        // Delegate to citation.startCheck — it handles deduplication, phrase seeding, and bridge logic
+        const { runCitationJob } = await import("./citation/worker");
+        const { createCitationJob, getCitationJobByAuditId } = await import("./citation/db");
+        const audit = await getAuditById(owned.lastAuditId);
+        if (!audit) throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
+        // Check for already-running job (deduplication)
+        const existingJob = await getCitationJobByAuditId(owned.lastAuditId);
+        if (existingJob && (existingJob.status === "pending" || existingJob.status === "running")) {
+          return { jobId: existingJob.id, auditId: owned.lastAuditId, alreadyRunning: true };
+        }
+        // Seed phrases from monitoring (same canonical phrase set as citation.startCheck)
+        let seedPhrases: string[] = [];
+        try {
+          const { getActivePhrasesForPage } = await import("./monitoring/phrases");
+          const phrases = await getActivePhrasesForPage(input.monitoredPageId);
+          seedPhrases = phrases.map((p) => p.phrase).filter(Boolean);
+        } catch {
+          // Non-fatal — worker will generate phrases via LLM
+        }
+        const jobId = await createCitationJob({
+          auditId: owned.lastAuditId,
+          userId: ctx.user.id,
+          url: audit.url,
+          prompts: seedPhrases,  // empty = LLM-generated; non-empty = monitoring seed
+          language: "auto",
+        });
+        if (!jobId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create citation job" });
+        // Fire-and-forget — same pattern as citation.startCheck
+        const capturedMonitoredPageId = input.monitoredPageId;
+        const capturedAuditId = owned.lastAuditId;
+        runCitationJob(jobId).then(async (result) => {
+          if (!result) return;
+          const summary = result.summary;
+          const citedEngines = [
+            summary.chatgpt.cited + summary.chatgpt.domainCited > 0 ? 1 : 0,
+            summary.google.cited + summary.google.domainCited > 0 ? 1 : 0,
+            summary.perplexity.cited + summary.perplexity.domainCited > 0 ? 1 : 0,
+            summary.gemini.cited + summary.gemini.domainCited > 0 ? 1 : 0,
+          ].reduce((a, b) => a + b, 0);
+          const totalEngines = Object.values(summary).filter((e) => e.total > 0).length || 4;
+          await updateMonitoredPageCitationStatus(capturedMonitoredPageId, citedEngines, totalEngines).catch(() => {});
+          await updateScoreSnapshotCitation(capturedAuditId, capturedMonitoredPageId, citedEngines, totalEngines, jobId).catch(() => {});
+        }).catch((err) => console.error("[monitoring.runCitationCheck] job failed:", err));
+        return { jobId, auditId: owned.lastAuditId, alreadyRunning: false };
+      }),
+
+    // ── Get active citation job status for a monitored page ───────────────────
+    // Used by the spinner in the monitored page bar.
+    getActiveCitationJob: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned || !owned.lastAuditId) return null;
+        const { getCitationJobByAuditId } = await import("./citation/db");
+        const job = await getCitationJobByAuditId(owned.lastAuditId);
+        if (!job) return null;
+        return {
+          jobId: job.id,
+          status: job.status, // "pending" | "running" | "completed" | "failed"
+          createdAt: job.createdAt,
+          completedAt: job.completedAt,
         };
       }),
    }),

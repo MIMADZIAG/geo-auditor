@@ -593,6 +593,36 @@ function MonitoredPageCard({
     : null;
   const currentFreq = String(page.scheduleFrequency ?? 7);
 
+  // ── Citation job state — spinner + Run Citation button ───────────────────────────────────────
+  const utils = trpc.useUtils();
+  const activeCitationJobQuery = trpc.monitoring.getActiveCitationJob.useQuery(
+    { monitoredPageId: page.id },
+    { staleTime: 8_000, refetchInterval: (data) => {
+        const status = data?.state?.data?.status;
+        return (status === "pending" || status === "running") ? 5_000 : false;
+      }
+    }
+  );
+  const isRunningCitation = activeCitationJobQuery.data?.status === "pending" || activeCitationJobQuery.data?.status === "running";
+  const runCitationMutation = trpc.monitoring.runCitationCheck.useMutation({
+    onSuccess: (data) => {
+      if (data.alreadyRunning) {
+        toast.info("Analiza widoczności AI jest już w toku.");
+      } else {
+        toast.success("Analiza widoczności AI uruchomiona. Wyniki pojawią się za 2–5 minut.");
+      }
+      activeCitationJobQuery.refetch();
+    },
+    onError: (err) => toast.error(err.message || "Nie udało się uruchomić analizy widoczności AI."),
+  });
+  // When job transitions from running → completed, refresh monitored pages list
+  const prevRunningRef = useState<boolean>(false);
+  if (prevRunningRef[0] !== isRunningCitation) {
+    prevRunningRef[1](isRunningCitation);
+    if (prevRunningRef[0] && !isRunningCitation && activeCitationJobQuery.data?.status === "completed") {
+      utils.monitoring.list.invalidate();
+    }
+  }
   const setFrequency = trpc.monitoring.setFrequency.useMutation({
     onSuccess: (data) => {
       const label = FREQUENCY_OPTIONS.find((o) => o.days === data.frequencyDays)?.label ?? `co ${data.frequencyDays} dni`;
@@ -632,10 +662,25 @@ function MonitoredPageCard({
               {score != null ? Math.round(score) : "–"}
             </div>
             {/* AI Visibility Score badge — replaces raw 2/4 fraction */}
-            <AIVisibilityScoreBadge
-              citedEngines={hasCitationData ? citedEngines : null}
-              totalEngines={hasCitationData ? totalEngines : null}
-            />
+            {isRunningCitation ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-semibold border-violet-500/30 bg-violet-500/10 text-violet-400 cursor-default">
+                    <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                    <span>AI...</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs max-w-56">
+                  <p className="font-semibold mb-1">Analiza widoczności AI w toku</p>
+                  <p className="text-muted-foreground">Sprawdzamy widoczność Twojej strony w ChatGPT, Perplexity, Gemini i Google AI. Wyniki pojawią się za 2–5 minut.</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <AIVisibilityScoreBadge
+                citedEngines={hasCitationData ? citedEngines : null}
+                totalEngines={hasCitationData ? totalEngines : null}
+              />
+            )}
             {/* Feature 3: Phrase coverage pill */}
             {phraseCoverage && phraseCoverage.total > 0 && (
               <Tooltip>
@@ -724,16 +769,34 @@ function MonitoredPageCard({
                 <Link href={`/results/${page.lastAuditId}`}>
                   <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
                 </Link>
-                <Link href={`/results/${page.lastAuditId}?tab=visibility`}>
-                  <Button size="sm" variant="outline" className="h-6 text-xs gap-1">
-                    <Eye className="w-3 h-3" />
-                    {citationStatus?.status === "completed"
-                      ? citationStatus.citedCount > 0
-                        ? `${citationStatus.citedCount}/${citationStatus.totalEngines} AI`
-                        : "0 AI"
-                      : "AI"}
-                  </Button>
-                </Link>
+                {/* Run Citation Intelligence directly from Pulse Monitor */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={`h-6 text-xs gap-1 ${
+                        isRunningCitation
+                          ? "border-violet-500/40 bg-violet-500/10 text-violet-400 cursor-not-allowed"
+                          : "hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-400"
+                      }`}
+                      disabled={isRunningCitation || runCitationMutation.isPending}
+                      onClick={(e) => { e.preventDefault(); runCitationMutation.mutate({ monitoredPageId: page.id }); }}
+                    >
+                      {isRunningCitation ? (
+                        <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Bot className="w-3 h-3" />
+                      )}
+                      {isRunningCitation ? "AI..." : "Widoczność AI"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-56">
+                    {isRunningCitation
+                      ? "Analiza widoczności AI jest w toku. Wyniki pojawią się za 2–5 minut."
+                      : "Uruchom analizę widoczności AI — sprawdzimy czy Twoja strona jest cytowana przez ChatGPT, Perplexity, Gemini i Google AI."}
+                  </TooltipContent>
+                </Tooltip>
               </>
             )}
             <Button

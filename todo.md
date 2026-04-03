@@ -1387,3 +1387,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix 1: After citation.startCheck completes, update monitored_pages.lastCitedEngines if URL is monitored
 - [x] Fix 2: Backfill score_snapshots with citation data after runCitationJob completes
 - [x] Fix 3: Unify phrase sources — fix URL normalization so monitoring phrases always seed Citation Intelligence
+
+## UX Improvements — Pulse Monitor v2
+
+- [ ] Task A: Citation spinner in monitored page bar — show spinner when citation job is running for this URL
+- [ ] Task B: "Run Citation Intelligence" button directly in Pulse Monitor panel (no need to go to audit results)
+- [ ] Task C: Wire real competitorDomains from citation_checks into getCompetitorBenchmark procedure + update CompetitorBenchmark UI
