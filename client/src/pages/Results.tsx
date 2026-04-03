@@ -60,7 +60,7 @@ import { AICitationPanel } from "@/components/AICitationPanel";
 import UpsellProModal from "@/components/UpsellProModal";
 import { Streamdown } from "streamdown";
 import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
-import { Plus, RefreshCw as RefreshCwIcon, Layers, SplitSquareHorizontal, ArrowRight } from "lucide-react";
+import { Plus, RefreshCw as RefreshCwIcon, Layers, SplitSquareHorizontal, ArrowRight, BarChart2, Users, Minus, ChevronRight, Building2 } from "lucide-react";
 import type { SimulationResult } from "@/geo-sandbox/types/simulator";
 import WhatIfEditor from "@/geo-sandbox/components/WhatIfEditor";
 import ScoreGauge from "@/geo-sandbox/components/ScoreGauge";
@@ -631,10 +631,16 @@ export default function Results() {
                 </Button>
               </a>
               {isAuthenticated ? (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Command Center</span>
-              </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Command Center</span>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard#pulse")} className="gap-1.5 text-xs h-8 px-2.5 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Pulse Monitor</span>
+                  </Button>
+                </div>
               ) : (
                 <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 shadow-md shadow-primary/20">
                   <LogIn className="w-3.5 h-3.5" /> Zaloguj
@@ -1059,6 +1065,14 @@ export default function Results() {
             );
           })()}
 
+          {/* ── Competitor Benchmark — available after Citation Intelligence ── */}
+          {citationStatus === "done" && hasPaidPlan && (
+            <AuditCompetitorBenchmarkPanel
+              auditId={auditId}
+              navigate={navigate}
+            />
+          )}
+
           {/* Bridge to Tab 3 — Signal Rewrite: gated behind citationStatus */}
           {citationStatus === "running" && (
             <div className="rounded-2xl border border-primary/15 bg-primary/4 p-5 flex items-center gap-4">
@@ -1095,6 +1109,138 @@ export default function Results() {
 
         </main>
       )}
+    </div>
+  );
+}
+
+// ─── 1a-2. Audit Competitor Benchmark Panel ───────────────────────────────────────
+
+/**
+ * AuditCompetitorBenchmarkPanel — shows competitor data from Citation Intelligence
+ * without requiring Pulse Monitor. Uses getCompetitorBenchmarkByAudit procedure.
+ * Includes a Pulse Monitor upsell CTA for trend tracking.
+ */
+function AuditCompetitorBenchmarkPanel({
+  auditId,
+  navigate,
+}: {
+  auditId: number;
+  navigate: (path: string) => void;
+}) {
+  const { data, isLoading } = trpc.monitoring.getCompetitorBenchmarkByAudit.useQuery(
+    { auditId },
+    { enabled: auditId > 0, staleTime: 5 * 60 * 1000 }
+  );
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-border/50 bg-card p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-muted animate-pulse" />
+          <div className="space-y-1.5">
+            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+            <div className="h-3 w-60 bg-muted rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const sovPercent = Math.round(data.shareOfVoice * 100);
+  const engineEntries = Object.entries(data.engineBreakdown ?? {});
+  const citedEngines = engineEntries.filter(([, v]) => (v as { cited: boolean }).cited).length;
+  const totalEngines = engineEntries.length || 4;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+            <BarChart2 className="w-4 h-4 text-violet-400" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">Analiza konkurencji AI</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Kto jest cytowany zamiast Ciebie — dane z Citation Intelligence
+            </div>
+          </div>
+        </div>
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
+          {(data.dataSource as string) === "monitoring" ? "Monitoring" : "Jednorazowy"}
+        </span>
+      </div>
+
+      {/* KPI row */}
+      <div className="px-5 pb-4 grid grid-cols-3 gap-3">
+        <div className="rounded-xl bg-muted/40 p-3 text-center">
+          <div className="text-xl font-bold tabular-nums">{sovPercent}%</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Share of Voice</div>
+        </div>
+        <div className="rounded-xl bg-muted/40 p-3 text-center">
+          <div className="text-xl font-bold tabular-nums">{citedEngines}/{totalEngines}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Silniki AI</div>
+        </div>
+        <div className="rounded-xl bg-muted/40 p-3 text-center">
+          <div className="text-xl font-bold tabular-nums">{data.liveCompetitorCount}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Konkurenci</div>
+        </div>
+      </div>
+
+      {/* Top competitors list */}
+      {data.topCompetitorDomains.length > 0 && (
+        <div className="px-5 pb-4">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Top cytowani zamiast Ciebie</div>
+          <div className="space-y-1.5">
+            {data.topCompetitorDomains.slice(0, 5).map((c, i) => (
+              <div key={c.domain} className="flex items-center gap-2.5">
+                <span className="text-[10px] font-bold text-muted-foreground/60 w-4 tabular-nums">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium truncate">{c.domain}</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{c.count}x</span>
+                  </div>
+                  <div className="mt-0.5 h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-violet-500/60"
+                      style={{ width: `${Math.min(100, (c.count / (data.topCompetitorDomains[0]?.count || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pulse Monitor upsell CTA */}
+      <div className="mx-5 mb-5 rounded-xl border border-violet-500/25 bg-gradient-to-r from-violet-500/8 to-violet-600/4 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Activity className="w-3.5 h-3.5 text-violet-400" />
+            <span className="text-xs font-semibold text-violet-300">Śledź trend Share of Voice w czasie</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Pulse Monitor sprawdza automatycznie co tydzień, czy Twoja pozycja wzrasta czy spada — i alarmuje, gdy konkurent Cię wyprzedza.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 shrink-0"
+          onClick={() => navigate("/dashboard")}
+        >
+          <Eye className="w-3 h-3" /> Pulse Monitor
+          <ChevronRight className="w-3 h-3" />
+        </Button>
+      </div>
     </div>
   );
 }

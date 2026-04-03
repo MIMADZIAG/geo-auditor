@@ -728,6 +728,64 @@ export const appRouter = router({
         };
       }),
 
+    // ── Competitor Benchmark by Audit ID ─────────────────────────────────────
+    // Works without Pulse Monitor — reads citation_checks from one-off Citation
+    // Intelligence runs. Used in Results Tab 2 to show competitor data immediately.
+    getCompetitorBenchmarkByAudit: protectedProcedure
+      .input(z.object({ auditId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) return null;
+        const { citationChecks, citationJobs, audits } = await import("../drizzle/schema");
+        const { desc: d2, eq: e2, and: a2, inArray: ia2 } = await import("drizzle-orm");
+        // Verify audit belongs to this user
+        const [audit] = await db.select({ id: audits.id, userId: audits.userId, url: audits.url })
+          .from(audits).where(e2(audits.id, input.auditId)).limit(1);
+        if (!audit || audit.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        // Get citation jobs for this audit
+        const jobs = await db.select().from(citationJobs)
+          .where(e2(citationJobs.auditId, input.auditId))
+          .orderBy(d2(citationJobs.createdAt)).limit(3);
+        if (jobs.length === 0) return null;
+        const jobIds = jobs.map((j) => j.id);
+        const checks = await db.select({
+          engine: citationChecks.engine,
+          isCited: citationChecks.isCited,
+          competitorDomains: citationChecks.competitorDomains,
+        }).from(citationChecks).where(ia2(citationChecks.jobId, jobIds));
+        if (checks.length === 0) return null;
+        // Aggregate competitor domains
+        const domainFreq = new Map<string, number>();
+        const engineStats: Record<string, { cited: number; total: number }> = {};
+        for (const check of checks) {
+          if (!engineStats[check.engine]) engineStats[check.engine] = { cited: 0, total: 0 };
+          engineStats[check.engine].total++;
+          if (check.isCited === "yes" || check.isCited === "domain") engineStats[check.engine].cited++;
+          for (const domain of ((check.competitorDomains as string[] | null) ?? [])) {
+            if (domain && domain.length >= 4) domainFreq.set(domain, (domainFreq.get(domain) ?? 0) + 1);
+          }
+        }
+        const topCompetitorDomains = Array.from(domainFreq.entries())
+          .sort((a, b) => b[1] - a[1]).slice(0, 10)
+          .map(([domain, count]) => ({ domain, count }));
+        const engineBreakdown = Object.fromEntries(
+          Object.entries(engineStats).map(([engine, s]) => [engine, { cited: s.cited > 0, citedCount: s.cited, totalQueries: s.total }])
+        );
+        const citedCount = Object.values(engineStats).filter((s) => s.cited > 0).length;
+        const totalEngines = Object.keys(engineStats).length || 4;
+        return {
+          shareOfVoice: citedCount / totalEngines,
+          competitorCitationCount: topCompetitorDomains.reduce((s, c) => s + c.count, 0),
+          topCompetitorDomains,
+          engineBreakdown,
+          sovTrend: [],
+          recordedAt: jobs[0]?.createdAt ?? null,
+          dataSource: "citation_checks" as const,
+          liveCompetitorCount: topCompetitorDomains.length,
+          url: audit.url,
+        };
+      }),
+
     // ── Run Citation Intelligence directly from Pulse Monitor ──────────────────
     // Starts a citation job for the last audit of a monitored page.
     // Returns { jobId, auditId } immediately — poll citation.getStatus for progress.

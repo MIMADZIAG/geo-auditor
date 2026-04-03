@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { PhraseManager } from "@/components/PhraseManager";
 import { VisibilityScoreKPI } from "@/components/monitoring/VisibilityScoreKPI";
 import { SentimentDashboard } from "@/components/monitoring/SentimentDashboard";
@@ -1380,6 +1380,16 @@ export default function Dashboard() {
     { enabled: isAuthenticated }
   );
 
+  // Hash-based scroll: navigate("/dashboard#pulse") from Results header
+  useEffect(() => {
+    if (window.location.hash === "#pulse") {
+      const el = document.getElementById("pulse");
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+      }
+    }
+  }, [monitoringLoading]);
+
   // Citation status batch — one query for all audits in history + monitored pages
   const historyAuditIds = (history ?? []).map((a) => a.id);
   const monitoredAuditIds = (monitoredPages ?? []).filter((p) => p.lastAuditId != null).map((p) => p.lastAuditId!);
@@ -1500,7 +1510,7 @@ export default function Dashboard() {
 
         {/* ── MONITORED PAGES GRID ── */}
         {(monitoredPages ?? []).length > 0 && (
-          <div>
+          <div id="pulse">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                 <Eye className="w-4 h-4" /> Pulse Monitor
@@ -1558,6 +1568,64 @@ export default function Dashboard() {
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── PULSE MONITOR EMPTY STATE ── */}
+        {(monitoredPages ?? []).length === 0 && !monitoringLoading && isPaid && (
+          <div id="pulse" className="rounded-2xl border border-dashed border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-violet-600/3 p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center shrink-0">
+                <Eye className="w-6 h-6 text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-sm font-bold">Pulse Monitor</h2>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20">Aktywny</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
+                  Dodaj pierwszą stronę, aby automatycznie śledzić jej widoczność w ChatGPT, Perplexity, Google AI i Gemini.
+                  Co tydzień otrzymasz raport — kto Cię cytuje, kto Cię wyprzedza i jakie luki możesz wypełnić.
+                </p>
+                <div className="flex flex-wrap gap-3 mt-3">
+                  {["Automatyczne sprawdzanie co tydzień", "Alerty o zmianach cytowań", "Analiza konkurencji AI", "Trend Share of Voice"].map((f) => (
+                    <span key={f} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" /> {f}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5 text-xs shrink-0"
+                onClick={() => setShowAddMonitoring(true)}
+              >
+                <Plus className="w-3 h-3" /> Dodaj pierwszą stronę
+              </Button>
+            </div>
+            {showAddMonitoring && (
+              <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    placeholder="https://twoja-strona.pl/produkt"
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-foreground placeholder:text-muted-foreground"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddMonitoring()}
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                    onClick={handleAddMonitoring}
+                    disabled={addMonitoring.isPending}
+                  >
+                    {addMonitoring.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Dodaj"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="shrink-0 text-muted-foreground" onClick={() => setShowAddMonitoring(false)}>Anuluj</Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
