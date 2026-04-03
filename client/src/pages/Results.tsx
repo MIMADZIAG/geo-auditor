@@ -60,7 +60,7 @@ import { AICitationPanel } from "@/components/AICitationPanel";
 import UpsellProModal from "@/components/UpsellProModal";
 import { Streamdown } from "streamdown";
 import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
-import { Plus, RefreshCw as RefreshCwIcon } from "lucide-react";
+import { Plus, RefreshCw as RefreshCwIcon, Layers, SplitSquareHorizontal, ArrowRight } from "lucide-react";
 import type { SimulationResult } from "@/geo-sandbox/types/simulator";
 import WhatIfEditor from "@/geo-sandbox/components/WhatIfEditor";
 import ScoreGauge from "@/geo-sandbox/components/ScoreGauge";
@@ -832,45 +832,20 @@ export default function Results() {
       {activeTab === "content" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-          {/* Workflow context banner */}
-          <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/8 to-indigo-500/5 p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-violet-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-sm font-bold">Signal Rewrite — Krok 2 z 2</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">AI-Powered</span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Signal Rewrite łączy dane z Signal Audit i cytowanych URL-i z Citation Intelligence. Generuje nową wersję treści zoptymalizowaną pod sygnały AI Search — gotową do wdrożenia.
-                </p>
-                <div className="flex items-center gap-4 mt-2">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-muted-foreground">Audyt: <span className="text-foreground font-medium">{overallScore}/100</span></span>
-                  </div>
-                  {citationStatus === "done" && (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-muted-foreground">Widoczność: <span className="text-foreground font-medium">{citationCitedCount}/{citationTotalEngines} AI</span></span>
-                    </div>
-                  )}
-                  {citedCompetitorUrls.length > 0 && (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-muted-foreground">Konkurenci: <span className="text-foreground font-medium">{citedCompetitorUrls.length} URL</span></span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* ── Feature A: Signal Rewrite Readiness Dashboard ── */}
+          <SignalRewriteReadinessPanel
+            overallScore={overallScore}
+            citationStatus={citationStatus}
+            citationCitedCount={citationCitedCount}
+            citationTotalEngines={citationTotalEngines}
+            citationOpportunitiesCount={citationOpportunities.length}
+            competitorUrlsCount={citedCompetitorUrls.length}
+            onRunCitation={() => setActiveTab("visibility")}
+          />
           <ContentCreatorRewriteWidget auditId={audit.id} navigate={navigate} isPaid={hasPaidPlan} />
 
           {/* Full AI Co-Pilot — inline rewrite with competitor context */}
-          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} citationOpportunities={citationOpportunities} navigate={navigate} />
+          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} citationOpportunities={citationOpportunities} citationStatus={citationStatus} overallScore={overallScore} navigate={navigate} />
 
           {/* New page CTA */}
           <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -2545,8 +2520,322 @@ function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
   );
 }
 
+
+// ─── Feature A: Signal Rewrite Readiness Dashboard ───────────────────────────
+function SignalRewriteReadinessPanel({
+  overallScore,
+  citationStatus,
+  citationCitedCount,
+  citationTotalEngines,
+  citationOpportunitiesCount,
+  competitorUrlsCount,
+  onRunCitation,
+}: {
+  overallScore: number;
+  citationStatus: string;
+  citationCitedCount: number;
+  citationTotalEngines: number;
+  citationOpportunitiesCount: number;
+  competitorUrlsCount: number;
+  onRunCitation: () => void;
+}) {
+  const ciDone = citationStatus === "done";
+  const ciRunning = citationStatus === "running";
+
+  const items = [
+    {
+      label: "Signal Audit",
+      value: `${overallScore}/100`,
+      sub: overallScore >= 70 ? "Dobra baza" : overallScore >= 45 ? "Wymaga poprawy" : "Słaba widoczność",
+      status: overallScore >= 70 ? "green" : overallScore >= 45 ? "yellow" : "red",
+      icon: <Shield className="w-4 h-4" />,
+    },
+    {
+      label: "Citation Intelligence",
+      value: ciDone ? `${citationCitedCount}/${citationTotalEngines} AI` : ciRunning ? "W toku…" : "Nie uruchomiono",
+      sub: ciDone ? (citationCitedCount > 0 ? "Cytowania wykryte" : "Brak cytowań") : ciRunning ? "Analizuję silniki AI" : "Wymagane do pełnego rewrite",
+      status: ciDone ? (citationCitedCount > 0 ? "green" : "yellow") : ciRunning ? "blue" : "gray",
+      icon: <Eye className="w-4 h-4" />,
+    },
+    {
+      label: "Citation Opportunities",
+      value: citationOpportunitiesCount > 0 ? `${citationOpportunitiesCount} instrukcji` : ciDone ? "Brak luk" : "—",
+      sub: citationOpportunitiesCount > 0 ? "Załadowane do promptu AI" : ciDone ? "Strona dobrze pokryta" : "Dostępne po Citation Intelligence",
+      status: citationOpportunitiesCount > 0 ? "green" : ciDone ? "yellow" : "gray",
+      icon: <Target className="w-4 h-4" />,
+    },
+    {
+      label: "Wzorce konkurencji",
+      value: competitorUrlsCount > 0 ? `${competitorUrlsCount} URL` : "—",
+      sub: competitorUrlsCount > 0 ? "Cytowane przez AI Search" : "Brak danych konkurencji",
+      status: competitorUrlsCount > 0 ? "green" : "gray",
+      icon: <Layers className="w-4 h-4" />,
+    },
+  ];
+
+  const colorMap: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+    green:  { bg: "bg-emerald-500/8",  border: "border-emerald-500/20", text: "text-emerald-400", dot: "bg-emerald-400" },
+    yellow: { bg: "bg-amber-500/8",    border: "border-amber-500/20",   text: "text-amber-400",   dot: "bg-amber-400" },
+    red:    { bg: "bg-red-500/8",      border: "border-red-500/20",     text: "text-red-400",     dot: "bg-red-400" },
+    blue:   { bg: "bg-blue-500/8",     border: "border-blue-500/20",    text: "text-blue-400",    dot: "bg-blue-400 animate-pulse" },
+    gray:   { bg: "bg-zinc-800/40",    border: "border-white/8",        text: "text-zinc-500",    dot: "bg-zinc-600" },
+  };
+
+  const readyCount = items.filter(i => i.status === "green").length;
+
+  return (
+    <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-950/40 via-indigo-950/20 to-zinc-900/60 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-violet-500/15">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-violet-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold">Signal Rewrite</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">Krok 2 z 2</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Kontekst załadowany do silnika AI</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-xs font-semibold ${readyCount === 4 ? "text-emerald-400" : readyCount >= 2 ? "text-amber-400" : "text-zinc-500"}`}>
+            {readyCount}/4 gotowych
+          </span>
+          <div className={`w-2 h-2 rounded-full ${readyCount === 4 ? "bg-emerald-400" : readyCount >= 2 ? "bg-amber-400" : "bg-zinc-600"}`} />
+        </div>
+      </div>
+      {/* Grid of readiness indicators */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-violet-500/10">
+        {items.map((item) => {
+          const c = colorMap[item.status];
+          return (
+            <div key={item.label} className={`${c.bg} ${c.border} border-0 p-4 flex flex-col gap-1.5`}>
+              <div className="flex items-center gap-1.5">
+                <span className={`${c.text}`}>{item.icon}</span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{item.label}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.dot}`} />
+                <span className={`text-sm font-bold ${c.text}`}>{item.value}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-tight">{item.sub}</p>
+            </div>
+          );
+        })}
+      </div>
+      {/* CTA if Citation Intelligence not run */}
+      {citationStatus === "idle" && (
+        <div className="px-5 py-3 bg-amber-500/5 border-t border-amber-500/15 flex items-center justify-between gap-3">
+          <p className="text-xs text-amber-300/80">
+            Uruchom Citation Intelligence, aby Signal Rewrite miał pełny kontekst cytowań i luk konkurencji.
+          </p>
+          <button
+            onClick={onRunCitation}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 text-xs font-medium transition-colors"
+          >
+            Uruchom <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      {/* Opportunities summary if loaded */}
+      {citationOpportunitiesCount > 0 && (
+        <div className="px-5 py-3 bg-violet-500/5 border-t border-violet-500/15">
+          <p className="text-[11px] text-violet-300/80">
+            <span className="font-semibold text-violet-300">{citationOpportunitiesCount} instrukcji contentowych</span> z Citation Intelligence zostało załadowanych do promptu AI — rewrite adresuje konkretne luki widoczności w AI Search.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Feature B: Before/After Diff View ───────────────────────────────────────
+function computeWordDiff(original: string, rewritten: string): Array<{ text: string; type: "same" | "removed" | "added" }> {
+  // Split into sentences for meaningful diff units
+  const splitSentences = (text: string) => text.match(/[^.!?\n]+[.!?\n]*/g) ?? text.split("\n").filter(Boolean);
+  const origSentences = splitSentences(original.slice(0, 4000));
+  const newSentences = splitSentences(rewritten.slice(0, 4000));
+
+  // Simple LCS-based sentence diff
+  const m = origSentences.length;
+  const n = newSentences.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (origSentences[i - 1].trim() === newSentences[j - 1].trim()) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  // Backtrack
+  const result: Array<{ text: string; type: "same" | "removed" | "added" }> = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && origSentences[i - 1].trim() === newSentences[j - 1].trim()) {
+      result.unshift({ text: newSentences[j - 1], type: "same" });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.unshift({ text: newSentences[j - 1], type: "added" });
+      j--;
+    } else {
+      result.unshift({ text: origSentences[i - 1], type: "removed" });
+      i--;
+    }
+  }
+  return result;
+}
+
+function BeforeAfterDiff({
+  original,
+  rewritten,
+  citationOpportunities,
+}: {
+  original: string;
+  rewritten: string;
+  citationOpportunities: CitationOpportunityBrief[];
+}) {
+  const diff = React.useMemo(() => computeWordDiff(original, rewritten), [original, rewritten]);
+
+  // Check if a sentence addresses a citation opportunity
+  const addressesOpportunity = (text: string): CitationOpportunityBrief | null => {
+    const lower = text.toLowerCase();
+    for (const opp of citationOpportunities) {
+      const kw = opp.keyword.toLowerCase();
+      if (lower.includes(kw) || kw.split(" ").filter(w => w.length > 4).some(w => lower.includes(w))) {
+        return opp;
+      }
+    }
+    return null;
+  };
+
+  const addedCount = diff.filter(d => d.type === "added").length;
+  const removedCount = diff.filter(d => d.type === "removed").length;
+  const opportunityHits = diff.filter(d => d.type === "added" && addressesOpportunity(d.text) !== null).length;
+
+  return (
+    <div className="flex flex-col gap-0">
+      {/* Stats bar */}
+      <div className="flex items-center gap-4 px-4 py-2.5 bg-zinc-900/80 border-b border-white/8">
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="text-zinc-400">{addedCount} nowych zdań</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="w-2 h-2 rounded-full bg-red-400" />
+          <span className="text-zinc-400">{removedCount} usuniętych</span>
+        </div>
+        {opportunityHits > 0 && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="w-2 h-2 rounded-full bg-violet-400" />
+            <span className="text-violet-300 font-medium">{opportunityHits} adresuje Citation Opportunities</span>
+          </div>
+        )}
+      </div>
+      {/* Diff content */}
+      <div className="px-4 py-4 max-h-[600px] overflow-y-auto space-y-1">
+        {diff.map((chunk, idx) => {
+          const opp = chunk.type === "added" ? addressesOpportunity(chunk.text) : null;
+          if (chunk.type === "same") {
+            return (
+              <p key={idx} className="text-xs text-zinc-500 leading-relaxed">{chunk.text}</p>
+            );
+          }
+          if (chunk.type === "removed") {
+            return (
+              <p key={idx} className="text-xs text-red-400/70 line-through leading-relaxed bg-red-500/5 rounded px-1">{chunk.text}</p>
+            );
+          }
+          // added
+          return (
+            <div key={idx} className={`rounded px-2 py-1 ${opp ? "bg-violet-500/12 border-l-2 border-violet-500/60" : "bg-emerald-500/8 border-l-2 border-emerald-500/40"}`}>
+              <p className={`text-xs leading-relaxed ${opp ? "text-zinc-200" : "text-emerald-200/90"}`}>{chunk.text}</p>
+              {opp && (
+                <p className="text-[10px] text-violet-400 mt-0.5">
+                  🎯 Adresuje: <span className="font-medium">"{opp.keyword}"</span>
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {/* Legend */}
+      <div className="flex items-center gap-4 px-4 py-2 bg-zinc-900/60 border-t border-white/8">
+        <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+          <span className="w-3 h-0.5 bg-emerald-400/60 rounded" /> Nowa treść
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+          <span className="w-3 h-0.5 bg-red-400/60 rounded" /> Usunięta
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+          <span className="w-3 h-0.5 bg-violet-400/60 rounded" /> Adresuje Citation Opportunity
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Feature C: Citation Intelligence Gate ────────────────────────────────────
+function CitationIntelligenceGate({ navigate }: { navigate: (path: string) => void }) {
+  return (
+    <div className="rounded-2xl border-2 border-dashed border-violet-500/30 bg-violet-950/20 overflow-hidden">
+      <div className="flex flex-col items-center gap-5 py-12 px-6 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
+          <Eye className="w-7 h-7 text-violet-400" />
+        </div>
+        <div className="max-w-sm">
+          <h3 className="text-base font-bold mb-2">Uruchom Citation Intelligence</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Signal Rewrite działa najlepiej z danymi z Citation Intelligence — analizą widoczności w ChatGPT, Gemini i Perplexity. Bez tych danych AI nie wie, które luki contentowe wypełnić.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <button
+            onClick={() => navigate(window.location.pathname + "?tab=visibility")}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+          >
+            <Eye className="w-4 h-4" /> Uruchom Citation Intelligence
+          </button>
+          <p className="text-xs text-muted-foreground">lub przewiń do zakładki "Widoczność AI"</p>
+        </div>
+        <div className="flex items-center gap-6 pt-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />
+            <span>Luki w cytowaniach AI</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />
+            <span>Wzorce konkurencji</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />
+            <span>Instrukcje contentowe</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type CitationOpportunityBrief = { keyword: string; contentBrief: string; isQuickWin: boolean };
-function WhatIfSection({ url, citedCompetitorUrls = [], citationOpportunities = [], navigate }: { url: string; citedCompetitorUrls?: string[]; citationOpportunities?: CitationOpportunityBrief[]; navigate: (path: string) => void }) {
+function WhatIfSection({
+  url,
+  citedCompetitorUrls = [],
+  citationOpportunities = [],
+  citationStatus = "idle",
+  overallScore = 0,
+  navigate,
+}: {
+  url: string;
+  citedCompetitorUrls?: string[];
+  citationOpportunities?: CitationOpportunityBrief[];
+  citationStatus?: CitationStatus;
+  overallScore?: number;
+  navigate: (path: string) => void;
+}) {
   const { user } = useAuth();
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
   const rewriteMutation = trpc.sandbox.rewrite.useMutation();
@@ -2574,7 +2863,8 @@ function WhatIfSection({ url, citedCompetitorUrls = [], citationOpportunities = 
   // Each entry: { text, label, timestamp }
   const [rewriteHistory, setRewriteHistory] = useState<Array<{ text: string; label: string; timestamp: number }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-
+  // Feature B: diff view toggle
+  const [showDiff, setShowDiff] = useState(false);
   // Derived: current rewritten text from history
   const rewrittenText = historyIndex >= 0 && rewriteHistory[historyIndex] ? rewriteHistory[historyIndex].text : null;
   const canUndo = historyIndex > 0;
@@ -2597,12 +2887,15 @@ function WhatIfSection({ url, citedCompetitorUrls = [], citationOpportunities = 
     if (canRedo) setHistoryIndex(i => i + 1);
   }
 
+  // Feature C: Citation Intelligence gate — if not run, show CTA
+  if (citationStatus === "idle") {
+    return <CitationIntelligenceGate navigate={navigate} />;
+  }
   // Show upsell for unauthenticated users or users on free plan
   // We detect free plan by checking if the user is not authenticated (free tier)
   // Authenticated users with paid plan can use the feature
   const userPlan = (user as any)?.plan ?? "free";
   const isFreePlan = !user || userPlan === "free";
-
   if (isFreePlan) {
     return <FullRewriteUpsell navigate={navigate} />;
   }
@@ -2874,6 +3167,18 @@ function WhatIfSection({ url, citedCompetitorUrls = [], citationOpportunities = 
                     <div className="ml-auto flex items-center gap-2 pr-3">
                       <span className="text-[10px] text-zinc-500">{rewrittenText.length} znaków</span>
                       <button
+                        onClick={() => setShowDiff(v => !v)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          showDiff
+                            ? 'bg-violet-500/30 text-violet-300 border border-violet-500/40'
+                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10'
+                        }`}
+                        title="Porównaj oryginał z przepisaną wersją"
+                      >
+                        <SplitSquareHorizontal className="w-3 h-3" />
+                        {showDiff ? "Ukryj diff" : "Diff"}
+                      </button>
+                      <button
                         onClick={handleCopy}
                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                           copied
@@ -2887,11 +3192,19 @@ function WhatIfSection({ url, citedCompetitorUrls = [], citationOpportunities = 
                     </div>
                   </div>
 
-                  {/* Tab: Content */}
-                  {activeResultTab === "content" && (
+                  {/* Tab: Content — with optional diff view */}
+                  {activeResultTab === "content" && !showDiff && (
                     <div className="px-4 py-4 max-h-[600px] overflow-y-auto prose prose-invert prose-sm max-w-none prose-headings:text-zinc-100 prose-headings:font-bold prose-p:text-zinc-200 prose-p:leading-relaxed prose-li:text-zinc-200 prose-strong:text-white prose-a:text-violet-400 prose-blockquote:border-violet-500 prose-blockquote:text-zinc-300 prose-code:text-emerald-300 prose-code:bg-zinc-800/60 prose-code:rounded prose-code:px-1">
                       <Streamdown className="text-sm leading-relaxed">{rewrittenText}</Streamdown>
                     </div>
+                  )}
+                  {/* Feature B: Before/After Diff View */}
+                  {activeResultTab === "content" && showDiff && rewrittenText && (
+                    <BeforeAfterDiff
+                      original={cleanText}
+                      rewritten={rewrittenText}
+                      citationOpportunities={citationOpportunities}
+                    />
                   )}
 
                   {/* Tab: Entities & Tips */}

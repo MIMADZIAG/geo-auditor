@@ -1394,3 +1394,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Task B: "Run Citation Intelligence" button directly in Pulse Monitor panel (no need to go to audit results)
 - [ ] Task C: Wire real competitorDomains from citation_checks into getCompetitorBenchmark procedure + update CompetitorBenchmark UI
 - [x] Fix 3: Inject Citation Opportunities (contentBrief) into Signal Rewrite system prompt via citationOpportunities field
+
+## Signal Rewrite Enhancements — Unicorn-level UX
+
+- [x] Feature A: Signal Rewrite Readiness Dashboard — mini-dashboard in Tab 3 showing loaded context (audit score, citation status, N opportunities injected, N competitor URLs)
+- [x] Feature B: Before/After Diff — side-by-side view after rewrite, with highlighted sentences that address Citation Opportunities
+- [x] Feature C: Citation Intelligence Gate — if citationStatus is idle/not run, show CTA block instead of WhatIfSection form
