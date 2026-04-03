@@ -1356,3 +1356,15 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] #8 Pricing 2 plany — Starter $59/$79 i Pro $99/$129, usunięto Free i Agency
 - [x] #9 Footer linki — /privacy i /terms działają, dodano /demo i /pricing
 - [x] #10 Usunąć Agency CTA — usunięto plan Agency i "Skontaktuj się"
+
+## Algorithm v4 — Expert Simulation Improvements (Mike King / Metehan / Dan Petrovic)
+
+- [x] Task 1: WikiData NER entity richness — hybrid regex+Wikidata batch API, weight 8→15, QID mapping
+- [x] Task 2: Continuous 0-100 scoring — add `score` field to AuditCheck, update all contentStructure checks
+- [x] Task 3: Cosine similarity via OpenAI text-embedding-3-large — H1+first150w vs full content
+- [x] Task 4: CI weight rebalance — cosine_similarity:0.25, entity_richness:0.20, answer_density:0.12, freshness:0.15
+- [x] Task 5: Intelligent content length/density — reward density at 600-1200w, penalty >3000w without density
+- [x] Task 6: Freshness decay with page-type context — time-based scoring, evergreen vs time-sensitive logic
+- [x] Task 7: Semantic structured data validation — completeness depth, speakable, mainEntity quality
+- [x] Tests: vitest coverage for all new scoring functions (35 tests, all passing)
+- [x] TypeScript check: zero errors

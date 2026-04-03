@@ -282,7 +282,7 @@ async function auditOneCompetitor(input: CompetitorAuditInput): Promise<Competit
     // Run all analysis modules synchronously (same as main audit, no LLM)
     const technical       = analyzeTechnical(page);
     const sdResult        = analyzeStructuredData(page);
-    const contentStructure = analyzeContentStructure(page, pageType);
+    const contentStructure = await analyzeContentStructure(page, pageType);
     const eeat            = analyzeEEAT(page, pageType);
     const aiCrawlers      = analyzeAICrawlers(page);
     const metaTags        = analyzeMetaTags(page);

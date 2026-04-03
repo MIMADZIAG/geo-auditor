@@ -12,6 +12,7 @@
 
 import { invokeLLM } from "../_core/llm";
 import { safeParseLLMJson } from "../utils/jsonSanitizer";
+import { computeCosineSimilarity, extractQuerySignal, getOpenAIApiKey } from "./cosineSimilarity";
 import type { ScrapedPage } from "./scraper";
 import type { PageType } from "./pageTypeDetector";
 import type { CheckStatus } from "./types";
@@ -38,6 +39,11 @@ export interface ContentIntelligenceResult {
   pageTopics: string[];        // Detected main topics (for virality/sharing)
   semanticGaps: string[];      // Missing subtopics/questions (iPullRank Ch.11)
   detectedLanguage: string;    // ISO 639-1 language code detected for this page
+  /** Cosine similarity score (0–100) between query signal and content body.
+   * Present when OpenAI embeddings API is available. null = not computed. */
+  cosineSimilarityScore: number | null;
+  /** Raw cosine similarity value (0–1) for debugging */
+  cosineSimilarityRaw: number | null;
   isLLMPowered: true;
 }
 
@@ -473,6 +479,22 @@ export async function analyzeContentIntelligence(
   const detectedLanguage = detectPageLanguageForCI(page.html, page.finalUrl || page.url);
   console.log(`[CI] Language detected: "${detectedLanguage}" for ${page.finalUrl || page.url}`);
 
+  // ── Cosine Similarity (Task 3 — Mike King / iPullRank) ────────────────────
+  // Run in parallel with LLM call — independent, non-blocking
+  const $ = page.$;
+  const h1Text = $('h1').first().text().trim();
+  const $clone = $.root().clone();
+  $clone.find('script, style, nav, footer, header, aside, noscript').remove();
+  const bodyText = $clone.find('body').text().replace(/\s+/g, ' ').trim();
+
+  const querySignal = extractQuerySignal(h1Text, bodyText);
+  const openAIKey = getOpenAIApiKey();
+
+  // Fire cosine similarity and LLM analysis in parallel
+  const [cosineResult] = await Promise.all([
+    openAIKey ? computeCosineSimilarity(querySignal, bodyText, openAIKey) : Promise.resolve(null),
+  ]);
+
   const contentContext = extractContentForAnalysis(page, pageType);
   const systemPrompt = buildSystemPrompt(detectedLanguage);
 
@@ -797,16 +819,79 @@ Return ONLY valid JSON matching this exact schema (8 dimensions):
     },
   ];
 
-  // Weighted overall score — 8 dimensions (iPullRank aligned)
-  const weights: Record<string, number> = {
+  // ── Cosine Similarity check (Task 3 — injected as 9th check) ─────────────
+  if (cosineResult !== null) {
+    const csScore = cosineResult.score;
+    let csStatus: ContentIntelligenceCheck['status'];
+    let csDescription: string;
+    let csRecommendation: string;
+
+    if (csScore >= 70) {
+      csStatus = 'pass';
+      csDescription = detectedLanguage === 'pl'
+        ? `Wysoka spójność semantyczna (${csScore}/100, cosine: ${cosineResult.rawScore}). Treść strony jest silnie dopasowana do jej głównego tematu (H1 + pierwsze 150 słów). Silniki AI będą pobierać tę stronę dla zapytań powiązanych z jej tematem.`
+        : `High semantic alignment (${csScore}/100, cosine: ${cosineResult.rawScore}). Page content is strongly aligned with its primary topic signal. AI engines will retrieve this page for queries related to its topic.`;
+      csRecommendation = detectedLanguage === 'pl'
+        ? 'Utrzymaj spójność tematyczną — nie rozmywaj treści niezwiązanymi tematami.'
+        : 'Maintain topical coherence — avoid diluting content with unrelated topics.';
+    } else if (csScore >= 40) {
+      csStatus = 'warning';
+      csDescription = detectedLanguage === 'pl'
+        ? `Umiarkowana spójność semantyczna (${csScore}/100, cosine: ${cosineResult.rawScore}). Treść strony jest częściowo dopasowana do głównego tematu. Silniki AI mogą pobierać tę stronę, ale z niższym rankingiem.`
+        : `Moderate semantic alignment (${csScore}/100, cosine: ${cosineResult.rawScore}). Page content is partially aligned with its primary topic. AI engines may retrieve this page but with lower ranking.`;
+      csRecommendation = detectedLanguage === 'pl'
+        ? `Wzmocnij spójność semantyczną: upewnij się, że H1 i pierwsze 150 słów dokładnie opisują główny temat całej strony. Usuń treści niezwiązane z głównym tematem.`
+        : `Improve semantic alignment: ensure H1 and first 150 words precisely describe the main topic of the full page. Remove content unrelated to the primary topic.`;
+    } else {
+      csStatus = 'fail';
+      csDescription = detectedLanguage === 'pl'
+        ? `Niska spójność semantyczna (${csScore}/100, cosine: ${cosineResult.rawScore}). Treść strony jest słabo dopasowana do jej deklarowanego tematu. Silniki AI będą miały trudności z pobraniem tej strony dla odpowiednich zapytań.`
+        : `Low semantic alignment (${csScore}/100, cosine: ${cosineResult.rawScore}). Page content is poorly aligned with its declared topic. AI engines will struggle to retrieve this page for relevant queries.`;
+      csRecommendation = detectedLanguage === 'pl'
+        ? `Krytyczna niezgodność semantyczna: H1 i pierwsze 150 słów muszą być silnie powiązane z całą treścią. Przepisz wstęp tak, aby bezpośrednio zapowiadał główną treść strony. Rozważ podzielenie strony na bardziej tematycznie spójne podstrony.`
+        : `Critical semantic mismatch: H1 and first 150 words must strongly relate to the full content. Rewrite the introduction to directly preview the page's main content. Consider splitting the page into more topically focused subpages.`;
+    }
+
+    checks.push({
+      id: 'cosine_similarity',
+      label: detectedLanguage === 'pl' ? 'Spójność semantyczna (Cosine Similarity)' : 'Semantic Alignment (Cosine Similarity)',
+      score: csScore,
+      status: csStatus,
+      description: csDescription,
+      recommendation: csRecommendation,
+      impact: 'high',
+    });
+  }
+
+  // ── Weighted overall score — Task 4 rebalance (King/Yeşilyurt/Petrovic) ───
+  // cosine_similarity: 0.25 (dominant — only when available)
+  // entity_richness: 0.20 (elevated from 0.15)
+  // answer_density: 0.12 (reduced from 0.20)
+  // freshness_signals: 0.15 (elevated from 0.10)
+  // Other dimensions scaled proportionally to sum to 1.0
+  const hasCosine = cosineResult !== null;
+
+  const weights: Record<string, number> = hasCosine ? {
+    // With cosine similarity — 9 dimensions, sum = 1.0
+    cosine_similarity:  0.25, // ← dominant (Mike King)
+    answer_density:     0.12, // ↓ reduced from 0.20
+    factual_density:    0.12, // ↓ reduced from 0.15
+    embedding_language: 0.10, // ↓ reduced from 0.15
+    topic_authority:    0.12, // ↓ reduced from 0.15
+    freshness_signals:  0.15, // ↑ elevated from 0.10 (Metehan)
+    duplicate_risk:     0.06, // ↓ reduced from 0.10
+    citation_readiness: 0.05, // ↓ reduced from 0.10
+    query_coverage:     0.03, // ↓ reduced from 0.05
+  } : {
+    // Without cosine similarity — 8 dimensions, sum = 1.0
+    answer_density:     0.20, // original weight
+    factual_density:    0.15,
     embedding_language: 0.15,
-    topic_authority: 0.15,
-    freshness_signals: 0.10,
-    answer_density: 0.20,
-    factual_density: 0.15,
-    duplicate_risk: 0.10,
-    citation_readiness: 0.10,
-    query_coverage: 0.05,
+    topic_authority:    0.15,
+    freshness_signals:  0.15, // ↑ elevated from 0.10
+    duplicate_risk:     0.10,
+    citation_readiness: 0.08, // ↓ slightly reduced
+    query_coverage:     0.02, // ↓ slightly reduced
   };
 
   const overallScore = Math.round(
@@ -822,6 +907,8 @@ Return ONLY valid JSON matching this exact schema (8 dimensions):
     pageTopics: validatedPageTopics,
     semanticGaps: validatedSemanticGaps,
     detectedLanguage,
+    cosineSimilarityScore: cosineResult?.score ?? null,
+    cosineSimilarityRaw: cosineResult?.rawScore ?? null,
     isLLMPowered: true,
   };
 }

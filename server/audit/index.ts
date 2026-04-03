@@ -86,9 +86,8 @@ export async function runAudit(url: string): Promise<AuditResult> {
 
   const technical = analyzeTechnical(page);
   const structuredDataResult = analyzeStructuredData(page);
-  const contentStructure = analyzeContentStructure(page, pageType);
+  const contentStructure = await analyzeContentStructure(page, pageType);
   const eeat = analyzeEEAT(page, pageType);
-  const aiCrawlers = analyzeAICrawlers(page);
   const metaTags = analyzeMetaTags(page);
 
   // Strip extra fields from structuredData before storing in findings

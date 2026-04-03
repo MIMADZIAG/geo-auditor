@@ -14,6 +14,7 @@
 
 import type { ScrapedPage } from "./scraper";
 import type { AuditCheck, CategoryResult } from "./types";
+import { validateAllSchemas } from "./schemaSemanticValidator";
 
 const HIGH_VALUE_TYPES = [
   "Article",
@@ -370,24 +371,58 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
     value: hasOrg,
   });
 
-  // 7. Schema completeness (iPullRank Ch.9 — "Be comprehensive, not just compliant")
-  const avgCompleteness = schemas.length > 0
-    ? Math.round(schemas.reduce((sum, s) => sum + s.completenessScore, 0) / schemas.length)
-    : 0;
+  // 7. Schema Semantic Quality — Task 7 (Dan Petrovic / Grounding Budget)
+  // Replaces binary completeness check with 3-dimensional semantic validation:
+  //   completeness (required + recommended properties)
+  //   correctness (values are semantically valid, not placeholders)
+  //   semantic value (grounding-relevant properties for AI Knowledge Graph)
+  const semanticValidation = validateAllSchemas(
+    schemas.map(s => ({ type: s.type, raw: s.raw }))
+  );
+
+  // Use the semantic validator's overall score as the new completeness score
+  const avgCompleteness = semanticValidation.avgOverallScore;
+
+  let schemaQualityStatus: AuditCheck["status"];
+  let schemaQualityDescription: string;
+
+  if (schemas.length === 0) {
+    schemaQualityStatus = "info";
+    schemaQualityDescription = "Brak schematu do oceny. Najpierw dodaj schemat JSON-LD.";
+  } else if (semanticValidation.totalErrors > 0) {
+    // Has required property errors — always fail regardless of score
+    schemaQualityStatus = "fail";
+    const missingList = semanticValidation.criticalMissingProperties.slice(0, 4).join(", ");
+    schemaQualityDescription = `Schemat zawiera ${semanticValidation.totalErrors} błąd${semanticValidation.totalErrors > 1 ? "y" : ""} krytyczne: brakuje wymaganych właściwości (${missingList}). ` +
+      `Kompletność: ${semanticValidation.avgCompletenessScore}%, Poprawność: ${semanticValidation.avgCorrectnessScore}%, Wartość semantyczna: ${semanticValidation.avgSemanticValueScore}%.`;
+  } else if (avgCompleteness >= 75) {
+    schemaQualityStatus = "pass";
+    schemaQualityDescription = `Wysoka jakość semantyczna schematu (${avgCompleteness}/100). ` +
+      `Kompletność: ${semanticValidation.avgCompletenessScore}%, Poprawność: ${semanticValidation.avgCorrectnessScore}%, Wartość semantyczna: ${semanticValidation.avgSemanticValueScore}%. ` +
+      `Silniki AI mają bogaty kontekst do grounding encji.`;
+  } else if (avgCompleteness >= 45) {
+    schemaQualityStatus = "warning";
+    const warnings = semanticValidation.totalWarnings;
+    const missingRec = semanticValidation.results.flatMap(r => r.missingRecommended).slice(0, 3).join(", ");
+    schemaQualityDescription = `Umiarkowana jakość semantyczna schematu (${avgCompleteness}/100). ` +
+      `${warnings > 0 ? `${warnings} ostrzeżeń: brakuje zalecanych właściwości (${missingRec}). ` : ""}` +
+      `Kompletność: ${semanticValidation.avgCompletenessScore}%, Wartość semantyczna: ${semanticValidation.avgSemanticValueScore}%.`;
+  } else {
+    schemaQualityStatus = "fail";
+    schemaQualityDescription = `Niska jakość semantyczna schematu (${avgCompleteness}/100). ` +
+      `Schematy są obecne, ale ubogie w kontekst. Kompletność: ${semanticValidation.avgCompletenessScore}%, ` +
+      `Wartość semantyczna: ${semanticValidation.avgSemanticValueScore}%. ` +
+      `Dodaj właściwości: sameAs (Wikidata/Wikipedia), author z @type i url, keywords, about.`;
+  }
 
   checks.push({
     id: "schema_completeness",
-    label: "Kompletność schematu",
-    status: avgCompleteness >= 70 ? "pass" : avgCompleteness >= 40 ? "warning" : schemas.length > 0 ? "fail" : "info",
-    description: schemas.length === 0
-      ? "Brak schematu do oceny kompletności. Najpierw dodaj schemat JSON-LD."
-      : avgCompleteness >= 70
-      ? `Kompletność schematu: ${avgCompleteness}% — schematy są dobrze wypełnione zalecanymi właściwościami. Bardziej kompletne schematy dają silnikom AI bogatszy kontekst.`
-      : avgCompleteness >= 40
-      ? `Kompletność schematu: ${avgCompleteness}% — schematy są obecne, ale brakuje wielu zalecanych właściwości. Wypełnij wszystkie dostępne pola: author, datePublished, dateModified, image, description.`
-      : `Kompletność schematu: ${avgCompleteness}% — schematy są ubogie. Brakuje wielu zalecanych właściwości. Uzupełnij wszystkie pola schematu — im więcej kontekstu dostarczysz, tym dokładniej silniki AI będą mogły ekstrahować i ponownie wykorzystywać Twoją treść.`,
+    label: "Jakość semantyczna schematu",
+    status: schemaQualityStatus,
+    score: avgCompleteness,
+    description: schemaQualityDescription,
     impact: "high",
-    value: `${avgCompleteness}%`,
+    value: `completeness:${semanticValidation.avgCompletenessScore}%,correctness:${semanticValidation.avgCorrectnessScore}%,semantic:${semanticValidation.avgSemanticValueScore}%`,
   });
 
   // 8. Author markup

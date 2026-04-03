@@ -4,6 +4,12 @@ export interface AuditCheck {
   id: string;
   label: string;
   status: CheckStatus;
+  /** Continuous score 0–100 for this check (optional, backward-compatible).
+   * When present, the scorer uses this value directly instead of deriving
+   * from status (pass=100, warning=20, fail=0, info=10).
+   * Allows nuanced partial credit: e.g. entity_richness with 8 entities = 53/100.
+   */
+  score?: number;
   description: string;
   impact: "high" | "medium" | "low";
   value?: string | number | boolean | null;
