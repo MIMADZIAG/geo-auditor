@@ -1489,6 +1489,50 @@ export default function Dashboard() {
                         </Button>
                       </Link>
                     </div>
+                  ) : history.length === 1 ? (
+                    // #13 — First success onboarding: highlight the one audit with next step
+                    <div>
+                      <div className="px-5 py-3 border-b border-border/30 bg-gradient-to-r from-primary/5 to-transparent">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-xs font-semibold text-emerald-400">Pierwszy Signal Audit gotowy</span>
+                        </div>
+                      </div>
+                      <AuditRow audit={history[0]} citationStatus={citationStatuses?.[history[0].id]} />
+                      {/* First success CTA — Anton: what to do next */}
+                      <div className="px-5 py-4 border-t border-border/30 bg-muted/20">
+                        <p className="text-xs font-semibold mb-2">Co zrobić teraz?</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <Link href={`/results/${history[0].id}`}>
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer">
+                              <Shield className="w-3.5 h-3.5 text-primary shrink-0" />
+                              <div>
+                                <p className="text-xs font-semibold">Przeglądaj rekomendacje</p>
+                                <p className="text-[10px] text-muted-foreground">Wdroż 3 najważniejsze poprawki</p>
+                              </div>
+                            </div>
+                          </Link>
+                          <Link href={`/results/${history[0].id}?tab=visibility`}>
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/40 hover:border-border hover:bg-muted/30 transition-colors cursor-pointer">
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-xs font-semibold">Sprawdź cytowania AI</p>
+                                <p className="text-[10px] text-muted-foreground">ChatGPT, Gemini, Perplexity</p>
+                              </div>
+                            </div>
+                          </Link>
+                          <Link href="/">
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/40 hover:border-border hover:bg-muted/30 transition-colors cursor-pointer">
+                              <Zap className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-xs font-semibold">Analizuj kolejną stronę</p>
+                                <p className="text-[10px] text-muted-foreground">Porównaj podstrony</p>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="divide-y divide-border">
                       {history.map((audit) => (

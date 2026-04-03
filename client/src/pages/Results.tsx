@@ -442,6 +442,26 @@ export default function Results() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount — handleSwitchToVisibility is stable (useCallback [])
 
+  // #7 — Background auto-start Citation Intelligence when audit completes
+  // User doesn’t need to click the tab — citation check starts silently in the background.
+  // When user switches to Tab 02, results are already loading or ready.
+  const bgCitationFiredRef = useRef(false);
+  useEffect(() => {
+    if (bgCitationFiredRef.current) return;
+    if (!audit || (audit.status !== "completed" && audit.status !== "running")) return;
+    if (audit.status === "running") return; // Still running, wait for completion
+    if (citationStatusRef.current !== "idle") return; // Already started or done
+    bgCitationFiredRef.current = true;
+    // Delay 1.5s after audit loads so the panel has time to mount and register ref
+    const timer = setTimeout(() => {
+      if (citationStatusRef.current === "idle") {
+        citationPanelRef.current?.startCheck();
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audit?.status]); // Re-run when audit status changes to 'done'
+
   // ── Early returns (after all hooks) ──
   if (isLoading) return <LoadingState />;
   if (error || !audit) return <ErrorState message={error?.message ?? "Audyt nie został znaleziony."} />;
@@ -719,7 +739,7 @@ export default function Results() {
           <SharePanel score={overallScore} onShare={handleShare} reportUrl={reportUrl} />
 
           {/* Score History Teaser */}
-          {!isAuthenticated && <ScoreHistoryTeaser />}
+          {!isAuthenticated && <ScoreHistoryTeaser score={overallScore} topIssue={llmTopPriority ?? undefined} />}
 
           {/* PLG Upgrade Banner */}
           {!hasPaidPlan && <PLGUpgradeBanner isAuthenticated={isAuthenticated} navigate={navigate} />}
@@ -1133,6 +1153,7 @@ function ScoreHero({
 }) {
   const [displayScore, setDisplayScore] = useState(0);
   const [displayCite, setDisplayCite] = useState(0);
+  const [wowFlash, setWowFlash] = useState(false);
   const scoreColor = getScoreColor(score);
   const scoreLabel = getScoreLabel(score);
   const scoreSublabel = getScoreSublabel(score);
@@ -1142,22 +1163,32 @@ function ScoreHero({
   const citeOffset = citeCircumference - (displayCite / 100) * citeCircumference;
   const citeColor = citeabilityScore !== undefined ? getScoreColor(citeabilityScore) : "oklch(0.55 0.02 250)";
 
-  // Animate score count-up
+  // Animate score count-up with wow flash at completion
   useEffect(() => {
     let start = 0;
-    const duration = 1200;
+    const duration = 1400;
     const step = (timestamp: number) => {
       if (!start) start = timestamp;
       const progress = Math.min((timestamp - start) / duration, 1);
-      setDisplayScore(Math.round(progress * score));
-      if (citeabilityScore !== undefined) setDisplayCite(Math.round(progress * citeabilityScore));
-      if (progress < 1) requestAnimationFrame(step);
+      // Ease-out cubic for satisfying deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayScore(Math.round(eased * score));
+      if (citeabilityScore !== undefined) setDisplayCite(Math.round(eased * citeabilityScore));
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // #8 wow moment: brief glow flash when score lands
+        setWowFlash(true);
+        setTimeout(() => setWowFlash(false), 600);
+      }
     };
     requestAnimationFrame(step);
   }, [score, citeabilityScore]);
 
   return (
-    <div className="rounded-2xl bg-card border border-border/50 p-8">
+    <div className={`rounded-2xl bg-card border p-8 transition-all duration-500 ${wowFlash ? 'border-primary/60 shadow-lg' : 'border-border/50'}`}
+      style={wowFlash ? { boxShadow: `0 0 32px ${scoreColor}30` } : undefined}
+    >
       <div className="flex flex-col lg:flex-row items-center gap-8">
         {/* Score Rings — AI Visibility + Citeability side by side */}
         <div className="shrink-0 flex items-end gap-4">
@@ -1281,6 +1312,20 @@ function ScoreHero({
               </div>
             );
           })()}
+
+          {/* #6 — Demo link for low scores: show what 80+ looks like */}
+          {score < 60 && (
+            <a
+              href="/demo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors mb-3 group"
+            >
+              <Eye className="w-3 h-3 shrink-0" />
+              <span>Jak wygląda strona z wynikiem 80+?</span>
+              <span className="text-muted-foreground/40 group-hover:text-primary/60 transition-colors">→</span>
+            </a>
+          )}
 
           {/* Category mini-scores */}
           {findings && (
@@ -1985,23 +2030,51 @@ function PassingChecks({ findings }: { findings: AuditResult["findings"] }) {
 }
 
 // ─── 6. Share Panel ───────────────────────────────────────────────────────────
-
+// #12 — Active share panel with pre-written tweet and score context
 function SharePanel({ score, onShare, reportUrl }: { score: number; onShare: (p: "linkedin" | "twitter" | "copy") => void; reportUrl: string }) {
   const [copied, setCopied] = useState(false);
+  const [tweetCopied, setTweetCopied] = useState(false);
   const handleCopy = () => { onShare("copy"); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const scoreLabel = getScoreLabel(score);
+  const tweetText = `Sprawdziłem widoczność mojej strony w AI Search (ChatGPT, Gemini, Perplexity).
+
+Wynik: ${score}/100 — ${scoreLabel}
+
+Pełny raport: ${reportUrl}
+
+#GEO #AEO #AISearch #SEO`;
+  const handleCopyTweet = () => {
+    navigator.clipboard.writeText(tweetText);
+    setTweetCopied(true);
+    setTimeout(() => setTweetCopied(false), 2000);
+  };
   return (
-    <div className="rounded-2xl bg-card border border-border/50 p-5">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3 flex-1">
+    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+      <div className="p-5">
+        <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Share2 className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-semibold">Udostępnij swój AI Readiness Score</div>
-            <div className="text-xs text-muted-foreground">Pokaż zespołowi lub klientom jak Twoja strona wypada w AI Search</div>
+            <div className="text-sm font-semibold">Udostępnij wynik</div>
+            <div className="text-xs text-muted-foreground">Twój AI Readiness Score: <span className="font-bold text-foreground">{score}/100</span></div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
+        {/* Pre-written tweet — #12 Anton: ready-to-post, not just a share button */}
+        <div className="rounded-xl bg-muted/30 border border-border/40 p-3 mb-3">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Gotówy post — skopiuj i wklej</span>
+            <button
+              onClick={handleCopyTweet}
+              className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors font-semibold shrink-0"
+            >
+              <Copy className="w-3 h-3" />
+              {tweetCopied ? "Skopiowano!" : "Kopiuj"}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{tweetText}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => onShare("linkedin")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors border border-blue-500/20">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
             LinkedIn
@@ -2020,44 +2093,93 @@ function SharePanel({ score, onShare, reportUrl }: { score: number; onShare: (p:
   );
 }
 
-// ─── 7. Score History Teaser ──────────────────────────────────────────────────
-
-function ScoreHistoryTeaser() {
+// ─── 7. Aha Moment + Pulse Monitor Preview (for unauthenticated users) ─────────────────────────────────────────────────────────────────────────────────────
+// #10 — Concrete aha moment: one action to take right now
+// #11 — Animated Pulse Monitor preview so user knows what they get after signup
+function ScoreHistoryTeaser({ score, topIssue }: { score: number; topIssue?: string }) {
+  const [pulseStep, setPulseStep] = useState(0);
+  const pulseData = [45, 52, 48, 61, 58, 67, 72, 75];
+  // Animate bars sequentially to simulate live monitoring
+  useEffect(() => {
+    const t = setInterval(() => setPulseStep((s) => (s + 1) % (pulseData.length + 1)), 600);
+    return () => clearInterval(t);
+  }, []);
   return (
-    <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
-      <div className="p-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-primary" />
+    <div className="space-y-3">
+      {/* #10 — Aha moment: one concrete step for unauthenticated users */}
+      <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/8 to-violet-500/5 p-5">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+            <Target className="w-5 h-5 text-primary" />
           </div>
-          <div>
-            <div className="text-sm font-semibold">Śledź swój postęp</div>
-            <div className="text-xs text-muted-foreground">Obserwuj jak Twoje poprawki poprawiają widoczność AI w czasie</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold mb-1">Jeden krok, który możesz zrobić teraz</div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              {topIssue
+                ? <><span className="text-foreground font-medium">{topIssue}</span>{" — to najważniejsza zmiana, która podniesie Twój wynik. Zapisz raport i wróć do niego po wdrożeniu."}</>
+                : `Twoja strona ma wynik ${score}/100. Zapisz ten raport, wdroż trzy pierwsze rekomendacje i uruchom ponowny audyt za tydzień — średnio +12 pkt.`
+              }
+            </p>
+            <button
+              onClick={() => (window.location.href = getLoginUrl())}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Zapisz raport i śledź postęp — bezpłatnie
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Wymagane bezpłatne konto</span>
         </div>
       </div>
-      <div className="relative h-24 mx-5 mb-5 rounded-xl bg-muted/20 overflow-hidden">
-        <div className="absolute inset-0 flex items-end px-4 pb-3 gap-2 opacity-30">
-          {[45, 52, 48, 61, 58, 67, 72, 75].map((v, i) => (
-            <div key={i} className="flex-1 rounded-t bg-primary" style={{ height: `${v}%` }} />
-          ))}
+
+      {/* #11 — Animated Pulse Monitor preview */}
+      <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+        <div className="p-4 flex items-center justify-between border-b border-border/30">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-semibold">Pulse Monitor</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-medium">Preview</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Lock className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">Wymaga konta</span>
+          </div>
         </div>
-        <div className="absolute inset-0 backdrop-blur-sm bg-background/40 flex flex-col items-center justify-center gap-2">
-          <p className="text-xs text-muted-foreground">Zaloguj się, aby śledzić postępy</p>
-          <button onClick={() => (window.location.href = getLoginUrl())} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-            <LogIn className="w-3 h-3" /> Zaloguj się — bezpłatnie
-          </button>
+        <div className="p-4">
+          <div className="flex items-end gap-1.5 h-16 mb-3">
+            {pulseData.map((v, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-t transition-all duration-500"
+                style={{
+                  height: `${i < pulseStep ? v : 8}%`,
+                  backgroundColor: i < pulseStep
+                    ? `oklch(${0.55 + (v / 100) * 0.2} 0.18 ${145 + (v / 100) * 30})`
+                    : "oklch(0.22 0.015 250)",
+                  opacity: i < pulseStep ? 1 : 0.3,
+                }}
+              />
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {[
+              { engine: "ChatGPT", cited: true },
+              { engine: "Perplexity", cited: false },
+              { engine: "Gemini", cited: true },
+            ].map((e) => (
+              <div key={e.engine} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted/30 border border-border/30">
+                <div className={`w-1.5 h-1.5 rounded-full ${e.cited ? 'bg-emerald-400' : 'bg-red-400/60'}`} />
+                <span className="text-[10px] text-muted-foreground">{e.engine}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center">
+            Pulse Monitor sprawdza cytowania co tydzień i wysyła alert gdy AI przestaje Cię cytować
+          </p>
         </div>
       </div>
     </div>
   );
 }
-
-// ─── 8. PLG Upgrade Banner ────────────────────────────────────────────────────
 
 function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: boolean; navigate: (path: string) => void }) {
   const plans = [
@@ -2765,11 +2887,11 @@ function AISandboxCTA({ url, navigate }: { url: string; navigate: (path: string)
 // ─── Loading / Error ──────────────────────────────────────────────────────────────────────────────────
 function LoadingState() {
   const steps = [
-    { label: "Pobieranie i parsowanie strony", sub: "HTML, JavaScript, zasoby zewnętrzne" },
-    { label: "Weryfikacja dostępu crawlerów AI", sub: "robots.txt, sitemap, meta robots, User-Agent" },
-    { label: "Analiza danych strukturalnych", sub: "schema.org, JSON-LD, Open Graph, Twitter Card" },
-    { label: "Ocena sygnałów contentowych", sub: "nagłówki, gęstość, czytelność, E-E-A-T" },
-    { label: "Generowanie AI Readiness Score", sub: "scoring, priorytety, rekomendacje" },
+    { label: "Sprawdzam czy ChatGPT może zacytować tę stronę", sub: "Weryfikuję dostęp crawlerów AI — robots.txt, sitemap, User-Agent" },
+    { label: "Szukam luk w danych strukturalnych", sub: "Schema.org, JSON-LD, Open Graph — sygnały, które AI aktywnie czyta" },
+    { label: "Oceniam siłę sygnałów E-E-A-T", sub: "Autorytet, zaufanie, ekspertyza — kryteria cytowania przez Gemini i Perplexity" },
+    { label: "Analizuję strukturę treści pod kątem AI", sub: "Nagłówki, FAQ, TL;DR, czytelność — co decyduje o cytowaniu" },
+    { label: "Obliczam Twój AI Readiness Score", sub: "Scoring 40+ sygnałów, priorytety poprawek, lista działań" },
   ];
   const [activeStep, setActiveStep] = useState(0);
   useEffect(() => {
