@@ -1381,3 +1381,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] 3.1 Visibility Score KPI panel in monitoring section (% normalized, trend delta, tier badge)
 - [x] 3.4 Sentiment Dashboard: per-engine sentiment chart, themes list, example AI responses
 - [x] 3.3 Competitive Benchmarking UI: Share of Voice vs competitors, reusing existing competitorDomains data
+
+## Citation ↔ Monitor Data Bridge Fixes
+
+- [x] Fix 1: After citation.startCheck completes, update monitored_pages.lastCitedEngines if URL is monitored
+- [x] Fix 2: Backfill score_snapshots with citation data after runCitationJob completes
+- [x] Fix 3: Unify phrase sources — fix URL normalization so monitoring phrases always seed Citation Intelligence

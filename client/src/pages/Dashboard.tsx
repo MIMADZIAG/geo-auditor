@@ -983,7 +983,7 @@ function MonitoredPageCard({
                       </div>
                     );
                   })}
-                </div>
+                    </div>
               </>
             )}
             </div>

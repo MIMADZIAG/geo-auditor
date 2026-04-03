@@ -31,6 +31,8 @@ import {
   getScoreSnapshots,
   MAX_MONITORING_SLOTS_FREE,
   captureEmailLead,
+  updateMonitoredPageCitationStatus,
+  updateScoreSnapshotCitation,
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
@@ -647,23 +649,34 @@ export const appRouter = router({
         // Use user id if logged in, otherwise use 0 (anonymous)
         const userId = ctx.user?.id ?? 0;
 
-        // ── Seed phrases from monitoring (Feature 1) ──────────────────────────────
+        // ── Seed phrases from monitoring (unified phrase source) ─────────────────
         // If the user is authenticated and this URL is monitored, use the canonical
         // phrase set from monitoring as the seed for round 1 queries.
         // This ensures the same phrases shown in the UI are actually checked.
+        // Fix 3: URL normalization handles trailing slash and protocol differences.
         let seedPhrases: string[] = [];
+        let matchedMonitoredPageId: number | null = null;
+
+        const normalizeUrl = (u: string) => {
+          try {
+            const parsed = new URL(u);
+            // Normalize: remove trailing slash, lowercase hostname
+            return parsed.protocol + "//" + parsed.hostname.toLowerCase() + parsed.pathname.replace(/\/$/, "") + parsed.search;
+          } catch { return u.replace(/\/$/, "").toLowerCase(); }
+        };
+
         if (ctx.user) {
           try {
             const monitoredPages = await getMonitoredPagesByUser(ctx.user.id);
-            const normalize = (u: string) => { try { return new URL(u).href.replace(/\/$/, ""); } catch { return u.replace(/\/$/, ""); } };
-            const normalizedAuditUrl = normalize(audit.url);
-            const matchedPage = monitoredPages.find((p) => normalize(p.url) === normalizedAuditUrl);
+            const normalizedAuditUrl = normalizeUrl(audit.url);
+            const matchedPage = monitoredPages.find((p) => normalizeUrl(p.url) === normalizedAuditUrl);
             if (matchedPage) {
+              matchedMonitoredPageId = matchedPage.id;
               const { getActivePhrasesForPage } = await import("./monitoring/phrases");
               const phrases = await getActivePhrasesForPage(matchedPage.id);
               seedPhrases = phrases.map((p) => p.phrase).filter(Boolean);
               if (seedPhrases.length > 0) {
-                console.log(`[Citation] startCheck: seeding ${seedPhrases.length} monitoring phrases for ${audit.url}`);
+                console.log(`[Citation] startCheck: seeding ${seedPhrases.length} monitoring phrases for ${audit.url} (monitoredPageId=${matchedPage.id})`);
               }
             }
           } catch (err) {
@@ -686,8 +699,38 @@ export const appRouter = router({
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create citation job" });
         }
 
-        // Run asynchronously — return jobId immediately, results appear after ~2-5 min
-        runCitationJob(jobId).catch((err) => {
+        // ── Fix 1+2: Bridge audit citation results → monitored page bar ───────────
+        // After job completes, if this URL is monitored by the user:
+        //   Fix 1: update monitored_pages.lastCitedEngines / lastTotalEngines (bar display)
+        //   Fix 2: backfill score_snapshot.citedEnginesCount for this auditId (history sparkline)
+        // This runs fire-and-forget — user gets jobId immediately.
+        const capturedMonitoredPageId = matchedMonitoredPageId;
+        const capturedAuditId = input.auditId;
+        runCitationJob(jobId).then(async (result) => {
+          if (!result || !capturedMonitoredPageId) return;
+
+          // Count total cited engines from summary
+          const summary = result.summary;
+          const citedEngines = [
+            summary.chatgpt.cited + summary.chatgpt.domainCited > 0 ? 1 : 0,
+            summary.google.cited + summary.google.domainCited > 0 ? 1 : 0,
+            summary.perplexity.cited + summary.perplexity.domainCited > 0 ? 1 : 0,
+            summary.gemini.cited + summary.gemini.domainCited > 0 ? 1 : 0,
+          ].reduce((a, b) => a + b, 0);
+          const totalEngines = Object.values(summary).filter((e) => e.total > 0).length || 4;
+
+          // Fix 1: update monitored page bar
+          await updateMonitoredPageCitationStatus(capturedMonitoredPageId, citedEngines, totalEngines).catch((err) => {
+            console.warn("[Citation] Fix1: updateMonitoredPageCitationStatus failed (non-fatal):", err);
+          });
+
+          // Fix 2: backfill score_snapshot for this auditId
+          await updateScoreSnapshotCitation(capturedAuditId, capturedMonitoredPageId, citedEngines, totalEngines, jobId).catch((err) => {
+            console.warn("[Citation] Fix2: updateScoreSnapshotCitation failed (non-fatal):", err);
+          });
+
+          console.log(`[Citation] Fix1+2: monitoredPage ${capturedMonitoredPageId} updated — cited ${citedEngines}/${totalEngines} engines`);
+        }).catch((err) => {
           console.error(`[Citation] Job ${jobId} failed:`, err);
         });
 
