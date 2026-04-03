@@ -353,8 +353,17 @@ export default function Results() {
 
   // Competitor URLs from AI Citations — passed to WhatIfSection for Full Rewrite AI
   const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
-
-  // Upsell modal state
+  // Citation Opportunities — fetched when citationStatus === "done", injected into Signal Rewrite
+  const { data: citationOpportunitiesData } = trpc.citation.getOpportunities.useQuery(
+    { auditId, includeSemanticInsights: false },
+    { enabled: citationStatus === "done" && auditId > 0 }
+  );
+  const citationOpportunities = (citationOpportunitiesData?.opportunities ?? []).map((opp) => ({
+    keyword: opp.query,
+    contentBrief: opp.semanticInsight?.contentBrief ?? "",
+    isQuickWin: opp.semanticInsight?.isQuickWin ?? false,
+  })).filter((opp) => opp.contentBrief.length > 0);
+  // Upsell modal statee
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");
   const upsellTriggeredRef = useRef(false);
@@ -831,7 +840,7 @@ export default function Results() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-sm font-bold">Content Creator — Krok 3 z 3</span>
+                  <span className="text-sm font-bold">Signal Rewrite — Krok 2 z 2</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">AI-Powered</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -858,12 +867,10 @@ export default function Results() {
               </div>
             </div>
           </div>
-
-          {/* Quick Rewrite CTA — for paid users, jump straight to PageCreator */}
           <ContentCreatorRewriteWidget auditId={audit.id} navigate={navigate} isPaid={hasPaidPlan} />
 
           {/* Full AI Co-Pilot — inline rewrite with competitor context */}
-          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} navigate={navigate} />
+          <WhatIfSection url={audit.url} citedCompetitorUrls={citedCompetitorUrls} citationOpportunities={citationOpportunities} navigate={navigate} />
 
           {/* New page CTA */}
           <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -963,24 +970,39 @@ export default function Results() {
             );
           })()}
 
-          {/* Bridge to Tab 3 — Content Creator */}
-          <div className="rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/8 to-primary/4 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 text-primary" />
+          {/* Bridge to Tab 3 — Signal Rewrite: gated behind citationStatus */}
+          {citationStatus === "running" && (
+            <div className="rounded-2xl border border-primary/15 bg-primary/4 p-5 flex items-center gap-4">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold">Signal Rewrite czeka na dane Citation Intelligence…</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Analiza widoczności AI jest w toku. Signal Rewrite uruchomi się automatycznie po jej zakończeniu — z pełnym kontekstem cytowań i wzorców konkurencji.</div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">Przepisz treść z uwzględnieniem tych danych</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Signal Rewrite użyje danych z Signal Audit, fraz z Pulse Monitor i wzorców cytowanych URL-i, aby wygenerować nową wersję treści.</div>
+          )}
+          {citationStatus === "done" && (
+            <div className="rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/8 to-primary/4 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold">Przepisz treść z uwzględnieniem tych danych</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Signal Rewrite użyje danych z Signal Audit{citedCompetitorUrls.length > 0 ? `, ${citedCompetitorUrls.length} wzorców cytowanych URL-i` : ""} i wniosków z Citation Opportunities, aby wygenerować nową wersję treści.
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs">
+                  <Shield className="w-3 h-3" /> Signal Audit
+                </Button>
+                <Button size="sm" onClick={() => setActiveTab("content")} className="gap-1.5 text-xs bg-primary hover:bg-primary/90">
+                  <Sparkles className="w-3 h-3" /> Signal Rewrite
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs">
-                <Shield className="w-3 h-3" /> Signal Audit
-              </Button>
-              <Button size="sm" onClick={() => setActiveTab("content")} className="gap-1.5 text-xs bg-primary hover:bg-primary/90">
-                <Sparkles className="w-3 h-3" /> Signal Rewrite
-              </Button>
-            </div>
-          </div>
+          )}
 
         </main>
       )}
@@ -2523,7 +2545,8 @@ function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
   );
 }
 
-function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: string; citedCompetitorUrls?: string[]; navigate: (path: string) => void }) {
+type CitationOpportunityBrief = { keyword: string; contentBrief: string; isQuickWin: boolean };
+function WhatIfSection({ url, citedCompetitorUrls = [], citationOpportunities = [], navigate }: { url: string; citedCompetitorUrls?: string[]; citationOpportunities?: CitationOpportunityBrief[]; navigate: (path: string) => void }) {
   const { user } = useAuth();
   const fetchPageMutation = trpc.sandbox.fetchPage.useMutation();
   const rewriteMutation = trpc.sandbox.rewrite.useMutation();
@@ -2642,6 +2665,8 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
         pageType: detectedPageType,
         targetQueries: [],
         citedCompetitorUrls,
+        // Citation Opportunities — contentBriefs from Citation Intelligence for targeted rewrite
+        citationOpportunities: citationOpportunities.length > 0 ? citationOpportunities : undefined,
         // Pass page metadata for research pipeline
         pageTitle: pageMetadata?.title,
         h1: pageMetadata?.h1,
@@ -2653,6 +2678,9 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
       const { rewrittenContent } = result;
       if (result.competitorInsights && result.competitorInsights.count > 0) {
         toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
+      }
+      if (citationOpportunities.length > 0) {
+        toast.success(`🎯 ${citationOpportunities.length} Citation Opportunities wstrzyknięto do przepisania`);
       }
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
       // B6: push to version history instead of overwriting

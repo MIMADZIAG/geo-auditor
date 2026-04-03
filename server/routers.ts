@@ -1081,6 +1081,11 @@ export const appRouter = router({
         language: z.string().optional(),
         // Competitor cited URLs from AI Citations (for full_rewrite mode)
         citedCompetitorUrls: z.array(z.string()).optional(),
+        citationOpportunities: z.array(z.object({
+          keyword: z.string(),
+          contentBrief: z.string(),
+          isQuickWin: z.boolean().optional(),
+        })).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Gate: Full Rewrite is only available on paid plans
@@ -1227,7 +1232,13 @@ ${queriesStr}
 🔧 Problemy wykryte w audycie do naprawienia:
 ${issuesList || "Brak konkretnych problemów — zoptymalizuj ogólnie pod kątem AI readiness"}
 ${researchContext}
-
+${(input.citationOpportunities && input.citationOpportunities.length > 0) ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 CITATION OPPORTUNITIES — KONKRETNE LUKI DO WYPEŁNIENIA:
+Poniższe zapytania są aktywnie wyszukiwane w AI Search, ale Twoja strona NIE jest cytowana. Dla każdego z nich masz gotą instrukcję, co dodać do treści:
+${input.citationOpportunities.map((opp, i) => `${i + 1}. ZAPYTANIE: "${opp.keyword}"
+   INSTRUKCJA: ${opp.contentBrief}${opp.isQuickWin ? " [QUICK WIN — priorytet]" : ""}`).join("\n")}
+Zaimplementuj te wskazówki w przepisanej treści — każda z nich zwiększa szansę na cytowanie przez AI Search.` : ""}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✍️ ZASADY FORMATOWANIA WYJŚCIOWEGO (BEZWZGLĘDNE):
 1. Pisz WYŁĄCZNIE gotowy tekst do wklejenia na stronę — bez komentarzy, wyjaśnień, meta-komentarzy

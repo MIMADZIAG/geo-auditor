@@ -1393,3 +1393,4 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Task A: Citation spinner in monitored page bar — show spinner when citation job is running for this URL
 - [ ] Task B: "Run Citation Intelligence" button directly in Pulse Monitor panel (no need to go to audit results)
 - [ ] Task C: Wire real competitorDomains from citation_checks into getCompetitorBenchmark procedure + update CompetitorBenchmark UI
+- [x] Fix 3: Inject Citation Opportunities (contentBrief) into Signal Rewrite system prompt via citationOpportunities field
