@@ -1368,3 +1368,16 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Task 7: Semantic structured data validation — completeness depth, speakable, mainEntity quality
 - [x] Tests: vitest coverage for all new scoring functions (35 tests, all passing)
 - [x] TypeScript check: zero errors
+
+## Profound Monitoring Upgrades — Layer 1+2+3 (Partial)
+### DB Layer
+- [ ] 1.1 score_snapshots: add visibilityRate, avgMentionPosition, sentimentScore, prominenceRate, shareOfVoice, competitorCitationCount columns
+- [ ] 1.2 visibility_snapshots: new table as independent entity (decoupled from audit cycle)
+### Backend Layer
+- [ ] 2.4 sentimentAnalyzer.ts: LLM-based sentiment analysis of citation responseText (score, label, themes, prominencePosition)
+- [ ] 2.4 Integration: hook sentimentAnalyzer into monitoring/worker.ts after citation job completes
+- [ ] 2.4 Integration: write sentiment data to visibility_snapshots and citation_checks
+### Frontend Layer
+- [x] 3.1 Visibility Score KPI panel in monitoring section (% normalized, trend delta, tier badge)
+- [x] 3.4 Sentiment Dashboard: per-engine sentiment chart, themes list, example AI responses
+- [x] 3.3 Competitive Benchmarking UI: Share of Voice vs competitors, reusing existing competitorDomains data

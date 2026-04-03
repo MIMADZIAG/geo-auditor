@@ -36,10 +36,12 @@ import { createCitationJob, getCitationResultsForAudit } from "../citation/db";
 import { runCitationJob } from "../citation/worker";
 import { extractTopCompetitorUrls, runCompetitorAudits } from "../competitor/engine";
 import { insertCompetitorAudit, competitorAuditsExist } from "../competitor/db";
-import { monitorAuditRuns, monitoredPages, users, audits, monitoredPagePhrases, phraseCitationHistory } from "../../drizzle/schema";
+import { monitorAuditRuns, monitoredPages, users, audits, monitoredPagePhrases, phraseCitationHistory, visibilitySnapshots, scoreSnapshots } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sendMonitoringEmail, type MonitoringEmailPayload } from "./email";
 import { evaluateAndSendAlerts } from "./alerts";
+import { analyzeCitationSentiment } from "./sentimentAnalyzer";
+import { computeAIVisibilityScore } from "../../shared/visibilityScore";
 
 const WORKER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const MAX_PARALLEL = 3; // max concurrent audits
@@ -248,6 +250,62 @@ async function triggerCitationJobForMonitoredPage(params: {
       // Non-fatal — sparkline data missing for this run but monitoring continues
       console.warn(`[MonitorWorker][PhraseHistory] Failed to record phrase history for page #${pageId}:`, histErr);
     }
+
+    // 3.7 Sentiment analysis + visibility snapshot — fire-and-forget enrichment
+    //     Runs after phrase history, non-blocking, non-critical
+    void (async () => {
+      try {
+        const sentimentResult = await analyzeCitationSentiment(
+          citationResult.allResults,
+          url
+        );
+        const visibilityRate = totalEngines > 0 ? citedEngines / totalEngines : 0;
+        const visibilityScore = computeAIVisibilityScore(citedEngines, totalEngines, null);
+        const db = await getDb();
+        if (db) {
+          // Write visibility_snapshots row (independent from score_snapshots)
+          await db.insert(visibilitySnapshots).values({
+            monitoredPageId: pageId,
+            citationJobId: jobId,
+            auditId,
+            citedEnginesCount: citedEngines,
+            totalEnginesChecked: totalEngines,
+            visibilityRate,
+            visibilityScore,
+            sentimentScore: sentimentResult.sentimentScore,
+            sentimentLabel: sentimentResult.sentimentLabel,
+            sentimentThemes: sentimentResult.themes,
+            avgMentionPosition: sentimentResult.avgMentionPosition,
+            prominenceRate: sentimentResult.prominenceRate,
+            shareOfVoice: sentimentResult.shareOfVoice,
+            competitorCitationCount: sentimentResult.competitorCitationCount,
+            topCompetitorDomains: sentimentResult.topCompetitorDomains,
+            engineBreakdown: sentimentResult.engineBreakdown,
+            sampleResponses: sentimentResult.sampleResponses,
+          });
+          // Backfill score_snapshots with new visibility dimensions
+          await db
+            .update(scoreSnapshots)
+            .set({
+              visibilityRate,
+              sentimentScore: sentimentResult.sentimentScore,
+              prominenceRate: sentimentResult.prominenceRate,
+              shareOfVoice: sentimentResult.shareOfVoice,
+              competitorCitationCount: sentimentResult.competitorCitationCount,
+              avgMentionPosition: sentimentResult.avgMentionPosition,
+            })
+            .where(
+              and(
+                eq(scoreSnapshots.auditId, auditId),
+                eq(scoreSnapshots.monitoredPageId, pageId)
+              )
+            );
+          console.log(`[MonitorWorker][Sentiment] Saved visibility snapshot for page #${pageId} — sentiment: ${sentimentResult.sentimentLabel} (${sentimentResult.sentimentScore})`);
+        }
+      } catch (sentErr) {
+        console.warn(`[MonitorWorker][Sentiment] Failed for page #${pageId}:`, sentErr);
+      }
+    })();
 
     // 4. Detect significant citation change — send follow-up email if needed
     // "Significant" = went from 0 to any, or increased by 2+ engines

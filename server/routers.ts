@@ -509,6 +509,115 @@ export const appRouter = router({
         const cited = latestPerPhrase.filter((r) => r.citedEnginesCount > 0).length;
         return { total: phrases.length, cited };
       }),
+
+    // ── Visibility Score history — powers the KPI trend chart in monitoring section
+    getVisibilityHistory: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number(), limit: z.number().min(1).max(90).default(30) }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        const db = await getDb();
+        if (!db) return [];
+        const { visibilitySnapshots } = await import("../drizzle/schema");
+        const { desc: descVis, eq: eqVis } = await import("drizzle-orm");
+        const rows = await db
+          .select({
+            id: visibilitySnapshots.id,
+            citedEnginesCount: visibilitySnapshots.citedEnginesCount,
+            totalEnginesChecked: visibilitySnapshots.totalEnginesChecked,
+            visibilityRate: visibilitySnapshots.visibilityRate,
+            visibilityScore: visibilitySnapshots.visibilityScore,
+            sentimentScore: visibilitySnapshots.sentimentScore,
+            sentimentLabel: visibilitySnapshots.sentimentLabel,
+            shareOfVoice: visibilitySnapshots.shareOfVoice,
+            prominenceRate: visibilitySnapshots.prominenceRate,
+            recordedAt: visibilitySnapshots.recordedAt,
+          })
+          .from(visibilitySnapshots)
+          .where(eqVis(visibilitySnapshots.monitoredPageId, input.monitoredPageId))
+          .orderBy(descVis(visibilitySnapshots.recordedAt))
+          .limit(input.limit);
+        return rows.reverse();
+      }),
+
+    // ── Sentiment Dashboard data — latest snapshot with full sentiment breakdown
+    getSentimentDashboard: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        const db = await getDb();
+        if (!db) return null;
+        const { visibilitySnapshots } = await import("../drizzle/schema");
+        const { desc: descSent, eq: eqSent } = await import("drizzle-orm");
+        const rows = await db
+          .select()
+          .from(visibilitySnapshots)
+          .where(eqSent(visibilitySnapshots.monitoredPageId, input.monitoredPageId))
+          .orderBy(descSent(visibilitySnapshots.recordedAt))
+          .limit(5);
+        if (rows.length === 0) return null;
+        const latest = rows[0]!;
+        const sentimentTrend = [...rows].reverse().map((r) => ({
+          recordedAt: r.recordedAt,
+          sentimentScore: r.sentimentScore,
+          sentimentLabel: r.sentimentLabel,
+          visibilityScore: r.visibilityScore,
+        }));
+        return {
+          sentimentScore: latest.sentimentScore,
+          sentimentLabel: latest.sentimentLabel,
+          themes: (latest.sentimentThemes as string[]) ?? [],
+          engineBreakdown: latest.engineBreakdown as Record<string, { cited: boolean; sentimentScore?: number; snippet?: string }> | null,
+          sampleResponses: (latest.sampleResponses as Array<{ engine: string; query: string; responseText: string; sentimentScore: number | null; themes: string[] }>) ?? [],
+          prominenceRate: latest.prominenceRate,
+          avgMentionPosition: latest.avgMentionPosition,
+          visibilityScore: latest.visibilityScore,
+          sentimentTrend,
+          recordedAt: latest.recordedAt,
+        };
+      }),
+
+    // ── Competitive Benchmarking — reuses visibility_snapshots SoV + competitor data
+    getCompetitorBenchmark: protectedProcedure
+      .input(z.object({ monitoredPageId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const pages = await getMonitoredPagesByUser(ctx.user.id);
+        const owned = pages.find((p) => p.id === input.monitoredPageId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied." });
+        const db = await getDb();
+        if (!db) return null;
+        const { visibilitySnapshots } = await import("../drizzle/schema");
+        const { desc: descComp, eq: eqComp } = await import("drizzle-orm");
+        const [latestSnap] = await db
+          .select()
+          .from(visibilitySnapshots)
+          .where(eqComp(visibilitySnapshots.monitoredPageId, input.monitoredPageId))
+          .orderBy(descComp(visibilitySnapshots.recordedAt))
+          .limit(1);
+        if (!latestSnap) return null;
+        const sovTrend = await db
+          .select({
+            recordedAt: visibilitySnapshots.recordedAt,
+            shareOfVoice: visibilitySnapshots.shareOfVoice,
+            visibilityScore: visibilitySnapshots.visibilityScore,
+            competitorCitationCount: visibilitySnapshots.competitorCitationCount,
+          })
+          .from(visibilitySnapshots)
+          .where(eqComp(visibilitySnapshots.monitoredPageId, input.monitoredPageId))
+          .orderBy(descComp(visibilitySnapshots.recordedAt))
+          .limit(10);
+        return {
+          shareOfVoice: latestSnap.shareOfVoice,
+          competitorCitationCount: latestSnap.competitorCitationCount,
+          topCompetitorDomains: (latestSnap.topCompetitorDomains as Array<{ domain: string; count: number; sentimentScore?: number }>) ?? [],
+          engineBreakdown: latestSnap.engineBreakdown as Record<string, { cited: boolean; sentimentScore?: number }> | null,
+          sovTrend: [...sovTrend].reverse(),
+          recordedAt: latestSnap.recordedAt,
+        };
+      }),
    }),
   leads: router({
     captureEmail: publicProcedure

@@ -1,5 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
 import { PhraseManager } from "@/components/PhraseManager";
+import { VisibilityScoreKPI } from "@/components/monitoring/VisibilityScoreKPI";
+import { SentimentDashboard } from "@/components/monitoring/SentimentDashboard";
+import { CompetitorBenchmark } from "@/components/monitoring/CompetitorBenchmark";
 import { getVisibilityScoreResult, ENGINE_CONFIG, ALL_ENGINES } from "../../../shared/visibilityScore";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -536,6 +539,7 @@ function MonitoredPageCard({
   citationStatus?: CitationStatusSummary;
 }) {
   const [showHistory, setShowHistory] = useState(false);
+  const [activeMonitorTab, setActiveMonitorTab] = useState<"history" | "visibility" | "sentiment" | "competitors">("history");
   const score = page.lastScore;
   const domain = (() => { try { return new URL(page.url).hostname; } catch { return page.url; } })();
 
@@ -806,9 +810,50 @@ function MonitoredPageCard({
           </div>
         )}
 
-        {/* History panel */}
+        {/* Profound-class monitoring panel with tabs */}
         {showHistory && (
           <div className="mt-3 border-t border-border pt-3">
+            {/* Tab navigation */}
+            <div className="flex items-center gap-0.5 mb-3 bg-muted/30 rounded-lg p-0.5">
+              {([
+                { id: "history", label: "Historia", icon: History },
+                { id: "visibility", label: "Visibility Score", icon: Eye },
+                { id: "sentiment", label: "Sentiment", icon: Brain },
+                { id: "competitors", label: "Konkurencja", icon: BarChart2 },
+              ] as const).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveMonitorTab(id)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-colors flex-1 justify-center ${
+                    activeMonitorTab === id
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Visibility Score KPI tab */}
+            {activeMonitorTab === "visibility" && (
+              <VisibilityScoreKPI monitoredPageId={page.id} />
+            )}
+
+            {/* Sentiment Dashboard tab */}
+            {activeMonitorTab === "sentiment" && (
+              <SentimentDashboard monitoredPageId={page.id} />
+            )}
+
+            {/* Competitor Benchmark tab */}
+            {activeMonitorTab === "competitors" && (
+              <CompetitorBenchmark monitoredPageId={page.id} />
+            )}
+
+            {/* History tab */}
+            {activeMonitorTab === "history" && (
+            <div>
             {historyQuery.isLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                 <RefreshCw className="w-3 h-3 animate-spin" />
@@ -940,6 +985,8 @@ function MonitoredPageCard({
                   })}
                 </div>
               </>
+            )}
+            </div>
             )}
           </div>
         )}

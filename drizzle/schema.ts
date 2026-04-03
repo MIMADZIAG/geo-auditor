@@ -122,11 +122,56 @@ export const scoreSnapshots = mysqlTable("score_snapshots", {
   citedEnginesCount: int("citedEnginesCount"),    // engines that cited this page (0-4)
   totalEnginesChecked: int("totalEnginesChecked"), // engines checked (usually 4)
   citationJobId: int("citationJobId"),             // FK to citation_jobs.id
+  // ── Profound-class visibility dimensions (all nullable — backfilled async) ──
+  visibilityRate: float("visibilityRate"),          // citedEngines/totalEngines as 0.0–1.0
+  avgMentionPosition: float("avgMentionPosition"),  // avg position of first mention (1.0 = first sentence)
+  sentimentScore: float("sentimentScore"),          // -1.0 (negative) to +1.0 (positive)
+  prominenceRate: float("prominenceRate"),          // fraction of responses where brand appears in first paragraph
+  shareOfVoice: float("shareOfVoice"),              // our domain citations / total citations (0.0–1.0)
+  competitorCitationCount: int("competitorCitationCount"), // unique competitor domains cited in same queries
   recordedAt: timestamp("recordedAt").defaultNow().notNull(),
 });
 
 export type ScoreSnapshot = typeof scoreSnapshots.$inferSelect;
 export type InsertScoreSnapshot = typeof scoreSnapshots.$inferInsert;
+
+/**
+ * Visibility Snapshots — independent from audit cycle.
+ * One row per citation job completion for a monitored page.
+ * Decoupled from score_snapshots so visibility can be tracked daily
+ * without running a full technical audit.
+ *
+ * Powers: Visibility Score trend chart, Sentiment Dashboard, SoV chart.
+ */
+export const visibilitySnapshots = mysqlTable("visibility_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  monitoredPageId: int("monitoredPageId").notNull(),
+  citationJobId: int("citationJobId").notNull(),
+  auditId: int("auditId"),                          // nullable — may run without full audit
+  // ── Core visibility metrics ─────────────────────────────────────────────────
+  citedEnginesCount: int("citedEnginesCount").notNull().default(0),
+  totalEnginesChecked: int("totalEnginesChecked").notNull().default(4),
+  visibilityRate: float("visibilityRate").notNull().default(0),  // 0.0–1.0
+  visibilityScore: int("visibilityScore").notNull().default(0),  // 0–100
+  // ── Sentiment ───────────────────────────────────────────────────────────────
+  sentimentScore: float("sentimentScore"),          // -1.0 to +1.0 aggregate
+  sentimentLabel: mysqlEnum("sentimentLabel", ["positive", "neutral", "negative"]),
+  sentimentThemes: json("sentimentThemes"),          // string[]
+  // ── Prominence & position ───────────────────────────────────────────────────
+  avgMentionPosition: float("avgMentionPosition"),
+  prominenceRate: float("prominenceRate"),
+  // ── Share of Voice ──────────────────────────────────────────────────────────
+  shareOfVoice: float("shareOfVoice"),
+  competitorCitationCount: int("competitorCitationCount").default(0),
+  topCompetitorDomains: json("topCompetitorDomains"), // {domain: string, count: number, sentimentScore?: number}[]
+  // ── Per-engine breakdown ────────────────────────────────────────────────────
+  engineBreakdown: json("engineBreakdown"),           // Record<engine, {cited, sentimentScore?, snippet?}>
+  // ── Sample responses for Sentiment Dashboard ────────────────────────────────
+  sampleResponses: json("sampleResponses"),           // {engine, query, responseText, sentimentScore, themes}[]
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+export type VisibilitySnapshot = typeof visibilitySnapshots.$inferSelect;
+export type InsertVisibilitySnapshot = typeof visibilitySnapshots.$inferInsert;
 
 // Monitored page phrases — stable set of queries for each monitored page
 // Source of truth for citation monitoring — replaces ephemeral LLM generation per run

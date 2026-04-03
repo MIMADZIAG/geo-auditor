@@ -356,34 +356,34 @@ describe("analyzeStructuredData", () => {
 // ─── Content Structure Tests ──────────────────────────────────────────────────
 
 describe("analyzeContentStructure", () => {
-  it("detects H1 heading", () => {
+  it("detects H1 heading", async () => {
     const html = `<html><body><h1>Main Title</h1><p>Content here.</p></body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const h1Check = result.checks.find((c) => c.id === "h1_present");
     expect(h1Check?.status).toBe("pass");
   });
 
-  it("fails when no H1 present", () => {
+  it("fails when no H1 present", async () => {
     const html = `<html><body><h2>Section</h2><p>Content.</p></body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const h1Check = result.checks.find((c) => c.id === "h1_present");
     expect(h1Check?.status).toBe("fail");
   });
 
-  it("detects TL;DR section", () => {
+  it("detects TL;DR section", async () => {
     const html = `<html><body><h1>Title</h1><div class="tldr">TL;DR: Summary here</div></body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const tldrCheck = result.checks.find((c) => c.id === "tldr_summary");
     expect(tldrCheck?.status).toBe("pass");
   });
 
-  it("detects FAQ section", () => {
+  it("detects FAQ section", async () => {
     const html = `<html><body><h1>Title</h1><h2>FAQ</h2><p>Q: What is this? A: This is a test.</p></body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const faqCheck = result.checks.find((c) => c.id === "faq_section");
     expect(faqCheck?.status).toBe("pass");
   });
@@ -820,7 +820,7 @@ describe("ContentIntelligenceResult type contract", () => {
 import { detectPageType } from "./audit/pageTypeDetector";
 
 describe("Regression: H1 inside <header> must survive full pipeline", () => {
-  it("detects H1 inside <header> when analyzeContentStructure runs alone", () => {
+  it("detects H1 inside <header> when analyzeContentStructure runs alone", async () => {
     // Simulates: Vue SSR / WordPress / totalmoney.pl-style layout
     const html = `<html><body>
       <header class="site-header">
@@ -830,13 +830,13 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
       <main><p>Content about loans and financial products available in Poland.</p></main>
     </body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const h1Check = result.checks.find((c) => c.id === "h1_present");
     expect(h1Check?.status).toBe("pass");
     expect(String(h1Check?.value)).toBe("1");
   });
 
-  it("detects H1 inside <header> even after detectPageType runs first (pipeline order)", () => {
+  it("detects H1 inside <header> even after detectPageType runs first (pipeline order)", async () => {
     // This is the exact regression: detectPageType runs before analyzeContentStructure in index.ts
     // If detectPageType mutates page.$, H1 inside <header> would be lost
     const html = `<html><body>
@@ -860,7 +860,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     detectPageType(page);
 
     // Step 2: analyzeContentStructure runs after (index.ts line 88)
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const h1Check = result.checks.find((c) => c.id === "h1_present");
 
     // H1 MUST still be detected — detectPageType must NOT have mutated page.$
@@ -892,7 +892,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     expect(page.$("footer a").text()).toBe("About");
   });
 
-  it("eeat footer links are intact after contentStructure runs (no cross-module DOM corruption)", () => {
+  it("eeat footer links are intact after contentStructure runs (no cross-module DOM corruption)", async () => {
     // eeat.ts runs AFTER contentStructure in index.ts (lines 88 vs 89)
     // contentStructure must NOT remove <footer> from page.$ — it uses its own local copy
     const html = `<html><body>
@@ -908,7 +908,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     const page = mockPage(html);
 
     // Run contentStructure first (as in index.ts)
-    analyzeContentStructure(page);
+    await analyzeContentStructure(page);
 
     // Now run eeat — footer links must still be present in page.$
     const eeatResult = analyzeEEAT(page);
@@ -920,7 +920,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     expect(legalCheck?.status).toBe("pass");
   });
 
-  it("detects H1 inside <nav> element", () => {
+  it("detects H1 inside <nav> element", async () => {
     // Some CMS themes place H1 inside <nav> or breadcrumb containers
     const html = `<html><body>
       <nav class="breadcrumb-nav">
@@ -929,7 +929,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
       <main><p>Content about loans.</p></main>
     </body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const h1Check = result.checks.find((c) => c.id === "h1_present");
     // H1 is inside <nav> — contentStructure reads from $raw (page.$) before removing nav
     // so H1 count must be 1 (pass)
@@ -937,7 +937,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     expect(String(h1Check?.value)).toBe("1");
   });
 
-  it("detects H1 inside <aside> element", () => {
+  it("detects H1 inside <aside> element", async () => {
     // Some page builders place H1 inside sidebar/aside containers
     const html = `<html><body>
       <aside class="sidebar">
@@ -946,13 +946,13 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
       <main><p>Main content area.</p></main>
     </body></html>`;
     const page = mockPage(html);
-    const result = analyzeContentStructure(page);
+    const result = await await analyzeContentStructure(page);
     const h1Check = result.checks.find((c) => c.id === "h1_present");
     expect(h1Check?.status).toBe("pass");
     expect(String(h1Check?.value)).toBe("1");
   });
 
-  it("full pipeline: H1 in header survives detectPageType + analyzeContentStructure + analyzeEEAT + analyzeBrandAuthority", () => {
+  it("full pipeline: H1 in header survives detectPageType + analyzeContentStructure + analyzeEEAT + analyzeBrandAuthority", async () => {
     // This test simulates the exact execution order in index.ts:
     // detectPageType → analyzeContentStructure → analyzeEEAT → analyzeBrandAuthority
     // ALL modules must leave page.$ intact for subsequent modules
@@ -982,7 +982,7 @@ describe("Regression: H1 inside <header> must survive full pipeline", () => {
     expect(page.$("h1").length).toBe(1); // page.$ must be intact
 
     // 2. analyzeContentStructure (index.ts line 88)
-    const contentResult = analyzeContentStructure(page);
+    const contentResult = await analyzeContentStructure(page);
     const h1Check = contentResult.checks.find((c) => c.id === "h1_present");
     expect(h1Check?.status).toBe("pass"); // H1 must be detected
     expect(page.$("footer a").length).toBe(3); // footer must still be intact
