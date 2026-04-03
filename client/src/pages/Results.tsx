@@ -354,15 +354,21 @@ export default function Results() {
   // Competitor URLs from AI Citations — passed to WhatIfSection for Full Rewrite AI
   const [citedCompetitorUrls, setCitedCompetitorUrls] = useState<string[]>([]);
   // Citation Opportunities — fetched when citationStatus === "done", injected into Signal Rewrite
+  // includeSemanticInsights=true: backend gates Pro-only LLM brief; Free users get structural recommendations
   const { data: citationOpportunitiesData } = trpc.citation.getOpportunities.useQuery(
-    { auditId, includeSemanticInsights: false },
+    { auditId, includeSemanticInsights: true },
     { enabled: citationStatus === "done" && auditId > 0 }
   );
-  const citationOpportunities = (citationOpportunitiesData?.opportunities ?? []).map((opp) => ({
-    keyword: opp.query,
-    contentBrief: opp.semanticInsight?.contentBrief ?? "",
-    isQuickWin: opp.semanticInsight?.isQuickWin ?? false,
-  })).filter((opp) => opp.contentBrief.length > 0);
+  const citationOpportunities = (citationOpportunitiesData?.opportunities ?? []).map((opp) => {
+    // Priority: LLM semantic brief (Pro) > structural gap recommendation (Free) > ahaMoment
+    const contentBrief =
+      opp.semanticInsight?.contentBrief ||
+      opp.structuralGaps?.[0]?.recommendation ||
+      opp.ahaMoment ||
+      "";
+    const isQuickWin = opp.semanticInsight?.isQuickWin ?? (opp.priority === "critical" || opp.priority === "high");
+    return { keyword: opp.query, contentBrief, isQuickWin };
+  }).filter((opp) => opp.contentBrief.length > 0);
   // Upsell modal statee
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");

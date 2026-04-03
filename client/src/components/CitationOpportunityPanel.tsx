@@ -483,11 +483,44 @@ export function CitationOpportunityPanel({
             </p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-[10px] text-zinc-600">Potencjał</p>
+        <div className="text-right relative group">
+          {/* Label with info icon */}
+          <div className="flex items-center justify-end gap-1 cursor-help mb-0.5">
+            <p className="text-[10px] text-zinc-500">Potencjał wzrostu</p>
+            <svg className="w-3 h-3 text-zinc-600 shrink-0" fill="none" viewBox="0 0 16 16">
+              <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M8 7v4M8 5.5v.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
           <p className={`text-lg font-black tabular-nums ${
             opportunityScore >= 70 ? "text-emerald-400" : opportunityScore >= 40 ? "text-yellow-400" : "text-orange-400"
           }`}>{opportunityScore}<span className="text-xs text-zinc-600">/100</span></p>
+          {/* Tooltip */}
+          <div className="absolute right-0 top-full mt-2 w-72 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="rounded-xl border border-white/10 bg-zinc-900 shadow-2xl p-4 text-left">
+              <p className="text-xs font-bold text-zinc-100 mb-1.5">Co oznacza Potencjał wzrostu?</p>
+              <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
+                Wskaźnik 0–100 mówiący, ile możesz zyskać na widoczności w AI Search, jeśli wdrożysz rekomendacje z Citation Opportunities. Im wyższy wynik, tym więcej zapytań możesz odzyskać od konkurencji.
+              </p>
+              <div className="space-y-1.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="text-[10px] text-zinc-400"><strong className="text-zinc-300">70–100</strong> — duży potencjał, wiele luk do wypełnienia</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
+                  <span className="text-[10px] text-zinc-400"><strong className="text-zinc-300">40–69</strong> — średni potencjał, wybrane szanse</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
+                  <span className="text-[10px] text-zinc-400"><strong className="text-zinc-300">0–39</strong> — niski potencjał, mało luk do wypełnienia</span>
+                </div>
+              </div>
+              <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 p-2.5">
+                <p className="text-[10px] text-violet-300 font-medium">✨ Signal Rewrite automatycznie wdraża rekomendacje z Citation Opportunities w nowej wersji treści.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
