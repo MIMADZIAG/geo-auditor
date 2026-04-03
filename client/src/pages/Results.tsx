@@ -1,4 +1,5 @@
 import React from "react";
+import confetti from "canvas-confetti";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -358,6 +359,10 @@ export default function Results() {
   const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");
   const upsellTriggeredRef = useRef(false);
 
+  // B1 — Celebration moment: detect score improvement vs previous audit of same URL
+  const [celebrationData, setCelebrationData] = useState<{ prevScore: number; delta: number } | null>(null);
+  const celebrationFiredRef = useRef(false);
+
   // Stable callback for AICitationPanel — avoids setState-in-render warning
   // (AICitationPanel calls this from a useEffect, but React can still warn if the
   // callback reference changes every render. Using useCallback + queueMicrotask
@@ -461,6 +466,47 @@ export default function Results() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audit?.status]); // Re-run when audit status changes to 'done'
+
+  // B1 — Celebration moment: compare current score with previous score for same URL
+  // Uses localStorage to persist the last known score per URL.
+  // Fires confetti + banner when score improves by 5+ points.
+  useEffect(() => {
+    if (celebrationFiredRef.current) return;
+    if (!audit || audit.status !== "completed") return;
+    const url = audit.url as string;
+    const score = Math.round((audit as unknown as { overallScore?: number }).overallScore ?? 0);
+    if (!url || !score) return;
+    const storageKey = `geo_score_${btoa(url).slice(0, 32)}`;
+    const prev = localStorage.getItem(storageKey);
+    const prevScore = prev ? parseInt(prev, 10) : null;
+    // Save current score for next comparison
+    localStorage.setItem(storageKey, String(score));
+    if (prevScore !== null && score - prevScore >= 5) {
+      celebrationFiredRef.current = true;
+      const delta = score - prevScore;
+      // Delay slightly so the score animation plays first
+      setTimeout(() => {
+        setCelebrationData({ prevScore, delta });
+        // Fire confetti burst
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.55 },
+          colors: ["#7c3aed", "#6366f1", "#10b981", "#f59e0b", "#ffffff"],
+          gravity: 0.9,
+          scalar: 1.1,
+        });
+        // Second burst from sides
+        setTimeout(() => {
+          confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ["#7c3aed", "#10b981"] });
+          confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ["#6366f1", "#f59e0b"] });
+        }, 300);
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => setCelebrationData(null), 8000);
+      }, 1800);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audit?.status]);
 
   // ── Early returns (after all hooks) ──
   if (isLoading) return <LoadingState />;
@@ -660,6 +706,32 @@ export default function Results() {
           </div>
         </div>
       </header>
+
+      {/* B1 — Celebration Banner */}
+      {celebrationData && (
+        <div
+          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-500"
+          style={{ maxWidth: "480px", width: "calc(100% - 2rem)" }}
+        >
+          <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/95 via-zinc-900/98 to-emerald-950/95 backdrop-blur-xl shadow-2xl shadow-emerald-500/20 p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 text-2xl">
+              🎉
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-emerald-300">Wynik wzrósł o +{celebrationData.delta} pkt!</div>
+              <div className="text-xs text-zinc-400 mt-0.5">
+                {celebrationData.prevScore} → <span className="text-white font-semibold">{celebrationData.prevScore + celebrationData.delta}</span> — wdrożone rekomendacje działają.
+              </div>
+            </div>
+            <button
+              onClick={() => setCelebrationData(null)}
+              className="text-zinc-500 hover:text-zinc-300 transition-colors text-lg leading-none flex-shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Tab 1: Signal Audit ── */}
       {activeTab === "optimization" && (
@@ -2463,7 +2535,6 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
   const [error, setError] = useState<string | null>(null);
   // cleanText = server-extracted plain text (no HTML tags)
   const [cleanText, setCleanText] = useState("");
-  const [rewrittenText, setRewrittenText] = useState<string | null>(null);
   const [detectedPageType, setDetectedPageType] = useState("generic");
   const [copied, setCopied] = useState(false);
   const [researchData, setResearchData] = useState<{
@@ -2475,6 +2546,33 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
   } | null>(null);
   const [pageMetadata, setPageMetadata] = useState<{ title: string; h1: string; metaDescription: string } | null>(null);
   const [activeResultTab, setActiveResultTab] = useState<"content" | "entities" | "tips">("content");
+
+  // B6 — Version history for undo/redo in Signal Rewrite
+  // Each entry: { text, label, timestamp }
+  const [rewriteHistory, setRewriteHistory] = useState<Array<{ text: string; label: string; timestamp: number }>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Derived: current rewritten text from history
+  const rewrittenText = historyIndex >= 0 && rewriteHistory[historyIndex] ? rewriteHistory[historyIndex].text : null;
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < rewriteHistory.length - 1;
+
+  function pushVersion(text: string, label: string) {
+    setRewriteHistory(prev => {
+      // If we're not at the end, truncate future history
+      const base = prev.slice(0, historyIndex + 1);
+      return [...base, { text, label, timestamp: Date.now() }];
+    });
+    setHistoryIndex(prev => prev + 1);
+  }
+
+  function handleUndo() {
+    if (canUndo) setHistoryIndex(i => i - 1);
+  }
+
+  function handleRedo() {
+    if (canRedo) setHistoryIndex(i => i + 1);
+  }
 
   // Show upsell for unauthenticated users or users on free plan
   // We detect free plan by checking if the user is not authenticated (free tier)
@@ -2496,7 +2594,9 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
       const meta = (res as any).metadata as { title: string; h1: string; metaDescription: string } | undefined;
       setDetectedPageType(pt);
       setCleanText(ct);
-      setRewrittenText(null);
+      // Reset version history when fetching new page content
+      setRewriteHistory([]);
+      setHistoryIndex(-1);
       setResearchData(null);
       if (meta) setPageMetadata(meta);
     } catch (err: unknown) {
@@ -2555,7 +2655,9 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
         toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
       }
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
-      setRewrittenText(rewrittenStr);
+      // B6: push to version history instead of overwriting
+      const versionLabel = `Wersja ${rewriteHistory.length + 1}`;
+      pushVersion(rewrittenStr, versionLabel);
       setCopied(false);
       // Store research data if available
       if ((result as any).researchData) {
@@ -2590,7 +2692,9 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
   }
 
   function handleReset() {
-    setRewrittenText(null);
+    // Reset to original (no rewrite)
+    setRewriteHistory([]);
+    setHistoryIndex(-1);
     setCopied(false);
   }
 
@@ -2653,6 +2757,44 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
                   <div className="px-4 py-3 max-h-48 overflow-y-auto">
                     <pre className="text-xs text-zinc-500 whitespace-pre-wrap leading-relaxed font-sans">{cleanText.slice(0, 1200)}{cleanText.length > 1200 ? "\n\n[...] (treść skrócona do podglądu)" : ""}</pre>
                   </div>
+                </div>
+              )}
+
+              {/* B6 — Version history bar */}
+              {rewriteHistory.length > 0 && (
+                <div className="flex items-center gap-2 px-1 py-1.5 rounded-xl bg-zinc-900/60 border border-white/8">
+                  <button
+                    onClick={handleUndo}
+                    disabled={!canUndo}
+                    title="Poprzednia wersja"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-white/10"
+                  >
+                    ← Poprzednia
+                  </button>
+                  <div className="flex-1 flex items-center justify-center gap-1.5 overflow-x-auto">
+                    {rewriteHistory.map((v, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setHistoryIndex(i)}
+                        title={new Date(v.timestamp).toLocaleTimeString()}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
+                          i === historyIndex
+                            ? "bg-violet-600/40 border border-violet-500/50 text-violet-200"
+                            : "bg-zinc-800/60 border border-white/8 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleRedo}
+                    disabled={!canRedo}
+                    title="Następna wersja"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-white/10"
+                  >
+                    Następna →
+                  </button>
                 </div>
               )}
 
@@ -2804,7 +2946,7 @@ function WhatIfSection({ url, citedCompetitorUrls = [], navigate }: { url: strin
                   )}
                 </Button>
                 {rewrittenText && (
-                  <Button variant="outline" onClick={() => { setRewrittenText(null); setCopied(false); }} disabled={isRewriting} className="gap-2 text-zinc-400">
+                  <Button variant="outline" onClick={handleReset} disabled={isRewriting} className="gap-2 text-zinc-400">
                     Powrót do oryginału
                   </Button>
                 )}
