@@ -1411,3 +1411,23 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Signal Audit celebration: confetti burst + banner on every score reveal (not just delta)
 - [x] Citation Intelligence celebration: confetti + banner when citationStatus running→done
 - [x] Signal Rewrite celebration: confetti burst + banner after pushVersion (new version generated)
+
+## Algorithm v4 Expert Simulation — Mike King + Metehan Yeşilyurt + Dan Petrovic
+
+- [x] Knowledge Graph Readiness Score — KnowledgeGraphReadinessPanel (Tab 1, after IssuesAndFixes)
+  - [x] KG Score 0–100 with 3 tiers: Not Ready / Partial / KG Verified
+  - [x] Confirmed WikiData entities list with QID links and entity type icons
+  - [x] Unconfirmed entity candidates (collapsible)
+  - [x] Entity type distribution (person/org/product/place/concept)
+  - [x] JSON-LD sameAs snippet generator with copy button
+  - [x] Improvement tip for low scores
+  - [x] entityData returned from analyzeContentStructure via ContentStructureResult
+  - [x] WikiDataEntity + EntityRecognitionResult + ContentStructureResult types added to shared/auditTypes.ts
+- [x] Answer-First Opening Score — AnswerFirstOpeningCard (Tab 1, after KG panel)
+  - [x] LLM-based analysis of first paragraph (structured JSON output)
+  - [x] Score 0–100 blended (60% LLM + 40% regex)
+  - [x] Before/after comparison with current opening vs. LLM rewrite
+  - [x] Copy button for suggested rewrite
+  - [x] Fallback to regex-only score when LLM unavailable
+  - [x] metadata field added to AuditCheck type (backward-compatible)
+  - [x] vi.mock for invokeLLM in audit.v5.test.ts (474/474 tests passing)

@@ -50,6 +50,7 @@ import { atomOneDark } from "react-syntax-highlighter/dist/cjs/styles/hljs";
 import type {
   AuditResult,
   CategoryResult,
+  ContentStructureResult,
   AuditCheck,
   Recommendation,
   LLMRecommendation,
@@ -57,6 +58,8 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import { KnowledgeGraphReadinessPanel } from "@/components/KnowledgeGraphReadinessPanel";
+import { AnswerFirstOpeningCard } from "@/components/AnswerFirstOpeningCard";
 import UpsellProModal from "@/components/UpsellProModal";
 import { Streamdown } from "streamdown";
 import { runSimulation, estimateTotalImprovement } from "@/geo-sandbox/engine/simulator";
@@ -904,7 +907,20 @@ export default function Results() {
             recommendations={recommendations}
           />
           {!hasPaidPlan && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
-
+          {/* ── Knowledge Graph Readiness Score (Mike King / iPullRank) ── */}
+          {findings?.contentStructure && (
+            <KnowledgeGraphReadinessPanel
+              entityData={(findings.contentStructure as ContentStructureResult).entityData}
+              entityRichnessCheck={findings.contentStructure.checks.find(c => c.id === "entity_richness")}
+              pageUrl={audit.url}
+            />
+          )}
+          {/* ── Answer-First Opening Score (Metehan Yeşilyurt + Dan Petrovic) ── */}
+          {findings?.contentStructure && (
+            <AnswerFirstOpeningCard
+              check={findings.contentStructure.checks.find(c => c.id === "first_paragraph_answer")}
+            />
+          )}
           {/* Content Intelligence */}
           <ContentIntelligencePanel
             contentIntelligence={contentIntelligence}

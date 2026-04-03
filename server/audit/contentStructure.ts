@@ -25,8 +25,10 @@
 import * as cheerio from "cheerio";
 import type { ScrapedPage } from "./scraper";
 import type { PageType } from "./pageTypeDetector";
-import type { AuditCheck, CategoryResult } from "./types";
+import type { AuditCheck, ContentStructureResult } from "./types";
 import { recognizeEntities } from "./entityRecognizer";
+import { invokeLLM } from "../_core/llm";
+import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Continuous Score Helpers ─────────────────────────────────────────────────
 
@@ -157,7 +159,7 @@ function calculateInfoDensity(
 export async function analyzeContentStructure(
   page: ScrapedPage,
   pageType: PageType = "generic"
-): Promise<CategoryResult> {
+): Promise<ContentStructureResult> {
   const checks: AuditCheck[] = [];
 
   // IMPORTANT: Use a fresh cheerio instance — NEVER mutate page.$.
@@ -607,14 +609,108 @@ export async function analyzeContentStructure(
       firstParaDesc = `Pierwszy akapit (${firstParaWords} słów) nie zaczyna się od bezpośredniej odpowiedzi. Przesuń kluczową informację na sam początek.`;
     }
 
+    // ── LLM-based Answer-First Opening analysis (Metehan + Dan Petrovic) ──────
+    // Only run for non-product pages with actual content (skip for product/listing types
+    // and when there's no first paragraph — regex scoring is sufficient there).
+    let answerFirstMetadata: Record<string, unknown> | undefined;
+    if (!isProductType && firstParagraphs.length > 0) {
+      try {
+        const pageTitle = $raw("title").first().text().trim() || $raw("h1").first().text().trim() || "";
+        const llmResponse = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert in GEO (Generative Engine Optimization) and Answer Engine Optimization.
+Your task: analyze the opening paragraph of a web page and evaluate how well it follows the "Answer-First" principle.
+
+Answer-First principle (Metehan Yeşilyurt + Dan Petrovic):
+- The very first sentence should directly answer the page's main question or state the core value proposition
+- No preamble, no "In this article we will...", no vague intros
+- Ideal: definition, key fact, or direct answer in sentence 1
+- AI rerankers (Perplexity, ChatGPT) heavily weight the first 150 words for citation selection
+
+Respond ONLY with valid JSON matching the schema.`,
+            },
+            {
+              role: "user",
+              content: `Page title: "${pageTitle.slice(0, 120)}"
+
+First paragraph (to analyze):
+"${firstPara.slice(0, 600)}"
+
+Analyze the Answer-First quality of this opening and provide a rewrite that starts with a direct answer.`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "answer_first_analysis",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  answerFirstScore: {
+                    type: "number",
+                    description: "Score 0-100: how well the opening follows Answer-First principle",
+                  },
+                  currentOpeningIssue: {
+                    type: "string",
+                    description: "One concise sentence (Polish) describing the main weakness of the current opening",
+                  },
+                  suggestedRewrite: {
+                    type: "string",
+                    description: "A rewritten opening paragraph (2-3 sentences, Polish or same language as original) that starts with a direct answer",
+                  },
+                  rewriteReason: {
+                    type: "string",
+                    description: "One sentence (Polish) explaining what makes the rewrite better for AI citation",
+                  },
+                },
+                required: ["answerFirstScore", "currentOpeningIssue", "suggestedRewrite", "rewriteReason"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const rawContent = llmResponse.choices?.[0]?.message?.content ?? "{}";
+        const parsed = safeParseLLMJson<{
+          answerFirstScore: number;
+          currentOpeningIssue: string;
+          suggestedRewrite: string;
+          rewriteReason: string;
+        }>(rawContent, {
+          answerFirstScore: firstParaScore,
+          currentOpeningIssue: "",
+          suggestedRewrite: "",
+          rewriteReason: "",
+        });
+        if (parsed.suggestedRewrite) {
+          // Override score with LLM's more nuanced assessment (blend: 60% LLM, 40% regex)
+          const blendedScore = clamp100(Math.round(parsed.answerFirstScore * 0.6 + firstParaScore * 0.4));
+          firstParaScore = blendedScore;
+          firstParaStatus = scoreToStatus(blendedScore);
+          answerFirstMetadata = {
+            answerFirstScore: parsed.answerFirstScore,
+            currentOpening: firstPara.slice(0, 300),
+            suggestedRewrite: parsed.suggestedRewrite,
+            currentOpeningIssue: parsed.currentOpeningIssue,
+            rewriteReason: parsed.rewriteReason,
+          };
+        }
+      } catch {
+        // LLM call failed — fall back to regex-only score (already set above)
+      }
+    }
+
     checks.push({
       id: "first_paragraph_answer",
-      label: "Bezpośrednia odpowiedź w pierwszym akapicie",
+      label: "Answer-First Opening Score",
       status: firstParaStatus,
       score: firstParaScore,
       description: firstParaDesc,
       impact: isProductType ? "low" : "high",
       value: firstParagraphs.length > 0 ? `${firstParaWords} words, direct opener: ${hasDirectOpener}` : "no paragraphs",
+      ...(answerFirstMetadata ? { metadata: answerFirstMetadata } : {}),
     });
   }
 
@@ -751,6 +847,7 @@ export async function analyzeContentStructure(
     maxScore: 100,
     checks,
     summary: buildSummary(score, wordCount, hasFaqSection, hasTldr, pageType),
+    entityData: entityResult,
   };
 }
 

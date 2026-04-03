@@ -1,3 +1,5 @@
+import type { EntityRecognitionResult } from "./entityRecognizer";
+
 export type CheckStatus = "pass" | "fail" | "warning" | "info";
 
 export interface AuditCheck {
@@ -13,6 +15,12 @@ export interface AuditCheck {
   description: string;
   impact: "high" | "medium" | "low";
   value?: string | number | boolean | null;
+  /**
+   * Optional structured metadata for rich UI rendering.
+   * Used by checks that produce LLM-generated or structured outputs.
+   * Example — answer_first_opening: { currentOpening, suggestedRewrite, reason, answerFirstScore }
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface CategoryResult {
@@ -20,6 +28,11 @@ export interface CategoryResult {
   maxScore: number;
   checks: AuditCheck[];
   summary: string;
+}
+
+/** Extended CategoryResult for contentStructure — carries entity data for KG panel */
+export interface ContentStructureResult extends CategoryResult {
+  entityData?: EntityRecognitionResult;
 }
 
 export interface ContentIntelligenceCheck {
@@ -46,7 +59,7 @@ export interface ContentIntelligenceResult {
 export interface AuditFindings {
   technical: CategoryResult;
   structuredData: CategoryResult;
-  contentStructure: CategoryResult;
+  contentStructure: ContentStructureResult;
   eeat: CategoryResult;
   aiCrawlers: CategoryResult;
   metaTags: CategoryResult;

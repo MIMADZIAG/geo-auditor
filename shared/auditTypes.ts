@@ -7,6 +7,35 @@ export interface AuditCheck {
   description: string;
   impact: "high" | "medium" | "low";
   value?: string | number | boolean | null;
+  /** Continuous score 0–100 (optional, backward-compatible) */
+  score?: number;
+  /**
+   * Optional structured metadata for rich UI rendering.
+   * Used by checks that produce LLM-generated or structured outputs.
+   * Example — first_paragraph_answer: { currentOpening, suggestedRewrite, answerFirstScore }
+   */
+  metadata?: Record<string, unknown>;
+}
+
+/** WikiData entity with QID mapping — used in KnowledgeGraphReadinessPanel */
+export interface WikiDataEntity {
+  surfaceForm: string;
+  qid: string | null;
+  label: string | null;
+  description: string | null;
+  entityType: "person" | "organization" | "product" | "place" | "concept" | "unknown";
+  wikidataUrl: string | null;
+  confirmed: boolean;
+}
+
+/** Entity recognition result — returned by entityRecognizer.ts */
+export interface EntityRecognitionResult {
+  confirmedEntities: WikiDataEntity[];
+  unconfirmedEntities: WikiDataEntity[];
+  totalEntitySignals: number;
+  knowledgeGraphAnchors: number;
+  numericFactsCount: number;
+  wikidataAvailable: boolean;
 }
 
 export interface CategoryResult {
@@ -16,10 +45,15 @@ export interface CategoryResult {
   summary: string;
 }
 
+/** Extended CategoryResult for contentStructure — carries entity data for KG panel */
+export interface ContentStructureResult extends CategoryResult {
+  entityData?: EntityRecognitionResult;
+}
+
 export interface AuditFindings {
   technical: CategoryResult;
   structuredData: CategoryResult;
-  contentStructure: CategoryResult;
+  contentStructure: ContentStructureResult;
   eeat: CategoryResult;
   aiCrawlers: CategoryResult;
   metaTags: CategoryResult;

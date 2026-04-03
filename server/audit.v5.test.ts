@@ -8,13 +8,35 @@
  * f) semantic_triples SPO density
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as cheerio from "cheerio";
 import { analyzeContentStructure } from "./audit/contentStructure";
 import { analyzeStructuredData } from "./audit/structuredData";
 import { analyzeTechnical } from "./audit/technical";
 import { analyzeEEAT } from "./audit/eeat";
 import type { ScrapedPage } from "./audit/scraper";
+
+// ─── Mock LLM to avoid real API calls and test timeouts ──────────────────────
+// The LLM call in first_paragraph_answer is an enhancement layer — unit tests
+// should verify the deterministic regex-based scoring, not LLM outputs.
+// Empty suggestedRewrite ensures the LLM branch is skipped, preserving
+// the regex-based score for all test assertions.
+vi.mock("./_core/llm", () => ({
+  invokeLLM: vi.fn().mockResolvedValue({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            answerFirstScore: 50,
+            currentOpeningIssue: "",
+            suggestedRewrite: "",
+            rewriteReason: "",
+          }),
+        },
+      },
+    ],
+  }),
+}));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────────────────
 
