@@ -1095,6 +1095,58 @@ export const appRouter = router({
         };
       }),
 
+    /**
+     * Generate a one-paragraph LLM-based citation narrative.
+     * Connects citation results with top gaps to produce an actionable diagnosis.
+     * Cached in-memory for 10 minutes per auditId.
+     */
+    getNarrative: publicProcedure
+      .input(z.object({
+        auditId: z.number(),
+        url: z.string(),
+        citedEngineCount: z.number().min(0).max(4),
+        totalEngines: z.number().min(1).max(4),
+        citingEngines: z.array(z.string()),
+        missingEngines: z.array(z.string()),
+        totalChecks: z.number().min(0),
+        language: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getCompetitorAuditsForAudit } = await import("./competitor/db");
+        const { computeGapAnalysis } = await import("./competitor/gapAnalysis");
+        const { generateCitationNarrative } = await import("./citation/narrativeGenerator");
+
+        // Fetch top 3 gaps for context
+        let topGaps: import("./competitor/gapAnalysis").GapItem[] = [];
+        try {
+          const audit = await getAuditById(input.auditId);
+          if (audit?.findings) {
+            const competitors = await getCompetitorAuditsForAudit(input.auditId);
+            if (competitors.length > 0) {
+              const gapResult = computeGapAnalysis(
+                audit.findings as import("./audit/types").AuditFindings,
+                competitors
+              );
+              topGaps = gapResult.gaps.slice(0, 3);
+            }
+          }
+        } catch (_e) {
+          // Gap data unavailable — narrative will use template fallback
+        }
+
+        return generateCitationNarrative({
+          auditId: input.auditId,
+          url: input.url,
+          citedEngineCount: input.citedEngineCount,
+          totalEngines: input.totalEngines,
+          citingEngines: input.citingEngines,
+          missingEngines: input.missingEngines,
+          totalChecks: input.totalChecks,
+          topGaps,
+          language: input.language ?? "pl",
+        });
+      }),
+
     getOpportunities: publicProcedure
       .input(z.object({
         auditId: z.number(),

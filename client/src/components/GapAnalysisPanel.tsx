@@ -100,6 +100,36 @@ const ALL_CATEGORIES: GapCategory[] = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+/**
+ * TargetStatusPill — shows the real state of the audited page for this check.
+ * targetValue: 1 = pass, 0 = fail, null = unknown (check not applicable or data missing)
+ * This is the most important signal in the gap card — it answers "does MY page have this issue?"
+ */
+function TargetStatusPill({ targetValue }: { targetValue: number | null }) {
+  if (targetValue === 1) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 whitespace-nowrap">
+        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        Twoja strona: OK
+      </span>
+    );
+  }
+  if (targetValue === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/25 whitespace-nowrap">
+        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Twoja strona: brak
+      </span>
+    );
+  }
+  // null = unknown — don't show anything, avoid noise
+  return null;
+}
+
 function CompetitorPassBar({
   passCount,
   total,
@@ -166,8 +196,9 @@ function GapCard({ gap, index, isLocked }: { gap: GapItem; index: number; isLock
             </span>
           </div>
 
-          {/* Competitor pass bar */}
-          <div className="mt-1.5 flex items-center gap-2">
+          {/* Target page status + Competitor pass bar */}
+          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+            <TargetStatusPill targetValue={gap.targetValue} />
             <span className="text-[10px] text-zinc-500 whitespace-nowrap">Rywale spełniają:</span>
             <div className="flex-1 max-w-[120px]">
               <CompetitorPassBar passCount={gap.competitorPassCount} total={gap.competitorTotal} />
