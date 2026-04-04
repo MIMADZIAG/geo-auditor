@@ -1431,3 +1431,15 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
   - [x] Fallback to regex-only score when LLM unavailable
   - [x] metadata field added to AuditCheck type (backward-compatible)
   - [x] vi.mock for invokeLLM in audit.v5.test.ts (474/474 tests passing)
+
+## Polish Heading Capitalisation Fix
+- [x] Add applyPolishSentenceCase() to textNormalization.ts
+- [x] Add normalizePolishHeadings() for plain-text and Markdown headings
+- [x] Add normalizePolishContent() combining headings + punctuation normalisation
+- [x] Add normalizePageCreatorResultFull() for deep object normalisation
+- [x] Update Signal Rewrite post-processor to use normalizePolishContent()
+- [x] Update pageCreator to use normalizePageCreatorResultFull()
+- [x] Add explicit Polish sentence case rule to Signal Rewrite LLM prompt
+- [x] Add explicit Polish sentence case rule to PageCreator system prompt
+- [x] Fix isPolishText() false positives for English text containing 'to'
+- [x] Write 30+ tests for all new normalisation functions

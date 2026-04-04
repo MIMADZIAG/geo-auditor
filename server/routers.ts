@@ -36,7 +36,7 @@ import {
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
-import { normalizePolishCapitalization, isPolishText } from "./utils/textNormalization";
+import { normalizePolishCapitalization, normalizePolishContent, isPolishText } from "./utils/textNormalization";
 import { runPageCreatorPipeline } from "./pageCreator/index";
 import { pageCreations, aiExposureCache, citationJobs, citationChecks } from "../drizzle/schema";
 import { computeAiExposureScore, type AiExposureResult } from "./aiExposure/index";
@@ -1304,7 +1304,17 @@ Zaimplementuj te wskazówki w przepisanej treści — każda z nich zwiększa sz
 3. NIE używaj znaków ** do pogrubień — jeśli chcesz wyróżnić, użyj normalnego zdania
 4. NIE używaj znaków Markdown takich jak #, **, *, _, >, ---
 5. Listy punktowane pisz ze zwykłym myślnikiem i spacją: "- element"
-6. Nagłówki sekcji pisz jako osobne linie z dużej litery, bez żadnych znaków specjalnych
+6. Nagłówki sekcji pisz jako osobne linie, bez żadnych znaków specjalnych
+   🇵🇱 JĘZYK POLSKI — BEZWZGLĘDNA ZASADA NAGŁÓWKÓW (sentence case):
+   - Tylko PIERWSZE słowo nagłówka zaczyna się wielką literą
+   - Nazwy własne (imiona, nazwiska, marki, miejsca) zachowują wielką literę
+   - Skróty (AI, SEO, FAQ, HTML, GEO, ChatGPT) zachowują wielkie litery
+   - ŻADNE inne słowo nie zaczyna się wielką literą
+   - ✅ Poprawnie: "Jak wybrać najlepszą kurtkę zimową"
+   - ❌ Błędnie: "Jak Wybrać Najlepszą Kurtkę Zimową"
+   - ✅ Poprawnie: "Optymalizacja pod AI Search i ChatGPT"
+   - ❌ Błędnie: "Optymalizacja Pod AI Search I ChatGPT"
+   🇬🇧 JĘZYK ANGIELSKI — title case jest poprawny (każde słowo z dużej litery)
 7. Zachowaj naturalny, płynny styl języka — bez sztucznego brzmienia, bez KAPITALIKÓW w środku zdań
 8. Treść musi być poprawna językowo, stylistycznie i ortograficznie
 9. Długość: dostosuj do typu strony — produkt: 400-800 słów, artykuł: 800-1500 słów
@@ -1623,8 +1633,11 @@ ${cleanedContent.slice(0, 20000)}
                 ? "pl" as const
                 : undefined;
             if (detectedLang !== "en") {
-              finalContent = normalizePolishCapitalization(finalContent, detectedLang);
-              console.log(`[Rewrite] Polish capitalization normalization applied (lang=${detectedLang ?? "auto-detected"})`);
+              // normalizePolishContent applies BOTH:
+              //   1. Heading sentence-case normalisation (plain-text + Markdown headings)
+              //   2. Punctuation capitalisation normalisation (after : - - / | bullet)
+              finalContent = normalizePolishContent(finalContent, detectedLang);
+              console.log(`[Rewrite] Polish content normalization applied (headings+punctuation, lang=${detectedLang ?? "auto-detected"})`);
             }
           }
 

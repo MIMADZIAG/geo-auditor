@@ -10,7 +10,7 @@
  */
 
 import { invokeLLM } from "../_core/llm";
-import { normalizePageCreatorResult } from "../utils/textNormalization";
+import { normalizePageCreatorResultFull } from "../utils/textNormalization";
 import { safeParseLLMJson } from "../utils/jsonSanitizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -367,6 +367,14 @@ export async function generatePageBlueprint(
     `- NIE podawaj nieweryfikowalnych liczb jako faktów\n` +
     `- Jeśli brakuje danych — napisz ogólnie lub zaznacz "[uzupełnij dane]"\n` +
     `- Każde zdanie musi być kompletne i zakończone\n\n` +
+    `🇵🇱 ZASADA NAGŁÓWKÓW (BEZWZGLĘDNA dla języka polskiego):\n` +
+    `W języku polskim nagłówki/śródtytuły pisz WYŁĄCZNIE sentence case:\n` +
+    `- Tylko pierwsze słowo z dużej litery\n` +
+    `- Nazwy własne (imiona, nazwiska, marki, miejsca) zachowują wielką literę\n` +
+    `- Skróty (AI, SEO, FAQ, HTML, GEO, ChatGPT) zachowują wielkie litery\n` +
+    `- ŻADNE inne słowo nie zaczyna się wielką literą\n` +
+    `✅ "Jak wybrać najlepszą kurtkę zimową" ❌ "Jak Wybrać Najlepszą Kurtkę Zimową"\n` +
+    `W języku angielskim title case jest poprawny.\n\n` +
     `Odpowiadaj WYŁĄCZNIE w formacie JSON zgodnym ze schematem.`;
 
   const userPrompt =
@@ -601,7 +609,7 @@ export async function runPageCreatorPipeline(
   // NIEZMIENIALNĄ ZASADA: Po znakach : - – — / | • słowa zaczynają się od małej litery (PL)
   // Reguła NIE obowiązuje dla języka angielskiego.
   const lang = (brief.language === "en") ? "en" : "pl";
-  const normalizedResult = normalizePageCreatorResult(
+  const normalizedResult = normalizePageCreatorResultFull(
     result as unknown as Record<string, unknown>,
     lang
   ) as unknown as typeof result;
