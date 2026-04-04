@@ -1,5 +1,5 @@
 /**
- * AnswerFirstOpeningCard — Metehan Yeşilyurt + Dan Petrovic recommendation
+ * AnswerFirstOpeningCard
  *
  * Displays:
  *  - Answer-First Opening Score (0–100) with LLM analysis
@@ -156,7 +156,7 @@ export function AnswerFirstOpeningCard({ check }: AnswerFirstOpeningCardProps) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Rekomendacja: Metehan Yeşilyurt + Dan Petrovic · LLM Analysis
+              Czy pierwsze zdanie strony od razu odpowiada na pytanie użytkownika?
             </p>
           </div>
         </div>
@@ -188,11 +188,11 @@ export function AnswerFirstOpeningCard({ check }: AnswerFirstOpeningCardProps) {
               color: "oklch(0.8 0.12 260)",
             }}
           >
-            <div className="font-semibold mb-1">Zasada Answer-First (Metehan Yeşilyurt):</div>
+          <div className="font-semibold mb-1">Dlaczego to ważne?</div>
             <div>
               Pierwsze zdanie strony powinno <strong>bezpośrednio odpowiadać</strong> na główne pytanie
-              użytkownika. Bez wstępów, bez „W tym artykule omówimy...". Silniki AI (Perplexity,
-              ChatGPT) priorytetyzują pierwsze 150 słów przy wyborze fragmentów do cytowania.
+              użytkownika. Bez wstępów, bez „W tym artykule omówimy...”. Perplexity, ChatGPT i Gemini
+              priorytetyzują pierwsze 150 słów przy wyborze fragmentów do cytowania.
             </div>
           </div>
         )}

@@ -1,8 +1,8 @@
 /**
- * KnowledgeGraphReadinessPanel — Mike King (iPullRank) recommendation
+ * KnowledgeGraphReadinessPanel
  *
  * Displays:
- *  - KG Readiness Score (0–100) with 3-tier classification
+ *  - Entity Anchoring Score (0–100) with 3-tier classification
  *  - Confirmed WikiData entities with QID links
  *  - Unconfirmed entity candidates
  *  - Numeric facts count
@@ -63,34 +63,34 @@ function getKGTier(score: number): {
 } {
   if (score >= 70) {
     return {
-      label: "KG Verified",
-      labelEn: "Zweryfikowany",
+      label: "Rozpoznana",
+      labelEn: "Rozpoznana",
       color: "oklch(0.72 0.18 145)",
       bg: "oklch(0.72 0.18 145 / 0.12)",
       border: "oklch(0.72 0.18 145 / 0.35)",
       icon: <CheckCircle2 className="h-5 w-5" style={{ color: "oklch(0.72 0.18 145)" }} />,
-      description: "Strona zawiera bogaty zestaw encji potwierdzonych w Knowledge Graph. Silniki AI mogą łatwo zakotwić tę treść.",
+      description: "Strona zawiera konkretne nazwy własne, marki i fakty, które ChatGPT, Gemini i Perplexity mogą jednoznacznie zidentyfikować. To silny sygnał wiarygodności dla silników AI.",
     };
   }
   if (score >= 40) {
     return {
-      label: "KG Partial",
-      labelEn: "Częściowy",
+      label: "Częściowa",
+      labelEn: "Częściowa",
       color: "oklch(0.78 0.18 75)",
       bg: "oklch(0.78 0.18 75 / 0.12)",
       border: "oklch(0.78 0.18 75 / 0.35)",
       icon: <AlertTriangle className="h-5 w-5" style={{ color: "oklch(0.78 0.18 75)" }} />,
-      description: "Wykryto część encji KG. Zwiększ liczbę konkretnych nazw własnych — marek, osób, miejsc — z linkami do Wikidata.",
+      description: "Strona zawiera część konkretnych nazw własnych, ale można to poprawić. Dodaj więcej nazw marek, produktów, osób lub miejsc — zamiast ogólnych określeń.",
     };
   }
   return {
-    label: "KG Not Ready",
-    labelEn: "Niegotowy",
+    label: "Nierozpoznana",
+    labelEn: "Nierozpoznana",
     color: "oklch(0.65 0.22 25)",
     bg: "oklch(0.65 0.22 25 / 0.12)",
     border: "oklch(0.65 0.22 25 / 0.35)",
     icon: <XCircle className="h-5 w-5" style={{ color: "oklch(0.65 0.22 25)" }} />,
-    description: "Treść jest zbyt ogólna. Brak konkretnych encji możliwych do zakotwienia w Knowledge Graph. Modele AI przydzielają słabe osadzenia.",
+    description: "Treść jest zbyt ogólna — brak konkretnych nazw, które AI mógłby rozpoznać i zweryfikować. Silniki AI traktują taką stronę jako mało wiarygodne źródło.",
   };
 }
 
@@ -307,7 +307,7 @@ export function KnowledgeGraphReadinessPanel({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-foreground">
-                Knowledge Graph Readiness
+                Rozpoznawalność przez AI
               </h3>
               <span
                 className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -317,7 +317,7 @@ export function KnowledgeGraphReadinessPanel({
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Rekomendacja: Mike King (iPullRank) · WikiData NER
+              Czy AI wie, o czym jest ta strona? Weryfikacja encji w bazach wiedzy
             </p>
           </div>
         </div>
@@ -335,21 +335,21 @@ export function KnowledgeGraphReadinessPanel({
         <div className="grid grid-cols-3 gap-3">
           {[
             {
-              label: "Encje KG",
+              label: "Rozpoznane",
               value: confirmedEntities.length,
-              sub: "potwierdzone",
+              sub: "nazwy własne",
               color: tier.color,
             },
             {
               label: "Kandydaci",
               value: unconfirmedEntities.length,
-              sub: "niepotwierdzeni",
+              sub: "do sprawdzenia",
               color: "oklch(0.6 0.05 0)",
             },
             {
-              label: "Fakty liczbowe",
+              label: "Fakty",
               value: numericFacts,
-              sub: "statystyki",
+              sub: "liczby i dane",
               color: "oklch(0.72 0.18 260)",
             },
           ].map((stat) => (
@@ -379,7 +379,7 @@ export function KnowledgeGraphReadinessPanel({
         {!wikidataAvailable && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            <span>WikiData niedostępna podczas audytu — wyniki oparte na rozpoznawaniu wzorców (regex NER). Uruchom ponownie, aby uzyskać pełną walidację KG.</span>
+            <span>Baza wiedzy niedostępna podczas audytu — wyniki oparte na analizie wzorcców. Uruchom audyt ponownie, aby uzyskać pełną weryfikację.</span>
           </div>
         )}
 
@@ -389,7 +389,7 @@ export function KnowledgeGraphReadinessPanel({
             <div className="flex items-center gap-2 mb-2.5">
               <CheckCircle2 className="h-4 w-4" style={{ color: "oklch(0.72 0.18 145)" }} />
               <span className="text-xs font-semibold text-foreground/80">
-                Encje potwierdzone w Knowledge Graph ({confirmedEntities.length})
+                Rozpoznane przez AI ({confirmedEntities.length})
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -438,7 +438,7 @@ export function KnowledgeGraphReadinessPanel({
                 <ChevronDown className="h-3.5 w-3.5" />
               )}
               <span>
-                Kandydaci bez potwierdzenia KG ({unconfirmedEntities.length}) — potencjalne encje do wzbogacenia
+                Inne wykryte nazwy ({unconfirmedEntities.length}) — nie zweryfikowane w bazie wiedzy
               </span>
             </button>
             {showUnconfirmed && (
@@ -466,7 +466,7 @@ export function KnowledgeGraphReadinessPanel({
           >
             <div className="flex items-center gap-2">
               <Hash className="h-4 w-4 text-muted-foreground" />
-              <span>Rekomendowany snippet JSON-LD z sameAs</span>
+              <span>Kod do wklejenia na stronę (JSON-LD)</span>
             </div>
             {showSnippet ? (
               <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -481,7 +481,7 @@ export function KnowledgeGraphReadinessPanel({
                 style={{ borderColor: "oklch(1 0 0 / 0.12)", background: "oklch(1 0 0 / 0.04)" }}
               >
                 <span className="text-[11px] font-mono text-muted-foreground">
-                  JSON-LD · sameAs · Knowledge Graph
+                  JSON-LD · schema.org · sameAs
                 </span>
                 <button
                   className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
@@ -510,10 +510,9 @@ export function KnowledgeGraphReadinessPanel({
                 className="px-3 py-2 border-t text-[11px] text-muted-foreground"
                 style={{ borderColor: "oklch(1 0 0 / 0.12)", background: "oklch(1 0 0 / 0.02)" }}
               >
-                Dodaj ten blok do sekcji{" "}
-                <code className="font-mono text-foreground/70">&lt;head&gt;</code> lub przed{" "}
-                <code className="font-mono text-foreground/70">&lt;/body&gt;</code>. Zastąp
-                QID-y właściwymi identyfikatorami WikiData Twojej marki/encji.
+                Wklej ten kod do sekcji{" "}
+                <code className="font-mono text-foreground/70">&lt;head&gt;</code> swojej strony. Zastąp
+                wartości QID linkami do profili Twojej marki (Wikipedia, Wikidata, LinkedIn).
               </div>
             </div>
           )}
@@ -529,10 +528,11 @@ export function KnowledgeGraphReadinessPanel({
               color: "oklch(0.8 0.12 260)",
             }}
           >
-            <span className="font-semibold">Jak poprawić wynik KG:</span>{" "}
-            Zamiast pisać „to narzędzie" — napisz „Google Search Console". Zamiast „większość
-            użytkowników" — „73% użytkowników według raportu Ahrefs 2024". Konkretne nazwy
-            własne = encje KG = lepsze osadzenia wektorowe w modelach AI.
+            <span className="font-semibold">Jak poprawić wynik:</span>{" "}
+            Zamiast pisać „to narzędzie” — napisz „Google Search Console”. Zamiast „większość
+            użytkowników” — „73% użytkowników według raportu Ahrefs 2024”. Konkretne nazwy
+            i liczby sprawiają, że ChatGPT, Gemini i Perplexity traktują Twoją stronę jako
+            wiarygodne źródło do cytowania.
           </div>
         )}
       </div>
