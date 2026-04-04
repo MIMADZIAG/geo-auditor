@@ -963,56 +963,53 @@ export default function Results() {
           />
           <ContentCreatorRewriteWidget auditId={audit.id} navigate={navigate} isPaid={hasPaidPlan} />
 
-          {/* Full AI Co-Pilot — inline rewrite with competitor context */}
-          <WhatIfSection
-            url={audit.url}
-            citedCompetitorUrls={citedCompetitorUrls}
-            citationOpportunities={citationOpportunities}
-            citationStatus={citationStatus}
-            overallScore={overallScore}
-            auditId={auditId}
-            baselineScores={{
-              technical: audit.technicalScore ?? undefined,
-              structuredData: audit.structuredDataScore ?? undefined,
-              contentStructure: audit.contentStructureScore ?? undefined,
-              eeat: audit.eeatScore ?? undefined,
-              aiCrawlers: audit.aiCrawlerScore ?? undefined,
-              metaTags: audit.metaTagsScore ?? undefined,
-              overall: overallScore,
-            }}
-            navigate={navigate}
-            onRewriteCelebration={setRewriteCelebration}
-          />
-          {/* New page CTA */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Plus className="w-4 h-4 text-primary" />
+          {/* ── Page Creator Awareness Banner ─────────────────────────────── */}
+          <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-indigo-950/50 to-zinc-900/80 p-6">
+            <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-violet-600/10 blur-3xl pointer-events-none" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
+              <div className="w-12 h-12 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                <Plus className="w-6 h-6 text-violet-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <span className="text-base font-bold text-white">Twórz nowe podstrony gotowe na AI Search</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-medium">AI Page Creator</span>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Nie tylko poprawiaj — twórz. AI Page Creator generuje kompletne podstrony z FAQ, schema.org i strukturą treści cytowaną przez ChatGPT, Gemini i Perplexity. Idealne do tworzenia stron produktowych, artykułów i landing page’ów zoptymalizowanych pod AI Search od pierwszego słowa.
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate("/page-creator")}
+                className="bg-violet-600 hover:bg-violet-500 text-white gap-2 shrink-0 font-semibold"
+              >
+                <Sparkles className="w-4 h-4" /> Wypróbuj Page Creator
+              </Button>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">Stwórz nową podstronę od zera</div>
-              <div className="text-xs text-muted-foreground mt-0.5">AI Page Creator generuje kompletną podstronę zoptymalizowaną pod AI Search — z FAQ, schema.org i strukturą cytowaną przez modele AI.</div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => navigate("/page-creator")}
-              className="bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs shrink-0"
-            >
-              <Sparkles className="w-3 h-3" /> Page Creator
-            </Button>
           </div>
 
-          {/* Bridge back */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Eye className="w-4 h-4 text-primary" />
+          {/* ── Recommended Next Step — verify citations after publishing ── */}
+          <div className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-950/20 p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <ArrowRight className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Zalecany następny krok</span>
+                </div>
+                <div className="text-sm font-semibold text-white mb-1">Zweryfikuj cytowania po wdrożeniu zmian</div>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Po opublikowaniu poprawek wróć do Citation Intelligence i uruchom nową weryfikację. Sprawdzisz, które silniki AI zaczęły cytować Twoją stronę i co jeszcze wymaga poprawy.
+                </p>
+              </div>
+              <Button
+                onClick={() => handleSwitchToVisibility(true)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 text-xs shrink-0 font-semibold"
+              >
+                <Eye className="w-3 h-3" /> Sprawdź cytowania
+              </Button>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">Zweryfikuj cytowania po wdrożeniu</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Po opublikowaniu zmian wróć do Citation Intelligence i uruchom nową weryfikację cytowań.</div>
-            </div>
-            <Button onClick={() => handleSwitchToVisibility(true)} variant="outline" className="gap-1.5 text-xs shrink-0">
-              <Eye className="w-3 h-3" /> Citation Intelligence
-            </Button>
           </div>
 
         </main>
