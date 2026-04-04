@@ -1073,6 +1073,79 @@ function hasCitation(results: CitationResult[]): boolean {
   return results.some((r) => r.isCited === "yes" || r.isCited === "domain");
 }
 
+// ─── Layer 1: Parallel Engine Pool ──────────────────────────────────────────
+//
+// runEnginePool() is the atomic unit of parallelism in Citation Intelligence.
+// It encapsulates the throttled query loop for a single engine, making each
+// engine independently schedulable via Promise.allSettled.
+//
+// The optional `onResult` callback is the SSE hook for Layer 2:
+//   - When omitted (current usage): zero overhead, fully backward-compatible.
+//   - When provided (future SSE): emits each result to the client in real-time,
+//     enabling progressive disclosure of citation results as they arrive.
+//
+// Design principles (Perplexity infra × HubSpot growth × Lovable reliability):
+//   - Promise.allSettled: one engine failure never blocks others.
+//   - Per-engine throttle (800ms): rate limit compliance preserved.
+//   - Cache-first: cached results bypass throttle and emit immediately.
+//   - Typed engine dispatch: exhaustive switch prevents silent engine omissions.
+
+export async function runEnginePool(
+  engine: CitationEngine,
+  queries: string[],
+  jobId: number,
+  auditId: number,
+  targetUrl: string,
+  language: string,
+  round: number,
+  onResult?: (result: CitationResult) => void,
+): Promise<CitationResult[]> {
+  if (queries.length === 0) return [];
+  const results: CitationResult[] = [];
+  const db = await getDb();
+
+  for (const query of queries) {
+    const cacheKey = makeCacheKey(query, engine);
+    const cached = await getCachedResult(cacheKey);
+    let result: CitationResult;
+
+    if (cached) {
+      // Cache hit: emit immediately, no throttle needed
+      result = { ...cached, round };
+    } else {
+      // Live API call: dispatch to the correct engine handler
+      switch (engine) {
+        case "google":
+          result = await checkGoogleAIOverview(query, targetUrl, language, round);
+          break;
+        case "chatgpt":
+          result = await checkChatGPT(query, targetUrl, round);
+          break;
+        case "perplexity":
+          result = await checkPerplexity(query, targetUrl, round);
+          break;
+        case "gemini":
+          result = await checkGemini(query, targetUrl, round);
+          break;
+        default: {
+          // TypeScript exhaustiveness guard — should never reach here
+          const _exhaustive: never = engine;
+          throw new Error(`Unknown engine: ${_exhaustive}`);
+        }
+      }
+      // Persist to DB and apply per-engine rate limit throttle
+      if (db) await saveResult(jobId, auditId, result, cacheKey);
+      await new Promise((r) => setTimeout(r, 800));
+    }
+
+    results.push(result);
+    // SSE hook: emit to client in real-time when Layer 2 is active
+    onResult?.(result);
+  }
+
+  return results;
+}
+
 // ─── Main Job Runner ──────────────────────────────────────────────────────────
 
 export async function runCitationJob(jobId: number): Promise<CitationJobResult | null> {
@@ -1206,73 +1279,41 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       console.log(`[Citation] Job ${jobId}: Round ${round} [${cacheTag}] — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length}`);
 
+      // ── Layer 1: Parallel Engine Execution ───────────────────────────────────
+      // All engines run concurrently via Promise.allSettled.
+      // Google runs in every round; ChatGPT/Perplexity/Gemini run in round 1 only.
+      // Promise.allSettled guarantees: one engine timeout never blocks others.
+      // Per-engine throttle (800ms) is preserved inside runEnginePool().
+      // onResult hook is undefined here — Layer 2 (SSE) will wire it in.
       const roundResults: CitationResult[] = [];
 
-      // Google AI Overview — run in ALL rounds with Google-optimized queries
-      for (const query of googleQueries) {
-        const cacheKey = makeCacheKey(query, "google");
-        const cached = await getCachedResult(cacheKey);
-        let result: CitationResult;
-        if (cached) {
-          result = { ...cached, round };
+      const enginePromises = [
+        runEnginePool("google",     googleQueries,     jobId, job.auditId, job.url, language, round),
+        round === 1
+          ? runEnginePool("chatgpt",    chatgptQueries,    jobId, job.auditId, job.url, language, round)
+          : Promise.resolve([] as CitationResult[]),
+        round === 1
+          ? runEnginePool("perplexity", perplexityQueries, jobId, job.auditId, job.url, language, round)
+          : Promise.resolve([] as CitationResult[]),
+        round === 1
+          ? runEnginePool("gemini",     geminiQueries,     jobId, job.auditId, job.url, language, round)
+          : Promise.resolve([] as CitationResult[]),
+      ] as const;
+
+      const [googleSettled, chatgptSettled, perplexitySettled, geminiSettled] =
+        await Promise.allSettled(enginePromises);
+
+      // Collect results — failed engines contribute empty arrays (no data loss)
+      for (const settled of [googleSettled, chatgptSettled, perplexitySettled, geminiSettled]) {
+        if (settled.status === "fulfilled") {
+          roundResults.push(...settled.value);
+          allResults.push(...settled.value);
         } else {
-          result = await checkGoogleAIOverview(query, job.url, language, round);
-          await saveResult(jobId, job.auditId, result, cacheKey);
-          await new Promise((r) => setTimeout(r, 800));
-        }
-        roundResults.push(result);
-        allResults.push(result);
-      }
-
-      // ChatGPT, Perplexity, Gemini — round 1 only, each with engine-optimized queries
-      if (round === 1) {
-        for (const query of chatgptQueries) {
-          const cacheKey = makeCacheKey(query, "chatgpt");
-          const cached = await getCachedResult(cacheKey);
-          let result: CitationResult;
-          if (cached) {
-            result = { ...cached, round };
-          } else {
-            result = await checkChatGPT(query, job.url, round);
-            await saveResult(jobId, job.auditId, result, cacheKey);
-            await new Promise((r) => setTimeout(r, 800));
-          }
-          roundResults.push(result);
-          allResults.push(result);
-        }
-
-        for (const query of perplexityQueries) {
-          const cacheKey = makeCacheKey(query, "perplexity");
-          const cached = await getCachedResult(cacheKey);
-          let result: CitationResult;
-          if (cached) {
-            result = { ...cached, round };
-          } else {
-            result = await checkPerplexity(query, job.url, round);
-            await saveResult(jobId, job.auditId, result, cacheKey);
-            await new Promise((r) => setTimeout(r, 800));
-          }
-          roundResults.push(result);
-          allResults.push(result);
-        }
-
-        for (const query of geminiQueries) {
-          const cacheKey = makeCacheKey(query, "gemini");
-          const cached = await getCachedResult(cacheKey);
-          let result: CitationResult;
-          if (cached) {
-            result = { ...cached, round };
-          } else {
-            result = await checkGemini(query, job.url, round);
-            await saveResult(jobId, job.auditId, result, cacheKey);
-            await new Promise((r) => setTimeout(r, 800));
-          }
-          roundResults.push(result);
-          allResults.push(result);
+          console.error(`[Citation] Job ${jobId}: Engine pool failed in round ${round}:`, settled.reason);
         }
       }
 
-      const roundFoundCitation = hasCitation(roundResults);
+            const roundFoundCitation = hasCitation(roundResults);
       rounds.push({
         round,
         queries: allRoundQueries, // store all engine queries for this round

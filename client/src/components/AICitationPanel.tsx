@@ -245,7 +245,7 @@ function QueryCard({ query, checks, isPro, defaultOpen }: {
             </svg>
             <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wide">Zapytanie do AI</span>
           </div>
-          {/* Full query text — professional exposition */}
+          {/* Full query text -- professional exposition */}
           <p className="text-sm text-zinc-100 font-medium leading-snug">
             „{query}"
           </p>
@@ -495,7 +495,7 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
 
       {!isPro ? (
         <div className="relative">
-          {/* Blurred preview — always show top 5 rows */}
+          {/* Blurred preview -- always show top 5 rows */}
           <div className="blur-sm pointer-events-none select-none space-y-2" aria-hidden>
             {competitors.slice(0, TOP_N).map((d) => (
               <div key={d.domain} className="flex items-center gap-3">
@@ -549,7 +549,7 @@ function CompetitorSummary({ checks, targetDomain, isPro }: {
                         style={{ width: `${Math.round((d.count / maxCount) * 100)}%` }}
                       />
                     </div>
-                    {/* Engine badges — which AI cited this domain */}
+                    {/* Engine badges -- which AI cited this domain */}
                     {engines.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-[9px] text-zinc-600 mr-0.5">cytowane przez:</span>
@@ -947,7 +947,7 @@ function QueriesCheckedPanel({
         </div>
       </div>
 
-      {/* Canonical phrase set from monitoring — shown as the authoritative reference */}
+      {/* Canonical phrase set from monitoring -- shown as the authoritative reference */}
       {hasCanonicalPhrases && (
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center gap-2 mb-2">
@@ -1246,7 +1246,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Value propositions — no raw numbers, benefit-first */}
+          {/* Value propositions -- no raw numbers, benefit-first */}
           <div className="space-y-2.5">
             {[
               {
@@ -1289,7 +1289,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
             ))}
           </div>
 
-          {/* Canonical phrases preview — shown before running the check */}
+          {/* Canonical phrases preview -- shown before running the check */}
           {canonicalPhrases && canonicalPhrases.length > 0 && (
             <div className="bg-zinc-800/30 border border-white/8 rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -1313,7 +1313,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
                 )}
               </div>
               <p className="text-[11px] text-zinc-500 mb-2.5 leading-relaxed">Te same frazy, które monitorujesz w dashboardzie — jeden spójny zestaw dla tej podstrony.</p>
-              {/* Inline PhraseManager — Feature 2 */}
+              {/* Inline PhraseManager -- Feature 2 */}
               {showPhraseManager && monitoringPhrasesData ? (
                 <div className="mt-2">
                   <PhraseManager
@@ -1491,7 +1491,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
                   </p>
                 )}
               </div>
-              {/* AI Visibility Score — replaces the raw fraction, one number */}
+              {/* AI Visibility Score -- replaces the raw fraction, one number */}
               <div className={`shrink-0 flex flex-col items-center px-3 py-2 rounded-xl border ${
                 foundCitation ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/20 bg-red-500/8"
               }`}>
@@ -1501,7 +1501,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
               </div>
             </div>
 
-            {/* Per-engine breakdown — 4-column grid with color-coded status */}
+            {/* Per-engine breakdown -- 4-column grid with color-coded status */}
             <div className="mt-4 pt-3 border-t border-white/5">
               <p className="text-[10px] text-zinc-600 mb-2.5 uppercase tracking-wide font-medium">Status w silnikach AI</p>
               <div className="grid grid-cols-4 gap-2">
@@ -1538,7 +1538,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         );
       })()}
 
-         {/* Citation Narrative — LLM-generated diagnosis connecting results to root cause gaps */}
+         {/* Citation Narrative -- LLM-generated diagnosis connecting results to root cause gaps */}
       {(() => {
         const narrativeCitingEngines = Array.from(
           new Set(
@@ -1562,7 +1562,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         );
       })()}
 
-      {/* Zero-citation state — empathetic guidance when no engine cites the page */}
+      {/* Zero-citation state -- empathetic guidance when no engine cites the page */}
       {isCompleted && !foundCitation && checks.length > 0 && (
         <div className="bg-zinc-900/40 border border-amber-500/20 rounded-2xl overflow-hidden">
           <div className="px-5 pt-4 pb-3 border-b border-white/5">
@@ -1613,15 +1613,15 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         </div>
       )}
 
-      {/* Queries checked — global list without round breakdown */}
+      {/* Queries checked -- global list without round breakdown */}
       <QueriesCheckedPanel checks={checks} isPro={isPro} canonicalPhrases={canonicalPhrases} />
       {/* Global competitor summary */}
       <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
-      {/* Competitor Intelligence — AI Score comparison table */}
+      {/* Competitor Intelligence -- AI Score comparison table */}
       <CompetitorIntelPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-      {/* Gap Analysis — check-by-check diff vs competitors */}
+      {/* Gap Analysis -- check-by-check diff vs competitors */}
        <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-      {/* Citation Opportunity Finder — per-query analysis of why competitors are cited instead */}
+      {/* Citation Opportunity Finder -- per-query analysis of why competitors are cited instead */}
       <CitationOpportunityPanel
         auditId={auditId}
         isPro={isPro}
@@ -1629,7 +1629,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         citationJobStatus={job?.status ?? null}
         citedCount={checks.filter(c => c.isCited === "yes" || c.isCited === "domain").length}
       />
-      {/* Methodology disclaimer — at the bottom, after all results */}
+      {/* Methodology disclaimer -- at the bottom, after all results */}
       <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">
         <svg className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
