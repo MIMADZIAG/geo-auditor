@@ -39,7 +39,7 @@ function makeFindings(overrides: Partial<AuditFindings> = {}): AuditFindings {
       checks: [
         { id: "jsonld_present", label: "JSON-LD", status: "fail", description: "", impact: "high" },
         { id: "faq_schema", label: "FAQ schema", status: "fail", description: "", impact: "high" },
-        { id: "organization", label: "Organization", status: "pass", description: "", impact: "medium" },
+        { id: "organization_schema", label: "Organization", status: "pass", description: "", impact: "medium" },
       ],
     },
     contentStructure: {
@@ -66,9 +66,9 @@ function makeFindings(overrides: Partial<AuditFindings> = {}): AuditFindings {
       maxScore: 100,
       summary: "",
       checks: [
-        { id: "ai_url_access", label: "AI access", status: "pass", description: "", impact: "high" },
-        { id: "ai_full_block", label: "No full block", status: "pass", description: "", impact: "high" }, // inverted
-        { id: "ai_llms_txt", label: "llms.txt", status: "fail", description: "", impact: "medium" },
+        { id: "audited_url_access", label: "AI access", status: "pass", description: "", impact: "high" },
+        { id: "ai_search_full_block", label: "No full block", status: "pass", description: "", impact: "high" }, // inverted
+        { id: "llms_txt", label: "llms.txt", status: "fail", description: "", impact: "medium" },
       ],
     },
     metaTags: {
@@ -286,14 +286,14 @@ describe("computeGapAnalysis", () => {
         maxScore: 100,
         summary: "",
         checks: [
-          { id: "ai_full_block", label: "Full block", status: "fail", description: "", impact: "high" },
+          { id: "ai_search_full_block", label: "Full block", status: "fail", description: "", impact: "high" },
         ],
       },
     });
     const competitor = makeCompetitor({ ai_full_block: 0 }); // not blocked
     const result = computeGapAnalysis(findings, [competitor]);
 
-    const blockGap = result.gaps.find(g => g.checkId === "ai_full_block");
+    const blockGap = result.gaps.find(g => g.checkId === "ai_search_full_block");
     expect(blockGap).toBeDefined();
   });
 
@@ -304,14 +304,14 @@ describe("computeGapAnalysis", () => {
         maxScore: 100,
         summary: "",
         checks: [
-          { id: "ai_llms_txt", label: "llms.txt", status: "fail", description: "", impact: "medium" },
+          { id: "llms_txt", label: "llms.txt", status: "fail", description: "", impact: "medium" },
         ],
       },
     });
     const competitor = makeCompetitor({ ai_llms_txt: 1 });
     const result = computeGapAnalysis(findings, [competitor]);
 
-    const llmsGap = result.gaps.find(g => g.checkId === "ai_llms_txt");
+    const llmsGap = result.gaps.find(g => g.checkId === "llms_txt");
     expect(llmsGap).toBeDefined();
     expect(llmsGap!.priority).toBe("critical");
   });

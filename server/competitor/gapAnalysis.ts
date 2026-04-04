@@ -115,7 +115,7 @@ const CHECK_DEFS: CheckDef[] = [
     impact: "Responsywność jest sygnałem jakości dla crawlerów AI.",
   },
   {
-    checkId: "sitemap",
+    checkId: "sitemap_reference",
     label: "Sitemap XML",
     category: "technical",
     column: "tech_sitemap",
@@ -165,7 +165,7 @@ const CHECK_DEFS: CheckDef[] = [
     impact: "FAQ schema jest bezpośrednio cytowane przez AI jako odpowiedź na pytania.",
   },
   {
-    checkId: "organization",
+    checkId: "organization_schema",
     label: "Organization schema",
     category: "structuredData",
     column: "sd_organization",
@@ -189,7 +189,7 @@ const CHECK_DEFS: CheckDef[] = [
     impact: "Daty potwierdzają aktualność treści — kluczowe dla AI.",
   },
   {
-    checkId: "breadcrumb",
+    checkId: "breadcrumb_schema",
     label: "BreadcrumbList schema",
     category: "structuredData",
     column: "sd_breadcrumb",
@@ -296,7 +296,7 @@ const CHECK_DEFS: CheckDef[] = [
   },
   // ── AI Crawlers ────────────────────────────────────────────────────────────
   {
-    checkId: "ai_url_access",
+    checkId: "audited_url_access",
     label: "Dostęp AI do URL",
     category: "aiCrawlers",
     column: "ai_url_access",
@@ -304,7 +304,7 @@ const CHECK_DEFS: CheckDef[] = [
     impact: "Brak dostępu = brak cytowania. To najwyższy priorytet.",
   },
   {
-    checkId: "ai_full_block",
+    checkId: "ai_search_full_block",
     label: "Brak pełnej blokady AI",
     category: "aiCrawlers",
     column: "ai_full_block",
@@ -313,7 +313,7 @@ const CHECK_DEFS: CheckDef[] = [
     impact: "Pełna blokada AI uniemożliwia jakiekolwiek cytowanie.",
   },
   {
-    checkId: "ai_llms_txt",
+    checkId: "llms_txt",
     label: "Plik llms.txt",
     category: "aiCrawlers",
     column: "ai_llms_txt",
