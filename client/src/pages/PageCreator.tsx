@@ -37,47 +37,31 @@ const PAGE_TYPES: PageTypeOption[] = [
     description: "Treść informacyjna, poradnik, przewodnik",
     icon: <FileText className="w-6 h-6" />,
     example: "Jak wybrać okulary dla dziecka?",
-    aiTip: "Najczęściej cytowany typ przez Google AI Overviews",
+    aiTip: "Najczęściej cytowany typ przez AI Search",
   },
   {
     id: "product",
-    label: "Karta produktu",
-    description: "Strona produktu w sklepie internetowym",
+    label: "Strona produktu",
+    description: "Karta produktu w sklepie internetowym",
     icon: <Package className="w-6 h-6" />,
     example: "Okulary przeciwsłoneczne Dooky Hawaii",
     aiTip: "Wysoka widoczność dla zapytań zakupowych",
   },
   {
     id: "listing",
-    label: "Listing / Kategoria produktów",
-    description: "Strona z listą produktów lub ofert",
+    label: "Kategoria / Listing",
+    description: "Strona kategorii lub lista produktów",
     icon: <ShoppingBag className="w-6 h-6" />,
     example: "Okulary przeciwsłoneczne dla dzieci",
     aiTip: "Dominacja w zapytaniach kategorycznych",
   },
   {
-    id: "landing",
-    label: "Landing Page",
-    description: "Strona sprzedażowa lub lead generation",
-    icon: <Rocket className="w-6 h-6" />,
-    example: "Kurs fotografii online — zapisy",
-    aiTip: "Widoczność dla fraz intencji zakupowej",
-  },
-  {
     id: "faq",
-    label: "Strona FAQ",
-    description: "Baza wiedzy, najczęstsze pytania",
+    label: "FAQ / Baza wiedzy",
+    description: "Najczęstsze pytania, baza wiedzy",
     icon: <HelpCircle className="w-6 h-6" />,
     example: "FAQ — opieka nad niemowlęciem",
     aiTip: "Najwyższy CTR z AI Overviews",
-  },
-  {
-    id: "category",
-    label: "Strona kategorii",
-    description: "Dział, kategoria, sekcja serwisu",
-    icon: <LayoutGrid className="w-6 h-6" />,
-    example: "Akcesoria dla niemowląt",
-    aiTip: "Widoczność nawigacyjna i kategoryczna",
   },
   {
     id: "comparison",
@@ -88,17 +72,9 @@ const PAGE_TYPES: PageTypeOption[] = [
     aiTip: "Cytowania dla zapytań 'najlepszy', 'ranking'",
   },
   {
-    id: "local",
-    label: "Strona lokalna",
-    description: "Wizytówka, usługa w konkretnej lokalizacji",
-    icon: <MapPin className="w-6 h-6" />,
-    example: "Fryzjer Kraków — centrum",
-    aiTip: "Dominacja w lokalnych AI Overviews",
-  },
-  {
     id: "rewrite",
-    label: "Aktualizacja treści",
-    description: "Ulepsz istniejącą stronę na podstawie audytu AI",
+    label: "Ulepsz istniejącą stronę",
+    description: "Zaktualizuj treść na podstawie wyników audytu",
     icon: <RefreshCw className="w-6 h-6" />,
     example: "Zaktualizuj stronę produktu wg rekomendacji AI",
     aiTip: "Najszybsza droga do poprawy widoczności",
@@ -185,7 +161,7 @@ export default function PageCreator() {
     },
     onError: (err) => {
       if (err.data?.code === "FORBIDDEN") {
-        toast.error("Plan płatny wymagany: " + err.message);
+        toast.error("🔒 Ta funkcja wymaga planu płatnego.");
       } else {
         toast.error(err.message);
       }
@@ -200,7 +176,7 @@ export default function PageCreator() {
     },
     onError: (err) => {
       if (err.data?.code === "FORBIDDEN") {
-        toast.error("Plan płatny wymagany: " + err.message);
+        toast.error("🔒 Ta funkcja wymaga planu płatnego.");
       } else {
         toast.error(err.message);
       }
@@ -339,9 +315,9 @@ export default function PageCreator() {
                     </p>
                     {isCurrent && (
                       <p className="text-xs text-zinc-500 mt-0.5">
-                        {stage.key === "researching" && "Analizuję sygnały i zbieraję dane referencyjne…"}
-                        {stage.key === "generating" && "Generuję strukturę H1–H3, FAQ, schema.org i specyfikację techniczną…"}
-                        {stage.key === "pending" && "Inicjalizacja Signal Rewrite…"}
+                        {stage.key === "researching" && "Analizuję Twoją stronę i zbieraję sygnały AI…"}
+                        {stage.key === "generating" && "Przepisuję Twoją stronę pod AI Search…"}
+                        {stage.key === "pending" && "Przygotowuję analizę…"}
                       </p>
                     )}
                   </div>
@@ -351,7 +327,7 @@ export default function PageCreator() {
           </div>
 
           <p className="text-center text-xs text-zinc-600 mt-8">
-            Proces trwa zazwyczaj 45–90 sekund. Nie zamykaj tej strony.
+            Zazwyczaj 30–60 sekund. Nie zamykaj tej strony.
           </p>
         </div>
       </div>
@@ -371,10 +347,10 @@ export default function PageCreator() {
               <span className="text-violet-300 text-sm font-medium">Signal Rewrite — krok 1 z 2</span>
             </div>
             <h1 className="text-4xl font-bold text-white mb-4">
-              Który typ podstrony optymalizujesz?
+              Jaką stronę chcesz przepisać?
             </h1>
             <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
-              Signal Rewrite dopasowuje strukturę, nagłówki, FAQ i schema.org do wymagań konkretnego typu strony — tak, żeby ChatGPT, Gemini i Google AI Overviews cytowały ją z nazwy.
+              Wybierz typ strony — dostosujemy strukturę, nagłówki i treść tak, żeby ChatGPT, Gemini i Google AI cytowały Cię z nazwy.
             </p>
           </div>
 

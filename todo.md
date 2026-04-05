@@ -1582,3 +1582,40 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Dashboard: sekcja monitorowanych stron zmieniona z "Pulse Monitor" na "AI Visibility Monitor"
 - [x] Dashboard: greeting subtitle zmieniono na platformowy ("Twoja platforma AI Search Visibility...")
 - [x] 619 testów, 0 błędów TypeScript
+
+## FULL REDESIGN + COPYWRITING PLAN (Spotkanie Perplexity × Lovable)
+
+### Phase A — Design
+- [ ] Color palette: --background #080810, --accent #6366f1, update CSS variables in index.css
+- [ ] Geist font: install via Google Fonts CDN in index.html
+- [ ] Sticky score bar in Citation Intelligence tab
+- [ ] Competitor Intelligence consolidation (already done — verify)
+
+### Phase B — Design
+- [ ] ScoreOrb count-up animation (0 → score in 800ms)
+- [ ] IssueCard severity bar redesign (left border color accent)
+- [ ] Landing page hero asymmetric layout (60/40 split)
+- [ ] Unified CTA block "Co dalej?" at bottom of Citation Intelligence (already done — verify)
+- [ ] Emotional loading state for Citation Intelligence (live engine feed)
+
+### Phase C — Design
+- [ ] Before/After Quick Wins with diff view
+- [ ] AI Visibility Trend chart in Dashboard
+- [ ] Mobile responsive fixes across all views
+
+### Wave 1 — Copy
+- [ ] Landing page: subheadline, CTA button, trust text, problem strip, how it works, before/after labels, pricing names
+- [ ] Citation Intelligence: tab name, score reveal messages, section names, competitor section, opportunities, co dalej block
+- [ ] Signal Audit: tab name, score name, sub-scores, issues section names, filter tabs, quick wins
+
+### Wave 2 — Copy
+- [ ] Dashboard: title, KPI cards, audit list, alerts, quick audit input, sidebar nav
+- [ ] Signal Rewrite: headline, loading state, readiness panel, result view, page types 8→6
+
+### Wave 3 — Copy
+- [ ] FAQ: all answers rewritten
+- [ ] Error states: WAF, 404, timeout
+- [ ] Toast messages: success, error
+- [ ] Empty states
+- [ ] Auth gate messages
+- [ ] Plan upgrade gate messages

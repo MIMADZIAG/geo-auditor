@@ -285,7 +285,7 @@ export default function Home() {
       setIsSubmitting(false);
       setScanStep(0);
       setTimerActive(false);
-      toast.error(error.message || "Błąd podczas tworzenia audytu");
+      toast.error(error.message || "Nie udało się uruchomić analizy. Spróbuj ponownie.");
     },
   });
 
@@ -376,7 +376,7 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 pill pill-primary mb-8">
                 <Radio className="w-3 h-3 animate-pulse" />
-                <span>Platforma AI Search Visibility · GEO / AEO</span>
+                <span>AI Search Visibility Platform · Nowa generacja SEO</span>
               </div>
 
               {/* Headline — Visibility First: emotional question, not a tool description */}
@@ -386,7 +386,7 @@ export default function Home() {
               </h1>
 
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-                Kiedy klient pyta ChatGPT, Perplexity lub Google AI — Twoja strona powinna być w odpowiedzi. Sprawdź w 60 sekund, czy AI Cię widzi, kto Cię wyprzedza i co zmienić, żeby AI zaczęło Cię polecać.
+Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwarki. Twoja strona albo jest w odpowiedzi — albo nie istnieje dla tych klientów. Sprawdź teraz.
               </p>
 
               {/* URL Input — dominant, Perplexity-style */}
@@ -426,8 +426,8 @@ export default function Home() {
                     ) : (
                       <>
                         <Search className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Sprawdź widoczność w AI</span>
-                        <span className="sm:hidden">Sprawdź</span>
+                        <span className="hidden sm:inline">Sprawdź swoją stronę →</span>
+                        <span className="sm:hidden">Sprawdź →</span>
                       </>
                     )}
                   </Button>
@@ -468,7 +468,7 @@ export default function Home() {
                     className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
                   >
                     <Eye className="w-3 h-3" />
-                    <span>Zobacz przykładowy raport Signal Audit</span>
+                    <span>Zobacz przykładowy raport →</span>
                     <span className="text-muted-foreground/40 group-hover:text-primary/60 transition-colors">→</span>
                   </button>
                 </div>
@@ -492,18 +492,18 @@ export default function Home() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                    Wynik w 60 sekund
+                    Wynik w 30 sekund
                   </span>
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                    4 silniki AI jednocześnie
+                    ChatGPT · Gemini · Perplexity · Google AI
                   </span>
                 </div>
               )}
 
               {/* Engine strip */}
               <div className="mt-10 pt-8 border-t border-border/20">
-                <p className="section-label mb-3">Weryfikujemy cytowania w</p>
+                <p className="section-label mb-3">Sprawdzamy Twoją stronę w</p>
                 <div className="flex flex-wrap gap-2">
                   {AI_ENGINES.map((e) => (
                     <EngineBadge key={e.name} {...e} />
@@ -651,14 +651,14 @@ export default function Home() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 pill pill-primary mb-5">
               <Layers className="w-3 h-3" />
-              <span>Platforma AI Search Visibility</span>
+                <span>Jak to działa</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">
-              Nie narzędzie. Platforma.<br />
-              <span className="gradient-text">Cztery moduły. Jeden cel.</span>
+              Cztery kroki do widoczności<br />
+              <span className="gradient-text">w AI Search.</span>
             </h2>
             <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-              Każdy moduł zasila następny. Citation Intelligence wykrywa problem — Signal Audit diagnozuje przyczynę — Signal Rewrite naprawia — Pulse Monitor pilnuje wyniku. To jest pętla wzrostu widoczności w AI.
+              Wpisz URL. W ciągu 30 sekund wiesz, czy AI Cię widzi. W ciągu 5 minut — kto Cię wyprzedza i dlaczego. W ciągu godziny — masz nową wersję strony gotową do wdrożenia.
             </p>
           </div>
 
@@ -708,9 +708,9 @@ export default function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
             {[
-              { value: "87%", label: "stron e-commerce nie jest cytowanych przez żadne AI", icon: TrendingDown, color: "text-red-400" },
-              { value: "4", label: "silniki AI sprawdzamy jednocześnie: Google, ChatGPT, Perplexity, Gemini", icon: Radio, color: "text-primary" },
-              { value: "60s", label: "do pierwszego wyniku Signal Audit bez rejestracji", icon: Zap, color: "text-emerald-400" },
+              { value: "87%", label: "stron nie pojawia się w odpowiedziach AI Search", icon: TrendingDown, color: "text-red-400" },
+              { value: "4", label: "silniki AI sprawdzamy równolegle: ChatGPT, Gemini, Perplexity, Google AI", icon: Radio, color: "text-primary" },
+              { value: "30s", label: "do pierwszego wyniku — bez rejestracji, bez karty kredytowej", icon: Zap, color: "text-emerald-400" },
               { value: "40+", label: "sprawdzeń technicznych i contentowych w każdym audycie", icon: CheckCircle2, color: "text-amber-400" },
             ].map((stat) => (
               <div key={stat.value} className="flex flex-col items-center gap-2">
@@ -890,8 +890,8 @@ export default function Home() {
       <section id="faq" className="py-20 px-4 sm:px-6 border-t border-border/20">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-black mb-3 tracking-tight">Pytania i odpowiedzi</h2>
-            <p className="text-muted-foreground text-sm">Wszystko co chcesz wiedzieć o GEO-Auditor</p>
+            <h2 className="text-3xl sm:text-4xl font-black mb-3 tracking-tight">Częste pytania</h2>
+            <p className="text-muted-foreground text-sm">Odpowiedzi na pytania, które zadajesz przed pierwszym audytem</p>
           </div>
           <div className="rounded-2xl border border-border/30 bg-card/60 px-6">
             {FAQ.map((item) => <FAQItem key={item.q} {...item} />)}
@@ -909,11 +909,11 @@ export default function Home() {
             <Zap className="w-6 h-6 text-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight">
-            Czy AI poleca Twoją stronę?<br />
-            <span className="gradient-text">Odpowiedź w 60 sekund.</span>
+            Twoja strona albo jest w odpowiedzi AI.<br />
+            <span className="gradient-text">Albo nie istnieje dla tych klientów.</span>
           </h2>
           <p className="text-muted-foreground mb-10 leading-relaxed text-sm max-w-md mx-auto">
-            Wpisz URL. Sprawdzamy ChatGPT, Gemini, Perplexity i Google AI jednocześnie. Dowiesz się dokładnie, kto Cię wyprzedza i co zmienić, żeby AI zaczęło Cię polecać.
+            Wpisz adres strony. Sprawdzamy cztery silniki AI równolegle. Wynik w 30 sekund.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
@@ -922,7 +922,7 @@ export default function Home() {
               className="gap-2.5 px-10 h-12 text-base font-semibold shadow-xl shadow-primary/25"
             >
               <Search className="w-4.5 h-4.5" />
-              Sprawdź widoczność w AI
+              Sprawdź swoją stronę →
             </Button>
             <Button
               size="lg"
@@ -935,7 +935,7 @@ export default function Home() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-5">
-            Bez konta. Bez karty. Jeden audyt bezpłatnie.
+            Bez konta. Bez karty. Bez zobowiązań.
           </p>
         </div>
       </section>
@@ -1122,7 +1122,7 @@ const PRICING_PLANS = [
     period: "",
     desc: "Pełny Signal Audit bez konta i karty",
     featured: false,
-    cta: "Sprawdź sygnał",
+    cta: "Sprawdź za darmo →",
     badge: null,
     features: [
       "5 analiz / miesiąc",
@@ -1137,9 +1137,9 @@ const PRICING_PLANS = [
     price: "149 zł",
     priceAnnual: "119 zł",
     period: "/ mies.",
-    desc: "Dla właścicieli sklepów i content managerów",
+    desc: "Dla właścicieli sklepów i specjalistów SEO",
     featured: true,
-    cta: "Zacznij 7-dniowy trial",
+    cta: "Zacznij bezpłatny trial →",
     badge: "Najpopularniejszy",
     features: [
       "50 analiz / miesiąc",
@@ -1156,9 +1156,9 @@ const PRICING_PLANS = [
     price: "399 zł",
     priceAnnual: "319 zł",
     period: "/ mies.",
-    desc: "Dla agencji SEO i e-commerce z rosnącą skalą",
+    desc: "Dla agencji SEO i e-commerce w skali",
     featured: false,
-    cta: "Zacznij 7-dniowy trial",
+    cta: "Zacznij bezpłatny trial →",
     badge: null,
     features: [
       "200 analiz / miesiąc",

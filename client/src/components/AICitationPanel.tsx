@@ -1419,10 +1419,10 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-zinc-200">Kto pojawia się zamiast Ciebie?</p>
+                    <p className="text-xs font-semibold text-zinc-200">Czy AI poleca Twoją stronę — czy konkurencję?</p>
                     <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
-                      ChatGPT, Perplexity i Google AI już teraz odpowiadają na pytania Twoich klientów.
-                      Sprawdź, czy cytują Twoją stronę — czy konkurencję.
+                      ChatGPT, Gemini i Google AI odpowiadają na pytania Twoich klientów w tej chwili.
+                      Zaloguj się i sprawdź, kto zbiera te kliknięcia.
                     </p>
                   </div>
                 </div>
@@ -1434,9 +1434,9 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
               </div>
               <Button onClick={() => { window.location.href = getLoginUrl(); }}
                 className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 text-sm">
-                Zaloguj się i sprawdź widoczność w AI →
+                Zaloguj się i sprawdź za darmo →
               </Button>
-              <p className="text-[11px] text-center text-zinc-600">Bezpłatnie · Bez karty kredytowej</p>
+              <p className="text-[11px] text-center text-zinc-600">Bez karty kredytowej · Wynik w 30 sekund</p>
             </div>
           ) : (
             <Button onClick={handleStart} disabled={startCheck.isPending}
@@ -1598,13 +1598,13 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-base font-bold text-white">
-                  {foundCitation ? "Twoja strona jest widoczna w AI Search" : "Twoja strona nie jest widoczna w AI Search"}
+                  {foundCitation ? "Twoja strona pojawia się w odpowiedziach AI" : "Twoja strona nie pojawia się w odpowiedziach AI"}
                 </h2>
                 {foundCitation && citingEngines.length > 0 ? (
                   <p className="text-sm text-zinc-400 mt-1">{citingSentence}.</p>
                 ) : (
                   <p className="text-sm text-zinc-400 mt-1">
-                    Sprawdziliśmy Twoją stronę w 4 silnikach AI. Twoja domena nie pojawiła się w żadnej z przeanalizowanych odpowiedzi.
+                    Sprawdziliśmy Twoją stronę w 4 silnikach AI. Nie znaleźliśmy jej w żadnej z przeanalizowanych odpowiedzi — ktoś inny zajmuje Twoje miejsce.
                   </p>
                 )}
               </div>
@@ -1620,7 +1620,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 
             {/* Per-engine breakdown -- 4-column grid with color-coded status */}
             <div className="mt-4 pt-3 border-t border-white/5">
-              <p className="text-[10px] text-zinc-600 mb-2.5 uppercase tracking-wide font-medium">Status w silnikach AI</p>
+              <p className="text-[10px] text-zinc-600 mb-2.5 uppercase tracking-wide font-medium">Wynik sprawdzenia — 4 silniki AI</p>
               <div className="grid grid-cols-4 gap-2">
                 {ALL_ENGINES.map((engine) => {
                   const cfg = ENGINE_CONFIG[engine];
@@ -1655,7 +1655,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         );
       })()}
 
-      {/* ── SEKCJA 2: Diagnoza AI — LLM narrative (dlaczego taki wynik) ─────────────────────── */}
+      {/* ── SEKCJA 2: Co to oznacza dla Twojej strony ──────────────────────────────────────────── */}
       {(() => {
         const narrativeCitingEngines = Array.from(
           new Set(
@@ -1679,11 +1679,11 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         );
       })()}
 
-      {/* ── SEKCJA 3: Jak AI widzi Twoją stronę — frazy i zapytania ─────────────────────── */}
+      {/* ── SEKCJA 3: Frazy, na które sprawdzaliśmy Twoją stronę ────────────────────────────────── */}
       <QueriesCheckedPanel checks={checks} isPro={isPro} canonicalPhrases={canonicalPhrases} />
       {/* ── Competitor Intelligence (UNIFIED — replaces standalone CompetitorSummary) */}
 
-      {/* ── SEKCJA 4: Kto dominuje zamiast Ciebie + Competitor Intelligence (UNIFIED) */}
+      {/* ── SEKCJA 4: Kto zajmuje Twoje miejsce w AI Search */}
       {isCompleted && !foundCitation && checks.length > 0 && (
         <CitationZeroState
           competitors={rankCompetitors(checks, targetDomain)}
@@ -1698,9 +1698,9 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
       )}
 
       <CompetitorIntelPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-      {/* ── SEKCJA 5: Analiza luk vs. konkurenci — DLACZEGO (nie KTO) */}
+      {/* ── SEKCJA 5: Dlaczego AI woli konkurentów */}
       <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-      {/* ── SEKCJA 6: Citation Opportunities — konkretne akcje */}
+      {/* ── SEKCJA 6: Co zrobić, żeby AI zaczęło Cię cytować */}
       <CitationOpportunityPanel
         auditId={auditId}
         isPro={isPro}
@@ -1714,7 +1714,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p className="text-[11px] text-zinc-600 leading-relaxed">
-          Wyniki dotyczą <span className="text-zinc-500">Google AI Overviews</span> (standardowe wyniki wyszukiwania), nie Google AI Mode. Sprawdzamy zapytania wygenerowane na podstawie treści Twojej strony — wyniki mogą się różnić przy innych frazach lub w innych momentach. Brak cytowania nie wyklucza widoczności na frazy, których nie sprawdzaliśmy.
+          Sprawdzamy zapytania wygenerowane na podstawie treści Twojej strony w Google AI Overviews, ChatGPT, Perplexity i Gemini. Wyniki mogą się różnić przy innych frazach lub w innych momentach. Brak cytowania nie wyklucza widoczności na frazy, których nie sprawdzaliśmy.
         </p>
       </div>
     </div>

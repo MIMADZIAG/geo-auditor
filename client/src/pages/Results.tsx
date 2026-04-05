@@ -335,7 +335,7 @@ export default function Results() {
   const addMonitoringMutation = trpc.monitoring.add.useMutation({
     onSuccess: () => {
       utils.monitoring.list.invalidate();
-      toast.success("Strona dodana do monitoringu! Widoczność AI będzie śledzona automatycznie.");
+      toast.success("✅ Strona dodana do obserwacji — będziemy śledzili jej widoczność w AI.");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -644,7 +644,7 @@ export default function Results() {
     const encodedUrl = encodeURIComponent(reportUrl);
     if (platform === "copy") {
       navigator.clipboard.writeText(reportUrl);
-      toast.success("Link do raportu skopiowany!");
+      toast.success("🔗 Link skopiowany — możesz go udostępnić.");
       return;
     }
     if (platform === "linkedin") window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, "_blank");
@@ -731,8 +731,8 @@ export default function Results() {
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">01 · Citation Intelligence</span>
-                    <span className="sm:hidden">Cytowania</span>
+                    <span className="hidden sm:inline">01 · Widoczność w AI</span>
+                    <span className="sm:hidden">Widoczność</span>
                     {citationStatus === "running" && (
                       <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                     )}
@@ -755,8 +755,8 @@ export default function Results() {
                     }`}
                   >
                     <Shield className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">02 · Signal Audit</span>
-                    <span className="sm:hidden">Audyt</span>
+                    <span className="hidden sm:inline">02 · Diagnoza techniczna</span>
+                    <span className="sm:hidden">Diagnoza</span>
                   </button>
                   {/* 03 · Signal Rewrite */}
                   <button
@@ -768,7 +768,7 @@ export default function Results() {
                     }`}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">03 · Signal Rewrite</span>
+                    <span className="hidden sm:inline">03 · Przepisz treść</span>
                     <span className="sm:hidden">Rewrite</span>
                   </button>
                 </div>
@@ -926,7 +926,7 @@ export default function Results() {
                   <Brain className="w-5 h-5 text-primary animate-pulse" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold">Signal Audit w toku…</div>
+                  <div className="text-sm font-semibold">Diagnoza techniczna w toku…</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Skanujemy 40+ sygnałów AI Search. Wyniki pojawią się za chwilę.</div>
                 </div>
                 <div className="ml-auto">
@@ -947,7 +947,7 @@ export default function Results() {
                 ))}
               </div>
               <div className="text-xs text-muted-foreground/60 pt-1 border-t border-border/20">
-                → Przejdź do <button className="text-primary hover:underline font-medium" onClick={() => handleSwitchToVisibility(false)}>Citation Intelligence</button> — już działa równolegle
+                → Przejdź do <button className="text-primary hover:underline font-medium" onClick={() => handleSwitchToVisibility(false)}>Widoczności w AI</button> — już działa równolegle
               </div>
             </div>
           )}
@@ -3592,10 +3592,10 @@ function WhatIfSection({
       });
       const { rewrittenContent } = result;
       if (result.competitorInsights && result.competitorInsights.count > 0) {
-        toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
+        toast.success(`✅ Analiza konkurencji gotowa — ${result.competitorInsights.count} domen sprawdzonych.`);
       }
       if (citationOpportunities.length > 0) {
-        toast.success(`🎯 ${citationOpportunities.length} Citation Opportunities wstrzyknięto do przepisania`);
+        toast.success(`✅ ${citationOpportunities.length} szans na cytowanie gotowych do wykorzystania.`);
       }
       const rewrittenStr = typeof rewrittenContent === "string" ? rewrittenContent : String(rewrittenContent);
       // B6: push to version history instead of overwriting
@@ -3637,7 +3637,7 @@ function WhatIfSection({
         }).then((r) => {
           setRescoreResult(r);
           if (r.delta > 0) {
-            toast.success(`📈 Szacowany wzrost AI-Readiness: +${r.delta} pkt (${r.baselineOverall} → ${r.estimatedOverall}/100)`);
+            toast.success(`✅ Wynik wzrośnie o +${r.delta} pkt po wdrożeniu zmian.`);
             // Update rewrite celebration banner with actual delta
             onRewriteCelebration?.({ delta: r.delta });
             setTimeout(() => onRewriteCelebration?.(null), 8000);
@@ -3652,7 +3652,7 @@ function WhatIfSection({
       if ((result as any).researchData) {
         setResearchData((result as any).researchData);
         if ((result as any).researchData.queries?.length > 0) {
-          toast.success(`🔬 Zbadano ${(result as any).researchData.sources?.length ?? 0} źródeł — treść wzbogacona o kontekst badawczy`);
+          toast.success(`✅ Treść wzbogacona o ${(result as any).researchData.sources?.length ?? 0} źródła badawcze.`);
         }
       }
       setActiveResultTab("content");
@@ -3674,7 +3674,7 @@ function WhatIfSection({
     if (!rewrittenText) return;
     navigator.clipboard.writeText(rewrittenText).then(() => {
       setCopied(true);
-      toast.success("Skopiowano do schowka!");
+      toast.success("📋 Skopiowano.");
       setTimeout(() => setCopied(false), 3000);
     });
   }

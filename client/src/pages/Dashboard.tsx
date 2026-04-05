@@ -607,13 +607,13 @@ function MonitoredPageCard({
   const runCitationMutation = trpc.monitoring.runCitationCheck.useMutation({
     onSuccess: (data) => {
       if (data.alreadyRunning) {
-        toast.info("Analiza widoczności AI jest już w toku.");
+        toast.info("⏳ Analiza widoczności AI jest już uruchomiona.");
       } else {
-        toast.success("Analiza widoczności AI uruchomiona. Wyniki pojawią się za 2–5 minut.");
+        toast.success("✅ Analiza uruchomiona — wyniki za chwilę.");
       }
       activeCitationJobQuery.refetch();
     },
-    onError: (err) => toast.error(err.message || "Nie udało się uruchomić analizy widoczności AI."),
+    onError: (err) => toast.error(err.message || "Nie udało się uruchomić analizy. Spróbuj ponownie."),
   });
   // When job transitions from running → completed, refresh monitored pages list
   const prevRunningRef = useState<boolean>(false);
@@ -924,7 +924,7 @@ function MonitoredPageCard({
               </div>
             ) : runs.length === 0 ? (
               <p className="text-xs text-muted-foreground py-2">
-                Brak historii Signal Audit. Uruchom analizę z poziomu strony głównej.
+                Brak analiz. Wpisz URL na stronie głównej, żeby zobaczyć wyniki.
               </p>
             ) : (
               <>
@@ -1171,10 +1171,9 @@ function NotAuthenticated() {
           <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
             <LogIn className="w-8 h-8 text-violet-400" />
           </div>
-          <h2 className="text-2xl font-bold mb-3">Zaloguj się, aby zobaczyć Dashboard</h2>
+          <h2 className="text-2xl font-bold mb-3">Sprawdź, czy AI poleca Twoją stronę</h2>
           <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-            Monitoruj swoje strony, śledź wyniki AI-Readiness w czasie i otrzymuj alerty,
-            gdy wynik się zmieni.
+            Zaloguj się i uruchom pierwszą analizę. Wynik gotowy w 30 sekund — za darmo.
           </p>
           <Button
             onClick={() => (window.location.href = getLoginUrl())}
@@ -1184,7 +1183,7 @@ function NotAuthenticated() {
             Zaloguj się za darmo
           </Button>
           <p className="text-xs text-muted-foreground mt-4">
-            Plan Free: 1 monitorowana strona + 5 audytów/mies.
+            Bez karty kredytowej. 1 analiza dziennie gratis.
           </p>
         </div>
       </div>
@@ -1404,14 +1403,14 @@ export default function Dashboard() {
       utils.monitoring.list.invalidate();
       setNewUrl("");
       setShowAddMonitoring(false);
-      toast.success("Strona dodana do monitoringu!");
+      toast.success("✅ Strona dodana — będziemy śledzili jej widoczność w AI.");
     },
     onError: (e) => toast.error(e.message),
   });
   const removeMonitoring = trpc.monitoring.remove.useMutation({
     onSuccess: () => {
       utils.monitoring.list.invalidate();
-      toast.success("Usunięto z monitoringu");
+      toast.success("Strona usunięta z obserwacji.");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -1459,13 +1458,13 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold tracking-tight">{greeting}, {firstName}.</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {totalAudits === 0
-                ? "Twoja platforma AI Search Visibility — sprawdź kto Cię cytuje w ChatGPT, Google AI i Perplexity."
-                : `${totalAudits} Signal Audit${totalAudits === 1 ? "" : totalAudits < 5 ? "y" : "ów"} · ${planLabel(plan)}`}
+                ? "Wpisz URL i sprawdź, czy AI Cię poleca. Wynik w 30 sekund."
+                : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`}
             </p>
           </div>
           <Link href="/">
             <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
-              <Zap className="w-3.5 h-3.5" /> Nowa analiza
+              <Zap className="w-3.5 h-3.5" /> Sprawdź nową stronę →
             </Button>
           </Link>
         </div>
@@ -1482,7 +1481,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             icon={BarChart2}
-            label="Średni AI Readiness Score"
+            label="ŚrednI wynik gotowości na AI"
             value={avgScore != null ? `${avgScore}/100` : "–"}
             sub={scoreLabel(avgScore)}
             colorClass={scoreColor(avgScore)}
@@ -1490,7 +1489,7 @@ export default function Dashboard() {
           />
           <StatCard
             icon={Trophy}
-            label="Najwyższy wynik"
+            label="Najlepszy wynik audytu"
             value={bestScore != null ? `${bestScore}/100` : "–"}
             sub={bestScore != null ? "Rekord konta" : "Brak danych"}
             colorClass={bestScore != null && bestScore >= 75 ? "text-emerald-400" : bestScore != null ? "text-amber-400" : undefined}
@@ -1498,7 +1497,7 @@ export default function Dashboard() {
           />
           <StatCard
             icon={Flame}
-            label="Signal Audits w tym mies."
+            label="Analizy w tym miesiącu"
             value={`${auditsUsed}/${auditsLimit > 9999 ? "∞" : auditsLimit}`}
             sub={`Limit planu ${planLabel(plan)}`}
             iconColor="text-orange-400"
@@ -1513,7 +1512,7 @@ export default function Dashboard() {
           <div id="pulse">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
-                <Eye className="w-4 h-4" /> AI Visibility Monitor
+                <Eye className="w-4 h-4" /> Strony pod obserwacją
               </h2>
               <Button
                 size="sm"
