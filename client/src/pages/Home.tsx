@@ -809,8 +809,8 @@ const SCAN_STEPS = [
 ];
 
 const WORKFLOW_PREVIEW = [
-  { icon: Shield, label: "Signal Audit", sub: "40+ sprawdzeń · AI Readiness Score" },
   { icon: Eye, label: "Citation Intelligence", sub: "Cytowania w ChatGPT, Gemini, Perplexity" },
+  { icon: Shield, label: "Signal Audit", sub: "40+ sprawdzeń · AI Readiness Score" },
   { icon: Sparkles, label: "Signal Rewrite", sub: "Przepisany tekst gotowy do wdrożenia" },
   { icon: Activity, label: "Pulse Monitor", sub: "Cotygodniowy re-audyt i alerty" },
 ];
@@ -883,22 +883,22 @@ const PROBLEM_ITEMS = [
 
 const WORKFLOW_CARDS = [
   {
-    icon: Shield,
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    title: "Signal Audit",
-    featured: true,
-    desc: "40+ sprawdzeń technicznych i contentowych. Jeden AI Readiness Score 0–100 z priorytetowaną listą blokad.",
-    bullets: ["robots.txt, schema.org, Core Web Vitals", "Content Intelligence (5 wymiarów)", "E-E-A-T & Helpful Content Signal"],
-  },
-  {
     icon: Eye,
     iconBg: "bg-violet-500/10",
     iconColor: "text-violet-400",
     title: "Citation Intelligence",
-    featured: false,
-    desc: "Weryfikacja cytowań w ChatGPT, Gemini, Perplexity i Google AI na frazach istotnych dla Twojego biznesu.",
+    featured: true,
+    desc: "Sprawdź w 60 sekund, czy ChatGPT, Gemini, Perplexity i Google AI cytują Twoją stronę — i kto Cię wyprzedza.",
     bullets: ["Per-frazowa analiza czterech silników AI", "Pełna lista URL-i cytowanych zamiast Ciebie", "Analiza porównawcza z konkurentami"],
+  },
+  {
+    icon: Shield,
+    iconBg: "bg-primary/10",
+    iconColor: "text-primary",
+    title: "Signal Audit",
+    featured: false,
+    desc: "40+ sprawdzeń technicznych i contentowych. Jeden AI Readiness Score 0–100 z priorytetowaną listą blokad.",
+    bullets: ["robots.txt, schema.org, Core Web Vitals", "Content Intelligence (5 wymiarów)", "E-E-A-T & Helpful Content Signal"],
   },
   {
     icon: Sparkles,

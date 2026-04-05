@@ -4034,19 +4034,100 @@ function LoadingState() {
 
 function ErrorState({ message }: { message: string }) {
   const [, navigate] = useLocation();
+  // Detect WAF/Cloudflare/timeout errors for specific actionable messaging
+  const isWAF = message.includes("terminated") || message.includes("abort") || message.includes("449") || message.includes("403") || message.includes("Cloudflare") || message.includes("WAF") || message.includes("Puppeteer");
+  const isNotFound = message.includes("404") || message.includes("Not Found");
+  const isTimeout = message.includes("timeout") || message.includes("ETIMEDOUT");
+
+  const config = isWAF ? {
+    icon: Shield,
+    iconBg: "bg-amber-500/10",
+    iconBorder: "border-amber-500/20",
+    iconColor: "text-amber-400",
+    title: "Strona chroniona przez WAF / Cloudflare",
+    subtitle: "Serwer blokuje automatyczne żądania. To normalne dla stron z aktywną ochroną DDoS.",
+    tips: [
+      "Spróbuj ponownie za 2–3 minuty — blokady WAF są często tymczasowe",
+      "Upewnij się, że URL jest poprawny i strona jest publicznie dostępna",
+      "Strony wymagające logowania nie mogą być audytowane",
+    ],
+    retryLabel: "Spróbuj ponownie",
+  } : isNotFound ? {
+    icon: AlertCircle,
+    iconBg: "bg-destructive/10",
+    iconBorder: "border-destructive/20",
+    iconColor: "text-destructive",
+    title: "Strona nie istnieje",
+    subtitle: "Podany URL zwrócił błąd 404. Sprawdź czy adres jest poprawny.",
+    tips: [
+      "Sprawdź czy URL nie zawiera literówki",
+      "Upewnij się, że strona jest publicznie dostępna",
+      "Spróbuj z wersją bez końcowego ukośnika lub z nim",
+    ],
+    retryLabel: "Sprawdź inny URL",
+  } : {
+    icon: AlertCircle,
+    iconBg: "bg-destructive/10",
+    iconBorder: "border-destructive/20",
+    iconColor: "text-destructive",
+    title: "Audyt nie powiódł się",
+    subtitle: "Wystąpił nieoczekiwany błąd podczas analizy strony.",
+    tips: [
+      "Sprawdź czy URL jest poprawny i strona jest dostępna",
+      "Spróbuj ponownie za chwilę",
+      "Jeśli problem się powtarza, skontaktuj się z nami",
+    ],
+    retryLabel: "Spróbuj ponownie",
+  };
+
+  const Icon = config.icon;
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-full max-w-sm mx-auto px-6 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto shadow-xl shadow-destructive/10">
-          <AlertCircle className="w-8 h-8 text-destructive" />
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="w-full max-w-md mx-auto space-y-6">
+        {/* Icon + Title */}
+        <div className="text-center space-y-4">
+          <div className={`w-16 h-16 rounded-2xl ${config.iconBg} border ${config.iconBorder} flex items-center justify-center mx-auto shadow-xl`}>
+            <Icon className={`w-8 h-8 ${config.iconColor}`} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold mb-2">{config.title}</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">{config.subtitle}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Audyt nie powiódł się</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
+
+        {/* Actionable tips */}
+        <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Co możesz zrobić</p>
+          <ul className="space-y-2">
+            {config.tips.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/80">
+                <div className="w-5 h-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                </div>
+                {tip}
+              </li>
+            ))}
+          </ul>
         </div>
-        <Button onClick={() => navigate("/")} className="gap-2 shadow-md shadow-primary/20">
-          <ArrowLeft className="w-4 h-4" /> Sprawdź inny URL
-        </Button>
+
+        {/* Technical details (collapsed) */}
+        {message && (
+          <details className="text-xs text-muted-foreground/60">
+            <summary className="cursor-pointer hover:text-muted-foreground transition-colors">Szczegóły techniczne</summary>
+            <p className="mt-2 font-mono bg-muted/30 rounded p-2 break-all">{message}</p>
+          </details>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => window.history.back()} className="flex-1 gap-2">
+            <ArrowLeft className="w-4 h-4" /> Wróć
+          </Button>
+          <Button onClick={() => navigate("/")} className="flex-1 gap-2 shadow-md shadow-primary/20">
+            <RefreshCwIcon className="w-4 h-4" /> {config.retryLabel}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1526,3 +1526,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Warunek 1: CitationLoadingBridge — pokazuj Signal Audit jako "wstępna diagnoza" gdy citation running
 - [ ] Warunek 3: Nav header CTA zmień z "Analizuj stronę" na "Sprawdź widoczność w AI"
 - [ ] Auto-start: Citation Intelligence startuje automatycznie po załadowaniu /results (default tab = visibility)
+
+## Session: ErrorState + Landing Page Visibility First Fixes
+
+- [x] ErrorState redesign — WAF/Cloudflare/terminated errors show actionable diagnosis (Shield icon, amber color, 3 tips, technical details collapsible)
+- [x] ErrorState — 404/Not Found: specific copy with URL validation tips
+- [x] ErrorState — generic errors: fallback with retry button
+- [x] ErrorState — two action buttons: "Wróć" (back) + "Spróbuj ponownie" (navigate home)
+- [x] Landing page WORKFLOW_CARDS reorder — Citation Intelligence as 01 (featured), Signal Audit as 02
+- [x] Landing page WORKFLOW_PREVIEW (hero card) reorder — Citation Intelligence first
+- [x] Puppeteer fallback confirmed implemented in scraper.ts (terminated/aborted → headless Chromium bypass)
+- [x] 619 tests passing, 0 TypeScript errors

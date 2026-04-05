@@ -422,21 +422,46 @@ export async function scrapePage(inputUrl: string): Promise<ScrapedPage> {
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    return {
-      url,
-      finalUrl: url,
-      html: "",
-      $: cheerio.load(""),
-      statusCode: 0,
-      headers: {},
-      robotsTxt: null,
-      robotsTxtUrl,
-      isHttps,
-      responseTimeMs: Date.now() - start,
-      title: "",
-      retryCount,
-      error: `Failed to fetch page: ${msg}`,
-    };
+    const isTerminated = msg.includes("terminated") || msg.includes("abort") || msg.includes("ETIMEDOUT") || msg.includes("ECONNRESET");
+    // Puppeteer fallback for terminated/aborted errors — Cloudflare/WAF blocks undici but
+    // allows headless Chromium (real browser TLS fingerprint + JS execution).
+    if (isTerminated) {
+      console.log(`[Scraper] fetch terminated for ${url} — attempting Puppeteer bypass`);
+      try {
+        const puppeteerResult = await fetchWithPuppeteer(url);
+        if (puppeteerResult.html && puppeteerResult.html.length > 200) {
+          html = puppeteerResult.html;
+          statusCode = puppeteerResult.statusCode || 200;
+          finalUrl = puppeteerResult.finalUrl || url;
+          console.log(`[Scraper] Puppeteer bypass succeeded for ${url} (${html.length} chars)`);
+          // Continue to the rest of scrapePage with Puppeteer HTML
+        } else {
+          console.warn(`[Scraper] Puppeteer bypass returned empty HTML for ${url}`);
+          return {
+            url, finalUrl: url, html: "", $: cheerio.load(""),
+            statusCode: 0, headers: {}, robotsTxt: null, robotsTxtUrl,
+            isHttps, responseTimeMs: Date.now() - start, title: "", retryCount,
+            error: `Failed to fetch page: ${msg} (Puppeteer fallback also failed)`,
+          };
+        }
+      } catch (puppeteerErr) {
+        const puppeteerMsg = puppeteerErr instanceof Error ? puppeteerErr.message : String(puppeteerErr);
+        console.warn(`[Scraper] Puppeteer bypass failed for ${url}: ${puppeteerMsg}`);
+        return {
+          url, finalUrl: url, html: "", $: cheerio.load(""),
+          statusCode: 0, headers: {}, robotsTxt: null, robotsTxtUrl,
+          isHttps, responseTimeMs: Date.now() - start, title: "", retryCount,
+          error: `Failed to fetch page: ${msg} (Puppeteer fallback: ${puppeteerMsg})`,
+        };
+      }
+    } else {
+      return {
+        url, finalUrl: url, html: "", $: cheerio.load(""),
+        statusCode: 0, headers: {}, robotsTxt: null, robotsTxtUrl,
+        isHttps, responseTimeMs: Date.now() - start, title: "", retryCount,
+        error: `Failed to fetch page: ${msg}`,
+      };
+    }
   }
 
   // JS-rendered fallback: if static HTML has very little visible text, try Puppeteer.
