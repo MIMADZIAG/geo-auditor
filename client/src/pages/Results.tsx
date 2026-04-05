@@ -1149,40 +1149,8 @@ export default function Results() {
           {/* Per-Phrase Citation Comparison Matrix — shows competitor domains per phrase */}
           <PhraseCitationComparisonTable auditId={auditId} citationStatus={citationStatus} />
 
-          {/* Competitor Analysis Teaser */}
-          {!hasPaidPlan && <CompetitorAnalysisTeaser navigate={navigate} />}
 
-          {/* Monitoring CTA — shown to authenticated users who haven't added this URL yet */}
-          {isAuthenticated && (() => {
-            const normalise = (u: string) => { try { return new URL(u).href.replace(/\/$/, ""); } catch { return u.replace(/\/$/, ""); } };
-            const isAlreadyMonitored = (monitoredPages ?? []).some((p) => normalise(p.url) === normalise(audit.url));
-            if (isAlreadyMonitored) return null;
-            return (
-              <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-violet-600/5 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
-                  <Eye className="w-4 h-4 text-violet-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold">Monitoruj cytowania tej strony w czasie</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Dodaj tę stronę do monitoringu, aby automatycznie sprawdzać czy ChatGPT, Google AI, Perplexity i Gemini Cię cytują — i otrzymywać alerty o zmianach.
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5 text-xs shrink-0"
-                  onClick={() => addMonitoringMutation.mutate({ url: audit.url })}
-                  disabled={addMonitoringMutation.isPending}
-                >
-                  {addMonitoringMutation.isPending
-                    ? <RefreshCwIcon className="w-3 h-3 animate-spin" />
-                    : <><Plus className="w-3 h-3" /> Dodaj do monitoringu</>}
-                </Button>
-              </div>
-            );
-          })()}
-
-          {/* ── Competitor Benchmark — available after Citation Intelligence ── */}
+          {/* ── Competitor Benchmark — Pro paid feature, shown after Citation completes ── */}
           {citationStatus === "done" && hasPaidPlan && (
             <AuditCompetitorBenchmarkPanel
               auditId={auditId}
@@ -1190,40 +1158,105 @@ export default function Results() {
             />
           )}
 
-          {/* Bridge to Tab 3 — Signal Rewrite: gated behind citationStatus */}
-          {citationStatus === "running" && (
-            <div className="rounded-2xl border border-primary/15 bg-primary/4 p-5 flex items-center gap-4">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">Signal Rewrite czeka na dane Citation Intelligence…</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Analiza widoczności AI jest w toku. Signal Rewrite uruchomi się automatycznie po jej zakończeniu — z pełnym kontekstem cytowań i wzorców konkurencji.</div>
-              </div>
-            </div>
-          )}
+          {/* ── UNIFIED NEXT STEPS BLOCK ──────────────────────────────────────────────────────
+               Konsoliduje 4 osobne banery w 1 blok "Co dalej?" — pokazuje się po zakończeniu.
+               Srinivas: "jedna akcja po zakończeniu — nie cztery banery".
+               Osika: "każdy element musi dawać widoczny wynik". */}
           {citationStatus === "done" && (
-            <div className="rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/8 to-primary/4 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">Przepisz treść z uwzględnieniem tych danych</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Signal Rewrite użyje danych z Signal Audit{citedCompetitorUrls.length > 0 ? `, ${citedCompetitorUrls.length} wzorców cytowanych URL-i` : ""} i wniosków z Citation Opportunities, aby wygenerować nową wersję treści.
+            <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
+              <div className="px-5 pt-4 pb-3 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Analiza zakończona — co dalej?</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" onClick={() => setActiveTab("optimization")} variant="outline" className="gap-1.5 text-xs">
-                  <Shield className="w-3 h-3" /> Signal Audit
-                </Button>
-                <Button size="sm" onClick={() => setActiveTab("content")} className="gap-1.5 text-xs bg-primary hover:bg-primary/90">
-                  <Sparkles className="w-3 h-3" /> Signal Rewrite
-                </Button>
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Card 1: Pulse Monitor */}
+                {isAuthenticated && (() => {
+                  const normalise = (u: string) => { try { return new URL(u).href.replace(/\/$/, ""); } catch { return u.replace(/\/$/, ""); } };
+                  const isAlreadyMonitored = (monitoredPages ?? []).some((p) => normalise(p.url) === normalise(audit.url));
+                  return (
+                    <div className={`rounded-xl border p-3.5 flex flex-col gap-2 ${isAlreadyMonitored ? "border-emerald-500/25 bg-emerald-500/5" : "border-violet-500/25 bg-violet-500/5"}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0">
+                          <Eye className="w-3.5 h-3.5 text-violet-400" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold">Pulse Monitor</div>
+                          <div className="text-[10px] text-muted-foreground">Śledź cytowania w czasie</div>
+                        </div>
+                      </div>
+                      {isAlreadyMonitored ? (
+                        <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
+                          <CheckCircle2 className="w-3 h-3" /> Monitorowana
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="bg-violet-600 hover:bg-violet-700 text-white gap-1 text-[10px] h-7 w-full"
+                          onClick={() => addMonitoringMutation.mutate({ url: audit.url })}
+                          disabled={addMonitoringMutation.isPending}
+                        >
+                          {addMonitoringMutation.isPending
+                            ? <RefreshCwIcon className="w-3 h-3 animate-spin" />
+                            : <><Plus className="w-3 h-3" /> Dodaj do monitoringu</>}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
+                {/* Card 2: Competitor Analysis (Pro) */}
+                <div className={`rounded-xl border p-3.5 flex flex-col gap-2 ${hasPaidPlan ? "border-border/40 bg-muted/20" : "border-border/30 bg-muted/10"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                      <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-xs font-semibold">Analiza konkurencji</div>
+                        {!hasPaidPlan && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-bold">Pro</span>}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">3 rywali vs. Twoja strona</div>
+                    </div>
+                  </div>
+                  {hasPaidPlan ? (
+                    <Button size="sm" variant="outline" className="gap-1 text-[10px] h-7 w-full" onClick={() => navigate("/pricing")}>
+                      <BarChart3 className="w-3 h-3" /> Otwórz analizę
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1 text-[10px] h-7 w-full" onClick={() => navigate("/pricing")}>
+                      <Sparkles className="w-3 h-3" /> Odblokuj Pro
+                    </Button>
+                  )}
+                </div>
+                {/* Card 3: Signal Rewrite */}
+                <div
+                  className="rounded-xl border border-primary/25 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors p-3.5 flex flex-col gap-2"
+                  onClick={() => setActiveTab("content")}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold">Signal Rewrite</div>
+                      <div className="text-[10px] text-muted-foreground">Przepisz treść pod AI Search</div>
+                    </div>
+                  </div>
+                  <Button size="sm" className="gap-1 text-[10px] h-7 w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Sparkles className="w-3 h-3" /> Przepisz teraz
+                  </Button>
+                </div>
               </div>
             </div>
           )}
-
+          {/* Running state bridge — minimal */}
+          {citationStatus === "running" && (
+            <div className="rounded-xl border border-border/30 bg-muted/20 px-4 py-3 flex items-center gap-3">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+              <span className="text-xs text-muted-foreground">Signal Rewrite uruchomi się automatycznie po zakończeniu analizy…</span>
+            </div>
+          )}
         </main>
       )}
     </div>

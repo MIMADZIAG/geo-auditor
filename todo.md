@@ -1560,3 +1560,25 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] AICitationPanel: idle CTA dla anonimowych — emotional teaser "Kto pojawia się zamiast Ciebie?" z 4 engine badges
 - [x] Polling: audit.getById co 2s gdy status running/pending — automatyczne odświeżenie po zakończeniu audytu
 - [x] 619 testów, 0 błędów TypeScript
+
+## Redesign: Citation Intelligence Tab + Dashboard (Srinivas + Osika)
+
+- [ ] Citation Intelligence: nowa architektura informacji — 5 sekcji zamiast 9+4
+- [ ] Citation Intelligence: usunięcie duplikatu "Kto dominuje zamiast Ciebie" vs "Competitor Intelligence"
+- [ ] Citation Intelligence: ujednolicenie "Analiza luk vs. konkurenci" z Competitor Intelligence
+- [ ] Citation Intelligence: konsolidacja 4 bannerów akwizycyjnych w 1 spójny CTA na końcu
+- [ ] Citation Intelligence: nowa kolejność: Score Reveal → Diagnoza AI → Competitor Intelligence (unified) → Citation Opportunities → Monitoring CTA
+- [ ] Dashboard: zmiana nazwy na "AI Visibility Command Center" — ujednolicenie nazewnictwa
+- [ ] Dashboard: nowy widok oparty na platformie AI Search (nie narzędzie SEO)
+- [ ] Dashboard: sekcje: Visibility Overview → Pulse Monitor → Recent Audits → Quick Actions
+
+## Session: Citation Intelligence Redesign + Dashboard Naming (Srinivas + Osika Analysis)
+
+- [x] Citation Intelligence tab: usunięto CompetitorSummary jako duplikat (zastąpiony przez CompetitorIntelPanel)
+- [x] Citation Intelligence tab: naprawiono kolejność sekcji (1: Score Reveal → 2: Diagnoza AI → 3: Jak AI widzi → 4: Kto dominuje + Competitor Intel → 5: Analiza luk → 6: Citation Opportunities → 7: Metodologia)
+- [x] Citation Intelligence tab: 4 osobne bannery akwizycji zastąpione 1 unified "Co dalej?" blokiem (3 karty: Pulse Monitor + Analiza konkurencji Pro + Signal Rewrite)
+- [x] Dashboard: nawigacja - /dashboard zmieniono z "Pulse Monitor" na "AI Visibility Hub" (LayoutDashboard icon)
+- [x] Dashboard: /pulse zmieniono z "Citation Intelligence" na "Pulse Monitor" (Eye icon)
+- [x] Dashboard: sekcja monitorowanych stron zmieniona z "Pulse Monitor" na "AI Visibility Monitor"
+- [x] Dashboard: greeting subtitle zmieniono na platformowy ("Twoja platforma AI Search Visibility...")
+- [x] 619 testów, 0 błędów TypeScript

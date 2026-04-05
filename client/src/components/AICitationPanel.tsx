@@ -1655,7 +1655,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         );
       })()}
 
-         {/* Citation Narrative -- LLM-generated diagnosis connecting results to root cause gaps */}
+      {/* ── SEKCJA 2: Diagnoza AI — LLM narrative (dlaczego taki wynik) ─────────────────────── */}
       {(() => {
         const narrativeCitingEngines = Array.from(
           new Set(
@@ -1679,9 +1679,11 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         );
       })()}
 
-      {/* Zero-citation state — Visibility First Warunek 2:
-           Emotional zero-state with top-3 competitors + Pulse Monitor CTA.
-           Competitors appear BEFORE any action steps (pain before solution). */}
+      {/* ── SEKCJA 3: Jak AI widzi Twoją stronę — frazy i zapytania ─────────────────────── */}
+      <QueriesCheckedPanel checks={checks} isPro={isPro} canonicalPhrases={canonicalPhrases} />
+      {/* ── Competitor Intelligence (UNIFIED — replaces standalone CompetitorSummary) */}
+
+      {/* ── SEKCJA 4: Kto dominuje zamiast Ciebie + Competitor Intelligence (UNIFIED) */}
       {isCompleted && !foundCitation && checks.length > 0 && (
         <CitationZeroState
           competitors={rankCompetitors(checks, targetDomain)}
@@ -1690,21 +1692,15 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
           totalQueries={totalQueries}
           onNavigateToPulse={() => navigate("/pulse")}
           onNavigateToAudit={() => {
-            // Scroll to Signal Audit tab — emit a custom event that Results.tsx listens to
             window.dispatchEvent(new CustomEvent("geo:switch-tab", { detail: "optimization" }));
           }}
         />
       )}
 
-      {/* Queries checked -- global list without round breakdown */}
-      <QueriesCheckedPanel checks={checks} isPro={isPro} canonicalPhrases={canonicalPhrases} />
-      {/* Global competitor summary */}
-      <CompetitorSummary checks={checks} targetDomain={targetDomain} isPro={isPro} />
-      {/* Competitor Intelligence -- AI Score comparison table */}
       <CompetitorIntelPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-      {/* Gap Analysis -- check-by-check diff vs competitors */}
-       <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
-      {/* Citation Opportunity Finder -- per-query analysis of why competitors are cited instead */}
+      {/* ── SEKCJA 5: Analiza luk vs. konkurenci — DLACZEGO (nie KTO) */}
+      <GapAnalysisPanel auditId={auditId} isPro={isPro} citationJobStatus={job?.status ?? null} />
+      {/* ── SEKCJA 6: Citation Opportunities — konkretne akcje */}
       <CitationOpportunityPanel
         auditId={auditId}
         isPro={isPro}
@@ -1712,7 +1708,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         citationJobStatus={job?.status ?? null}
         citedCount={checks.filter(c => c.isCited === "yes" || c.isCited === "domain").length}
       />
-      {/* Methodology disclaimer -- at the bottom, after all results */}
+      {/* ── SEKCJA 7: Metodologia */}
       <div className="bg-zinc-800/20 border border-white/5 rounded-xl px-4 py-3 flex gap-3">
         <svg className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
