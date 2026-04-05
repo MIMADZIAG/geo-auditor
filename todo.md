@@ -1443,3 +1443,15 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Add explicit Polish sentence case rule to PageCreator system prompt
 - [x] Fix isPolishText() false positives for English text containing 'to'
 - [x] Write 30+ tests for all new normalisation functions
+
+## Warstwa 2 — Server-Sent Events (SSE) zamiast pollingu
+
+- [x] Backend: server/citation/sseRegistry.ts — CitationSSERegistry (job-scoped EventEmitter, TTL eviction, typed events)
+- [x] Backend: server/citation/sseHandler.ts — GET /api/citation/stream/:jobId (W3C SSE, heartbeat 15s, reconnect retry 3s)
+- [x] Backend: server/_core/index.ts — rejestracja trasy SSE przed express.json()
+- [x] Backend: server/citation/worker.ts — onResult callback emituje result+progress per-engine; done/error na końcu
+- [x] Frontend: client/src/hooks/useCitationStream.ts — EventSource hook z deduplication, reconnect backoff, fallback flag
+- [x] Frontend: AICitationPanel — zastąpienie pollingu SSE streamem; progressive per-engine grid; live query feed
+- [x] Tests: server/citation/sse.test.ts — 24 testy (registry, event contract, worker integration, memory safety, fallback)
+- [x] Fix: sseRegistry.ts — domyślny listener "error" na EventEmitter (Node.js unhandled error prevention)
+- [x] Wszystkie 540 testów przechodzi

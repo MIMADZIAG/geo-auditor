@@ -13,6 +13,7 @@ import { generateAuditPDF } from "../pdf/reportGenerator";
 import { getAuditById } from "../db";
 import { startMonitoringWorker } from "../monitoring/worker";
 import { runWeeklyDigestCron } from "../monitoring/weeklyDigest";
+import { registerCitationSSERoute } from "../citation/sseHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -89,6 +90,10 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Citation Intelligence SSE streaming endpoint
+  // MUST be registered before express.json() middleware to avoid body parsing on streaming routes
+  registerCitationSSERoute(app);
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

@@ -29,6 +29,7 @@ import { getQueriesForUrl, type CachedQueryMap } from "./db";
 import { runCompetitorAudits, extractTopCompetitorUrls } from "../competitor/engine";
 import { insertCompetitorAudit, getCompetitorAuditsForAudit, competitorAuditsExist } from "../competitor/db";
 import { safeParseLLMJson } from "../utils/jsonSanitizer";
+import { getCitationRegistry } from "./sseRegistry";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1279,24 +1280,44 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       console.log(`[Citation] Job ${jobId}: Round ${round} [${cacheTag}] — google:${googleQueries.length} chatgpt:${chatgptQueries.length} perplexity:${perplexityQueries.length} gemini:${geminiQueries.length}`);
 
-      // ── Layer 1: Parallel Engine Execution ───────────────────────────────────
+      // ── Layer 1+2: Parallel Engine Execution with SSE streaming ─────────────
       // All engines run concurrently via Promise.allSettled.
       // Google runs in every round; ChatGPT/Perplexity/Gemini run in round 1 only.
       // Promise.allSettled guarantees: one engine timeout never blocks others.
       // Per-engine throttle (800ms) is preserved inside runEnginePool().
-      // onResult hook is undefined here — Layer 2 (SSE) will wire it in.
+      // Layer 2: onResult callback emits each result to SSE registry in real-time.
       const roundResults: CitationResult[] = [];
+      const registry = getCitationRegistry();
+      // Calculate total queries for this round (for progress events)
+      const totalQueriesThisRound = googleQueries.length +
+        (round === 1 ? chatgptQueries.length + perplexityQueries.length + geminiQueries.length : 0);
+      let queriesCompletedThisRound = 0;
+
+      // SSE onResult hook: emits each result immediately as it arrives from any engine
+      const onResult = (result: CitationResult): void => {
+        queriesCompletedThisRound++;
+        // Emit the raw result for progressive UI rendering
+        registry.emit(jobId, "result", result);
+        // Emit lightweight progress event for spinner/counter updates
+        registry.emit(jobId, "progress", {
+          jobId,
+          round,
+          engine: result.engine,
+          queriesCompleted: queriesCompletedThisRound,
+          queriesTotal: totalQueriesThisRound,
+        });
+      };
 
       const enginePromises = [
-        runEnginePool("google",     googleQueries,     jobId, job.auditId, job.url, language, round),
+        runEnginePool("google",     googleQueries,     jobId, job.auditId, job.url, language, round, onResult),
         round === 1
-          ? runEnginePool("chatgpt",    chatgptQueries,    jobId, job.auditId, job.url, language, round)
+          ? runEnginePool("chatgpt",    chatgptQueries,    jobId, job.auditId, job.url, language, round, onResult)
           : Promise.resolve([] as CitationResult[]),
         round === 1
-          ? runEnginePool("perplexity", perplexityQueries, jobId, job.auditId, job.url, language, round)
+          ? runEnginePool("perplexity", perplexityQueries, jobId, job.auditId, job.url, language, round, onResult)
           : Promise.resolve([] as CitationResult[]),
         round === 1
-          ? runEnginePool("gemini",     geminiQueries,     jobId, job.auditId, job.url, language, round)
+          ? runEnginePool("gemini",     geminiQueries,     jobId, job.auditId, job.url, language, round, onResult)
           : Promise.resolve([] as CitationResult[]),
       ] as const;
 
@@ -1359,6 +1380,15 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
     console.log(`[Citation] Job ${jobId}: completed. Rounds: ${rounds.length}, Found: ${foundCitation}, Competitors: ${allCompetitorDomains.length}`);
 
+    // Layer 2: Emit terminal "done" event — SSE clients close after receiving this
+    getCitationRegistry().emit(jobId, "done", {
+      jobId,
+      summary,
+      foundCitation,
+      totalQueriesChecked: usedQueries.length,
+      allCompetitorDomains,
+    });
+
     // ── Fire-and-forget competitor audit ──────────────────────────────────────
     // Extract top-5 cited URLs and audit them in parallel (no LLM, ~10-20s)
     // This runs for ALL citation jobs (monitoring + single audits)
@@ -1412,6 +1442,11 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
   } catch (e) {
     console.error(`[Citation] Job ${jobId} failed:`, e);
     await db.update(citationJobs).set({ status: "failed" }).where(eq(citationJobs.id, jobId));
+    // Layer 2: Emit terminal "error" event — SSE clients close after receiving this
+    getCitationRegistry().emit(jobId, "error", {
+      jobId,
+      message: e instanceof Error ? e.message : "Unknown error",
+    });
     return null;
   }
 }

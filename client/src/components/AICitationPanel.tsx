@@ -11,7 +11,8 @@
  * PLG upsell: competitor domains blurred/locked in Free plan
  */
 
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
+import { useCitationStream } from "@/hooks/useCitationStream";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -1118,7 +1119,6 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
   // Fix: always enable the query. Use `userStartedJob` only to distinguish
   // "user explicitly clicked Start" from "job already existed in DB".
   const [userStartedJob, setUserStartedJob] = useState(false);
-  const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [competitorUrlsNotified, setCompetitorUrlsNotified] = useState(false);
   // Feature 2: inline PhraseManager toggle
   const [showPhraseManager, setShowPhraseManager] = useState(false);
@@ -1151,24 +1151,64 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
   );
 
   const job = resultsQuery.data?.job as CitationJob | null | undefined;
-  const checks = (resultsQuery.data?.checks ?? []) as CitationCheck[];
+  const dbChecks = (resultsQuery.data?.checks ?? []) as CitationCheck[];
 
   // jobStarted = user clicked Start OR a job already exists in DB
   const jobStarted = userStartedJob || !!job;
 
-  // Poll while running
+  // ── Layer 2: SSE streaming ────────────────────────────────────────────────────
+  // Subscribe to real-time citation results while job is running.
+  // When SSE is unavailable (old browser / proxy), fall back to 4s polling.
+  const streamJobId = (job?.status === "pending" || job?.status === "running") ? job?.id : null;
+  const {
+    streamResults,
+    progress: streamProgress,
+    isDone: streamIsDone,
+    shouldFallbackToPolling,
+    resultCount: streamResultCount,
+  } = useCitationStream(streamJobId ?? null);
+
+  // Polling fallback: only active when SSE is unavailable
   useEffect(() => {
     const isActive = job?.status === "pending" || job?.status === "running";
-    if (!isActive) {
-      if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
-      return;
+    if (!isActive || !shouldFallbackToPolling) return;
+    const id = setInterval(() => { resultsQuery.refetch(); }, 4000);
+    return () => clearInterval(id);
+  }, [job?.status, shouldFallbackToPolling]);
+
+  // When SSE stream completes, do a final DB refetch to get authoritative data
+  useEffect(() => {
+    if (streamIsDone) {
+      // Small delay to ensure DB write has committed
+      const t = setTimeout(() => resultsQuery.refetch(), 800);
+      return () => clearTimeout(t);
     }
-    if (!pollInterval) {
-      const id = setInterval(() => { resultsQuery.refetch(); }, 4000);
-      setPollInterval(id);
+  }, [streamIsDone]);
+
+  // Merge: while streaming, show stream results for immediate feedback;
+  // once completed, use authoritative DB data (which includes IDs, full metadata).
+  const isJobActive = job?.status === "pending" || job?.status === "running";
+  const checks: CitationCheck[] = useMemo(() => {
+    if (isJobActive && streamResults.length > 0) {
+      // Progressive: show stream results as synthetic CitationCheck objects
+      return streamResults.map((r, i) => ({
+        id: -(i + 1), // negative IDs mark stream-only results
+        query: r.query,
+        engine: r.engine,
+        round: r.round,
+        isCited: r.isCited,
+        citedUrl: r.citedUrl ?? null,
+        domainCitedUrl: r.domainCitedUrl ?? null,
+        allCitedUrls: r.allCitedUrls,
+        competitorDomains: r.competitorDomains,
+        snippet: r.snippet ?? null,
+        responseText: r.responseText ?? null,
+        hasAIOverview: r.hasAIOverview ?? null,
+        fromCache: r.fromCache,
+      }));
     }
-    return () => { if (pollInterval) clearInterval(pollInterval); };
-  }, [job?.status]);
+    return dbChecks;
+  }, [isJobActive, streamResults, dbChecks]);
 
   // Notify parent when job completes with competitor URLs
   useEffect(() => {
@@ -1365,53 +1405,109 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     );
   }
 
-  // ── Running ─────────────────────────────────────────────────────────────────────────────────
+  // ── Running (SSE progressive) ─────────────────────────────────────────────────
   if (isRunning || startCheck.isPending) {
     const completedQueries = new Set(checks.map(c => c.query)).size;
+    // Per-engine live counters from stream
+    const engineCounts: Record<string, { cited: number; total: number }> = {};
+    for (const c of checks) {
+      if (!engineCounts[c.engine]) engineCounts[c.engine] = { cited: 0, total: 0 };
+      engineCounts[c.engine].total++;
+      if (c.isCited === "yes" || c.isCited === "domain") engineCounts[c.engine].cited++;
+    }
+    const engineOrder: ("google" | "chatgpt" | "perplexity" | "gemini")[] = ["google", "chatgpt", "perplexity", "gemini"];
+    const engineLabels: Record<string, string> = {
+      google: "Google AI", chatgpt: "ChatGPT", perplexity: "Perplexity", gemini: "Gemini"
+    };
+    const engineColors: Record<string, string> = {
+      google: "text-blue-400", chatgpt: "text-[#10a37f]", perplexity: "text-[#20b2aa]", gemini: "text-purple-400"
+    };
+    const engineBg: Record<string, string> = {
+      google: "bg-blue-500/15 border-blue-500/25",
+      chatgpt: "bg-[#10a37f]/15 border-[#10a37f]/25",
+      perplexity: "bg-[#20b2aa]/15 border-[#20b2aa]/25",
+      gemini: "bg-purple-500/15 border-purple-500/25",
+    };
+    // Last 3 queries checked (most recent first)
+    const recentQueries = [...checks].reverse().slice(0, 3).map(c => c.query);
+    const activeEngine = streamProgress?.engine ?? null;
     return (
-      <div className="bg-zinc-900/40 border border-indigo-500/20 rounded-2xl p-6">
-        <div className="flex items-center gap-4 mb-4">
+      <div className="bg-zinc-900/40 border border-indigo-500/20 rounded-2xl p-6 space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-white">Sprawdzam, czy ChatGPT i Perplexity znają Twoją stronę…</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-white">Sprawdzam widoczność w AI Search…</h2>
             <p className="text-sm text-zinc-400 mt-0.5">
-              Pytamy wiodące modele AI tak samo, jak robi to Twój klient — i patrzymy, kogo cytują
-              {completedQueries > 0 ? ` (sprawdzono ${completedQueries} fraz)` : ""}
+              {completedQueries > 0
+                ? `Sprawdzono ${completedQueries} fraz${streamProgress ? ` · runda ${streamProgress.round}` : ""}`
+                : "Pytamy wiodące modele AI tak samo, jak robi to Twój klient"}
             </p>
           </div>
+          {completedQueries > 0 && (
+            <div className="shrink-0 text-right">
+              <span className="text-2xl font-bold tabular-nums text-indigo-300">{completedQueries}</span>
+              <p className="text-[10px] text-zinc-500">fraz</p>
+            </div>
+          )}
         </div>
 
-        {/* Progress steps */}
-        <div className="space-y-2 bg-zinc-800/30 rounded-xl p-3">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
-              <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </span>
-            <span className="text-zinc-400">Analiza treści strony</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
-              <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </span>
-            <span className="text-zinc-400">Generowanie fraz wyszukiwania</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-4 h-4 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center flex-shrink-0">
-              <svg className="w-2.5 h-2.5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-            </span>
-            <span className="text-zinc-300 font-medium">Sprawdzanie w ChatGPT, Google AI, Perplexity, Gemini…</span>
-          </div>
+        {/* Per-engine live grid */}
+        <div className="grid grid-cols-4 gap-2">
+          {engineOrder.map(engine => {
+            const cnt = engineCounts[engine];
+            const isActive = activeEngine === engine;
+            return (
+              <div key={engine} className={`rounded-xl border p-2.5 text-center transition-all duration-300 ${engineBg[engine]} ${isActive ? "ring-1 ring-indigo-400/40" : ""}`}>
+                <p className={`text-[10px] font-semibold mb-1 ${engineColors[engine]}`}>{engineLabels[engine]}</p>
+                {cnt ? (
+                  <>
+                    <p className="text-lg font-bold text-white tabular-nums">{cnt.total}</p>
+                    <p className="text-[9px] text-zinc-500">fraz</p>
+                    {cnt.cited > 0 && (
+                      <p className="text-[9px] text-emerald-400 font-semibold mt-0.5">{cnt.cited} cytowań</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex justify-center items-center h-8">
+                    {isActive ? (
+                      <svg className="w-4 h-4 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                    ) : (
+                      <span className="text-[10px] text-zinc-600">—</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        <p className="text-xs text-zinc-600 mt-3">To może potrwać kilka minut. Strona odświeży się automatycznie.</p>
+        {/* Recent queries live feed */}
+        {recentQueries.length > 0 && (
+          <div className="bg-zinc-800/30 rounded-xl p-3 space-y-1.5">
+            <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium mb-2">Ostatnio sprawdzone frazy</p>
+            {recentQueries.map((q, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? "bg-indigo-400 animate-pulse" : "bg-zinc-600"}`} />
+                <span className={i === 0 ? "text-zinc-200" : "text-zinc-500"}>{q}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Fallback notice */}
+        {shouldFallbackToPolling && (
+          <p className="text-[10px] text-zinc-600">Tryb odświeżania co 4s (SSE niedostępne w tej sieci)</p>
+        )}
+        <p className="text-xs text-zinc-600">To może potrwać kilka minut. Wyniki pojawiają się na bieżąco.</p>
       </div>
     );
   }
