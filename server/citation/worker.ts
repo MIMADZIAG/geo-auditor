@@ -1298,13 +1298,16 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
         queriesCompletedThisRound++;
         // Emit the raw result for progressive UI rendering
         registry.emit(jobId, "result", result);
-        // Emit lightweight progress event for spinner/counter updates
+        // Emit lightweight progress event for spinner/counter updates.
+        // currentQuery powers the Emotional Tension Sequence ticker (Layer 3):
+        // the frontend shows the exact query being asked, building credibility.
         registry.emit(jobId, "progress", {
           jobId,
           round,
           engine: result.engine,
           queriesCompleted: queriesCompletedThisRound,
           queriesTotal: totalQueriesThisRound,
+          currentQuery: result.query,
         });
       };
 

@@ -1476,3 +1476,17 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] sseRegistry.ts — each stored event has seq ID + timestamp
 - [x] sseHandler.ts — read Last-Event-ID header, replay missed events on reconnect
 - [x] useCitationStream.ts — pass Last-Event-ID on reconnect via EventSource URL param
+
+## Warstwa 3 — Progressive Disclosure UI: Emotional Tension Sequence
+
+- [x] EmotionalTensionFeed.tsx — standalone, pure presentational, zero side effects
+- [x] LiveQueryTicker — "Pytam ChatGPT: 'kurtka zimowa damska'" (Zasada 3: konkretność)
+- [x] NarrativeEventCard — competitor reveal PRZED wynikiem (Zasada 1: ból przed rozwiązaniem)
+- [x] buildNarrativeLine — human-readable narrative per result event (Zasada 2: nowa info, nie licznik)
+- [x] EngineStatusCard — per-engine live grid z cited/total
+- [x] Auto-scroll feed z max-h i overflow-y-auto (smart: tylko gdy user jest blisko dołu)
+- [x] CSS keyframes: animate-slide-in-up (cubic-bezier spring) w index.css
+- [x] SSEProgressPayload.currentQuery — dodane do sseRegistry.ts + worker.ts emit
+- [x] StreamProgress.currentQuery — dodane do useCitationStream.ts
+- [x] AICitationPanel running state — zastąpiony EmotionalTensionFeed
+- [x] 574 testów przechodzi, 0 błędów TypeScript

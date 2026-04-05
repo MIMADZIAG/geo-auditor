@@ -61,6 +61,8 @@ export interface SSEProgressPayload {
   engine: string;
   queriesCompleted: number;
   queriesTotal: number;
+  /** The exact query string currently being asked — powers the Emotional Tension Sequence ticker (Layer 3) */
+  currentQuery?: string;
 }
 
 export interface SSEDonePayload {

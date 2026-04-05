@@ -23,6 +23,7 @@ import { GapAnalysisPanel } from "./GapAnalysisPanel";
 import { CitationOpportunityPanel } from "./CitationOpportunityPanel";
 import { PhraseManager } from "./PhraseManager";
 import { CitationNarrativeCard } from "./CitationNarrativeCard";
+import { EmotionalTensionFeed } from "./EmotionalTensionFeed";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1405,109 +1406,43 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     );
   }
 
-  // ── Running (SSE progressive) ─────────────────────────────────────────────────
+  // ── Running (SSE progressive) — Layer 3: Emotional Tension Sequence ─────────────
   if (isRunning || startCheck.isPending) {
     const completedQueries = new Set(checks.map(c => c.query)).size;
-    // Per-engine live counters from stream
-    const engineCounts: Record<string, { cited: number; total: number }> = {};
-    for (const c of checks) {
-      if (!engineCounts[c.engine]) engineCounts[c.engine] = { cited: 0, total: 0 };
-      engineCounts[c.engine].total++;
-      if (c.isCited === "yes" || c.isCited === "domain") engineCounts[c.engine].cited++;
-    }
-    const engineOrder: ("google" | "chatgpt" | "perplexity" | "gemini")[] = ["google", "chatgpt", "perplexity", "gemini"];
-    const engineLabels: Record<string, string> = {
-      google: "Google AI", chatgpt: "ChatGPT", perplexity: "Perplexity", gemini: "Gemini"
-    };
-    const engineColors: Record<string, string> = {
-      google: "text-blue-400", chatgpt: "text-[#10a37f]", perplexity: "text-[#20b2aa]", gemini: "text-purple-400"
-    };
-    const engineBg: Record<string, string> = {
-      google: "bg-blue-500/15 border-blue-500/25",
-      chatgpt: "bg-[#10a37f]/15 border-[#10a37f]/25",
-      perplexity: "bg-[#20b2aa]/15 border-[#20b2aa]/25",
-      gemini: "bg-purple-500/15 border-purple-500/25",
-    };
-    // Last 3 queries checked (most recent first)
-    const recentQueries = [...checks].reverse().slice(0, 3).map(c => c.query);
-    const activeEngine = streamProgress?.engine ?? null;
     return (
-      <div className="bg-zinc-900/40 border border-indigo-500/20 rounded-2xl p-6 space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
+      <div className="bg-zinc-900/40 border border-indigo-500/20 rounded-2xl p-5 space-y-4">
+        {/* Header — shows what we're doing right now */}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4.5 h-4.5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-white">Sprawdzam widoczność w AI Search…</h2>
-            <p className="text-sm text-zinc-400 mt-0.5">
+            <h2 className="text-sm font-bold text-white">Sprawdzam widoczność w AI Search</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
               {completedQueries > 0
-                ? `Sprawdzono ${completedQueries} fraz${streamProgress ? ` · runda ${streamProgress.round}` : ""}`
+                ? `${completedQueries} ${completedQueries === 1 ? 'fraza' : completedQueries < 5 ? 'frazy' : 'fraz'} sprawdzone${streamProgress ? ` · runda ${streamProgress.round}` : ""}`
                 : "Pytamy wiodące modele AI tak samo, jak robi to Twój klient"}
             </p>
           </div>
           {completedQueries > 0 && (
             <div className="shrink-0 text-right">
-              <span className="text-2xl font-bold tabular-nums text-indigo-300">{completedQueries}</span>
-              <p className="text-[10px] text-zinc-500">fraz</p>
+              <span className="text-xl font-bold tabular-nums text-indigo-300">{completedQueries}</span>
+              <p className="text-[10px] text-zinc-600">fraz</p>
             </div>
           )}
         </div>
 
-        {/* Per-engine live grid */}
-        <div className="grid grid-cols-4 gap-2">
-          {engineOrder.map(engine => {
-            const cnt = engineCounts[engine];
-            const isActive = activeEngine === engine;
-            return (
-              <div key={engine} className={`rounded-xl border p-2.5 text-center transition-all duration-300 ${engineBg[engine]} ${isActive ? "ring-1 ring-indigo-400/40" : ""}`}>
-                <p className={`text-[10px] font-semibold mb-1 ${engineColors[engine]}`}>{engineLabels[engine]}</p>
-                {cnt ? (
-                  <>
-                    <p className="text-lg font-bold text-white tabular-nums">{cnt.total}</p>
-                    <p className="text-[9px] text-zinc-500">fraz</p>
-                    {cnt.cited > 0 && (
-                      <p className="text-[9px] text-emerald-400 font-semibold mt-0.5">{cnt.cited} cytowań</p>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex justify-center items-center h-8">
-                    {isActive ? (
-                      <svg className="w-4 h-4 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                      </svg>
-                    ) : (
-                      <span className="text-[10px] text-zinc-600">—</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Recent queries live feed */}
-        {recentQueries.length > 0 && (
-          <div className="bg-zinc-800/30 rounded-xl p-3 space-y-1.5">
-            <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium mb-2">Ostatnio sprawdzone frazy</p>
-            {recentQueries.map((q, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? "bg-indigo-400 animate-pulse" : "bg-zinc-600"}`} />
-                <span className={i === 0 ? "text-zinc-200" : "text-zinc-500"}>{q}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Fallback notice */}
-        {shouldFallbackToPolling && (
-          <p className="text-[10px] text-zinc-600">Tryb odświeżania co 4s (SSE niedostępne w tej sieci)</p>
-        )}
-        <p className="text-xs text-zinc-600">To może potrwać kilka minut. Wyniki pojawiają się na bieżąco.</p>
+        {/* Layer 3: Emotional Tension Sequence — the heart of the experience */}
+        <EmotionalTensionFeed
+          streamResults={streamResults}
+          streamProgress={streamProgress}
+          targetDomain={targetDomain}
+          isRunning={isRunning || startCheck.isPending}
+          isFallback={shouldFallbackToPolling}
+        />
       </div>
     );
   }

@@ -59,6 +59,8 @@ export interface StreamProgress {
   engine: string;
   queriesCompleted: number;
   queriesTotal: number;
+  /** The exact query string currently being asked — powers the Emotional Tension Sequence ticker */
+  currentQuery?: string;
 }
 
 export interface StreamDonePayload {

@@ -208,6 +208,11 @@
   .bg-status-info       { background-color: oklch(0.62 0.18 220 / 0.12); }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
   .animate-fade-in { animation: fade-in 0.4s ease forwards; }
+  @keyframes slide-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-slide-in-up { animation: slide-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes shimmer {
     0%   { background-position: -200% center; }
     100% { background-position: 200% center; }
