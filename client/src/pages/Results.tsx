@@ -64,6 +64,7 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import { ResultsSidebar } from "@/components/ResultsSidebar";
 import { CitationLoadingBridge } from "@/components/CitationLoadingBridge";
 import { useRewriteStream } from "@/hooks/useRewriteStream";
 import { KnowledgeGraphReadinessPanel } from "@/components/KnowledgeGraphReadinessPanel";
@@ -652,7 +653,7 @@ export default function Results() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <UpsellProModal
         isOpen={showUpsellModal}
         onClose={() => setShowUpsellModal(false)}
@@ -660,32 +661,65 @@ export default function Results() {
         score={overallScore}
       />
 
+      {/* ── Left Sidebar ── */}
+      <div className="hidden lg:flex shrink-0">
+        <ResultsSidebar
+          activeTab={activeTab === "optimization" ? "optimization" : activeTab === "content" ? "rewrite" : "visibility"}
+          onTabChange={(tab) => {
+            if (tab === "visibility") handleSwitchToVisibility(true);
+            else if (tab === "optimization") setActiveTab("optimization");
+            else setActiveTab("content");
+          }}
+          auditUrl={audit.url}
+          citedEngines={citationCitedCount}
+          totalEngines={citationTotalEngines}
+          citationStatus={citationStatus}
+        />
+      </div>
+
+      {/* ── Main Content Area ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
       {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-40">
+      <header className="sticky top-0 z-40 shrink-0">
         <div className="glass-strong border-b border-border/30">
           {/* Top row: nav */}
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
+          <div className="px-4 sm:px-6 flex items-center justify-between h-12">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8 px-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8 px-2 lg:hidden">
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Nowa analiza</span>
+                <span>Nowa analiza</span>
               </Button>
-              <div className="h-4 w-px bg-border/50" />
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
-                  <Bot className="w-3 h-3 text-primary-foreground" />
-                </div>
-                <span className="text-xs font-bold hidden sm:inline tracking-tight">GEO-Auditor</span>
-              </div>
-              <div className="hidden sm:flex items-center gap-1.5 max-w-[200px] overflow-hidden ml-1">
-                <div className="w-px h-3.5 bg-border/50" />
-                <ExternalLink className="w-3 h-3 text-muted-foreground/50 shrink-0 ml-1" />
+              <div className="hidden lg:flex items-center gap-1.5 max-w-[300px] overflow-hidden">
+                <ExternalLink className="w-3 h-3 text-muted-foreground/50 shrink-0" />
                 <a href={audit.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors truncate">
                   {audit.url}
                 </a>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
+              {/* Score pills in header */}
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border"
+                style={{ color: scoreColor, background: `${scoreColor}15`, borderColor: `${scoreColor}35` }}
+              >
+                <span className="text-sm font-black tabular-nums">{overallScore}</span>
+                <span className="font-normal text-[10px] opacity-70">AI Score</span>
+              </div>
+              {citationStatus === "done" && (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border"
+                  style={{
+                    color: citationCitedCount > 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)",
+                    background: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)",
+                    borderColor: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)",
+                  }}
+                >
+                  {citationCitedCount > 0 ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                  <span className="text-sm font-black tabular-nums">{citationCitedCount}/{citationTotalEngines}</span>
+                  <span className="font-normal text-[10px] opacity-70">Cytowania</span>
+                </div>
+              )}
               <Button variant="ghost" size="sm" onClick={() => handleShare("copy")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
                 <Share2 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Share</span>
@@ -697,16 +731,10 @@ export default function Results() {
                 </Button>
               </a>
               {isAuthenticated ? (
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground">
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Command Center</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard#pulse")} className="gap-1.5 text-xs h-8 px-2.5 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Pulse Monitor</span>
-                  </Button>
-                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground hidden sm:flex">
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Hub</span>
+                </Button>
               ) : (
                 <Button size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 shadow-md shadow-primary/20">
                   <LogIn className="w-3.5 h-3.5" /> Zaloguj
@@ -715,27 +743,22 @@ export default function Results() {
             </div>
           </div>
 
-          {/* Tab Bar */}
-          <div className="border-t border-border/20">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6">
-              <div className="flex items-center justify-between h-11">
-                {/* Tabs — Visibility First order: Citation 01, Audit 02, Rewrite 03 */}
+          {/* Tab Bar — mobile only (lg: sidebar handles navigation) */}
+          <div className="border-t border-border/20 lg:hidden">
+            <div className="px-4">
+              <div className="flex items-center justify-between h-10">
                 <div className="flex items-center">
-                  {/* 01 · Citation Intelligence — default entry point (Visibility First) */}
                   <button
                     onClick={() => handleSwitchToVisibility(true)}
-                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 h-10 text-xs font-semibold border-b-2 transition-colors ${
                       activeTab === "visibility"
                         ? "border-primary text-foreground"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">01 · Widoczność w AI</span>
-                    <span className="sm:hidden">Widoczność</span>
-                    {citationStatus === "running" && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    )}
+                    <span>Widoczność</span>
+                    {citationStatus === "running" && <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
                     {citationStatus === "done" && citationCitedCount > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "oklch(0.72 0.18 145 / 0.15)", color: "oklch(0.72 0.18 145)" }}>
                         {citationCitedCount}/{citationTotalEngines}
@@ -745,81 +768,37 @@ export default function Results() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-red-500/10 text-red-400">0</span>
                     )}
                   </button>
-                  {/* 02 · Signal Audit */}
                   <button
                     onClick={() => setActiveTab("optimization")}
-                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 h-10 text-xs font-semibold border-b-2 transition-colors ${
                       activeTab === "optimization"
                         ? "border-primary text-foreground"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Shield className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">02 · Diagnoza techniczna</span>
-                    <span className="sm:hidden">Diagnoza</span>
+                    <span>Diagnoza</span>
                   </button>
-                  {/* 03 · Signal Rewrite */}
                   <button
                     onClick={() => setActiveTab("content")}
-                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 h-10 text-xs font-semibold border-b-2 transition-colors ${
                       activeTab === "content"
                         ? "border-primary text-foreground"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">03 · Przepisz treść</span>
-                    <span className="sm:hidden">Rewrite</span>
+                    <span>Rewrite</span>
                   </button>
-                </div>
-
-                {/* Dual Score Pills */}
-                <div className="flex items-center gap-2">
-                  <div
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                    style={{ color: scoreColor, background: `${scoreColor}15`, borderColor: `${scoreColor}35` }}
-                  >
-                    <span className="text-sm font-black tabular-nums">{overallScore}</span>
-                    <span className="font-normal text-[10px] opacity-70">AI Score</span>
-                  </div>
-                  {citationStatus === "idle" && (
-                    <button
-                      onClick={() => handleSwitchToVisibility(true)}
-                      className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
-                    >
-                      <Eye className="w-3 h-3" />
-                      <span>Cytowania</span>
-                    </button>
-                  )}
-                  {citationStatus === "running" && (
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-primary/25 bg-primary/8 text-primary">
-                      <div className="w-2.5 h-2.5 border border-primary border-t-transparent rounded-full animate-spin" />
-                      <span className="hidden sm:inline">Analizuję…</span>
-                    </div>
-                  )}
-                  {citationStatus === "done" && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                      style={{
-                        color: citationCitedCount > 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)",
-                        background: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.12)" : "oklch(0.65 0.22 25 / 0.10)",
-                        borderColor: citationCitedCount > 0 ? "oklch(0.72 0.18 145 / 0.3)" : "oklch(0.65 0.22 25 / 0.3)",
-                      }}
-                    >
-                      {citationCitedCount > 0
-                        ? <CheckCircle2 className="w-3 h-3" />
-                        : <XCircle className="w-3 h-3" />
-                      }
-                      <span className="text-sm font-black tabular-nums">{citationCitedCount}/{citationTotalEngines}</span>
-                      <span className="font-normal text-[10px] opacity-70">Cytowania</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
       </header>
+
+      {/* ── Scrollable content ── */}
+      <div className="flex-1 overflow-y-auto">
 
       {/* B1 — Celebration Banner */}
       {celebrationData && (
@@ -1265,6 +1244,9 @@ export default function Results() {
           )}
         </main>
       )}
+
+      </div>
+      </div>
     </div>
   );
 }

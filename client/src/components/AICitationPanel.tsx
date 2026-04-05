@@ -1537,6 +1537,9 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     cited: completedCitingEngines.includes(engine),
   }));
 
+  // Top competitor for personalized pain state in ScoreReveal
+  const topCompetitorDomain = rankCompetitors(checks, targetDomain)[0]?.domain ?? null;
+
   return (
     <div className="space-y-4">
       {/* Score Reveal — emotional payoff after Emotional Tension Sequence.
@@ -1547,6 +1550,7 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
         totalEngines={ALL_ENGINES.length}
         engineResults={scoreRevealEngineResults}
         visible={userStartedJob}
+        topCompetitor={topCompetitorDomain}
       />
 
       {/* Summary hero */}

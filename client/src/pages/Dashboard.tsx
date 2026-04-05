@@ -1357,7 +1357,7 @@ function AIVisibilityCommandCenter({
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const [newUrl, setNewUrl] = useState("");
   const [showAddMonitoring, setShowAddMonitoring] = useState(false);
   const utils = trpc.useUtils();
@@ -1447,35 +1447,155 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <DashboardTopNav plan={plan} user={user} />
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-
-        {/* ── HERO GREETING ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">{greeting}, {firstName}.</h1>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {totalAudits === 0
-                ? "Wpisz URL i sprawdź, czy AI Cię poleca. Wynik w 30 sekund."
-                : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`}
-            </p>
-          </div>
+      {/* ── LEFT SIDEBAR ── */}
+      <aside className="w-56 shrink-0 flex flex-col border-r border-border/40 bg-card/30 hidden lg:flex">
+        {/* Logo */}
+        <div className="h-14 flex items-center gap-2 px-4 border-b border-border/30">
           <Link href="/">
-            <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
-              <Zap className="w-3.5 h-3.5" /> Sprawdź nową stronę →
-            </Button>
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
+                <Bot className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+            </div>
           </Link>
         </div>
 
-        {/* ── AI VISIBILITY COMMAND CENTER (HERO) ── */}
-        <AIVisibilityCommandCenter
-          monitoredPages={monitoredPages}
-          usageStats={usageStats}
-          isPro={isPro}
-          onAddMonitoring={() => setShowAddMonitoring(true)}
-        />
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold px-2 mb-2">Platforma</div>
+          <Link href="/dashboard">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 text-primary">
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              AI Visibility Hub
+            </div>
+          </Link>
+          <Link href="/pulse">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <Eye className="w-3.5 h-3.5" />
+              Pulse Monitor
+            </div>
+          </Link>
+          <Link href="/page-creator">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <Sparkles className="w-3.5 h-3.5" />
+              Signal Rewrite
+            </div>
+          </Link>
+          <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold px-2 mt-4 mb-2">Konto</div>
+          <Link href="/pricing">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <Star className="w-3.5 h-3.5" />
+              Plany
+            </div>
+          </Link>
+          <Link href="/">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <Search className="w-3.5 h-3.5" />
+              Nowa analiza
+            </div>
+          </Link>
+        </nav>
+
+        {/* User + Plan footer */}
+        <div className="px-3 py-4 border-t border-border/30 space-y-2">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${planColorClass(plan)}`}>
+            {isBusiness ? <Trophy className="w-3.5 h-3.5" /> : isPro ? <Star className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+            <span className="font-semibold">{planLabel(plan)}</span>
+          </div>
+          {user?.name && (
+            <div className="px-3 py-1.5 text-xs text-muted-foreground truncate">{user.name}</div>
+          )}
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          >
+            <LogIn className="w-3.5 h-3.5 rotate-180" />
+            Wyloguj
+          </button>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top nav */}
+        <div className="lg:hidden">
+          <DashboardTopNav plan={plan} user={user} />
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+            {/* ── HERO: Greeting + ScoreOrb ── */}
+            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card via-card to-primary/3 p-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
+              <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">AI Visibility Hub</span>
+                  </div>
+                  <h1 className="text-2xl font-black tracking-tight mb-1">{greeting}, {firstName}.</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {totalAudits === 0
+                      ? "Wpisz URL i sprawdź, czy AI Cię poleca. Wynik w 30 sekund."
+                      : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`}
+                  </p>
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <Link href="/">
+                      <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
+                        <Zap className="w-3.5 h-3.5" /> Sprawdź nową stronę →
+                      </Button>
+                    </Link>
+                    {(monitoredPages ?? []).length === 0 && (
+                      <Button variant="outline" className="gap-2 h-9 px-4 text-sm" onClick={() => setShowAddMonitoring(true)}>
+                        <Eye className="w-3.5 h-3.5" /> Dodaj do monitoringu
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {/* Score Orb */}
+                {avgScore != null ? (
+                  <div className="flex flex-col items-center gap-2 shrink-0">
+                    <div className="relative w-28 h-28">
+                      <svg width="112" height="112" viewBox="0 0 112 112" className="rotate-[-90deg]" aria-hidden="true">
+                        <circle cx="56" cy="56" r="48" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+                        <circle
+                          cx="56" cy="56" r="48" fill="none"
+                          stroke={avgScore >= 75 ? "oklch(0.72 0.18 145)" : avgScore >= 50 ? "oklch(0.75 0.18 80)" : "oklch(0.65 0.22 25)"}
+                          strokeWidth="8" strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 48}`}
+                          strokeDashoffset={`${2 * Math.PI * 48 * (1 - avgScore / 100)}`}
+                          style={{ transition: "stroke-dashoffset 1.2s ease-out" }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className={`text-3xl font-black tabular-nums leading-none ${avgScore >= 75 ? "text-emerald-400" : avgScore >= 50 ? "text-amber-400" : "text-red-400"}`}>{avgScore}</span>
+                        <span className="text-[10px] text-muted-foreground">/100</span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">AI Readiness Score</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 shrink-0">
+                    <div className="w-28 h-28 rounded-full border-4 border-dashed border-border/40 flex items-center justify-center">
+                      <span className="text-2xl text-muted-foreground/30">?</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">Brak danych</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── AI VISIBILITY COMMAND CENTER ── */}
+            <AIVisibilityCommandCenter
+              monitoredPages={monitoredPages}
+              usageStats={usageStats}
+              isPro={isPro}
+              onAddMonitoring={() => setShowAddMonitoring(true)}
+            />
 
         {/* ── STATS ROW ── */}
         <div className="grid grid-cols-3 gap-3">
@@ -1906,7 +2026,9 @@ export default function Dashboard() {
           </Link>
         </div>
 
-      </main>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

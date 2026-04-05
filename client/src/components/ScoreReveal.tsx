@@ -32,6 +32,8 @@ interface Props {
   engineResults: ScoreRevealEngine[];
   /** Whether to start the reveal animation */
   visible: boolean;
+  /** Top competitor domain for personalized pain messaging (e.g. "zalando.pl") */
+  topCompetitor?: string | null;
 }
 
 // ─── Emotional copy variants ──────────────────────────────────────────────────
@@ -151,7 +153,7 @@ function AnimatedRing({ value, total, color, size = 120, strokeWidth = 8 }: Ring
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function ScoreReveal({ citedEngines, totalEngines, engineResults, visible }: Props) {
+export function ScoreReveal({ citedEngines, totalEngines, engineResults, visible, topCompetitor }: Props) {
   const [mounted, setMounted] = useState(false);
   const mountedRef = useRef(false);
 
@@ -236,9 +238,18 @@ export function ScoreReveal({ citedEngines, totalEngines, engineResults, visible
             >
               {variant.headline}
             </h3>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              {variant.subtext}
-            </p>
+            {/* Personalized pain state — show competitor when 0/4 or 1/4 */}
+            {topCompetitor && citedEngines <= 1 ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-orange-500/8 border border-orange-500/20">
+                  <span className="text-[10px] text-orange-400/70 font-medium shrink-0">Zamiast Ciebie:</span>
+                  <span className="text-sm font-bold text-orange-300 font-mono truncate">{topCompetitor}</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">{variant.subtext}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-400 leading-relaxed">{variant.subtext}</p>
+            )}
           </div>
         </div>
 

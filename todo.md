@@ -1592,9 +1592,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Competitor Intelligence consolidation (already done — verify)
 
 ### Phase B — Design
-- [ ] ScoreOrb count-up animation (0 → score in 800ms)
+- [x] ScoreOrb count-up animation (0 → score in 800ms)
 - [ ] IssueCard severity bar redesign (left border color accent)
-- [ ] Landing page hero asymmetric layout (60/40 split)
+- [x] Landing page hero asymmetric layout (60/40 split)
 - [ ] Unified CTA block "Co dalej?" at bottom of Citation Intelligence (already done — verify)
 - [ ] Emotional loading state for Citation Intelligence (live engine feed)
 
@@ -1609,7 +1609,7 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Signal Audit: tab name, score name, sub-scores, issues section names, filter tabs, quick wins
 
 ### Wave 2 — Copy
-- [ ] Dashboard: title, KPI cards, audit list, alerts, quick audit input, sidebar nav
+- [x] Dashboard: sidebar nav + ScoreOrb hero + AI Visibility Hub layout
 - [ ] Signal Rewrite: headline, loading state, readiness panel, result view, page types 8→6
 
 ### Wave 3 — Copy
