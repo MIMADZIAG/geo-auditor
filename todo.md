@@ -1527,6 +1527,17 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Warunek 3: Nav header CTA zmień z "Analizuj stronę" na "Sprawdź widoczność w AI"
 - [ ] Auto-start: Citation Intelligence startuje automatycznie po załadowaniu /results (default tab = visibility)
 
+## Session: Full Platform Identity Transformation (Landing Page)
+
+- [x] Hero badge: zmieniono na "Platforma AI Search Visibility · GEO / AEO" z Radio pulse icon
+- [x] Hero right card: zastąpiono LiveCitationDemoCard — animowana sekwencja competitor reveal (zalando.pl, answear.com, modivo.pl) z auto-loop
+- [x] LiveCitationDemoCard: 4 engine status row, live query feed, score reveal, CTA button
+- [x] Nowa sekcja AI Visibility Score (HubSpot Website Grader concept): Citation Score + Signal Score + benchmark branżowy (SVG gauge)
+- [x] Sekcja Social proof strip: 87% stron nie cytowanych, 4 silniki, 60s, 40+ sprawdzeń
+- [x] How it works: zmieniono narrację na platformę ("Nie narzędzie. Platforma."), zaktualizowano opis flow (Citation Intelligence → Signal Audit → Signal Rewrite → Pulse Monitor)
+- [x] Final CTA: zmieniono headline na "Czy AI poleca Twoją stronę? Odpowiedź w 60 sekund.", dodano drugi przycisk "Zobacz przykładowy raport"
+- [x] 619 testów, 0 błędów TypeScript
+
 ## Session: ErrorState + Landing Page Visibility First Fixes
 
 - [x] ErrorState redesign — WAF/Cloudflare/terminated errors show actionable diagnosis (Shield icon, amber color, 3 tips, technical details collapsible)

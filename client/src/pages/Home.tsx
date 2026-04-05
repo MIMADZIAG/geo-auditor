@@ -10,9 +10,10 @@ import { toast } from "sonner";
 import {
   Bot, Search, Zap, Shield, BarChart3, ArrowRight, CheckCircle2,
   AlertTriangle, XCircle, Brain, LayoutDashboard, LogIn, Target,
-  TrendingUp, Sparkles, ChevronDown, ChevronUp, Globe, Eye,
+  TrendingUp, TrendingDown, Sparkles, ChevronDown, ChevronUp, Globe, Eye,
   RefreshCw, Star, MessageSquare, Link2, Cpu, BadgeCheck, Activity,
   Lock, ArrowUpRight, Layers, FileText, ChevronRight, Minus, Plus,
+  Users, Radio, Flame,
 } from "lucide-react";
 
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
@@ -64,6 +65,122 @@ function EngineBadge({ name, color, icon }: { name: string; color: string; icon:
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border/40 hover:border-border/70 transition-colors">
       <span style={{ color }}>{icon}</span>
       <span className="text-xs font-medium text-foreground/70">{name}</span>
+    </div>
+  );
+}
+
+// ─── Live Citation Demo Card ──────────────────────────────────────────────────
+// Simulates the Emotional Tension Sequence from the product — shows competitor
+// reveal in real-time, building the same emotional tension as the actual product.
+const DEMO_SEQUENCE = [
+  { delay: 0,    type: "query",      text: "Pytam Google AI: \"kurtka zimowa damska\"" },
+  { delay: 1400, type: "miss",       text: "Twojej strony nie ma w odpowiedzi" },
+  { delay: 2200, type: "competitor", text: "zalando.pl" },
+  { delay: 2800, type: "competitor", text: "answear.com" },
+  { delay: 3400, type: "query",      text: "Pytam ChatGPT: \"najlepsza kurtka zimowa\"" },
+  { delay: 4800, type: "miss",       text: "Brak cytowania — 0 z 5 zapytań" },
+  { delay: 5600, type: "competitor", text: "modivo.pl" },
+  { delay: 6400, type: "score",      text: "0 / 4 silników AI cytuje Twoją stronę" },
+  { delay: 7800, type: "cta",        text: "Sprawdź swoją stronę →" },
+];
+
+function LiveCitationDemoCard({ onCtaClick }: { onCtaClick: () => void }) {
+  const [visibleItems, setVisibleItems] = useState<number[]>([]);
+  const [loop, setLoop] = useState(0);
+
+  useEffect(() => {
+    setVisibleItems([]);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    DEMO_SEQUENCE.forEach((item, i) => {
+      timers.push(setTimeout(() => {
+        setVisibleItems(prev => [...prev, i]);
+      }, item.delay));
+    });
+    // Restart after full sequence + pause
+    const restart = setTimeout(() => setLoop(l => l + 1), DEMO_SEQUENCE[DEMO_SEQUENCE.length - 1].delay + 3500);
+    return () => { timers.forEach(clearTimeout); clearTimeout(restart); };
+  }, [loop]);
+
+  return (
+    <div className="surface-elevated rounded-2xl overflow-hidden">
+      {/* Card header — browser chrome */}
+      <div className="px-5 py-3.5 border-b border-border/30 flex items-center gap-3">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+          <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+        </div>
+        <div className="flex-1 flex items-center justify-center gap-2">
+          <Radio className="w-3 h-3 text-primary animate-pulse" />
+          <span className="text-[11px] text-muted-foreground font-mono">Citation Intelligence · na żywo</span>
+        </div>
+      </div>
+
+      {/* Engine status row */}
+      <div className="px-5 py-3 border-b border-border/20 flex items-center gap-2">
+        {["Google AI", "ChatGPT", "Perplexity", "Gemini"].map((eng, i) => {
+          const done = visibleItems.includes(6) && i <= 1 || visibleItems.includes(7);
+          return (
+            <div key={eng} className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-500 ${
+              done ? "bg-red-500/8 border border-red-500/20 text-red-400" : "bg-muted/30 border border-border/20 text-muted-foreground/50"
+            }`}>
+              {done ? <XCircle className="w-2.5 h-2.5" /> : <div className="w-2 h-2 rounded-full border border-current animate-pulse" />}
+              <span className="hidden sm:inline">{eng.split(" ")[0]}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Live feed */}
+      <div className="px-5 py-4 space-y-2.5 min-h-[180px]">
+        {DEMO_SEQUENCE.map((item, i) => {
+          if (!visibleItems.includes(i)) return null;
+          if (item.type === "query") return (
+            <div key={i} className="flex items-start gap-2 animate-float-up">
+              <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Search className="w-2 h-2 text-primary" />
+              </div>
+              <span className="text-[11px] text-muted-foreground/70 italic">{item.text}</span>
+            </div>
+          );
+          if (item.type === "miss") return (
+            <div key={i} className="flex items-center gap-2 animate-float-up">
+              <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+              <span className="text-[11px] text-red-400/80 font-medium">{item.text}</span>
+            </div>
+          );
+          if (item.type === "competitor") return (
+            <div key={i} className="flex items-center gap-2 pl-5 animate-float-up">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+              <span className="text-[11px] font-mono text-amber-300/90">{item.text}</span>
+              <span className="text-[10px] text-muted-foreground/40 ml-auto">zamiast Ciebie</span>
+            </div>
+          );
+          if (item.type === "score") return (
+            <div key={i} className="mt-3 p-3 rounded-xl bg-red-950/20 border border-red-500/20 animate-float-up">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-black text-red-400">0</span>
+                <span className="text-xs text-muted-foreground">/4 silników AI cytuje Twoją stronę</span>
+              </div>
+              <div className="mt-1.5 flex gap-1.5">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">zalando.pl</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">answear.com</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">modivo.pl</span>
+              </div>
+            </div>
+          );
+          if (item.type === "cta") return (
+            <button
+              key={i}
+              onClick={onCtaClick}
+              className="w-full mt-2 py-2.5 rounded-xl bg-primary/10 border border-primary/30 text-xs font-semibold text-primary hover:bg-primary/15 transition-colors animate-float-up"
+            >
+              Sprawdź swoją stronę →
+            </button>
+          );
+          return null;
+        })}
+      </div>
     </div>
   );
 }
@@ -260,8 +377,8 @@ export default function Home() {
             <div className="max-w-xl">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 pill pill-primary mb-8">
-                <Zap className="w-3 h-3" />
-                <span>Audyt na poziomie podstrony · GEO / AEO</span>
+                <Radio className="w-3 h-3 animate-pulse" />
+                <span>Platforma AI Search Visibility · GEO / AEO</span>
               </div>
 
               {/* Headline — Visibility First: emotional question, not a tool description */}
@@ -399,69 +516,7 @@ export default function Home() {
 
             {/* Right column — live demo card */}
             <div className="lg:self-center">
-              <div className="surface-elevated rounded-2xl overflow-hidden">
-                {/* Card header */}
-                <div className="px-5 py-4 border-b border-border/30 flex items-center gap-3">
-                  <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-                  </div>
-                  <div className="flex-1 text-center">
-                    <span className="text-[11px] text-muted-foreground font-mono">geo-auditor.app/results/1234</span>
-                  </div>
-                </div>
-
-                {/* Score display */}
-                <div className="px-5 py-5 border-b border-border/20">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <ScoreRing score={31} size={72} />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-lg font-black text-red-400">31</span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-red-400">12 blokad sygnału</span>
-                        <span className="pill pill-red text-[10px] py-0.5">Niewidoczny</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">Crawlery AI pomijają tę stronę. Brak schema.org, słaba struktura treści.</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                    <div className="relative">
-                      <ScoreRing score={78} size={72} />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-lg font-black text-emerald-400">78</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">Po wdrożeniu poprawek Signal Audit</span>
-                    <span className="pill pill-emerald text-[10px] py-0.5">+47 pkt</span>
-                  </div>
-                </div>
-
-                {/* Workflow steps */}
-                <div className="px-5 py-4 space-y-3">
-                  {WORKFLOW_PREVIEW.map((step, i) => (
-                    <div key={step.label} className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${i === 0 ? "bg-primary/8 border border-primary/20" : "opacity-50"}`}>
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${i === 0 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                        <step.icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-semibold truncate">{step.label}</div>
-                        <div className="text-[10px] text-muted-foreground truncate">{step.sub}</div>
-                      </div>
-                      {i === 0 ? (
-                        <span className="pill pill-primary text-[10px] py-0.5 shrink-0">W toku</span>
-                      ) : (
-                        <div className="w-4 h-4 rounded-full border border-border/50 shrink-0" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <LiveCitationDemoCard onCtaClick={() => inputRef.current?.focus()} />
             </div>
 
           </div>
@@ -487,21 +542,125 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── AI Visibility Score — HubSpot Website Grader concept ── */}
+      <section className="py-20 px-4 sm:px-6 relative overflow-hidden">
+        <div className="absolute inset-0 dot-pattern opacity-20 pointer-events-none" />
+        <div className="max-w-5xl mx-auto relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left — concept */}
+            <div>
+              <div className="inline-flex items-center gap-2 pill pill-primary mb-6">
+                <BarChart3 className="w-3 h-3" />
+                <span>AI Visibility Score</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight leading-tight">
+                Jeden wynik.<br />
+                <span className="gradient-text">Wszystko co musisz wiedzieć.</span>
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-8 text-sm max-w-md">
+                Twój AI Visibility Score to kompozyt dwóch wymiarów: ile silników AI cytuje Twoją stronę i jaką ocenę techniczną dostaje. Jeden licznik 0–100. Jeden benchmark względem konkurencji. Jeden cel.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { label: "Citation Score", desc: "Ile z 4 silników AI cytuje Twoją stronę na Twoich frazach", color: "text-violet-400", bg: "bg-violet-500/8 border-violet-500/20" },
+                  { label: "Signal Score", desc: "AI Readiness Score z 40+ sprawdzeń technicznych i contentowych", color: "text-primary", bg: "bg-primary/8 border-primary/20" },
+                ].map((item) => (
+                  <div key={item.label} className={`flex items-start gap-3 p-3.5 rounded-xl border ${item.bg}`}>
+                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${item.color.replace("text-", "bg-")}`} />
+                    <div>
+                      <div className={`text-sm font-bold mb-0.5 ${item.color}`}>{item.label}</div>
+                      <div className="text-xs text-muted-foreground leading-relaxed">{item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right — score card */}
+            <div className="surface-elevated rounded-2xl p-6">
+              <div className="text-center mb-6">
+                <div className="section-label mb-3">Twój AI Visibility Score</div>
+                <div className="relative inline-flex items-center justify-center">
+                  <svg width="160" height="160" viewBox="0 0 160 160">
+                    <circle cx="80" cy="80" r="68" fill="none" stroke="oklch(0.20 0.010 260)" strokeWidth="10" />
+                    <circle cx="80" cy="80" r="68" fill="none" stroke="oklch(0.62 0.26 285)" strokeWidth="10"
+                      strokeDasharray={`${2 * Math.PI * 68 * 0.23} ${2 * Math.PI * 68 * 0.77}`}
+                      strokeDashoffset={2 * Math.PI * 68 * 0.25}
+                      strokeLinecap="round"
+                      style={{ transition: "stroke-dasharray 1s ease" }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-5xl font-black text-red-400">23</span>
+                    <span className="text-xs text-muted-foreground mt-1">/ 100</span>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <span className="pill pill-red text-xs">Niewidoczny w AI Search</span>
+                </div>
+              </div>
+
+              {/* Breakdown */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Citation Score</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-red-400 rounded-full" style={{ width: "0%" }} />
+                    </div>
+                    <span className="font-semibold text-red-400 w-8 text-right">0/4</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Signal Score</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-amber-400 rounded-full" style={{ width: "46%" }} />
+                    </div>
+                    <span className="font-semibold text-amber-400 w-8 text-right">46</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Competitor benchmark */}
+              <div className="mt-5 pt-4 border-t border-border/20">
+                <div className="section-label mb-3">Benchmark branżowy</div>
+                <div className="space-y-2">
+                  {[
+                    { domain: "zalando.pl", score: 87, color: "bg-emerald-400" },
+                    { domain: "answear.com", score: 71, color: "bg-emerald-400/70" },
+                    { domain: "Twoja strona", score: 23, color: "bg-red-400", highlight: true },
+                  ].map((item) => (
+                    <div key={item.domain} className={`flex items-center gap-2 text-xs ${item.highlight ? "font-semibold" : ""}`}>
+                      <span className={`w-24 truncate ${item.highlight ? "text-foreground" : "text-muted-foreground"}`}>{item.domain}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.score}%` }} />
+                      </div>
+                      <span className={`w-6 text-right ${item.highlight ? "text-red-400" : "text-muted-foreground"}`}>{item.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── How it works ── */}
       <section id="how-it-works" className="py-24 px-4 sm:px-6 relative overflow-hidden">
         <div className="absolute inset-0 dot-pattern opacity-30 pointer-events-none" />
         <div className="max-w-5xl mx-auto relative">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 pill pill-primary mb-5">
-              <RefreshCw className="w-3 h-3" />
-              <span>Cztery moduły. Jeden cel.</span>
+              <Layers className="w-3 h-3" />
+              <span>Platforma AI Search Visibility</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">
-              Od diagnozy do cytowania<br />
-              <span className="text-muted-foreground/60">— w jednej platformie</span>
+              Nie narzędzie. Platforma.<br />
+              <span className="gradient-text">Cztery moduły. Jeden cel.</span>
             </h2>
-            <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed">
-              Każdy moduł zasila następny. Signal Audit wykrywa problem— Signal Rewrite go naprawia — Pulse Monitor pilnuje wyniku.
+            <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
+              Każdy moduł zasila następny. Citation Intelligence wykrywa problem — Signal Audit diagnozuje przyczynę — Signal Rewrite naprawia — Pulse Monitor pilnuje wyniku. To jest pętla wzrostu widoczności w AI.
             </p>
           </div>
 
@@ -540,6 +699,26 @@ export default function Home() {
                     </div>
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Social proof strip ── */}
+      <section className="py-14 px-4 sm:px-6 border-y border-border/20 bg-card/20">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            {[
+              { value: "87%", label: "stron e-commerce nie jest cytowanych przez żadne AI", icon: TrendingDown, color: "text-red-400" },
+              { value: "4", label: "silniki AI sprawdzamy jednocześnie: Google, ChatGPT, Perplexity, Gemini", icon: Radio, color: "text-primary" },
+              { value: "60s", label: "do pierwszego wyniku Signal Audit bez rejestracji", icon: Zap, color: "text-emerald-400" },
+              { value: "40+", label: "sprawdzeń technicznych i contentowych w każdym audycie", icon: CheckCircle2, color: "text-amber-400" },
+            ].map((stat) => (
+              <div key={stat.value} className="flex flex-col items-center gap-2">
+                <stat.icon className={`w-5 h-5 ${stat.color} mb-1`} />
+                <div className={`text-3xl font-black ${stat.color}`}>{stat.value}</div>
+                <div className="text-[11px] text-muted-foreground leading-relaxed max-w-[140px]">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -732,20 +911,31 @@ export default function Home() {
             <Zap className="w-6 h-6 text-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight">
-            Jeden URL.<br />
-            <span className="gradient-text">Pełna diagnostyka AI Search.</span>
+            Czy AI poleca Twoją stronę?<br />
+            <span className="gradient-text">Odpowiedź w 60 sekund.</span>
           </h2>
           <p className="text-muted-foreground mb-10 leading-relaxed text-sm max-w-md mx-auto">
-            60 sekund. Bez konta. Bez karty. Dowiesz się dokładnie, które sygnały blokują Cię w ChatGPT i Gemini — i co zmienić jako pierwsze.
+            Wpisz URL. Sprawdzamy ChatGPT, Gemini, Perplexity i Google AI jednocześnie. Dowiesz się dokładnie, kto Cię wyprzedza i co zmienić, żeby AI zaczęło Cię polecać.
           </p>
-          <Button
-            size="lg"
-            onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => inputRef.current?.focus(), 400); }}
-            className="gap-2.5 px-10 h-12 text-base font-semibold shadow-xl shadow-primary/25"
-          >
-            <Search className="w-4.5 h-4.5" />
-            Sprawdź sygnał swojej strony
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              size="lg"
+              onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => inputRef.current?.focus(), 400); }}
+              className="gap-2.5 px-10 h-12 text-base font-semibold shadow-xl shadow-primary/25"
+            >
+              <Search className="w-4.5 h-4.5" />
+              Sprawdź widoczność w AI
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => { window.location.href = "/demo"; }}
+              className="gap-2 px-8 h-12 text-sm"
+            >
+              <Eye className="w-4 h-4" />
+              Zobacz przykładowy raport
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground mt-5">
             Bez konta. Bez karty. Jeden audyt bezpłatnie.
           </p>
