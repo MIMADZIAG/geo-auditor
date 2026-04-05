@@ -6,7 +6,7 @@
  * - sendMonitoringEmail with citation data
  * - CitationJobResult summary → citedEngines calculation
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ─── Mock DB ──────────────────────────────────────────────────────────────────
 vi.mock("../drizzle/schema", () => ({
@@ -138,6 +138,18 @@ describe("Citation change detection", () => {
 
 // ─── Monitoring email with citation data ─────────────────────────────────────
 describe("sendMonitoringEmail with citation data", () => {
+  // Mock global fetch to prevent real network calls to Resend API in test env
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: "mock-email-id" }),
+    }));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules(); // reset module cache so email.ts re-reads env vars
+  });
   it("sends email with citation data included", async () => {
     const { sendMonitoringEmail } = await import("./monitoring/email");
     const result = await sendMonitoringEmail({
@@ -188,7 +200,7 @@ describe("sendMonitoringEmail with citation data", () => {
       totalEngines: null,
     });
     expect(typeof result).toBe("boolean");
-  });
+  }, 15_000); // real Resend API call — needs extended timeout
 });
 
 // ─── CitationSparkline values derivation ─────────────────────────────────────

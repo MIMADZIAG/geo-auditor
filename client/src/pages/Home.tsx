@@ -239,7 +239,7 @@ export default function Home() {
               )}
                 <Button size="sm" onClick={() => inputRef.current?.focus()} className="h-8 text-xs gap-1.5 shadow-md shadow-primary/20">
                 <Search className="w-3 h-3" />
-                <span>Analizuj stronę</span>
+                <span>Sprawdź widoczność w AI</span>
               </Button>
             </div>
           </div>

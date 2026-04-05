@@ -58,6 +58,7 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import { CitationLoadingBridge } from "@/components/CitationLoadingBridge";
 import { useRewriteStream } from "@/hooks/useRewriteStream";
 import { KnowledgeGraphReadinessPanel } from "@/components/KnowledgeGraphReadinessPanel";
 import { AnswerFirstOpeningCard } from "@/components/AnswerFirstOpeningCard";
@@ -582,6 +583,32 @@ export default function Results() {
   const llmDifficulty = (audit as unknown as { llmDifficulty?: string | null }).llmDifficulty as "easy" | "medium" | "hard" | null;
   const overallScore = Math.round(audit.overallScore ?? 0);
   const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
+
+  // ── Top issues for CitationLoadingBridge (Warunek 1) ──────────────────────
+  // Extracted from findings — top 3 by impact (fail > warning, high > medium > low)
+  const topIssuesForBridge = (() => {
+    if (!findings) return [];
+    const issues: { id: string; label: string; status: "fail" | "warning"; impact: "high" | "medium" | "low"; description: string; category: string }[] = [];
+    for (const [catKey, catData] of Object.entries(findings)) {
+      const checks = (catData as CategoryResult).checks ?? [];
+      for (const check of checks) {
+        if (check.status === "fail" || check.status === "warning") {
+          issues.push({
+            id: `${catKey}-${check.id}`,
+            label: check.label,
+            status: check.status as "fail" | "warning",
+            impact: check.impact as "high" | "medium" | "low",
+            description: check.description,
+            category: CATEGORY_HUMAN_LABELS[catKey] ?? catKey,
+          });
+        }
+      }
+    }
+    const impactOrder = { high: 0, medium: 1, low: 2 };
+    return issues
+      .sort((a, b) => (a.status === "fail" ? 0 : 10) + impactOrder[a.impact] - ((b.status === "fail" ? 0 : 10) + impactOrder[b.impact]))
+      .slice(0, 3);
+  })();
   const reportUrl = typeof window !== "undefined" ? `${window.location.origin}/report/${auditId}` : "";
   const scoreColor = getScoreColor(overallScore);
 
@@ -1037,8 +1064,18 @@ export default function Results() {
       {activeTab === "visibility" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-          {/* Spinner fallback — shown for 2s while onStatusChange hasn't fired yet */}
-          {isTabInitializing && (
+          {/* Warunek 1: CitationLoadingBridge — Signal Audit as preliminary diagnosis during Citation loading */}
+          {/* Shown when citation is running AND Signal Audit data is available */}
+          {citationStatus === "running" && findings && (
+            <CitationLoadingBridge
+              topIssues={topIssuesForBridge}
+              overallScore={overallScore}
+              pageTitle={audit.pageTitle ?? audit.url}
+              isRunning={citationStatus === "running"}
+            />
+          )}
+          {/* Fallback spinner — shown for 2s while onStatusChange hasn't fired yet (no audit data) */}
+          {isTabInitializing && !findings && (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

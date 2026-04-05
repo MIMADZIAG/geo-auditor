@@ -1520,3 +1520,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] ScoreReveal — warianty emocjonalne: 0/4 (krytyczny), 1-2/4 (szansa), 3-4/4 (lider)
 - [x] ScoreReveal — fade-in + slide-up animacja przy pierwszym render
 - [x] ScoreReveal — nie duplikuje istniejącego hero score w completed state
+
+## Visibility First — Gaps Fix
+
+- [ ] Warunek 1: CitationLoadingBridge — pokazuj Signal Audit jako "wstępna diagnoza" gdy citation running
+- [ ] Warunek 3: Nav header CTA zmień z "Analizuj stronę" na "Sprawdź widoczność w AI"
+- [ ] Auto-start: Citation Intelligence startuje automatycznie po załadowaniu /results (default tab = visibility)
