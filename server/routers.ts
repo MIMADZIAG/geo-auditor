@@ -8,6 +8,7 @@ import { runAudit } from "./audit/index";
 import { createCitationJob, getCitationResultsForAudit } from "./citation/db";
 import { computeOpportunities } from "./citation/opportunityFinder";
 import { runCitationJob } from "./citation/worker";
+import { getQuickSignal } from "./citation/quickSignal";
 import { getLastHealthReport, runAndCacheHealthCheck } from "./citation/selectorHealth";
 import { createCheckoutSession, createBillingPortalSession } from "./stripe/handler";
 import { PLANS, getPlanLimits } from "./stripe/products";
@@ -994,6 +995,27 @@ export const appRouter = router({
      * Returns a map of auditId -> {status, citedCount, totalEngines}.
      * Efficient: one query per batch, no N+1.
      */
+    /**
+     * Quick Signal — Instant First Signal (Layer 4)
+     *
+     * Fires a single Google AI Overview check against the most salient query
+     * derived from the page title/H1. Returns in 2–4 seconds.
+     *
+     * Designed to be called concurrently with citation.startCheck so the user
+     * sees the first emotional pain point before the full job has results.
+     * Never throws — always returns a QuickSignalResult.
+     */
+    quickSignal: publicProcedure
+      .input(z.object({ auditId: z.number() }))
+      .mutation(async ({ input }) => {
+        const audit = await getAuditById(input.auditId);
+        if (!audit) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
+        }
+        // getQuickSignal never throws — safe to await directly
+        return getQuickSignal(audit.url);
+      }),
+
     getStatusBatch: publicProcedure
       .input(z.object({ auditIds: z.array(z.number()).max(50) }))
       .query(async ({ input }) => {

@@ -24,6 +24,7 @@ import { CitationOpportunityPanel } from "./CitationOpportunityPanel";
 import { PhraseManager } from "./PhraseManager";
 import { CitationNarrativeCard } from "./CitationNarrativeCard";
 import { EmotionalTensionFeed } from "./EmotionalTensionFeed";
+import { QuickSignalCard, type QuickSignalData } from "./QuickSignalCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1139,6 +1140,24 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
   // isPageMonitored: true only when query has resolved AND returned a non-null result
   const isPageMonitored = phrasesForUrlQuery.isFetched && monitoringPhrasesData != null;
 
+  // ── Layer 4: Quick Signal state ────────────────────────────────────────────
+  // quickSignalData: null while loading or not yet started
+  // quickSignalLoading: true while the mutation is in flight
+  // quickSignalVisible: controls whether the card is shown at all
+  const [quickSignalData, setQuickSignalData] = useState<QuickSignalData | null>(null);
+  const [quickSignalLoading, setQuickSignalLoading] = useState(false);
+  const [quickSignalVisible, setQuickSignalVisible] = useState(false);
+  const quickSignalMutation = trpc.citation.quickSignal.useMutation({
+    onSuccess: (data) => {
+      setQuickSignalData(data as QuickSignalData);
+      setQuickSignalLoading(false);
+    },
+    onError: () => {
+      // Non-fatal: quick signal failure should never block the main flow
+      setQuickSignalLoading(false);
+    },
+  });
+
   const startCheck = trpc.citation.startCheck.useMutation();
   const resultsQuery = trpc.citation.getResults.useQuery(
     { auditId },
@@ -1234,6 +1253,15 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     if (!user) { window.location.href = getLoginUrl(); return; }
     setUserStartedJob(true);
     onStatusChange?.("running");
+
+    // Layer 4: Fire Quick Signal concurrently with startCheck.
+    // quickSignal is non-blocking — it never delays the main job start.
+    // Show the card immediately (loading state) so the user sees activity.
+    setQuickSignalVisible(true);
+    setQuickSignalLoading(true);
+    setQuickSignalData(null);
+    quickSignalMutation.mutate({ auditId }); // fire-and-forget (handled in onSuccess/onError)
+
     await startCheck.mutateAsync({ auditId });
     resultsQuery.refetch();
   }, [user, auditId, onStatusChange]);
@@ -1434,6 +1462,16 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
             </div>
           )}
         </div>
+
+        {/* Layer 4: Quick Signal — instant first signal, appears within 2-4s */}
+        {quickSignalVisible && (
+          <QuickSignalCard
+            data={quickSignalData}
+            isLoading={quickSignalLoading}
+            isDone={streamIsDone}
+            targetDomain={targetDomain}
+          />
+        )}
 
         {/* Layer 3: Emotional Tension Sequence — the heart of the experience */}
         <EmotionalTensionFeed

@@ -1490,3 +1490,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] StreamProgress.currentQuery — dodane do useCitationStream.ts
 - [x] AICitationPanel running state — zastąpiony EmotionalTensionFeed
 - [x] 574 testów przechodzi, 0 błędów TypeScript
+
+## Warstwa 4 — Instant First Signal (3-sekundowy aha moment)
+
+- [x] server/citation/quickSignal.ts — getQuickSignal(url): single Google AI Overview check on page title/H1
+- [x] server/routers.ts — citation.quickSignal tRPC mutation (publicProcedure, input: auditId)
+- [x] client/src/components/QuickSignalCard.tsx — emotional reveal card: cited/not cited + top competitor
+- [x] AICitationPanel — wire quickSignal: fire on handleStart, show QuickSignalCard before full job results
+- [x] AICitationPanel — QuickSignalCard persists during running state (stays visible above EmotionalTensionFeed)
+- [x] AICitationPanel — QuickSignalCard fades out gracefully when full results arrive
+- [x] server/citation/quickSignal.test.ts — unit tests for quickSignal
