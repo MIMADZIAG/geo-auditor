@@ -1511,3 +1511,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Step 3 (P1): Landing page hero CTA zmień na "Czy AI poleca Twoją stronę?"
 - [x] Step 3 (P1): Subtext pod przyciskiem: "Twoja widoczność w AI Search w 60 sekund"
 - [x] Step 3 (P1): Zaktualizuj opis produktu w hero section
+
+## Score Reveal — count-up emocjonalny payoff
+
+- [x] client/src/hooks/useCountUp.ts — hook animujący licznik 0→target, ease-out, 1.2s
+- [x] client/src/components/ScoreReveal.tsx — animowany reveal: ring SVG + count-up + engine breakdown + emotional copy
+- [x] AICitationPanel — wstrzyknij ScoreReveal po EmotionalTensionFeed gdy isDone, z 400ms delay
+- [x] ScoreReveal — warianty emocjonalne: 0/4 (krytyczny), 1-2/4 (szansa), 3-4/4 (lider)
+- [x] ScoreReveal — fade-in + slide-up animacja przy pierwszym render
+- [x] ScoreReveal — nie duplikuje istniejącego hero score w completed state

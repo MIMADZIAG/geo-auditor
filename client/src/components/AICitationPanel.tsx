@@ -26,6 +26,7 @@ import { CitationNarrativeCard } from "./CitationNarrativeCard";
 import { EmotionalTensionFeed } from "./EmotionalTensionFeed";
 import { QuickSignalCard, type QuickSignalData } from "./QuickSignalCard";
 import { CitationZeroState } from "./CitationZeroState";
+import { ScoreReveal, type ScoreRevealEngine } from "./ScoreReveal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1499,9 +1500,34 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
     );
   }
 
-  // ── Completed ─────────────────────────────────────────────────────────────────
+  // ── Completed ────────────────────────────────────────────────────────────────────────────────
+
+  // Build engine results for ScoreReveal from the completed checks
+  const completedCitingEngines = Array.from(
+    new Set(
+      checks
+        .filter(c => c.isCited === "yes" || c.isCited === "domain")
+        .map(c => c.engine)
+    )
+  ) as ("chatgpt" | "google" | "perplexity" | "gemini")[];
+
+  const scoreRevealEngineResults: ScoreRevealEngine[] = (ALL_ENGINES as ("chatgpt" | "google" | "perplexity" | "gemini")[]).map(engine => ({
+    engine,
+    cited: completedCitingEngines.includes(engine),
+  }));
+
   return (
     <div className="space-y-4">
+      {/* Score Reveal — emotional payoff after Emotional Tension Sequence.
+           Only shown when user started the job in this session (userStartedJob).
+           Returning users see the summary hero immediately without animation. */}
+      <ScoreReveal
+        citedEngines={completedCitingEngines.length}
+        totalEngines={ALL_ENGINES.length}
+        engineResults={scoreRevealEngineResults}
+        visible={userStartedJob}
+      />
+
       {/* Summary hero */}
       {(() => {
         // Collect which engines cited the target (exact or domain)
