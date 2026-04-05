@@ -1,5 +1,11 @@
 import React from "react";
-import confetti from "canvas-confetti";
+import confettiRaw from "canvas-confetti";
+
+// Safe confetti wrapper — disables Web Worker to prevent canvas.getBoundingClientRect
+// errors during Vite HMR and after React re-renders that detach the canvas element.
+// useWorker:false avoids the OffscreenCanvas/worker path that triggers the error on resize.
+const confetti = confettiRaw.create(undefined, { useWorker: false, resize: true });
+
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
