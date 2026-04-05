@@ -14,7 +14,7 @@
  *   - competitorDomains: extracted hostnames (for Pro upsell)
  *   - round: which fan-out round (1–5)
  *
- * ChatGPT Search runs only in round 1 (cost control).
+ * ChatGPT/Perplexity/Gemini run in rounds 1-2 (second chance if round 1 misses).
  * Google AI Overview runs in all rounds via SerpApi.
  */
 
@@ -365,6 +365,29 @@ Return ONLY a JSON object: { "queries": ["query1", "query2", "query3", "query4",
 
     if (queries.length < 3) return buildFallbackQueries(content, url, round, engine);
 
+    // ── URL Slug Anchor Query (Fix for false negatives) ──────────────────────
+    // In round 1, prepend the URL slug as the FIRST query — this is the most literal
+    // match and the most likely query on which the page is already cited.
+    // e.g. /projekty-domow-parterowych → "projekty domów parterowych"
+    // This prevents false negatives where LLM generates paraphrases but misses
+    // the exact phrase the page ranks for.
+    if (round === 1) {
+      try {
+        const pathname = new URL(url).pathname.replace(/\/$/, "");
+        const lastSegment = pathname.split("/").filter(Boolean).pop() ?? "";
+        if (lastSegment.length > 3) {
+          const slugPhrase = lastSegment.replace(/-/g, " ").replace(/_/g, " ").trim();
+          if (slugPhrase.length > 3 && !queries.some(q => q.toLowerCase().includes(slugPhrase.toLowerCase()))) {
+            queries.unshift(slugPhrase);
+            if (queries.length > 5) queries.pop();
+            console.log(`[Citation] URL slug anchor query injected for ${engine} round 1: "${slugPhrase}"`);
+          }
+        }
+      } catch {
+        // Non-fatal — URL parsing failed, skip slug injection
+      }
+    }
+
     // ── Post-generation language validation ─────────────────────────────────────────
     // Verify generated queries are in the expected language.
     // If the model ignored the language rule (e.g. returned English for a Polish page),
@@ -480,13 +503,20 @@ async function getCachedResult(cacheKey: string): Promise<CitationResult | null>
   const row = rows[0];
   if (!row || row.checkedAt < cutoff) return null;
 
-  // IMPORTANT: Do NOT serve stale negative cache entries (hasAIOverview=false, isCited="no").
-  // These may have been created with the old buggy SerpApi config (no location/mobile).
-  // Only serve cache hits that actually found something useful.
-  // Negative results expire after 4h instead of 24h to allow re-checking.
-  const negativeCutoff = new Date(Date.now() - 4 * 60 * 60 * 1000);
-  if (!row.hasAIOverview && row.isCited === "no" && row.checkedAt < negativeCutoff) {
-    return null; // Force re-check for stale negative results
+  // IMPORTANT: Do NOT serve stale negative cache entries.
+  // Two tiers of negative cache TTL:
+  //   - hasAIOverview=false, isCited="no": 4h TTL (no AI Overview at all)
+  //   - hasAIOverview=true,  isCited="no": 2h TTL (near-miss — AI Overview exists but page not cited)
+  // Positive results (isCited="yes"/"domain") use the full 24h TTL.
+  const negativeCutoff4h = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  const negativeCutoff2h = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  if (row.isCited === "no") {
+    if (!row.hasAIOverview && row.checkedAt < negativeCutoff4h) {
+      return null; // Force re-check for stale no-overview negatives
+    }
+    if (row.hasAIOverview && row.checkedAt < negativeCutoff2h) {
+      return null; // Force re-check for stale near-miss negatives
+    }
   }
 
   const allCitedUrls = Array.isArray(row.allCitedUrls) ? (row.allCitedUrls as string[]) : [];
@@ -1219,7 +1249,8 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       //    Round 1: prepend citedFirst queries (highest priority — check known citations first)
       // 2. If cache exists but this round is beyond previous maxRound — generate fresh (fan-out)
       // 3. No cache — generate fresh for all rounds
-      // ChatGPT/Perplexity/Gemini only run in round 1 (cost control)
+      // ChatGPT/Perplexity/Gemini run in rounds 1-2 (round 1 = broad, round 2 = second chance)
+      // Google runs in all rounds (cost-effective, highest AI Overview coverage)
       let googleQueries: string[];
       let chatgptQueries: string[];
       let perplexityQueries: string[];
@@ -1244,9 +1275,9 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
           return generateEngineQueries(pageContent, job.url, engine, round, usedQueries);
         };
         googleQueries = await getCachedOrFresh("google");
-        chatgptQueries = round === 1 ? await getCachedOrFresh("chatgpt") : [];
-        perplexityQueries = round === 1 ? await getCachedOrFresh("perplexity") : [];
-        geminiQueries = round === 1 ? await getCachedOrFresh("gemini") : [];
+        chatgptQueries = round <= 2 ? await getCachedOrFresh("chatgpt") : [];
+        perplexityQueries = round <= 2 ? await getCachedOrFresh("perplexity") : [];
+        geminiQueries = round <= 2 ? await getCachedOrFresh("gemini") : [];
         cacheTag = round === 1 && Object.keys(cachedQueries.citedFirst).length > 0
           ? "CACHED+CITED_FIRST" : "CACHED";
       } else {
@@ -1266,9 +1297,9 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
         } else {
           [googleQueries, chatgptQueries, perplexityQueries, geminiQueries] = await Promise.all([
             generateEngineQueries(pageContent, job.url, "google", round, usedQueries),
-            round === 1 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
-            round === 1 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
-            round === 1 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
+            round <= 2 ? generateEngineQueries(pageContent, job.url, "chatgpt", round, usedQueries) : Promise.resolve([] as string[]),
+            round <= 2 ? generateEngineQueries(pageContent, job.url, "perplexity", round, usedQueries) : Promise.resolve([] as string[]),
+            round <= 2 ? generateEngineQueries(pageContent, job.url, "gemini", round, usedQueries) : Promise.resolve([] as string[]),
           ]);
           cacheTag = cachedQueries ? `FRESH_FANOUT_R${round}` : "FRESH";
         }
@@ -1282,7 +1313,7 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       // ── Layer 1+2: Parallel Engine Execution with SSE streaming ─────────────
       // All engines run concurrently via Promise.allSettled.
-      // Google runs in every round; ChatGPT/Perplexity/Gemini run in round 1 only.
+      // Google runs in every round; ChatGPT/Perplexity/Gemini run in rounds 1-2.
       // Promise.allSettled guarantees: one engine timeout never blocks others.
       // Per-engine throttle (800ms) is preserved inside runEnginePool().
       // Layer 2: onResult callback emits each result to SSE registry in real-time.
@@ -1290,7 +1321,7 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
       const registry = getCitationRegistry();
       // Calculate total queries for this round (for progress events)
       const totalQueriesThisRound = googleQueries.length +
-        (round === 1 ? chatgptQueries.length + perplexityQueries.length + geminiQueries.length : 0);
+        (round <= 2 ? chatgptQueries.length + perplexityQueries.length + geminiQueries.length : 0);
       let queriesCompletedThisRound = 0;
 
       // SSE onResult hook: emits each result immediately as it arrives from any engine
@@ -1313,13 +1344,13 @@ export async function runCitationJob(jobId: number): Promise<CitationJobResult |
 
       const enginePromises = [
         runEnginePool("google",     googleQueries,     jobId, job.auditId, job.url, language, round, onResult),
-        round === 1
+        round <= 2
           ? runEnginePool("chatgpt",    chatgptQueries,    jobId, job.auditId, job.url, language, round, onResult)
           : Promise.resolve([] as CitationResult[]),
-        round === 1
+        round <= 2
           ? runEnginePool("perplexity", perplexityQueries, jobId, job.auditId, job.url, language, round, onResult)
           : Promise.resolve([] as CitationResult[]),
-        round === 1
+        round <= 2
           ? runEnginePool("gemini",     geminiQueries,     jobId, job.auditId, job.url, language, round, onResult)
           : Promise.resolve([] as CitationResult[]),
       ] as const;
