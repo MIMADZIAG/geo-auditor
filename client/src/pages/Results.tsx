@@ -58,6 +58,7 @@ import type {
   ContentIntelligenceResult,
 } from "../../../shared/auditTypes";
 import { AICitationPanel } from "@/components/AICitationPanel";
+import { useRewriteStream } from "@/hooks/useRewriteStream";
 import { KnowledgeGraphReadinessPanel } from "@/components/KnowledgeGraphReadinessPanel";
 import { AnswerFirstOpeningCard } from "@/components/AnswerFirstOpeningCard";
 import UpsellProModal from "@/components/UpsellProModal";
@@ -3329,8 +3330,14 @@ function WhatIfSection({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
-  const [rewriteStep, setRewriteStep] = useState(0); // 0=idle, 1=fetch, 2=crawl, 3=generate, 4=verify
-  const [rewriteSectionProgress, setRewriteSectionProgress] = useState<{current: number; total: number} | null>(null);
+  // Step B: stable client-side job ID for SSE stream — generated once per component mount
+  // A new ID is generated each time a rewrite starts (via rewriteJobIdRef.current)
+  const rewriteJobIdRef = useRef<number | null>(null);
+  const [activeRewriteJobId, setActiveRewriteJobId] = useState<number | null>(null);
+  const rewriteStream = useRewriteStream(activeRewriteJobId);
+  // Derive step/section from SSE stream (fallback: 0 = idle)
+  const rewriteStep = rewriteStream.currentStep?.step ?? 0;
+  const rewriteSectionProgress = rewriteStream.sectionProgress;
   const [error, setError] = useState<string | null>(null);
   // cleanText = server-extracted plain text (no HTML tags)
   const [cleanText, setCleanText] = useState("");
@@ -3413,28 +3420,14 @@ function WhatIfSection({
     const sourceContent = rewrittenText ?? cleanText;
     if (!sourceContent.trim()) return;
     setIsRewriting(true);
-    setRewriteStep(1); // Fetching page
-    setRewriteSectionProgress(null);
     setError(null);
 
-    // Simulate realistic step progression while waiting for the server
-    const stepTimings = [
-      { step: 2, delay: 1800 },  // Crawling competitors
-      { step: 3, delay: 5000 },  // Generating sections
-      { step: 4, delay: 35000 }, // E-E-A-T verification
-    ];
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    stepTimings.forEach(({ step, delay }) => {
-      timers.push(setTimeout(() => setRewriteStep(step), delay));
-    });
-    // Simulate section progress during step 3
-    const sectionTimers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i <= 6; i++) {
-      sectionTimers.push(setTimeout(() => {
-        setRewriteStep(3);
-        setRewriteSectionProgress({ current: i, total: 6 });
-      }, 5000 + i * 4500));
-    }
+    // Step B: Generate a stable numeric job ID for this rewrite run.
+    // We use a timestamp-based ID that is unique per session.
+    // The server will register this ID in the SSE registry when it receives it.
+    const newJobId = Date.now();
+    rewriteJobIdRef.current = newJobId;
+    setActiveRewriteJobId(newJobId); // activates useRewriteStream
 
     try {
       const result = await rewriteMutation.mutateAsync({
@@ -3452,9 +3445,9 @@ function WhatIfSection({
         h1: pageMetadata?.h1,
         metaDescription: pageMetadata?.metaDescription,
         language: "pl",
+        // Step B: pass stream job ID so server emits SSE events
+        streamJobId: newJobId,
       });
-      // Clear all timers immediately on success
-      [...timers, ...sectionTimers].forEach(clearTimeout);
       const { rewrittenContent } = result;
       if (result.competitorInsights && result.competitorInsights.count > 0) {
         toast.success(`✨ Przeanalizowano ${result.competitorInsights.count} domen konkurencji z AI Citations`);
@@ -3522,7 +3515,6 @@ function WhatIfSection({
       }
       setActiveResultTab("content");
     } catch (err: unknown) {
-      [...timers, ...sectionTimers].forEach(clearTimeout);
       const msg = err instanceof Error ? err.message : "Rewrite AI nie powiódł się";
       if (msg === "UPGRADE_REQUIRED") {
         setError("Ta funkcja wymaga planu Starter lub wyższego.");
@@ -3531,8 +3523,8 @@ function WhatIfSection({
       }
     } finally {
       setIsRewriting(false);
-      setRewriteStep(0);
-      setRewriteSectionProgress(null);
+      // Step B: deactivate SSE stream after completion (success or error)
+      setActiveRewriteJobId(null);
     }
   }
 

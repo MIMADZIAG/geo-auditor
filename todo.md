@@ -1455,3 +1455,24 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Tests: server/citation/sse.test.ts — 24 testy (registry, event contract, worker integration, memory safety, fallback)
 - [x] Fix: sseRegistry.ts — domyślny listener "error" na EventEmitter (Node.js unhandled error prevention)
 - [x] Wszystkie 540 testów przechodzi
+
+## SSE Follow-up Steps (A, B, C)
+
+### Step A — Citation Spinner in Pulse Monitor
+- [x] CitationPulse.tsx: PagePulsePanel subscribes to useCitationStream when active job exists
+- [x] CitationPulse.tsx: per-engine live grid visible in card header (not just expanded state)
+- [x] CitationPulse.tsx: "Sprawdzam…" badge with engine name when streaming active
+
+### Step B — SSE Streaming for Signal Rewrite
+- [x] server/rewrite/rewriteSSERegistry.ts — RewriteSSERegistry (job-scoped, typed events: step, section, done, error)
+- [x] server/rewrite/rewriteSSEHandler.ts — GET /api/rewrite/stream/:jobId
+- [x] server/_core/index.ts — register rewrite SSE route
+- [x] server/routers.ts — rewrite procedure emits SSE events via registry (step changes, section progress, done)
+- [x] client/src/hooks/useRewriteStream.ts — EventSource hook for rewrite progress
+- [x] Results.tsx — replace setTimeout fake progress with real SSE stream events
+
+### Step C — Last-Event-ID Replay Buffer
+- [x] sseRegistry.ts — bounded ring buffer (max 200 events per job, FIFO eviction)
+- [x] sseRegistry.ts — each stored event has seq ID + timestamp
+- [x] sseHandler.ts — read Last-Event-ID header, replay missed events on reconnect
+- [x] useCitationStream.ts — pass Last-Event-ID on reconnect via EventSource URL param

@@ -14,6 +14,7 @@ import { getAuditById } from "../db";
 import { startMonitoringWorker } from "../monitoring/worker";
 import { runWeeklyDigestCron } from "../monitoring/weeklyDigest";
 import { registerCitationSSERoute } from "../citation/sseHandler";
+import { rewriteSSEHandler } from "../rewrite/rewriteSSEHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -93,6 +94,9 @@ async function startServer() {
   // Citation Intelligence SSE streaming endpoint
   // MUST be registered before express.json() middleware to avoid body parsing on streaming routes
   registerCitationSSERoute(app);
+
+  // Signal Rewrite SSE streaming endpoint — real-time pipeline step + section progress
+  app.get("/api/rewrite/stream/:jobId", rewriteSSEHandler);
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);

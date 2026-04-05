@@ -22,6 +22,13 @@
  *  5. Typed events — all event payloads are strongly typed so TypeScript
  *     enforces the contract between worker and client.
  *
+ *  6. Last-Event-ID replay (Step C) — every emitted event is appended to a
+ *     per-job bounded ring buffer (max REPLAY_BUFFER_SIZE entries). When a
+ *     client reconnects with a Last-Event-ID header, the handler replays all
+ *     events with seq > lastSeenId before subscribing to live events.
+ *     This eliminates the "missed events during reconnect" window without
+ *     requiring Redis or persistent storage.
+ *
  * Event types emitted per job:
  *   "result"   — one CitationResult as it arrives from an engine query
  *   "progress" — lightweight heartbeat with round/engine/total counters
@@ -37,6 +44,10 @@
  *   // SSE endpoint side:
  *   const sub = reg.subscribe(jobId, (event, payload) => { ... });
  *   req.on("close", () => sub.unsubscribe());
+ *
+ *   // Replay on reconnect:
+ *   const missed = reg.getReplayBuffer(jobId, lastSeenSeq);
+ *   for (const entry of missed) { sendSSEEvent(res, entry.event, entry.payload); }
  */
 
 import { EventEmitter } from "events";
@@ -74,6 +85,15 @@ export type SSEEventMap = {
 
 export type SSEEventType = keyof SSEEventMap;
 
+// ─── Replay buffer types ──────────────────────────────────────────────────────
+
+export interface ReplayEntry<T extends SSEEventType = SSEEventType> {
+  /** Monotonically increasing sequence number — used as SSE event id */
+  seq: number;
+  event: T;
+  payload: SSEEventMap[T];
+}
+
 // ─── Registry entry ───────────────────────────────────────────────────────────
 
 interface RegistryEntry {
@@ -84,6 +104,11 @@ interface RegistryEntry {
   isTerminal: boolean;
   /** Cleanup timer handle */
   cleanupTimer: ReturnType<typeof setTimeout> | null;
+  /**
+   * Step C: Bounded ring buffer of emitted events for Last-Event-ID replay.
+   * Oldest entries are evicted when the buffer exceeds REPLAY_BUFFER_SIZE.
+   */
+  replayBuffer: ReplayEntry[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -96,6 +121,25 @@ const TTL_ACTIVE_MS = 30 * 60 * 1000; // 30 minutes
 
 /** Maximum number of listeners per emitter (prevents Node.js memory leak warning) */
 const MAX_LISTENERS = 50;
+
+/**
+ * Step C: Maximum events stored in the per-job replay buffer.
+ * A citation job typically emits ~50–150 events (results + progress + done).
+ * 200 gives comfortable headroom without excessive memory use.
+ * At ~300 bytes/event avg, this is ~60 KB per active job.
+ */
+const REPLAY_BUFFER_SIZE = 200;
+
+// ─── Monotonic sequence counter ───────────────────────────────────────────────
+// Process-scoped counter — unique across all jobs in this process lifetime.
+// Using a module-level counter (not per-job) ensures global uniqueness,
+// which matters if a client reconnects and provides a Last-Event-ID from
+// a previous job's event stream.
+
+let _globalSeq = 0;
+function nextSeq(): number {
+  return ++_globalSeq;
+}
 
 // ─── CitationSSERegistry ──────────────────────────────────────────────────────
 
@@ -120,6 +164,7 @@ class CitationSSERegistry {
         lastActivityAt: Date.now(),
         isTerminal: false,
         cleanupTimer: null,
+        replayBuffer: [],
       };
       this.jobs.set(jobId, entry);
     }
@@ -142,11 +187,26 @@ class CitationSSERegistry {
   /**
    * Emit a typed event for a specific job.
    * Called by the citation worker.
+   *
+   * Step C: Every emitted event is appended to the per-job replay buffer.
+   * The buffer is bounded — oldest entries are evicted when full.
    */
   emit<T extends SSEEventType>(jobId: number, event: T, payload: SSEEventMap[T]): void {
     const entry = this.ensureEntry(jobId);
     entry.lastActivityAt = Date.now();
-    entry.emitter.emit(event, payload);
+
+    // Step C: Assign a global sequence number and append to replay buffer
+    const seq = nextSeq();
+    const replayEntry: ReplayEntry<T> = { seq, event, payload };
+    entry.replayBuffer.push(replayEntry as ReplayEntry);
+
+    // Evict oldest entry if buffer is full (ring buffer semantics)
+    if (entry.replayBuffer.length > REPLAY_BUFFER_SIZE) {
+      entry.replayBuffer.shift();
+    }
+
+    // Emit to live subscribers — pass seq so the SSE handler can use it as event id
+    entry.emitter.emit(event, payload, seq);
 
     if (event === "done" || event === "error") {
       entry.isTerminal = true;
@@ -159,21 +219,22 @@ class CitationSSERegistry {
    * Returns an unsubscribe function — MUST be called when the client disconnects.
    *
    * @param jobId - The citation job to subscribe to
-   * @param onEvent - Callback invoked for each event
+   * @param onEvent - Callback invoked for each event, with its sequence number
    * @returns Object with unsubscribe() method
    */
   subscribe(
     jobId: number,
-    onEvent: <T extends SSEEventType>(event: T, payload: SSEEventMap[T]) => void,
+    onEvent: <T extends SSEEventType>(event: T, payload: SSEEventMap[T], seq: number) => void,
   ): { unsubscribe: () => void } {
     const entry = this.ensureEntry(jobId);
 
     // Typed handler wrappers — one per event type
-    const handlers: Partial<Record<SSEEventType, (payload: any) => void>> = {
-      result: (p: CitationResult) => onEvent("result", p),
-      progress: (p: SSEProgressPayload) => onEvent("progress", p),
-      done: (p: SSEDonePayload) => onEvent("done", p),
-      error: (p: SSEErrorPayload) => onEvent("error", p),
+    // Each handler receives (payload, seq) from the emitter
+    const handlers: Partial<Record<SSEEventType, (payload: any, seq: number) => void>> = {
+      result: (p: CitationResult, seq: number) => onEvent("result", p, seq),
+      progress: (p: SSEProgressPayload, seq: number) => onEvent("progress", p, seq),
+      done: (p: SSEDonePayload, seq: number) => onEvent("done", p, seq),
+      error: (p: SSEErrorPayload, seq: number) => onEvent("error", p, seq),
     };
 
     for (const [event, handler] of Object.entries(handlers)) {
@@ -187,6 +248,24 @@ class CitationSSERegistry {
         }
       },
     };
+  }
+
+  /**
+   * Step C: Return all buffered events with seq > lastSeenSeq.
+   *
+   * Called by the SSE handler when a client reconnects with a Last-Event-ID
+   * header. The handler replays these events before subscribing to live events,
+   * ensuring no events are missed during the reconnect window.
+   *
+   * @param jobId       - The citation job
+   * @param lastSeenSeq - The seq value from the client's Last-Event-ID header.
+   *                      Pass 0 to get all buffered events.
+   * @returns Ordered array of replay entries (oldest first)
+   */
+  getReplayBuffer(jobId: number, lastSeenSeq: number): ReplayEntry[] {
+    const entry = this.jobs.get(jobId);
+    if (!entry) return [];
+    return entry.replayBuffer.filter(e => e.seq > lastSeenSeq);
   }
 
   /**
@@ -221,6 +300,11 @@ class CitationSSERegistry {
   /** Visible for testing */
   get size(): number {
     return this.jobs.size;
+  }
+
+  /** Step C: Visible for testing — returns replay buffer for a job */
+  getReplayBufferForTesting(jobId: number): ReplayEntry[] {
+    return this.jobs.get(jobId)?.replayBuffer ?? [];
   }
 }
 

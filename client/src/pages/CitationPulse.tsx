@@ -16,7 +16,7 @@
  *   - Competitor alert (who is cited instead of you)
  *   - Upsell triggers for phrase limits and Pro features
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PhraseManager } from "@/components/PhraseManager";
+import { useCitationStream } from "@/hooks/useCitationStream";
 import {
   Brain, Zap, Eye, Flame, TrendingUp, TrendingDown, Minus,
   AlertTriangle, CheckCircle, Clock, RefreshCw, Lock, Target,
@@ -181,8 +182,53 @@ function PagePulsePanel({
     { enabled: expanded }
   );
   const phraseHistory = phraseHistoryQuery.data ?? [];
-
   const engineBreakdown = engineBreakdownQuery.data ?? [];
+
+  // ── Step A: Live citation job status + SSE stream ────────────────────────────────
+  // Poll for active citation job at most once per 5s (lightweight — only when needed).
+  // Once a job is found, SSE stream takes over for real-time per-engine updates.
+  const activeJobQuery = trpc.monitoring.getActiveCitationJob.useQuery(
+    { monitoredPageId: page.id },
+    {
+      refetchInterval: (query) => {
+        // Stop polling once job reaches terminal state
+        const d = query.state.data;
+        if (!d || d.status === "completed" || d.status === "failed") return false;
+        return 5000;
+      },
+    }
+  );
+  const activeJob = activeJobQuery.data;
+  const isJobActive = activeJob?.status === "pending" || activeJob?.status === "running";
+
+  // Subscribe to SSE stream only while job is active
+  const { streamResults, progress: streamProgress, isDone: streamIsDone } = useCitationStream(
+    isJobActive ? activeJob?.jobId ?? null : null
+  );
+
+  // When stream completes, refetch the page list to update citation counts
+  const utils = trpc.useUtils();
+  useEffect(() => {
+    if (streamIsDone) {
+      // Brief delay to allow DB write to commit before refetch
+      const t = setTimeout(() => {
+        utils.monitoring.getActiveCitationJob.invalidate({ monitoredPageId: page.id });
+        utils.monitoring.list.invalidate();
+      }, 1200);
+      return () => clearTimeout(t);
+    }
+  }, [streamIsDone]);
+
+  // Live per-engine counters from stream (while job is running)
+  const streamEngineCounts = useMemo(() => {
+    const counts: Record<string, { cited: number; total: number }> = {};
+    for (const r of streamResults) {
+      if (!counts[r.engine]) counts[r.engine] = { cited: 0, total: 0 };
+      counts[r.engine].total++;
+      if (r.isCited === "yes" || r.isCited === "domain") counts[r.engine].cited++;
+    }
+    return counts;
+  }, [streamResults]);
 
   return (
     <div className={`rounded-xl border bg-card transition-all ${statusConfig.bg}`}>
@@ -206,32 +252,86 @@ function PagePulsePanel({
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">{page.label || domain}</p>
             <p className="text-xs text-muted-foreground truncate">{page.url}</p>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className={`text-xs font-medium ${statusConfig.color}`}>
-                {statusConfig.label}
-              </span>
-              {hasCitationData && (
-                <span className={`text-xs tabular-nums font-semibold ${
-                  citedEngines >= 3 ? "text-emerald-400" :
-                  citedEngines >= 1 ? "text-amber-400" : "text-red-400"
-                }`}>
-                  {citedEngines}/{totalEngines} silników AI
+
+            {/* ── Live SSE status row (Step A) ─────────────────────────────────────── */}
+            {isJobActive ? (
+              <div className="mt-1.5 space-y-1.5">
+                {/* Spinner badge */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2 py-0.5">
+                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    {streamProgress
+                      ? `Sprawdzam ${streamProgress.engine === "google" ? "Google AI" : streamProgress.engine === "chatgpt" ? "ChatGPT" : streamProgress.engine === "perplexity" ? "Perplexity" : "Gemini"}…`
+                      : "Sprawdzam silniki AI…"}
+                  </span>
+                  {streamResults.length > 0 && (
+                    <span className="text-[10px] text-zinc-500 tabular-nums">
+                      {new Set(streamResults.map(r => r.query)).size} fraz sprawdzonych
+                    </span>
+                  )}
+                </div>
+                {/* Per-engine mini live grid */}
+                {streamResults.length > 0 && (
+                  <div className="grid grid-cols-4 gap-1">
+                    {ENGINES.map((eng) => {
+                      const cnt = streamEngineCounts[eng.key];
+                      const isActiveEngine = streamProgress?.engine === eng.key;
+                      return (
+                        <div key={eng.key} className={`rounded-lg border px-1.5 py-1 text-center transition-all ${
+                          isActiveEngine ? "border-indigo-500/30 bg-indigo-500/10" : "border-border/30 bg-muted/10"
+                        }`}>
+                          <p className={`text-[9px] font-semibold truncate ${
+                            eng.key === "chatgpt" ? "text-[#10a37f]" :
+                            eng.key === "perplexity" ? "text-violet-400" :
+                            eng.key === "google" ? "text-blue-400" : "text-amber-400"
+                          }`}>{eng.label}</p>
+                          {cnt ? (
+                            <p className="text-xs font-bold text-foreground tabular-nums">{cnt.total}</p>
+                          ) : (
+                            <div className="flex justify-center h-4 items-center">
+                              {isActiveEngine
+                                ? <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                                : <span className="text-[9px] text-muted-foreground/40">—</span>
+                              }
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className={`text-xs font-medium ${statusConfig.color}`}>
+                  {statusConfig.label}
                 </span>
-              )}
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Audyt: {lastAudit}
-              </span>
-              {lastCitationDate && (
-                <span className="text-xs text-violet-400/80 flex items-center gap-1">
-                  <Eye className="w-3 h-3" /> Cytowania: {lastCitationDate}
+                {hasCitationData && (
+                  <span className={`text-xs tabular-nums font-semibold ${
+                    citedEngines >= 3 ? "text-emerald-400" :
+                    citedEngines >= 1 ? "text-amber-400" : "text-red-400"
+                  }`}>
+                    {citedEngines}/{totalEngines} silników AI
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Audyt: {lastAudit}
                 </span>
-              )}
-              {!lastCitationDate && !hasCitationData && (
-                <span className="text-xs text-amber-400/70 flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> Oczekuje na sprawdzenie cytowań
-                </span>
-              )}
-            </div>
+                {lastCitationDate && (
+                  <span className="text-xs text-violet-400/80 flex items-center gap-1">
+                    <Eye className="w-3 h-3" /> Cytowania: {lastCitationDate}
+                  </span>
+                )}
+                {!lastCitationDate && !hasCitationData && (
+                  <span className="text-xs text-amber-400/70 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Oczekuje na sprawdzenie cytowań
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Engine dots */}

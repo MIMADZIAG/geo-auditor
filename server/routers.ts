@@ -1196,6 +1196,9 @@ export const appRouter = router({
           contentBrief: z.string(),
           isQuickWin: z.boolean().optional(),
         })).optional(),
+        // Step B: SSE streaming job ID — client subscribes to /api/rewrite/stream/:streamJobId
+        // Optional: if omitted, procedure runs silently (backward-compatible)
+        streamJobId: z.number().int().positive().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Gate: Full Rewrite is only available on paid plans
@@ -1210,6 +1213,22 @@ export const appRouter = router({
             });
           }
         }
+
+        // ── Step B: SSE registry — emit real-time pipeline progress if streamJobId provided ──
+        // Lazy import keeps this module out of the critical path for non-streaming callers.
+        const { rewriteSSERegistry } = await import("./rewrite/rewriteSSERegistry");
+        const sseJobId = input.streamJobId ?? null;
+        if (sseJobId) rewriteSSERegistry.ensureEntry(sseJobId);
+
+        /** Emit a pipeline step change. No-op if no streamJobId. */
+        function emitStep(step: 1 | 2 | 3 | 4, label: string): void {
+          if (sseJobId) rewriteSSERegistry.emitStep(sseJobId!, { step, label });
+        }
+        /** Emit a section-generated event. No-op if no streamJobId. */
+        function emitSection(current: number, total: number, sectionTitle?: string): void {
+          if (sseJobId) rewriteSSERegistry.emitSection(sseJobId!, { current, total, sectionTitle });
+        }
+
         const { invokeLLM } = await import("./_core/llm");
         const { crawlCompetitors, formatCompetitorContext } = await import("./rewrite/competitorCrawler");
         const { verifyAndRevise } = await import("./rewrite/eeatVerifier");
@@ -1228,6 +1247,7 @@ export const appRouter = router({
 
         if (input.mode === "full_rewrite" && input.url) {
           try {
+            emitStep(1, "Głęboka analiza Twojej strony");
             console.log("[Rewrite] Starting pre-rewrite research pipeline...");
             const researchResult = await runRewriteResearch({
               url: input.url,
@@ -1253,6 +1273,7 @@ export const appRouter = router({
                 (researchAnswerFirstDraft ? `💡 SUGEROWANY ANSWER-FIRST OPENING:\n${researchAnswerFirstDraft}\n` : "") +
                 `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
             }
+            emitStep(2, "Analiza wzorzców AI Search");
             console.log(`[Rewrite] Research done: ${researchResult.queries.length} queries, ${researchResult.sources.length} sources`);
           } catch (e) {
             console.warn("[Rewrite] Research pipeline failed (non-fatal):", (e as Error).message);
@@ -1535,6 +1556,7 @@ ${cleanedContent.slice(0, 20000)}
             const MAX_SECTIONS = 8;
             const sectionsToProcess = sections.slice(0, MAX_SECTIONS);
 
+            emitStep(3, "Tworzenie treści przez zespół AI Agentów");
             console.log(`[Rewrite] Iterative mode: ${sectionsToProcess.length} sections detected`);
 
             if (sectionsToProcess.length <= 1) {
@@ -1609,6 +1631,7 @@ ${cleanedContent.slice(0, 20000)}
                   generatedSections.push(sectionContent.trim());
                 }
 
+                emitSection(i + 1, sectionsToProcess.length, section.heading || undefined);
                 console.log(`[Rewrite] Section ${i + 1}/${sectionsToProcess.length} done (${sectionContent.length} chars)`);
               }
 
@@ -1635,6 +1658,7 @@ ${cleanedContent.slice(0, 20000)}
           let eeatScore = null;
           let wasRevised = false;
           if (input.mode === "full_rewrite") {
+            emitStep(4, "Weryfikacja jakości — E-E-A-T & Helpful Content");
             try {
               const verifyResult = await verifyAndRevise(
                 rewritten,
@@ -1693,6 +1717,17 @@ ${cleanedContent.slice(0, 20000)}
             }
           }
 
+          // Step B: SSE — emit done event with content metadata
+          if (sseJobId) {
+            rewriteSSERegistry.emitDone(sseJobId, {
+              contentLength: finalContent.length,
+              wasRevised,
+              eeatScore: typeof eeatScore === "object" && eeatScore !== null
+                ? (eeatScore as { overall?: number }).overall ?? null
+                : null,
+            });
+          }
+
           return {
             rewrittenContent: finalContent,
             competitorInsights: crawledDomains.length > 0 ? {
@@ -1712,6 +1747,8 @@ ${cleanedContent.slice(0, 20000)}
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "AI rewrite failed";
+          // Step B: SSE — emit error event so client doesn't hang on a failed rewrite
+          if (sseJobId) rewriteSSERegistry.emitError(sseJobId, { message: msg });
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
         }
       }),

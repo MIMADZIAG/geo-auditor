@@ -25,6 +25,12 @@
  *  6. Backward compatibility — when `jobId` is null/undefined the hook
  *     is a no-op, preserving the existing idle state behavior.
  *
+ *  7. Last-Event-ID tracking (Step C) — the hook tracks the seq of the last
+ *     received event. On reconnect, the browser automatically sends this as
+ *     the `Last-Event-ID` header, and the server replays all missed events.
+ *     The hook deduplicates replayed events via the seenKeys set so the UI
+ *     does not show duplicates even if the same event is delivered twice.
+ *
  * Usage:
  *   const { streamResults, progress, isDone, isError } = useCitationStream(jobId);
  */
@@ -114,6 +120,15 @@ export function useCitationStream(
   const reconnectCount = useRef(0);
   // Whether we've already reached a terminal state
   const isTerminal = useRef(false);
+  /**
+   * Step C: Track the seq of the last received event.
+   * The browser automatically sends this as the `Last-Event-ID` header on
+   * reconnect, enabling the server to replay missed events from the buffer.
+   * We don't need to manually set this — the EventSource API handles it
+   * automatically via the `id:` field in the SSE wire format.
+   * This ref is kept for diagnostic/testing purposes only.
+   */
+  const lastSeenSeq = useRef<number>(0);
 
   const close = useCallback(() => {
     if (esRef.current) {
@@ -140,8 +155,11 @@ export function useCitationStream(
     seenKeys.current = new Set();
     reconnectCount.current = 0;
     isTerminal.current = false;
+    lastSeenSeq.current = 0;
 
     const url = `${SSE_BASE_URL}/${jobId}`;
+    // EventSource automatically sends Last-Event-ID on reconnect based on
+    // the `id:` field received in previous events. No manual header needed.
     const es = new EventSource(url);
     esRef.current = es;
 
@@ -149,8 +167,15 @@ export function useCitationStream(
     es.addEventListener("result", (e: MessageEvent) => {
       try {
         const result: StreamCitationResult = JSON.parse(e.data);
+        // Step C: update last seen seq from the event's lastEventId
+        if (e.lastEventId) {
+          const seq = parseInt(e.lastEventId, 10);
+          if (!isNaN(seq) && seq > lastSeenSeq.current) {
+            lastSeenSeq.current = seq;
+          }
+        }
         const key = `${result.query}|${result.engine}`;
-        if (seenKeys.current.has(key)) return; // dedup on reconnect
+        if (seenKeys.current.has(key)) return; // dedup on reconnect replay
         seenKeys.current.add(key);
         setStreamResults((prev) => [...prev, result]);
         setStatus("streaming");
@@ -162,6 +187,12 @@ export function useCitationStream(
     // ── "progress" event: lightweight counter update ──────────────────────────
     es.addEventListener("progress", (e: MessageEvent) => {
       try {
+        if (e.lastEventId) {
+          const seq = parseInt(e.lastEventId, 10);
+          if (!isNaN(seq) && seq > lastSeenSeq.current) {
+            lastSeenSeq.current = seq;
+          }
+        }
         const p: StreamProgress = JSON.parse(e.data);
         setProgress(p);
       } catch {
@@ -172,6 +203,12 @@ export function useCitationStream(
     // ── "done" event: terminal — job completed successfully ───────────────────
     es.addEventListener("done", (e: MessageEvent) => {
       try {
+        if (e.lastEventId) {
+          const seq = parseInt(e.lastEventId, 10);
+          if (!isNaN(seq) && seq > lastSeenSeq.current) {
+            lastSeenSeq.current = seq;
+          }
+        }
         const payload: StreamDonePayload = JSON.parse(e.data);
         setDonePayload(payload);
         setStatus("done");
@@ -187,7 +224,7 @@ export function useCitationStream(
     });
 
     // ── "error" event: terminal — job failed ─────────────────────────────────
-    es.addEventListener("error", (e: MessageEvent) => {
+    es.addEventListener("error", (_e: MessageEvent) => {
       // Note: this is the custom "error" SSE event, not the onerror handler
       setStatus("error");
       isTerminal.current = true;
@@ -196,6 +233,9 @@ export function useCitationStream(
     });
 
     // ── onerror: connection-level error (network drop, server restart) ────────
+    // Step C: On reconnect, the browser automatically sends Last-Event-ID,
+    // and the server replays missed events. The deduplication set prevents
+    // duplicate rendering of replayed events.
     es.onerror = () => {
       if (isTerminal.current) return; // already done — ignore stale error
 
@@ -207,8 +247,10 @@ export function useCitationStream(
         esRef.current = null;
         return;
       }
-      // EventSource will auto-reconnect after the retry interval (3s, set by server)
-      // We stay in "streaming" status to avoid UI flicker on brief network hiccups
+      // EventSource will auto-reconnect after the retry interval (3s, set by server).
+      // We stay in "streaming" status to avoid UI flicker on brief network hiccups.
+      // On reconnect, the browser sends Last-Event-ID, server replays missed events,
+      // and the deduplication set prevents duplicate rendering.
     };
 
     // ── Cleanup on unmount or jobId change ────────────────────────────────────

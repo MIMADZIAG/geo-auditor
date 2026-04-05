@@ -5,9 +5,19 @@
  *
  * Protocol (W3C Server-Sent Events):
  *   - Content-Type: text/event-stream
- *   - Each message: "event: <type>\ndata: <JSON>\n\n"
+ *   - Each message: "id: <seq>\nevent: <type>\ndata: <JSON>\n\n"
  *   - Heartbeat every 15 s to prevent proxy/load-balancer timeouts
  *   - Terminal events ("done", "error") are followed by stream close
+ *
+ * Step C — Last-Event-ID replay:
+ *   When a client reconnects after a network interruption, the browser
+ *   automatically sends the `Last-Event-ID` header with the seq of the last
+ *   event it received. This handler:
+ *     1. Parses the header value as an integer.
+ *     2. Calls registry.getReplayBuffer(jobId, lastSeenSeq) to get all missed events.
+ *     3. Replays them in order before subscribing to live events.
+ *   This eliminates the "missed events during reconnect" window without
+ *   requiring Redis or persistent storage.
  *
  * Security:
  *   - jobId is validated as a positive integer
@@ -19,14 +29,9 @@
  *
  * Connection lifecycle:
  *   1. Client connects → headers sent, heartbeat started
- *   2. If job is already terminal → send "done"/"error" from DB, close
- *   3. If job is active → subscribe to registry, stream events as they arrive
+ *   2. If job is already terminal → replay buffer + close
+ *   3. If job is active → replay missed events, then subscribe to live events
  *   4. Client disconnects → unsubscribe, clear heartbeat, no-op
- *
- * Reconnection (EventSource automatic retry):
- *   - "retry: 3000\n\n" hint sent on connect (3 s backoff)
- *   - "id: <seq>\n\n" on each event for Last-Event-ID resumption
- *     (full replay not implemented — client falls back to polling on reconnect)
  *
  * CORS:
  *   - Same-origin in production (Vite proxy in dev)
@@ -35,24 +40,22 @@
 
 import type { Express, Request, Response } from "express";
 import { getCitationRegistry } from "./sseRegistry";
-import type { SSEEventType, SSEEventMap } from "./sseRegistry";
+import type { SSEEventType, SSEEventMap, ReplayEntry } from "./sseRegistry";
 import { getDb } from "../db";
 import { citationJobs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 // ─── SSE wire format helpers ──────────────────────────────────────────────────
 
-let globalSeq = 0;
-
 function sendSSEEvent<T extends SSEEventType>(
   res: Response,
   event: T,
   payload: SSEEventMap[T],
+  seq: number,
 ): void {
-  const id = ++globalSeq;
   const data = JSON.stringify(payload);
   // W3C SSE format: id, event, data, blank line
-  res.write(`id: ${id}\nevent: ${event}\ndata: ${data}\n\n`);
+  res.write(`id: ${seq}\nevent: ${event}\ndata: ${data}\n\n`);
   // Flush immediately — critical for streaming through proxies
   if (typeof (res as any).flush === "function") {
     (res as any).flush();
@@ -107,13 +110,29 @@ export function registerCitationSSERoute(app: Express): void {
     // Retry hint: client should wait 3 s before reconnecting
     res.write("retry: 3000\n\n");
 
-    // ── 4. Handle already-terminal jobs ──────────────────────────────────────
+    // ── 4. Step C: Parse Last-Event-ID for replay ─────────────────────────────
+    // The browser sends this header automatically on reconnect.
+    // Value is the `id` field of the last event the client received.
+    const lastEventIdHeader = req.headers["last-event-id"];
+    const lastSeenSeq = lastEventIdHeader
+      ? parseInt(String(lastEventIdHeader), 10) || 0
+      : 0;
+
+    const registry = getCitationRegistry();
+
+    // ── 5. Handle already-terminal jobs ──────────────────────────────────────
     // If the job finished before the client connected (e.g., page refresh),
-    // send a synthetic "done" or "error" event immediately and close.
+    // replay the buffer (which includes the terminal event) and close.
     if (jobStatus === "completed" || jobStatus === "failed") {
-      const registry = getCitationRegistry();
-      if (!registry.isJobTerminal(jobId)) {
+      if (registry.hasJob(jobId)) {
+        // Replay all buffered events the client hasn't seen yet
+        const missed = registry.getReplayBuffer(jobId, lastSeenSeq);
+        for (const entry of missed) {
+          sendSSEEvent(res, entry.event as SSEEventType, entry.payload as SSEEventMap[SSEEventType], entry.seq);
+        }
+      } else {
         // Registry was cleared (server restart) — synthesize terminal event from DB status
+        const syntheticSeq = Date.now(); // stable enough for a synthetic event
         if (jobStatus === "completed") {
           sendSSEEvent(res, "done", {
             jobId,
@@ -121,22 +140,37 @@ export function registerCitationSSERoute(app: Express): void {
             foundCitation: false,
             totalQueriesChecked: 0,
             allCompetitorDomains: [],
-          });
+          }, syntheticSeq);
         } else {
-          sendSSEEvent(res, "error", { jobId, message: "Job failed" });
+          sendSSEEvent(res, "error", { jobId, message: "Job failed" }, syntheticSeq);
         }
       }
       res.end();
       return;
     }
 
-    // ── 5. Subscribe to live events ───────────────────────────────────────────
-    const registry = getCitationRegistry();
+    // ── 6. Step C: Replay missed events before subscribing to live stream ─────
+    // This handles the reconnect window: events emitted between disconnect and
+    // reconnect are replayed in order before the live subscription starts.
+    // We must replay BEFORE subscribing to avoid duplicate delivery.
+    const missedEvents = registry.getReplayBuffer(jobId, lastSeenSeq);
+    for (const entry of missedEvents) {
+      sendSSEEvent(res, entry.event as SSEEventType, entry.payload as SSEEventMap[SSEEventType], entry.seq);
+    }
+
+    // If the job became terminal during replay (all events including done/error
+    // were in the buffer), close the connection now.
+    if (registry.isJobTerminal(jobId)) {
+      res.end();
+      return;
+    }
+
+    // ── 7. Subscribe to live events ───────────────────────────────────────────
     let isClosed = false;
 
-    const subscription = registry.subscribe(jobId, (event, payload) => {
+    const subscription = registry.subscribe(jobId, (event, payload, seq) => {
       if (isClosed) return;
-      sendSSEEvent(res, event, payload as any);
+      sendSSEEvent(res, event, payload as any, seq);
       // Close stream after terminal events
       if (event === "done" || event === "error") {
         clearInterval(heartbeatTimer);
@@ -145,7 +179,7 @@ export function registerCitationSSERoute(app: Express): void {
       }
     });
 
-    // ── 6. Heartbeat — prevent proxy/LB timeout (every 15 s) ─────────────────
+    // ── 8. Heartbeat — prevent proxy/LB timeout (every 15 s) ─────────────────
     const heartbeatTimer = setInterval(() => {
       if (isClosed) {
         clearInterval(heartbeatTimer);
@@ -154,7 +188,7 @@ export function registerCitationSSERoute(app: Express): void {
       sendHeartbeat(res);
     }, 15_000);
 
-    // ── 7. Client disconnect cleanup ──────────────────────────────────────────
+    // ── 9. Client disconnect cleanup ──────────────────────────────────────────
     req.on("close", () => {
       isClosed = true;
       clearInterval(heartbeatTimer);
