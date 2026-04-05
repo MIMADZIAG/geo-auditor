@@ -1548,3 +1548,15 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Landing page WORKFLOW_PREVIEW (hero card) reorder — Citation Intelligence first
 - [x] Puppeteer fallback confirmed implemented in scraper.ts (terminated/aborted → headless Chromium bypass)
 - [x] 619 tests passing, 0 TypeScript errors
+
+## Session: Parallel Execution — Signal Audit + Citation Intelligence
+
+- [x] audit.start procedure: zwraca auditId natychmiast, audit działa w tle (fire-and-forget)
+- [x] Home.tsx: używa audit.start zamiast audit.run, nawiguje do /results natychmiast po otrzymaniu auditId
+- [x] Results.tsx: usunieto early return dla running/pending — strona renderuje się natychmiast
+- [x] Results.tsx: isAuditRunning flag — findings/score/llmRecs są null gdy audit running (null-safe)
+- [x] Results.tsx: bgCitation useEffect — startuje Citation Intelligence po 800ms od mount (nie czeka na audit.status === "completed")
+- [x] Results.tsx: Tab 02 Signal Audit — inline loading state z krokami gdy isAuditRunning, z linkiem do Citation Intelligence
+- [x] AICitationPanel: idle CTA dla anonimowych — emotional teaser "Kto pojawia się zamiast Ciebie?" z 4 engine badges
+- [x] Polling: audit.getById co 2s gdy status running/pending — automatyczne odświeżenie po zakończeniu audytu
+- [x] 619 testów, 0 błędów TypeScript

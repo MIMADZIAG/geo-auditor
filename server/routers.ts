@@ -179,6 +179,110 @@ export const appRouter = router({
       const count = Number(result[0]?.count ?? 0);
       return { totalAudits: count };
     }),
+
+    /**
+     * audit.start — Fire-and-forget variant of audit.run.
+     *
+     * Returns { auditId } IMMEDIATELY after creating the DB row (status="running").
+     * The full Signal Audit runs in the background — the client navigates to
+     * /results/:auditId right away and polls audit.getById for live progress.
+     *
+     * This enables TRUE PARALLEL execution:
+     *   - Signal Audit runs in the background (30–60s)
+     *   - Citation Intelligence starts concurrently on the frontend
+     *   - User sees live SSE feed from Citation from the very first second
+     *   - CitationLoadingBridge shows Signal Audit issues as they arrive
+     */
+    start: publicProcedure
+      .input(
+        z.object({
+          url: z.string().url("Please enter a valid URL (e.g. https://example.com)"),
+          monitoredPageId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const ip =
+          (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
+          (ctx.req as unknown as { ip?: string }).ip ??
+          "unknown";
+
+        if (!ctx.user) {
+          const { allowed, remaining, resetAt } = await checkRateLimit(ip);
+          if (!allowed) {
+            throw new TRPCError({
+              code: "TOO_MANY_REQUESTS",
+              message: `Free audit limit reached. You can run ${remaining} more audit${remaining !== 1 ? "s" : ""} after ${resetAt.toLocaleTimeString()}.`,
+            });
+          }
+          // Increment immediately to prevent concurrent abuse before audit finishes
+          await incrementRateLimit(ip);
+        }
+
+        const insertResult = await createAudit({
+          url: input.url,
+          userId: ctx.user?.id ?? null,
+          ipAddress: ip,
+          status: "running",
+        });
+        const auditId = Number((insertResult as unknown as [{ insertId: number }, unknown])[0]?.insertId);
+
+        // Fire-and-forget — do NOT await
+        const capturedMonitoredPageId = input.monitoredPageId;
+        (async () => {
+          try {
+            const result = await runAudit(input.url);
+            await updateAudit(auditId, {
+              status: result.error ? "failed" : "completed",
+              overallScore: result.overallScore,
+              technicalScore: result.findings.technical.score,
+              structuredDataScore: result.findings.structuredData.score,
+              contentStructureScore: result.findings.contentStructure.score,
+              eeatScore: result.findings.eeat.score,
+              aiCrawlerScore: result.findings.aiCrawlers.score,
+              metaTagsScore: result.findings.metaTags.score,
+              findings: result.findings as unknown as Record<string, unknown>,
+              recommendations: result.recommendations as unknown as Record<string, unknown>[],
+              llmRecommendations: result.llmResult?.recommendations as unknown as Record<string, unknown>[] ?? null,
+              llmAiInsight: result.llmResult?.aiInsight ?? null,
+              llmTopPriority: result.llmResult?.topPriority ?? null,
+              llmScoreGain: result.llmResult?.scoreGain ?? null,
+              llmDifficulty: result.llmResult?.difficulty ?? null,
+              contentIntelligence: result.contentIntelligence as unknown as Record<string, unknown> ?? null,
+              contentIntelligenceScore: result.contentIntelligence?.overallScore ?? null,
+              citeabilityScore: result.contentIntelligence?.citeabilityScore ?? null,
+              pageTitle: result.pageTitle,
+              pageType: result.pageType ?? null,
+              wafBlocked: result.wafBlocked ?? false,
+              errorMessage: result.error ?? null,
+              completedAt: new Date(),
+            });
+            if (capturedMonitoredPageId && result.overallScore != null) {
+              await updateMonitoredPageAfterAudit(capturedMonitoredPageId, auditId, result.overallScore);
+              await addScoreSnapshot({
+                monitoredPageId: capturedMonitoredPageId,
+                auditId,
+                overallScore: result.overallScore,
+                technicalScore: result.findings.technical.score,
+                structuredDataScore: result.findings.structuredData.score,
+                contentStructureScore: result.findings.contentStructure.score,
+                eeatScore: result.findings.eeat.score,
+                aiCrawlerScore: result.findings.aiCrawlers.score,
+                metaTagsScore: result.findings.metaTags.score,
+              });
+            }
+          } catch (err) {
+            await updateAudit(auditId, {
+              status: "failed",
+              errorMessage: err instanceof Error ? err.message : "Unknown error",
+              completedAt: new Date(),
+            }).catch(() => {/* non-fatal */});
+            console.error(`[audit.start] Background audit ${auditId} failed:`, err);
+          }
+        })();
+
+        // Return immediately — client navigates to /results/:auditId right away
+        return { auditId };
+      }),
   }),
 
   // ─── Monitoring procedures ────────────────────────────────────────────────────

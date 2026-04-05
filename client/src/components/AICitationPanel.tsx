@@ -1409,13 +1409,34 @@ export const AICitationPanel = forwardRef<AICitationPanelHandle, Props>(function
 
           {!user ? (
             <div className="space-y-3">
-              <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300">
-                Zaloguj się, aby uruchomić AI Visibility Check.
+              {/* Emotional teaser: show what they're missing */}
+              <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/8 border border-indigo-500/25 rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-200">Kto pojawia się zamiast Ciebie?</p>
+                    <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
+                      ChatGPT, Perplexity i Google AI już teraz odpowiadają na pytania Twoich klientów.
+                      Sprawdź, czy cytują Twoją stronę — czy konkurencję.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {["ChatGPT Search", "Google AI Overviews", "Perplexity AI", "Gemini"].map((engine) => (
+                    <span key={engine} className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800/60 border border-white/8 text-zinc-400">{engine}</span>
+                  ))}
+                </div>
               </div>
               <Button onClick={() => { window.location.href = getLoginUrl(); }}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5">
-                Zaloguj się i sprawdź widoczność →
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 text-sm">
+                Zaloguj się i sprawdź widoczność w AI →
               </Button>
+              <p className="text-[11px] text-center text-zinc-600">Bezpłatnie · Bez karty kredytowej</p>
             </div>
           ) : (
             <Button onClick={handleStart} disabled={startCheck.isPending}

@@ -503,25 +503,36 @@ export default function Results() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount — handleSwitchToVisibility is stable (useCallback [])
 
-  // #7 — Background auto-start Citation Intelligence when audit completes
-  // User doesn’t need to click the tab — citation check starts silently in the background.
-  // When user switches to Tab 02, results are already loading or ready.
+  // #7 — Parallel auto-start Citation Intelligence on page mount.
+  // With audit.start, the audit runs in the background. We no longer need to wait
+  // for audit.status === "completed" — Citation Intelligence can start immediately
+  // because it fetches the page content independently via its own scraper.
+  //
+  // Flow:
+  //   t=0ms   → User submits URL on Home, audit.start returns auditId immediately
+  //   t=~50ms → Navigate to /results/:auditId
+  //   t=~500ms → AICitationPanel mounts, registers ref
+  //   t=~800ms → bgCitation fires startCheck() — Citation Intelligence begins
+  //   t=~1s   → First SSE events arrive (EmotionalTensionFeed shows live queries)
+  //   t=30-60s → Signal Audit completes in background, tabs fill in
+  //
+  // For anonymous users: AICitationPanel.handleStart redirects to login.
+  // The idle state is preserved — after login+return, user clicks manually.
   const bgCitationFiredRef = useRef(false);
   useEffect(() => {
     if (bgCitationFiredRef.current) return;
-    if (!audit || (audit.status !== "completed" && audit.status !== "running")) return;
-    if (audit.status === "running") return; // Still running, wait for completion
+    if (!auditId) return;
     if (citationStatusRef.current !== "idle") return; // Already started or done
     bgCitationFiredRef.current = true;
-    // Delay 1.5s after audit loads so the panel has time to mount and register ref
+    // 800ms delay: AICitationPanel needs time to mount and register its ref
     const timer = setTimeout(() => {
       if (citationStatusRef.current === "idle") {
         citationPanelRef.current?.startCheck();
       }
-    }, 1500);
+    }, 800);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audit?.status]); // Re-run when audit status changes to 'done'
+  }, [auditId]); // Fire once when auditId is known (immediately on mount)
 
   // B1 — Celebration moment: compare current score with previous score for same URL
   // Uses localStorage to persist the last known score per URL.
@@ -569,20 +580,24 @@ export default function Results() {
   // ── Early returns (after all hooks) ──
   if (isLoading) return <LoadingState />;
   if (error || !audit) return <ErrorState message={error?.message ?? "Audyt nie został znaleziony."} />;
-  if (audit.status === "running" || audit.status === "pending") return <LoadingState />;
+  // NOTE: We no longer early-return for running/pending status.
+  // With audit.start (fire-and-forget), the page renders immediately while
+  // Signal Audit runs in the background. Citation Intelligence starts in parallel.
+  // Tab 02 (Signal Audit) shows an inline loading state when audit is still running.
+  const isAuditRunning = audit.status === "running" || audit.status === "pending";
   if (audit.status === "failed") {
     return <ErrorState message={audit.errorMessage ?? "Audyt nie powiódł się. Spróbuj ponownie."} />;
   }
 
-  const findings = audit.findings as unknown as AuditResult["findings"];
-  const recommendations = audit.recommendations as unknown as Recommendation[];
-  const llmRecs = audit.llmRecommendations as unknown as LLMRecommendation[] | null;
-  const llmAiInsight = audit.llmAiInsight as string | null;
-  const llmTopPriority = audit.llmTopPriority as string | null;
-  const llmScoreGain = (audit as unknown as { llmScoreGain?: number | null }).llmScoreGain ?? null;
-  const llmDifficulty = (audit as unknown as { llmDifficulty?: string | null }).llmDifficulty as "easy" | "medium" | "hard" | null;
-  const overallScore = Math.round(audit.overallScore ?? 0);
-  const contentIntelligence = audit.contentIntelligence as unknown as ContentIntelligenceResult | null;
+  const findings = isAuditRunning ? null : (audit.findings as unknown as AuditResult["findings"]);
+  const recommendations = isAuditRunning ? [] : (audit.recommendations as unknown as Recommendation[]);
+  const llmRecs = isAuditRunning ? null : (audit.llmRecommendations as unknown as LLMRecommendation[] | null);
+  const llmAiInsight = isAuditRunning ? null : (audit.llmAiInsight as string | null);
+  const llmTopPriority = isAuditRunning ? null : (audit.llmTopPriority as string | null);
+  const llmScoreGain = isAuditRunning ? null : ((audit as unknown as { llmScoreGain?: number | null }).llmScoreGain ?? null);
+  const llmDifficulty = isAuditRunning ? null : ((audit as unknown as { llmDifficulty?: string | null }).llmDifficulty as "easy" | "medium" | "hard" | null);
+  const overallScore = isAuditRunning ? 0 : Math.round(audit.overallScore ?? 0);
+  const contentIntelligence = isAuditRunning ? null : (audit.contentIntelligence as unknown as ContentIntelligenceResult | null);
 
   // ── Top issues for CitationLoadingBridge (Warunek 1) ──────────────────────
   // Extracted from findings — top 3 by impact (fail > warning, high > medium > low)
@@ -897,15 +912,49 @@ export default function Results() {
       {activeTab === "optimization" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
+          {/* Inline loading state when Signal Audit is still running in background */}
+          {isAuditRunning && (
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
+                  <Brain className="w-5 h-5 text-primary animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">Signal Audit w toku…</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Skanujemy 40+ sygnałów AI Search. Wyniki pojawią się za chwilę.</div>
+                </div>
+                <div className="ml-auto">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {[
+                  "Sprawdzam dostęp crawlerów AI (robots.txt, sitemap)",
+                  "Analizuję dane strukturalne (Schema.org, JSON-LD)",
+                  "Oceniam sygnały E-E-A-T i autorytet treści",
+                  "Obliczam AI Readiness Score (40+ sygnałów)",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-xs text-muted-foreground">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" style={{ animationDelay: `${i * 300}ms` }} />
+                    {step}
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground/60 pt-1 border-t border-border/20">
+                → Przejdź do <button className="text-primary hover:underline font-medium" onClick={() => handleSwitchToVisibility(false)}>Citation Intelligence</button> — już działa równolegle
+              </div>
+            </div>
+          )}
+
           {/* Score Hero */}
-          <ScoreHero
+          {!isAuditRunning && <ScoreHero
             score={overallScore}
             pageTitle={audit.pageTitle ?? audit.url}
             url={audit.url}
             findings={findings}
             citeabilityScore={contentIntelligence?.citeabilityScore}
             pageType={(audit as unknown as { pageType?: string | null }).pageType}
-          />
+          />}
 
           {/* Competitive Decay */}
           <CompetitorDecayCard
@@ -946,12 +995,12 @@ export default function Results() {
           />
 
           {/* Issues & Fixes */}
-          <IssuesAndFixes
+          {!isAuditRunning && <IssuesAndFixes
             findings={findings}
             llmRecs={llmResult?.recommendations ?? null}
             recommendations={recommendations}
-          />
-          {!hasPaidPlan && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
+          />}
+          {!hasPaidPlan && !isAuditRunning && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
           {/* ── Knowledge Graph Readiness Score (Mike King / iPullRank) ── */}
           {findings?.contentStructure && (
             <KnowledgeGraphReadinessPanel

@@ -274,12 +274,12 @@ export default function Home() {
 
   usePendingAudit(isAuthenticated);
 
-  const createAuditMutation = trpc.audit.run.useMutation({
+  // audit.start returns auditId immediately (fire-and-forget backend)
+  // → navigate to /results right away, both Signal Audit + Citation Intelligence run in parallel
+  const createAuditMutation = trpc.audit.start.useMutation({
     onSuccess: (data: { auditId: number }) => {
-      auditReadyRef.current = data.auditId;
-      if (timerDoneRef.current) {
-        navigate(`/results/${data.auditId}`);
-      }
+      // Navigate immediately — no timer gate needed
+      navigate(`/results/${data.auditId}`);
     },
     onError: (error: { message?: string }) => {
       setIsSubmitting(false);
@@ -289,12 +289,10 @@ export default function Home() {
     },
   });
 
+  // Legacy timer callback — kept for compatibility but no longer gates navigation
   const handleTimerComplete = useCallback(() => {
     timerDoneRef.current = true;
-    if (auditReadyRef.current !== null) {
-      navigate(`/results/${auditReadyRef.current}`);
-    }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (!isSubmitting) return;
