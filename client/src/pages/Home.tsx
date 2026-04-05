@@ -264,14 +264,14 @@ export default function Home() {
                 <span>Audyt na poziomie podstrony · GEO / AEO</span>
               </div>
 
-              {/* Headline — answer first, precise, no fluff */}
+              {/* Headline — Visibility First: emotional question, not a tool description */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight mb-5">
-                Twoja strona istnieje.<br />
-                <span className="gradient-text">AI Search jej nie widzi.</span>
+                Czy AI poleca<br />
+                <span className="gradient-text">Twoją stronę?</span>
               </h1>
 
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-                GEO-Auditor skanuje konkretny URL i zwraca precyzyjną diagnostykę: które sygnały blokują Cię w ChatGPT, Gemini i Google AI Overviews — z gotową listą poprawek i przepisaną treścią.
+                Kiedy klient pyta ChatGPT, Perplexity lub Google AI — Twoja strona powinna być w odpowiedzi. Sprawdź w 60 sekund, czy AI Cię widzi, kto Cię wyprzedza i co zmienić, żeby AI zaczęło Cię polecać.
               </p>
 
               {/* URL Input — dominant, Perplexity-style */}
@@ -311,8 +311,8 @@ export default function Home() {
                     ) : (
                       <>
                         <Search className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Analizuj stronę</span>
-                        <span className="sm:hidden">Analizuj</span>
+                        <span className="hidden sm:inline">Sprawdź widoczność w AI</span>
+                        <span className="sm:hidden">Sprawdź</span>
                       </>
                     )}
                   </Button>
@@ -373,15 +373,15 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                    Bez konta
+                    Bez rejestracji
                   </span>
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                    Wyniki w 60 sekund
+                    Wynik w 60 sekund
                   </span>
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/80" />
-                    1 audyt bezpłatnie
+                    4 silniki AI jednocześnie
                   </span>
                 </div>
               )}

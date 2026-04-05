@@ -337,9 +337,10 @@ export default function Results() {
   const [activeTab, setActiveTab] = useState<"optimization" | "visibility" | "content">(
     () => {
       const tab = new URLSearchParams(window.location.search).get("tab");
-      if (tab === "visibility") return "visibility";
+      if (tab === "optimization") return "optimization";
       if (tab === "content") return "content";
-      return "optimization";
+      // Visibility First: Citation Intelligence is the default entry point
+      return "visibility";
     }
   );
 
@@ -448,6 +449,19 @@ export default function Results() {
       }
     }, 600);
   }, []);
+
+  // Listen for geo:switch-tab custom events dispatched by child components
+  // (e.g., CitationZeroState "Sprawdz bariery techniczne" CTA switches to Signal Audit)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tab = (e as CustomEvent<string>).detail;
+      if (tab === "optimization") setActiveTab("optimization");
+      else if (tab === "visibility") handleSwitchToVisibility(true);
+      else if (tab === "content") setActiveTab("content");
+    };
+    window.addEventListener("geo:switch-tab", handler);
+    return () => window.removeEventListener("geo:switch-tab", handler);
+  }, [handleSwitchToVisibility]);
 
   const { data: audit, isLoading, error } = trpc.audit.getById.useQuery(
     { id: auditId },
@@ -657,20 +671,9 @@ export default function Results() {
           <div className="border-t border-border/20">
             <div className="max-w-5xl mx-auto px-4 sm:px-6">
               <div className="flex items-center justify-between h-11">
-                {/* Tabs */}
+                {/* Tabs — Visibility First order: Citation 01, Audit 02, Rewrite 03 */}
                 <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveTab("optimization")}
-                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
-                      activeTab === "optimization"
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">01 · Signal Audit</span>
-                    <span className="sm:hidden">Audyt</span>
-                  </button>
+                  {/* 01 · Citation Intelligence — default entry point (Visibility First) */}
                   <button
                     onClick={() => handleSwitchToVisibility(true)}
                     className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
@@ -680,7 +683,7 @@ export default function Results() {
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">02 · Citation Intelligence</span>
+                    <span className="hidden sm:inline">01 · Citation Intelligence</span>
                     <span className="sm:hidden">Cytowania</span>
                     {citationStatus === "running" && (
                       <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -694,6 +697,20 @@ export default function Results() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-red-500/10 text-red-400">0</span>
                     )}
                   </button>
+                  {/* 02 · Signal Audit */}
+                  <button
+                    onClick={() => setActiveTab("optimization")}
+                    className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${
+                      activeTab === "optimization"
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Shield className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">02 · Signal Audit</span>
+                    <span className="sm:hidden">Audyt</span>
+                  </button>
+                  {/* 03 · Signal Rewrite */}
                   <button
                     onClick={() => setActiveTab("content")}
                     className={`flex items-center gap-2 px-4 h-11 text-xs font-semibold border-b-2 transition-colors ${

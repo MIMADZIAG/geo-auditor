@@ -1500,3 +1500,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] AICitationPanel — QuickSignalCard persists during running state (stays visible above EmotionalTensionFeed)
 - [x] AICitationPanel — QuickSignalCard fades out gracefully when full results arrive
 - [x] server/citation/quickSignal.test.ts — unit tests for quickSignal
+
+## Visibility First — 3 kroki (P0/P1)
+
+- [x] Step 1 (P0): Zmień domyślny tab z "optimization" na "visibility" w Results.tsx
+- [x] Step 1 (P0): Przenieś Citation Intelligence na pozycję 01 w nawigacji zakładek
+- [x] Step 1 (P0): Zaktualizuj numerację pozostałych zakładek (Signal Audit → 02, Signal Rewrite → 03)
+- [x] Step 2 (P1): CitationZeroState.tsx — karta "Żaden silnik AI nie cytuje tej strony" z top-3 konkurentami- [x] Step 2 (P1): Podcłącz CitationZeroState do AICitationPanel gdy isCompleted && !foundCitation
+- [x] Step 2 (P1): CTA w CitationZeroState → Pulse Monitor (nawigacja do /pulse)
+- [x] Step 3 (P1): Landing page hero CTA zmień na "Czy AI poleca Twoją stronę?"
+- [x] Step 3 (P1): Subtext pod przyciskiem: "Twoja widoczność w AI Search w 60 sekund"
+- [x] Step 3 (P1): Zaktualizuj opis produktu w hero section
