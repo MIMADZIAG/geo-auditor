@@ -1644,3 +1644,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Emotional loading state w AI Visibility Check: progress bar z nazwami silników + live feed zapytań budujący napięcie przed Reveal
 - [x] IssueCard severity bar: zamiana badge'y priorytetów na kolorowy lewy border (czerwony/amber/zielony)
 - [x] Before/After Quick Wins: diff view dla top rekomendacji (Twój H1 vs H1 zoptymalizowany pod AI)
+
+## Dashboard Sidebar Fix
+
+- [x] Dodanie Signal Audit między AI Visibility Monitor a Signal Rewrite w nawigacji
+- [x] Usunięcie duplikatu widgetu Signal Rewrite (drugi, pod separatorem)
+- [x] Zastąpienie duplikatu widgetem Content Creator (nowe podstrony, nie rewrite)
+- [x] Usunięcie zbędnej linii przerwy między Signal Rewrite a Plany i cennik

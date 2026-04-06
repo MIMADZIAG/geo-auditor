@@ -19,7 +19,7 @@ import {
   Lock, ChevronRight, RefreshCw, Star, Target, Sparkles, Shield,
   Globe, ArrowUpRight, Activity, FileText, Search, Bot, Trophy,
   Flame, Info, Brain, LogIn, History, TrendingUp, TrendingDown, Minus,
-  ChevronDown, ChevronUp, LayoutDashboard,
+  ChevronDown, ChevronUp, LayoutDashboard, PenLine,
 } from "lucide-react";
 // Note: CheckCircle2 and XCircle are imported above for workflow status pills
 
@@ -1533,15 +1533,18 @@ export default function Dashboard() {
               AI Visibility Monitor
             </div>
           </Link>
-          <Link href="/page-creator">
+           <Link href="/page-creator">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
               <Sparkles className="w-3.5 h-3.5" />
               Signal Rewrite
             </div>
           </Link>
-
-          <div className="h-px bg-border/20 mx-1 my-2" />
-
+          <Link href="/dashboard">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <Search className="w-3.5 h-3.5" />
+              Signal Audit
+            </div>
+          </Link>
           <Link href="/pricing">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
               <Star className="w-3.5 h-3.5" />
@@ -1549,23 +1552,20 @@ export default function Dashboard() {
             </div>
           </Link>
 
-          {/* Signal Rewrite upsell widget — PLG retention hook */}
+          {/* Content Creator upsell widget — PLG growth hook for new pages */}
           <div className="mt-auto pt-3">
             <Link href="/page-creator">
-              <div className="rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/10 via-purple-500/8 to-transparent p-3 cursor-pointer hover:border-violet-500/40 hover:from-violet-500/15 transition-all group">
+              <div className="rounded-xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/8 via-teal-500/5 to-transparent p-3 cursor-pointer hover:border-emerald-500/40 hover:from-emerald-500/12 transition-all group">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-violet-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-[11px] font-bold text-violet-300">Signal Rewrite</span>
-                  <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">NOWE</span>
+                  <PenLine className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-bold text-emerald-300">Content Creator</span>
+                  <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">BETA</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-snug">
-                  {contentRewriteCount > 0
-                    ? `Twoja strona ma ${contentRewriteCount} sekcj${contentRewriteCount === 1 ? "\u0119" : contentRewriteCount < 5 ? "e" : "i"} do przepisania \u2192 gotowe do wklejenia.`
-                    : "Przepisz treść strony pod AI Search — gotowe do wklejenia."
-                  }
+                  Twórz nowe podstrony zoptymalizowane pod AI Search — od zera, gotowe do publikacji.
                 </p>
-                <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-violet-400 group-hover:gap-1.5 transition-all">
-                  Wypróbuj teraz <ChevronRight className="w-3 h-3" />
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-400 group-hover:gap-1.5 transition-all">
+                  Stwórz nową stronę <ChevronRight className="w-3 h-3" />
                 </div>
               </div>
             </Link>
