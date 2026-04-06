@@ -38,7 +38,7 @@ interface Phrase {
   phrase: string;
   source: "ai_generated" | "user_added" | "user_modified";
   aiRationale: string | null;
-  intentType: "informational" | "navigational" | "commercial" | "transactional" | null;
+  intentType: "informational" | "navigational" | "commercial" | "transactional" | "comparative" | "how_to" | "problem_solving" | null;
   isActive: boolean;
   lastCitedEngines: number | null;
   citationStreakDays: number | null;
@@ -60,6 +60,9 @@ const INTENT_LABELS: Record<string, { label: string; color: string }> = {
   commercial: { label: "Komercyjne", color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
   transactional: { label: "Zakup", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
   navigational: { label: "Nawigacja", color: "bg-violet-500/15 text-violet-400 border-violet-500/20" },
+  comparative: { label: "Porównanie", color: "bg-orange-500/15 text-orange-400 border-orange-500/20" },
+  how_to: { label: "Jak to zrobić", color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/20" },
+  problem_solving: { label: "Problem", color: "bg-red-500/15 text-red-400 border-red-500/20" },
 };
 
 const PLAN_CUSTOM_LIMITS: Record<string, number> = {

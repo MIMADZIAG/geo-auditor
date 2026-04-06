@@ -1,0 +1,1 @@
+ALTER TABLE `monitored_page_phrases` MODIFY COLUMN `intentType` enum('informational','navigational','commercial','transactional','comparative','how_to','problem_solving') DEFAULT 'informational';

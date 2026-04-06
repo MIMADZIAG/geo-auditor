@@ -1654,13 +1654,29 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 ## Cztery duże zadania (sesja 2026-04-06)
 
-- [ ] Strona /audit: historia audytów z filtrowaniem/sortowaniem, linki do zakładek Results
-- [ ] Rename: Dashboard → AI HUB (trasa /hub, sidebar, wszystkie linki w aplikacji)
-- [ ] AI HUB layout: historia audytów wyżej, nowe KPI zamiast Citation Intelligence stats
-- [ ] /pulse → /ai-monitoring: nowa trasa, dodawanie stron inline, redesign Profound-level
+- [x] Strona /audit: historia audytów z filtrowaniem/sortowaniem, linki do zakładek Results
+- [x] Rename: Dashboard → AI HUB (trasa /hub, sidebar, wszystkie linki w aplikacji)
+- [x] AI HUB layout: historia audytów wyżej, nowe KPI zamiast Citation Intelligence stats
+- [x] /pulse → /ai-monitoring: nowa trasa, dodawanie stron inline, redesign Profound-level
 
 ## Signal Audit — grupowanie po domenie
 
 - [x] Auto-detect multi-domain: gdy konto ma audyty z >1 domeny, automatycznie włącz grupowanie po domenie
 - [x] Widąk domenowy: każda domena jako nagłówek z listą podstron (collapsible)
 - [x] Zachowanie filtrów i sortowania w widoku domenowym
+
+## Redesign: AI Citation Query Prediction Algorithm
+
+- [x] Deep research: mechanizmy cytowania ChatGPT, Perplexity, Gemini, AI Overviews, Claude
+- [x] Analiza aktualnego phraseGenerator.ts i worker.ts — identyfikacja komponentów do zachowania
+- [x] Projekt nowego algorytmu: strona → sygnały intencji → zapytania wysokoprawdopodobne
+- [x] Implementacja nowego phraseGenerator.ts z precyzyjną predykcją zapytań (INTENT-MATRIX v4)
+- [ ] Dokument architektoniczny: decyzje projektowe i uzasadnienie
+
+## Backlog: Design & UX (sesja 2026-04-07)
+
+- [x] AI Monitoring: countdown timer "Następne sprawdzenie za X dni" w PagePulsePanel
+- [x] AI HUB: sparkline trend chart (last 7 checks from score_snapshots) — verify implementation
+- [x] Signal Audit: per-domain KPI delta (↑↓ trend w ostatnich 5 audytach)
+- [x] PhraseManager: dodanie nowych typów intencji (comparative, how_to, problem_solving) do INTENT_LABELS
+- [x] Architektura: dokument decyzji INTENT-MATRIX v4 (phraseGenerator architecture doc)

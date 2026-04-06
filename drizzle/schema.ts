@@ -182,7 +182,7 @@ export const monitoredPagePhrases = mysqlTable("monitored_page_phrases", {
   phrase: varchar("phrase", { length: 512 }).notNull(),
   source: mysqlEnum("source", ["ai_generated", "user_added", "user_modified"]).default("ai_generated").notNull(),
   aiRationale: text("aiRationale"),          // Why this phrase was selected (shown to user)
-  intentType: mysqlEnum("intentType", ["informational", "navigational", "commercial", "transactional"]).default("informational"),
+  intentType: mysqlEnum("intentType", ["informational", "navigational", "commercial", "transactional", "comparative", "how_to", "problem_solving"]).default("informational"),
   isActive: boolean("isActive").default(true).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   // Denormalized citation metrics for fast UI rendering

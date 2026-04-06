@@ -147,6 +147,20 @@ function PagePulsePanel({
     ? new Date(page.lastAuditAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : "Brak";
 
+  // Countdown to next scheduled check
+  const nextAuditCountdown = (() => {
+    if (!page.nextAuditAt) return null;
+    const now = Date.now();
+    const next = new Date(page.nextAuditAt).getTime();
+    const diffMs = next - now;
+    if (diffMs <= 0) return "wkrótce";
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+    if (diffHours < 24) return `za ${diffHours}h`;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return "jutro";
+    return `za ${diffDays} dni`;
+  })();
+
   const citedEngines = page.lastCitedEngines ?? 0;
   const totalEngines = page.lastTotalEngines ?? 4;
   const hasCitationData = page.lastTotalEngines != null;
@@ -328,6 +342,11 @@ function PagePulsePanel({
                 {!lastCitationDate && !hasCitationData && (
                   <span className="text-xs text-amber-400/70 flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Oczekuje na sprawdzenie cytowań
+                  </span>
+                )}
+                {nextAuditCountdown && (
+                  <span className="text-xs text-indigo-400/60 flex items-center gap-1" title="Następne automatyczne sprawdzenie">
+                    <Clock className="w-3 h-3" /> {nextAuditCountdown}
                   </span>
                 )}
               </div>
