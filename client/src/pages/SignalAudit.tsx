@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Search, ArrowUpRight, Clock, BarChart2, Eye, Zap,
-  ChevronRight, Filter, SortAsc, SortDesc, LayoutDashboard,
+  ChevronRight, ChevronDown, Filter, SortAsc, SortDesc, LayoutDashboard,
   Activity, Sparkles, FileText, Star, Globe, TrendingUp,
   AlertTriangle, CheckCircle, XCircle, Plus,
 } from "lucide-react";
@@ -199,7 +199,7 @@ type AuditItem = {
   llmDifficulty?: string | null;
 };
 
-function AuditCard({ audit }: { audit: AuditItem }) {
+function AuditCard({ audit, showDomain = true }: { audit: AuditItem; showDomain?: boolean }) {
   const domain = getDomain(audit.url);
   const path = getPath(audit.url);
   const score = audit.overallScore;
@@ -223,7 +223,8 @@ function AuditCard({ audit }: { audit: AuditItem }) {
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground shrink-0">{audit.pageType}</span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground truncate">{domain}{path}</p>
+          {showDomain && <p className="text-xs text-muted-foreground truncate">{domain}{path}</p>}
+          {!showDomain && path && <p className="text-xs text-muted-foreground truncate font-mono">{path || "/"}</p>}
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="w-3 h-3" />
@@ -294,6 +295,64 @@ function AuditCard({ audit }: { audit: AuditItem }) {
   );
 }
 
+// ─── Domain Group ────────────────────────────────────────────────────────────
+
+function DomainGroup({ domain, audits, defaultOpen = true }: { domain: string; audits: AuditItem[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  const completed = audits.filter(a => a.status === "completed");
+  const avgScore = completed.length > 0
+    ? Math.round(completed.reduce((s, a) => s + (a.overallScore ?? 0), 0) / completed.length)
+    : null;
+  const bestScore = completed.length > 0
+    ? Math.max(...completed.map(a => a.overallScore ?? 0))
+    : null;
+
+  return (
+    <div className="mb-6">
+      {/* Domain header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card/40 hover:bg-card/70 transition-colors group mb-2"
+      >
+        <Globe className="w-4 h-4 text-primary/70 shrink-0" />
+        <span className="text-sm font-semibold flex-1 text-left">{domain}</span>
+
+        {/* Domain stats */}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Activity className="w-3 h-3" />
+            {audits.length} {audits.length === 1 ? "audyt" : audits.length < 5 ? "audyty" : "audytów"}
+          </span>
+          {avgScore != null && (
+            <span className={`flex items-center gap-1 font-medium ${scoreColor(avgScore)}`}>
+              <BarChart2 className="w-3 h-3" />
+              śr. {avgScore}/100
+            </span>
+          )}
+          {bestScore != null && (
+            <span className={`flex items-center gap-1 font-medium ${scoreColor(bestScore)}`}>
+              <TrendingUp className="w-3 h-3" />
+              max {Math.round(bestScore)}/100
+            </span>
+          )}
+        </div>
+
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Subpages list */}
+      {open && (
+        <div className="space-y-2 pl-4 border-l-2 border-primary/15 ml-2">
+          {audits.map(audit => (
+            <AuditCard key={audit.id} audit={audit} showDomain={false} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SignalAudit() {
@@ -305,6 +364,7 @@ export default function SignalAudit() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [scoreFilter, setScoreFilter] = useState<"all" | "great" | "ok" | "poor">("all");
+  const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(new Set());
 
   const { data: history, isLoading } = trpc.audit.myHistory.useQuery(
     { limit: 200 },
@@ -356,6 +416,30 @@ export default function SignalAudit() {
 
     return items;
   }, [history, search, sortKey, sortDir, scoreFilter]);
+
+  // Domain grouping: auto-enable when >1 unique domain
+  const uniqueDomains = useMemo(() => {
+    if (!history) return new Set<string>();
+    return new Set(history.map(a => getDomain(a.url)));
+  }, [history]);
+  const isGrouped = uniqueDomains.size > 1;
+
+  // Group filtered audits by domain
+  const groupedByDomain = useMemo(() => {
+    if (!isGrouped) return null;
+    const groups = new Map<string, AuditItem[]>();
+    for (const audit of filtered) {
+      const d = getDomain(audit.url);
+      if (!groups.has(d)) groups.set(d, []);
+      groups.get(d)!.push(audit);
+    }
+    // Sort domains by most recent audit
+    return Array.from(groups.entries()).sort((a, b) => {
+      const latestA = Math.max(...a[1].map(x => new Date(x.createdAt).getTime()));
+      const latestB = Math.max(...b[1].map(x => new Date(x.createdAt).getTime()));
+      return latestB - latestA;
+    });
+  }, [filtered, isGrouped]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -541,7 +625,20 @@ export default function SignalAudit() {
                 Wyczyść filtry
               </button>
             </div>
+          ) : isGrouped && groupedByDomain ? (
+            // Domain-grouped view
+            <div className="max-w-4xl">
+              {groupedByDomain.map(([domain, audits]) => (
+                <DomainGroup
+                  key={domain}
+                  domain={domain}
+                  audits={audits}
+                  defaultOpen={!collapsedDomains.has(domain)}
+                />
+              ))}
+            </div>
           ) : (
+            // Flat list (single domain)
             <div className="space-y-3 max-w-4xl">
               {filtered.map(audit => (
                 <AuditCard key={audit.id} audit={audit} />

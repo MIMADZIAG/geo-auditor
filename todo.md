@@ -1658,3 +1658,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Rename: Dashboard → AI HUB (trasa /hub, sidebar, wszystkie linki w aplikacji)
 - [ ] AI HUB layout: historia audytów wyżej, nowe KPI zamiast Citation Intelligence stats
 - [ ] /pulse → /ai-monitoring: nowa trasa, dodawanie stron inline, redesign Profound-level
+
+## Signal Audit — grupowanie po domenie
+
+- [x] Auto-detect multi-domain: gdy konto ma audyty z >1 domeny, automatycznie włącz grupowanie po domenie
+- [x] Widąk domenowy: każda domena jako nagłówek z listą podstron (collapsible)
+- [x] Zachowanie filtrów i sortowania w widoku domenowym
