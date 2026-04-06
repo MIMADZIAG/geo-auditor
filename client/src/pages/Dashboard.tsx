@@ -1446,6 +1446,7 @@ export default function Dashboard() {
   const isBusiness = plan === "business";
 
   const hour = new Date().getHours();
+  const greetingEmoji = hour < 12 ? "☀️" : hour < 18 ? "⚡" : "🌙";
   const greeting = hour < 12 ? "Dzień dobry" : hour < 18 ? "Cześć" : "Dobry wieczór";
   const firstName = user?.name?.split(" ")[0] ?? "Użytkownik u";
 
@@ -1476,12 +1477,21 @@ export default function Dashboard() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold px-2 mb-2">Platforma</div>
+        <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5 overflow-y-auto">
+          {/* Primary CTA — always at top */}
+          <Link href="/">
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-2 shadow-sm shadow-primary/30">
+              <Zap className="w-3.5 h-3.5" />
+              Nowa analiza
+            </div>
+          </Link>
+
+          {/* Main nav — no section labels, active state speaks for itself */}
           <Link href="/dashboard">
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 text-primary">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 border border-primary/20 text-primary">
               <LayoutDashboard className="w-3.5 h-3.5" />
               AI Visibility Hub
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             </div>
           </Link>
           <Link href="/pulse">
@@ -1496,19 +1506,34 @@ export default function Dashboard() {
               Signal Rewrite
             </div>
           </Link>
-          <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold px-2 mt-4 mb-2">Konto</div>
+
+          <div className="h-px bg-border/20 mx-1 my-2" />
+
           <Link href="/pricing">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
               <Star className="w-3.5 h-3.5" />
-              Plany
+              Plany i cennik
             </div>
           </Link>
-          <Link href="/">
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-              <Search className="w-3.5 h-3.5" />
-              Nowa analiza
-            </div>
-          </Link>
+
+          {/* Signal Rewrite upsell widget — PLG retention hook */}
+          <div className="mt-auto pt-3">
+            <Link href="/page-creator">
+              <div className="rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/10 via-purple-500/8 to-transparent p-3 cursor-pointer hover:border-violet-500/40 hover:from-violet-500/15 transition-all group">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-bold text-violet-300">Signal Rewrite</span>
+                  <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">NOWE</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  Przepisz treść strony pod AI Search — gotowe do wklejenia.
+                </p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-violet-400 group-hover:gap-1.5 transition-all">
+                  Wypróbuj teraz <ChevronRight className="w-3 h-3" />
+                </div>
+              </div>
+            </Link>
+          </div>
         </nav>
 
         {/* User + Plan footer */}
@@ -1549,7 +1574,7 @@ export default function Dashboard() {
                     <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                     <span className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">AI Visibility Hub</span>
                   </div>
-                  <h1 className="text-2xl font-black tracking-tight mb-1">{greeting}, {firstName}.</h1>
+                  <h1 className="text-2xl font-black tracking-tight mb-1">{greeting}, {firstName} {greetingEmoji}</h1>
                   <p className="text-sm text-muted-foreground">
                     {totalAudits === 0
                       ? "Wpisz URL i sprawdź, czy AI Cię poleca. Wynik w 30 sekund."

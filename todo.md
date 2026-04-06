@@ -1626,3 +1626,9 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Zmiana nazwy "Pulse Monitor" → "AI Visibility Monitor" we wszystkich komponentach i na stronie /pulse
 - [x] Usunięcie zakładki "Widoczność AI" z karty monitorowanej strony w Dashboard, zastąpienie linkiem do /pulse
 - [x] Aktualizacja sidebara: "Sprawdź teraz" (jednorazowy) vs "śledź zmiany" (monitoring)
+
+## Dashboard Sidebar & Hero Redesign
+
+- [x] Sidebar: usunięcie podziału PLATFORMA/KONTO, spłaszczona nawigacja z aktywnym stanem i Nowa analiza na górze
+- [x] Sidebar: widget/banner Signal Rewrite zachęcający do użycia funkcji przepisywania treści
+- [x] Hero greeting: usunięcie suchego "Dzień dobry, Mikołaj." na rzecz lovebrand tonu z emoji
