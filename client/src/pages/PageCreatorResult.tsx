@@ -703,7 +703,7 @@ export default function PageCreatorResult() {
             </Button>
             {extractedUrl && (
               <Button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/hub")}
                 variant="outline"
                 className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6 flex-1 sm:flex-none"
               >

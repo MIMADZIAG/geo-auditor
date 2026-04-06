@@ -510,9 +510,9 @@ function EmptyState({ plan }: { plan: string }) {
           </Button>
         </Link>
       ) : (
-        <Link href="/dashboard">
+        <Link href="/hub">
           <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
-            <Target className="w-4 h-4" /> Dodaj stronę w Command Center
+            <Target className="w-4 h-4" /> Dodaj stronę w AI HUB
           </Button>
         </Link>
       )}
@@ -525,6 +525,8 @@ function EmptyState({ plan }: { plan: string }) {
 export default function CitationPulse() {
   const { user, loading: authLoading } = useAuth();
   const [activeZone, setActiveZone] = useState<"all" | "cited" | "opportunities">("all");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newUrl, setNewUrl] = useState("");
 
   const monitoredQuery = trpc.monitoring.list.useQuery(undefined, { enabled: !!user });
   const pages = monitoredQuery.data ?? [];
@@ -532,6 +534,21 @@ export default function CitationPulse() {
   const isPro = plan === "pro" || plan === "business";
   const isStarter = plan === "starter";
   const isEligible = isPro || isStarter;
+  const utils = trpc.useUtils();
+
+  const addMonitoring = trpc.monitoring.add.useMutation({
+    onSuccess: () => {
+      utils.monitoring.list.invalidate();
+      setNewUrl("");
+      setShowAddForm(false);
+    },
+  });
+
+  const handleAddPage = () => {
+    if (!newUrl.trim()) return;
+    const url = newUrl.trim().startsWith("http") ? newUrl.trim() : `https://${newUrl.trim()}`;
+    addMonitoring.mutate({ url });
+  };
 
   // Zone classification
   const citedPages = useMemo(() =>
@@ -573,148 +590,246 @@ export default function CitationPulse() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
-        {/* Top nav */}
-        <header className="sticky top-0 z-40">
-          <div className="glass-strong border-b border-border/30">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Link href="/">
-                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
-                      <Brain className="w-4 h-4 text-primary-foreground" />
+      <div className="flex h-screen overflow-hidden bg-background">
+
+        {/* ── LEFT SIDEBAR ── */}
+        <aside className="w-56 shrink-0 flex flex-col border-r border-border/40 bg-card/30">
+          {/* Logo */}
+          <div className="h-14 flex items-center px-4 border-b border-border/30">
+            <Link href="/">
+              <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
+                  <Brain className="w-4 h-4 text-primary-foreground" />
+                </div>
+                <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <Link href="/">
+              <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all">
+                <Zap className="w-4 h-4" />
+                Nowa analiza
+              </button>
+            </Link>
+            <Link href="/hub">
+              <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all">
+                <Globe className="w-4 h-4" />
+                AI HUB
+              </button>
+            </Link>
+            <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-primary/10 text-primary font-semibold transition-all">
+              <Sparkles className="w-4 h-4" />
+              AI Monitoring
+              <span className="ml-auto w-2 h-2 rounded-full bg-primary animate-pulse" />
+            </button>
+            <Link href="/audit">
+              <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all">
+                <Target className="w-4 h-4" />
+                Signal Audit
+              </button>
+            </Link>
+            <Link href="/pricing">
+              <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all">
+                <Zap className="w-4 h-4" />
+                Plany i cennik
+              </button>
+            </Link>
+          </nav>
+
+          {/* User footer */}
+          {user && (
+            <div className="p-3 border-t border-border/30">
+              <div className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 text-xs font-semibold text-primary capitalize">
+                {plan === "free" ? "Free" : plan === "starter" ? "Starter" : plan === "pro" ? "Pro" : "Business"}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate px-1">{user.name}</p>
+            </div>
+          )}
+        </aside>
+
+        {/* ── MAIN CONTENT ── */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Sticky header */}
+          <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border/30">
+            <div className="px-6 h-14 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-400" />
+                <h1 className="text-sm font-bold">AI Monitoring</h1>
+                {pages.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{pages.length} stron</Badge>
+                )}
+              </div>
+              {isEligible && (
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+                  onClick={() => setShowAddForm((v) => !v)}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Dodaj stronę
+                </Button>
+              )}
+            </div>
+          </header>
+
+          <div className="px-6 py-6 space-y-6">
+
+            {/* ── ADD PAGE FORM (inline, collapsible) ── */}
+            {showAddForm && isEligible && (
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
+                <p className="text-sm font-semibold mb-3">Dodaj stronę do AI Monitoring</p>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddPage()}
+                    placeholder="https://twoja-strona.pl/produkt"
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-foreground placeholder:text-muted-foreground"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-700 text-white shrink-0 h-9"
+                    onClick={handleAddPage}
+                    disabled={addMonitoring.isPending || !newUrl.trim()}
+                  >
+                    {addMonitoring.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Dodaj"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="shrink-0 h-9 text-muted-foreground" onClick={() => setShowAddForm(false)}>Anuluj</Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  GEO-Auditor będzie sprawdzać cytowania tej strony w ChatGPT, Perplexity, Google AI i Gemini.
+                </p>
+              </div>
+            )}
+
+            {/* ── SUMMARY STATS ── */}
+            {pages.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <p className="text-2xl font-bold tabular-nums">{pages.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Monitorowanych stron</p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <p className="text-2xl font-bold text-emerald-400 tabular-nums">{citedPages.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cytowanych teraz</p>
+                  {citedPages.length > 0 && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <CheckCircle className="w-3 h-3 text-emerald-400" />
+                      <span className="text-[10px] text-emerald-400 font-medium">Widoczne w AI Search</span>
                     </div>
-                    <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
-                  </div>
-                </Link>
-                <span className="text-border/60">/</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  AI Visibility Monitor
+                  )}
+                </div>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <p className="text-2xl font-bold text-amber-400 tabular-nums">{opportunityPages.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Szans do wykorzystania</p>
+                  {opportunityPages.length > 0 && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <AlertTriangle className="w-3 h-3 text-amber-400" />
+                      <span className="text-[10px] text-amber-400 font-medium">Wymaga optymalizacji</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Link href="/dashboard">
-                  <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground hover:text-foreground">
-                    Command Center
+            )}
+
+            {/* ── ZONE FILTER TABS ── */}
+            {pages.length > 0 && (
+              <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 w-fit">
+                {[
+                  { key: "all", label: "Wszystkie", count: allPages.length },
+                  { key: "cited", label: "Cytowane", count: citedPages.length },
+                  { key: "opportunities", label: "Szanse", count: opportunityPages.length },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveZone(tab.key as typeof activeZone)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      activeZone === tab.key
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={`text-[10px] px-1.5 py-0 rounded-full font-semibold ${
+                      activeZone === tab.key ? "bg-violet-500/20 text-violet-400" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* ── CONTENT ── */}
+            {monitoredQuery.isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw className="w-6 h-6 animate-spin text-violet-400" />
+              </div>
+            ) : !isEligible ? (
+              <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-10 text-center">
+                <Lock className="w-10 h-10 text-violet-400 mx-auto mb-4" />
+                <h3 className="text-lg font-bold mb-2">AI Monitoring wymaga planu Starter</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Śledź widoczność swoich stron w ChatGPT, Perplexity, Google AI i Gemini — co tydzień, automatycznie.
+                </p>
+                <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto mb-6 text-left">
+                  {["10 stron w monitoringu", "Sprawdzenia co 7 dni", "Historia cytowań", "Alert o zmianach"].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/pricing">
+                  <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
+                    <Zap className="w-4 h-4" /> Odblokuj monitoring → Starter
                   </Button>
                 </Link>
               </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          {/* Page header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-violet-400" />
-              AI Visibility Monitor
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Weryfikacja cytowań każdej monitorowanej podstrony w ChatGPT, Perplexity, Google AI i Gemini — per fraza, per silnik.
-            </p>
-          </div>
-
-          {/* Summary stats */}
-          {pages.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="rounded-xl border border-border bg-card p-4 text-center">
-                <p className="text-2xl font-bold text-foreground tabular-nums">{pages.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Stron w AI Visibility Monitor</p>
+            ) : displayedPages.length === 0 ? (
+              <EmptyState plan={plan} />
+            ) : (
+              <div className="space-y-3">
+                {displayedPages.map((page) => (
+                  <PagePulsePanel
+                    key={page.id}
+                    page={page}
+                    isPro={isPro}
+                    isStarter={isStarter}
+                    plan={plan}
+                  />
+                ))}
               </div>
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
-                <p className="text-2xl font-bold text-emerald-400 tabular-nums">{citedPages.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Cytowanych teraz</p>
-              </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
-                <p className="text-2xl font-bold text-amber-400 tabular-nums">{opportunityPages.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Szans do wykorzystania</p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Zone filter tabs */}
-          {pages.length > 0 && (
-            <div className="flex items-center gap-1 mb-4 bg-muted/30 rounded-lg p-1 w-fit">
-              {[
-                { key: "all", label: "Wszystkie", count: allPages.length },
-                { key: "cited", label: "Cytowane", count: citedPages.length },
-                { key: "opportunities", label: "Szanse", count: opportunityPages.length },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveZone(tab.key as typeof activeZone)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    activeZone === tab.key
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {tab.label}
-                  <span className={`text-[10px] px-1.5 py-0 rounded-full font-semibold ${
-                    activeZone === tab.key ? "bg-violet-500/20 text-violet-400" : "bg-muted text-muted-foreground"
-                  }`}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Content */}
-          {monitoredQuery.isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <RefreshCw className="w-6 h-6 animate-spin text-violet-400" />
-            </div>
-          ) : !isEligible ? (
-            <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-8 text-center">
-              <Lock className="w-8 h-8 text-violet-400 mx-auto mb-3" />
-              <h3 className="text-base font-semibold mb-1">AI Visibility Monitor wymaga planu Starter</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                Śledź widoczność swoich stron w AI Search co tydzień. Pierwszy krok do dominacji w AI Search.
-              </p>
-              <Link href="/pricing">
-                <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
-                  <Zap className="w-4 h-4" /> Odblokuj monitoring → Starter
-                </Button>
-              </Link>
-            </div>
-          ) : displayedPages.length === 0 ? (
-            <EmptyState plan={plan} />
-          ) : (
-            <div className="space-y-3">
-              {displayedPages.map((page) => (
-                <PagePulsePanel
-                  key={page.id}
-                  page={page}
-                  isPro={isPro}
-                  isStarter={isStarter}
-                  plan={plan}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Pro upsell banner (Starter users) */}
-          {isStarter && pages.length > 0 && (
-            <div className="mt-6 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-violet-400 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">Odblokuj analizę konkurencji per fraza</p>
-                  <p className="text-xs text-muted-foreground">
-                    Plan Pro pokazuje, kto jest cytowany zamiast Ciebie dla każdej frazy.
-                  </p>
+            {/* ── PRO UPSELL (Starter users) ── */}
+            {isStarter && pages.length > 0 && (
+              <div className="rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-violet-600/3 p-5 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Analiza konkurencji per fraza</p>
+                    <p className="text-xs text-muted-foreground">
+                      Plan Pro pokazuje, kto jest cytowany zamiast Ciebie dla każdej frazy — i dlaczego.
+                    </p>
+                  </div>
                 </div>
+                <Link href="/pricing">
+                  <Button size="sm" className="h-9 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700 text-white shrink-0">
+                    <Zap className="w-3.5 h-3.5" /> Upgrade do Pro
+                  </Button>
+                </Link>
               </div>
-              <Link href="/pricing">
-                <Button size="sm" className="h-8 text-xs gap-1 bg-violet-600 hover:bg-violet-700 text-white shrink-0">
-                  <Zap className="w-3 h-3" /> Pro
-                </Button>
-              </Link>
-            </div>
-          )}
+            )}
+
+          </div>
         </div>
       </div>
     </TooltipProvider>

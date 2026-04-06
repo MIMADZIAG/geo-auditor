@@ -37,7 +37,7 @@ export default function Terms() {
           </section>
           <section>
             <h2 className="text-base font-semibold text-foreground mb-3">4. Płatności i anulowanie</h2>
-            <p>Płatności obsługiwane są przez Stripe. Subskrypcje płatne są z góry (miesięcznie lub rocznie). Anulowanie subskrypcji możliwe jest w dowolnym momencie z poziomu Command Center — dostęp do płatnych funkcji pozostaje aktywny do końca opłaconego okresu. Nie oferujemy zwrotów za niewykorzystany okres subskrypcji.</p>
+            <p>Płatności obsługiwane są przez Stripe. Subskrypcje płatne są z góry (miesięcznie lub rocznie). Anulowanie subskrypcji możliwe jest w dowolnym momencie z poziomu AI HUB — dostęp do płatnych funkcji pozostaje aktywny do końca opłaconego okresu. Nie oferujemy zwrotów za niewykorzystany okres subskrypcji.</p>
           </section>
           <section>
             <h2 className="text-base font-semibold text-foreground mb-3">5. Dozwolone użycie</h2>

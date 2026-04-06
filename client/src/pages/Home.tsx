@@ -342,7 +342,7 @@ export default function Home() {
             {/* Actions */}
             <div className="flex items-center gap-2">
               {isAuthenticated ? (
-                <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" onClick={() => navigate("/hub")} className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground">
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Dashboard</span>
                 </Button>
@@ -960,7 +960,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
               <div className="space-y-2.5">
                 <a href="#how-it-works" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Jak to działa</a>
                 <a href="#pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Plany</a>
-                <a href="/dashboard" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Command Center</a>
+                <a href="/hub" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">AI HUB</a>
               </div>
             </div>
             <div>

@@ -80,11 +80,11 @@ export function ResultsSidebar({
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {/* Dashboard link */}
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/hub")}
           className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors group"
         >
           <LayoutDashboard className="w-4 h-4 shrink-0" />
-          <span className="text-xs font-medium">AI Visibility Hub</span>
+          <span className="text-xs font-medium">AI HUB</span>
         </button>
 
         {/* Separator */}
@@ -124,12 +124,12 @@ export function ResultsSidebar({
         <div className="h-px bg-border/20 mx-2 my-2" />
 
         {/* Monitor link — track changes over time */}
-        <Link href="/pulse">
+        <Link href="/ai-monitoring">
           <div className="w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer">
             <Eye className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="text-left min-w-0">
               <div className="text-xs font-semibold leading-tight">Śledź zmiany</div>
-              <div className="text-[10px] mt-0.5 leading-tight text-muted-foreground/60">AI Visibility Monitor</div>
+              <div className="text-[10px] mt-0.5 leading-tight text-muted-foreground/60">AI Monitoring</div>
             </div>
           </div>
         </Link>

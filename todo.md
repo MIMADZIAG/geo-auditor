@@ -1651,3 +1651,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Usunięcie duplikatu widgetu Signal Rewrite (drugi, pod separatorem)
 - [x] Zastąpienie duplikatu widgetem Content Creator (nowe podstrony, nie rewrite)
 - [x] Usunięcie zbędnej linii przerwy między Signal Rewrite a Plany i cennik
+
+## Cztery duże zadania (sesja 2026-04-06)
+
+- [ ] Strona /audit: historia audytów z filtrowaniem/sortowaniem, linki do zakładek Results
+- [ ] Rename: Dashboard → AI HUB (trasa /hub, sidebar, wszystkie linki w aplikacji)
+- [ ] AI HUB layout: historia audytów wyżej, nowe KPI zamiast Citation Intelligence stats
+- [ ] /pulse → /ai-monitoring: nowa trasa, dodawanie stron inline, redesign Profound-level

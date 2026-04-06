@@ -67,7 +67,7 @@ const faqs = [
   },
   {
     q: "Czy mogę anulować w dowolnym momencie?",
-    a: "Tak. Plany Starter i Pro są miesięczne lub roczne z rabatem 25%. Anulujesz w dowolnym momencie z poziomu Command Center — bez formularzy, bez czekania. Dostęp do płatnych funkcji pozostaje aktywny do końca opłaconego okresu.",
+    a: "Tak. Plany Starter i Pro są miesięczne lub roczne z rabatem 25%. Anulujesz w dowolnym momencie z poziomu AI HUB — bez formularzy, bez czekania. Dostęp do płatnych funkcji pozostaje aktywny do końca opłaconego okresu.",
   },
   {
     q: "Czy jest bezpłatna wersja?",

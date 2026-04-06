@@ -1090,10 +1090,10 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
             </Link>
             <div className="h-4 w-px bg-border/50 hidden md:block" />
             <nav className="hidden md:flex items-center gap-1">
-              <Link href="/dashboard">
+              <Link href="/hub">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/8 text-primary">
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  AI Visibility Hub
+                  AI HUB
                 </div>
               </Link>
               <Link href="/pulse">
@@ -1203,7 +1203,7 @@ function NotAuthenticated() {
   );
 }
 
-// ─── AI Visibility Command Center Hero ───────────────────────────────────────
+// ─── AI Visibility AI HUB Hero ───────────────────────────────────────
 
 function AIVisibilityCommandCenter({
   monitoredPages,
@@ -1427,7 +1427,7 @@ export default function Dashboard() {
     onError: (e) => toast.error(e.message),
   });
   // MUST be before any early returns — Rules of Hooks
-  const [auditHistoryExpanded, setAuditHistoryExpanded] = useState(false);
+  const [auditHistoryExpanded, setAuditHistoryExpanded] = useState(true);
 
   if (authLoading) return <DashboardSkeleton />;
   if (!isAuthenticated) return <NotAuthenticated />;
@@ -1472,7 +1472,7 @@ export default function Dashboard() {
     : null;
 
   // Signal Rewrite: count content-related recommendations from last audit
-  type AuditRec = { category: string; priority: string };
+  type AuditRec = { category: string; priority: string; title?: string; description?: string };
   const lastAuditRecs: AuditRec[] = (() => {
     try {
       const raw = lastAudit?.recommendations as { recommendations?: AuditRec[] } | null;
@@ -1520,17 +1520,17 @@ export default function Dashboard() {
           </Link>
 
           {/* Main nav — no section labels, active state speaks for itself */}
-          <Link href="/dashboard">
+          <Link href="/hub">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 border border-primary/20 text-primary">
               <LayoutDashboard className="w-3.5 h-3.5" />
-              AI Visibility Hub
+              AI HUB
               <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             </div>
           </Link>
-          <Link href="/pulse">
+          <Link href="/ai-monitoring">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
               <Eye className="w-3.5 h-3.5" />
-              AI Visibility Monitor
+              AI Monitoring
             </div>
           </Link>
            <Link href="/page-creator">
@@ -1539,7 +1539,7 @@ export default function Dashboard() {
               Signal Rewrite
             </div>
           </Link>
-          <Link href="/dashboard">
+          <Link href="/audit">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
               <Search className="w-3.5 h-3.5" />
               Signal Audit
@@ -1608,7 +1608,7 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <span className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">AI Visibility Hub</span>
+                    <span className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">AI HUB</span>
                   </div>
                   <h1 className="text-2xl font-black tracking-tight mb-1">{greeting}, {firstName} {greetingEmoji}</h1>
                   <p className="text-sm text-muted-foreground">
@@ -1690,13 +1690,52 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* ── AI VISIBILITY COMMAND CENTER ── */}
-            <AIVisibilityCommandCenter
-              monitoredPages={monitoredPages}
-              usageStats={usageStats}
-              isPro={isPro}
-              onAddMonitoring={() => setShowAddMonitoring(true)}
-            />
+            {/* ── LAST AUDIT CARD ── */}
+            {lastAudit && (
+              <div className="rounded-2xl border border-border bg-card/60 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ostatni audyt</span>
+                      <span className="text-xs text-muted-foreground">{lastAuditDate}</span>
+                    </div>
+                    <p className="text-sm font-semibold truncate mb-1">
+                      {lastAudit.pageTitle || (() => { try { return new URL(lastAudit.url).hostname; } catch { return lastAudit.url; } })()}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mb-3">{lastAudit.url}</p>
+                    {lastAuditRecs.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-muted-foreground font-medium">Top poprawki:</p>
+                        {lastAuditRecs.slice(0, 3).map((r, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs">
+                            <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                              r.priority === 'critical' ? 'bg-red-400' :
+                              r.priority === 'high' ? 'bg-amber-400' : 'bg-emerald-400'
+                            }`} />
+                            <span className="text-foreground/80 leading-snug">{r.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center font-black text-xl ${
+                      (lastAudit.overallScore ?? 0) >= 75 ? 'border-emerald-500 text-emerald-400' :
+                      (lastAudit.overallScore ?? 0) >= 50 ? 'border-amber-500 text-amber-400' :
+                      'border-red-500 text-red-400'
+                    }`}>
+                      {lastAudit.overallScore != null ? Math.round(lastAudit.overallScore) : '–'}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">/100</span>
+                    <Link href={`/results/${lastAudit.id}`}>
+                      <Button size="sm" variant="outline" className="text-xs h-7 mt-1 gap-1">
+                        Otwórz <ChevronRight className="w-3 h-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
 
         {/* ── STATS ROW ── */}
         <div className="grid grid-cols-3 gap-3">

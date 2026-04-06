@@ -164,7 +164,7 @@ export const appRouter = router({
       }),
 
     myHistory: protectedProcedure
-      .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
+      .input(z.object({ limit: z.number().min(1).max(200).default(20) }))
       .query(async ({ ctx, input }) => {
         return getAuditsByUser(ctx.user.id, input.limit);
       }),

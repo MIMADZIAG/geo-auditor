@@ -13,6 +13,7 @@ import Sandbox from "./pages/Sandbox";
 import PageCreator from "./pages/PageCreator";
 import PageCreatorResult from "./pages/PageCreatorResult";
 import CitationPulse from "./pages/CitationPulse";
+import SignalAudit from "./pages/SignalAudit";
 import DemoAudit from "./pages/DemoAudit";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -54,6 +55,23 @@ function Router() {
       <Route path="/pulse">
         <ErrorBoundary context="Citation Pulse">
           <CitationPulse />
+        </ErrorBoundary>
+      </Route>
+      {/* /ai-monitoring is the canonical URL; /pulse kept for backward compat */}
+      <Route path="/ai-monitoring">
+        <ErrorBoundary context="AI Monitoring">
+          <CitationPulse />
+        </ErrorBoundary>
+      </Route>
+      {/* /hub is the canonical URL for Dashboard; /dashboard kept for backward compat */}
+      <Route path="/hub">
+        <ErrorBoundary context="AI HUB">
+          <Dashboard />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/audit">
+        <ErrorBoundary context="Signal Audit">
+          <SignalAudit />
         </ErrorBoundary>
       </Route>
       <Route path="/demo" component={DemoAudit} />

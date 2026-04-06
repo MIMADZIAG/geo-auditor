@@ -731,7 +731,7 @@ export default function Results() {
                 </Button>
               </a>
               {isAuthenticated ? (
-                <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground hidden sm:flex">
+                <Button variant="ghost" size="sm" onClick={() => navigate("/hub")} className="gap-1.5 text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground hidden sm:flex">
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Hub</span>
                 </Button>
@@ -1373,7 +1373,7 @@ function AuditCompetitorBenchmarkPanel({
           size="sm"
           variant="outline"
           className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 shrink-0"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/hub")}
         >
           <Eye className="w-3 h-3" /> AI Visibility Monitor
           <ChevronRight className="w-3 h-3" />
@@ -1462,7 +1462,7 @@ function CompetitorDecayCard({
           <div className="text-sm font-semibold text-emerald-300">Monitoring aktywny</div>
           <div className="text-xs text-muted-foreground mt-0.5">Otrzymasz alert, gdy wynik tej strony lub konkurenta zmieni się o ≥5 pkt.</div>
         </div>
-        <Button size="sm" onClick={() => navigate("/dashboard")} variant="outline" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 shrink-0">
+        <Button size="sm" onClick={() => navigate("/hub")} variant="outline" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 shrink-0">
           <LayoutDashboard className="w-3 h-3" /> Dashboard
         </Button>
       </div>
