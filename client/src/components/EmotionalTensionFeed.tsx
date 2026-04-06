@@ -152,6 +152,60 @@ function buildNarrativeLine(
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+/** Engine progress bar — shows which engines are done/active/pending in sequence */
+function EngineProgressBar({
+  streamResults,
+  activeEngine,
+  isRunning,
+}: {
+  streamResults: StreamCitationResult[];
+  activeEngine: string | null;
+  isRunning: boolean;
+}) {
+  const enginesDone = useMemo(() => {
+    const done = new Set<string>();
+    for (const r of streamResults) done.add(r.engine);
+    return done;
+  }, [streamResults]);
+
+  return (
+    <div className="flex items-center gap-1 px-3 py-2 bg-zinc-900/60 border border-zinc-700/30 rounded-xl overflow-hidden">
+      <span className="text-[10px] text-zinc-600 mr-1.5 shrink-0 font-medium">Sprawdzam:</span>
+      <div className="flex items-center gap-0.5 flex-1 min-w-0">
+        {ENGINE_ORDER.map((engine, i) => {
+          const meta = ENGINE_META[engine];
+          const isDone = enginesDone.has(engine);
+          const isActive = activeEngine === engine;
+          return (
+            <div key={engine} className="flex items-center gap-0.5">
+              {i > 0 && <span className="text-zinc-700 text-[9px] mx-0.5">›</span>}
+              <span
+                className={[
+                  "text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all duration-500 whitespace-nowrap",
+                  isDone
+                    ? `${meta.color} bg-zinc-800/50 opacity-60`
+                    : isActive
+                    ? `${meta.color} ${meta.bg} ring-1 ${meta.ring}`
+                    : "text-zinc-700",
+                ].join(" ")}
+              >
+                {isActive && (
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${meta.dot} animate-ping mr-1 align-middle opacity-80`} />
+                )}
+                {meta.shortLabel}
+                {isDone && <span className="ml-0.5 text-[9px]">✓</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {!isRunning && streamResults.length > 0 && (
+        <span className="ml-2 text-[10px] text-emerald-500 font-semibold shrink-0">Gotowe ✓</span>
+      )}
+    </div>
+  );
+}
+
 /** The "Asking ChatGPT: '...'" live ticker — Principle 3: tension through specificity */
 function LiveQueryTicker({
   progress,
@@ -401,6 +455,13 @@ export function EmotionalTensionFeed({
 
   return (
     <div className="space-y-3">
+      {/* ── Engine progress bar — shows ChatGPT › Perplexity › Gemini sequence ── */}
+      <EngineProgressBar
+        streamResults={streamResults}
+        activeEngine={activeEngine}
+        isRunning={isRunning}
+      />
+
       {/* ── Live query ticker (Principle 3: tension through specificity) ─── */}
       {isRunning && <LiveQueryTicker progress={streamProgress} />}
 

@@ -1450,6 +1450,39 @@ export default function Dashboard() {
   const greeting = hour < 12 ? "Dzień dobry" : hour < 18 ? "Cześć" : "Dobry wieczór";
   const firstName = user?.name?.split(" ")[0] ?? "Użytkownik u";
 
+  // Hero subline: contextual progress message
+  const lastAudit = history?.[0];
+  const lastAuditDate = lastAudit?.createdAt
+    ? (() => {
+        const d = new Date(lastAudit.createdAt);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        if (d.toDateString() === today.toDateString()) return "dziś";
+        if (d.toDateString() === yesterday.toDateString()) return "wczoraj";
+        return d.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+      })()
+    : null;
+  const bestAudit = history?.reduce((best, a) =>
+    (a.overallScore ?? 0) > (best?.overallScore ?? 0) ? a : best,
+    null as typeof history[0] | null
+  );
+  const bestAuditUrl = bestAudit?.url
+    ? (() => { try { return new URL(bestAudit.url).hostname.replace(/^www\./, ""); } catch { return bestAudit.url; } })()
+    : null;
+
+  // Signal Rewrite: count content-related recommendations from last audit
+  type AuditRec = { category: string; priority: string };
+  const lastAuditRecs: AuditRec[] = (() => {
+    try {
+      const raw = lastAudit?.recommendations as { recommendations?: AuditRec[] } | null;
+      return raw?.recommendations ?? [];
+    } catch { return []; }
+  })();
+  const contentRewriteCount = lastAuditRecs.filter(
+    (r) => r.category === "Content Structure" || r.category === "E-E-A-T"
+  ).length;
+
   const handleAddMonitoring = () => {
     if (!newUrl.trim()) return;
     let url = newUrl.trim();
@@ -1526,7 +1559,10 @@ export default function Dashboard() {
                   <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">NOWE</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-snug">
-                  Przepisz treść strony pod AI Search — gotowe do wklejenia.
+                  {contentRewriteCount > 0
+                    ? `Twoja strona ma ${contentRewriteCount} sekcj${contentRewriteCount === 1 ? "\u0119" : contentRewriteCount < 5 ? "e" : "i"} do przepisania \u2192 gotowe do wklejenia.`
+                    : "Przepisz treść strony pod AI Search — gotowe do wklejenia."
+                  }
                 </p>
                 <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-violet-400 group-hover:gap-1.5 transition-all">
                   Wypróbuj teraz <ChevronRight className="w-3 h-3" />
@@ -1577,21 +1613,49 @@ export default function Dashboard() {
                   <h1 className="text-2xl font-black tracking-tight mb-1">{greeting}, {firstName} {greetingEmoji}</h1>
                   <p className="text-sm text-muted-foreground">
                     {totalAudits === 0
-                      ? "Wpisz URL i sprawdź, czy AI Cię poleca. Wynik w 30 sekund."
-                      : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`}
+                      ? "Pierwszy krok: sprawdź swoją stronę produktową → wynik w 30 sekund."
+                      : bestScore != null && bestAuditUrl
+                        ? <>
+                            <span className="text-foreground font-semibold">{bestAuditUrl}</span>
+                            {" — "}
+                            <span className={bestScore >= 75 ? "text-emerald-400 font-semibold" : bestScore >= 50 ? "text-amber-400 font-semibold" : "text-red-400 font-semibold"}>{bestScore}/100</span>
+                            {lastAuditDate && <span className="text-muted-foreground/60"> · ostatnia analiza: {lastAuditDate}</span>}
+                          </>
+                        : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`
+                    }
                   </p>
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    <Link href="/">
-                      <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
-                        <Zap className="w-3.5 h-3.5" /> Sprawdź nową stronę →
-                      </Button>
-                    </Link>
-                    {(monitoredPages ?? []).length === 0 && (
-                      <Button variant="outline" className="gap-2 h-9 px-4 text-sm" onClick={() => setShowAddMonitoring(true)}>
-                        <Eye className="w-3.5 h-3.5" /> Dodaj do monitoringu
-                      </Button>
-                    )}
-                  </div>
+                  {totalAudits === 0 ? (
+                    /* Onboarding empty state — animated first step CTA */
+                    <div className="mt-4 flex flex-col gap-3">
+                      <Link href="/">
+                        <Button className="gap-2 h-10 px-5 text-sm font-bold shadow-lg shadow-primary/30 animate-pulse hover:animate-none">
+                          <Zap className="w-4 h-4" /> Sprawdź pierwszą stronę →
+                        </Button>
+                      </Link>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="flex gap-1">
+                          {["Strona produktowa", "Artykuł blogowy", "Strona usługi"].map((hint) => (
+                            <Link key={hint} href={`/?hint=${encodeURIComponent(hint)}`}>
+                              <span className="px-2 py-0.5 rounded-full border border-border/40 hover:border-primary/40 hover:text-foreground transition-colors cursor-pointer">{hint}</span>
+                            </Link>
+                          ))}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-3 mt-4">
+                      <Link href="/">
+                        <Button className="gap-2 h-9 px-4 text-sm font-semibold shadow-md shadow-primary/20">
+                          <Zap className="w-3.5 h-3.5" /> Sprawdź nową stronę →
+                        </Button>
+                      </Link>
+                      {(monitoredPages ?? []).length === 0 && (
+                        <Button variant="outline" className="gap-2 h-9 px-4 text-sm" onClick={() => setShowAddMonitoring(true)}>
+                          <Eye className="w-3.5 h-3.5" /> Dodaj do monitoringu
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {/* Score Orb */}
                 {avgScore != null ? (

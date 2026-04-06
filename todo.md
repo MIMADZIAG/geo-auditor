@@ -1593,13 +1593,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 ### Phase B — Design
 - [x] ScoreOrb count-up animation (0 → score in 800ms)
-- [ ] IssueCard severity bar redesign (left border color accent)
+- [x] IssueCard severity bar redesign (left border color accent)
 - [x] Landing page hero asymmetric layout (60/40 split)
 - [ ] Unified CTA block "Co dalej?" at bottom of Citation Intelligence (already done — verify)
-- [ ] Emotional loading state for Citation Intelligence (live engine feed)
+- [x] Emotional loading state for Citation Intelligence (live engine feed)
 
 ### Phase C — Design
-- [ ] Before/After Quick Wins with diff view
+- [x] Before/After Quick Wins with diff view
 - [ ] AI Visibility Trend chart in Dashboard
 - [ ] Mobile responsive fixes across all views
 
@@ -1632,3 +1632,15 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Sidebar: usunięcie podziału PLATFORMA/KONTO, spłaszczona nawigacja z aktywnym stanem i Nowa analiza na górze
 - [x] Sidebar: widget/banner Signal Rewrite zachęcający do użycia funkcji przepisywania treści
 - [x] Hero greeting: usunięcie suchego "Dzień dobry, Mikołaj." na rzecz lovebrand tonu z emoji
+
+## Dashboard UX Improvements (3 kroki)
+
+- [x] Hero subline: kontekstowy tekst z najlepszą stroną i datą ostatniej analizy
+- [x] Onboarding empty state: inny tone hero + animowany CTA gdy brak analiz
+- [x] Signal Rewrite widget: personalizacja z liczbą sekcji do przepisania z ostatniego audytu
+
+## Results Page UX — Emotional Design & Diagnostics
+
+- [x] Emotional loading state w AI Visibility Check: progress bar z nazwami silników + live feed zapytań budujący napięcie przed Reveal
+- [x] IssueCard severity bar: zamiana badge'y priorytetów na kolorowy lewy border (czerwony/amber/zielony)
+- [x] Before/After Quick Wins: diff view dla top rekomendacji (Twój H1 vs H1 zoptymalizowany pod AI)

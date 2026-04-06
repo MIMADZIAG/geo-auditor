@@ -2341,6 +2341,8 @@ function IssuesAndFixes({
   const critical = issues.filter((i) => i.status === "fail" && i.impact === "high");
   const others = issues.filter((i) => !(i.status === "fail" && i.impact === "high"));
   const visibleOthers = showAll ? others : others.slice(0, 4);
+  // Before/After Quick Wins — top 3 issues that have an LLM fix
+  const quickWins = issues.filter((i) => i.llmFix).slice(0, 3);
 
   const copyFix = (issue: typeof issues[0]) => {
     const text = issue.llmFix ?? issue.description;
@@ -2351,10 +2353,13 @@ function IssuesAndFixes({
   const renderIssue = (issue: typeof issues[0]) => {
     const isOpen = expanded === issue.id;
     const isCritical = issue.status === "fail" && issue.impact === "high";
+    const severityBarColor = isCritical ? "bg-red-500" : issue.impact === "medium" ? "bg-amber-500" : "bg-zinc-600";
     return (
-      <div key={issue.id} className={`rounded-xl border overflow-hidden ${isCritical ? "border-red-500/30 bg-red-500/3" : "border-amber-500/20 bg-amber-500/3"}`}>
+      <div key={issue.id} className={`relative rounded-xl border overflow-hidden ${isCritical ? "border-red-500/30 bg-red-500/3" : "border-amber-500/20 bg-amber-500/3"}`}>
+        {/* Severity bar — colored left border for diagnostic feel */}
+        <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${severityBarColor}`} />
         <button
-          className="w-full flex items-start gap-4 p-4 text-left hover:bg-white/3 transition-colors"
+          className="w-full flex items-start gap-4 pl-5 pr-4 py-4 text-left hover:bg-white/3 transition-colors"
           onClick={() => setExpanded(isOpen ? null : issue.id)}
         >
           <div className="mt-0.5 shrink-0">
@@ -2422,6 +2427,43 @@ function IssuesAndFixes({
   return (
     <div>
       <h2 className="text-lg font-semibold mb-4">Problemy i poprawki</h2>
+
+      {/* ── Before/After Quick Wins ── */}
+      {quickWins.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/3 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-primary/10">
+            <SplitSquareHorizontal className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-primary">Quick Wins — przed i po</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary ml-auto">Top {quickWins.length} poprawki</span>
+          </div>
+          <div className="divide-y divide-border/30">
+            {quickWins.map((issue) => (
+              <div key={issue.id} className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${issue.status === "fail" && issue.impact === "high" ? "bg-red-500" : issue.impact === "medium" ? "bg-amber-500" : "bg-zinc-500"}`} />
+                  <span className="text-xs font-semibold">{issue.label}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-auto">{issue.category}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-red-500/5 border border-red-500/15 p-3">
+                    <div className="text-[9px] font-bold uppercase tracking-wide text-red-400 mb-1.5 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Teraz
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{issue.description}</p>
+                  </div>
+                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-3">
+                    <div className="text-[9px] font-bold uppercase tracking-wide text-emerald-400 mb-1.5 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Po poprawce
+                    </div>
+                    <p className="text-xs leading-relaxed">{issue.llmFix}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {critical.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">

@@ -160,12 +160,22 @@ function GapCard({ gap, index, isLocked }: { gap: GapItem; index: number; isLock
   const [expanded, setExpanded] = useState(false);
   const pc = PRIORITY_CONFIG[gap.priority];
 
+  const severityBarColor = {
+    critical: "bg-red-500",
+    high: "bg-amber-500",
+    medium: "bg-blue-500",
+    low: "bg-zinc-600",
+  }[gap.priority];
+
   return (
     <div
       className={`relative border rounded-xl overflow-hidden transition-all ${pc.border} ${pc.bg} ${
         isLocked ? "select-none" : ""
       }`}
     >
+      {/* Severity bar — colored left border for diagnostic feel */}
+      <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${severityBarColor}`} />
+
       {isLocked && (
         <div className="absolute inset-0 backdrop-blur-sm bg-zinc-950/70 flex items-center justify-center z-10 rounded-xl">
           <Link href="/pricing">
@@ -177,7 +187,7 @@ function GapCard({ gap, index, isLocked }: { gap: GapItem; index: number; isLock
       )}
 
       <button
-        className="w-full text-left px-4 py-3 flex items-start gap-3"
+        className="w-full text-left pl-5 pr-4 py-3 flex items-start gap-3"
         onClick={() => !isLocked && setExpanded((e) => !e)}
         disabled={isLocked}
       >
