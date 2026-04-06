@@ -1,5 +1,5 @@
 /**
- * Citation Pulse — Per-phrase AI Visibility Board
+ * AI Visibility Monitor — Per-phrase AI Visibility Board
  *
  * The retention engine of GEO-Auditor monitoring.
  * Shows all monitored pages with their phrase-level citation performance
@@ -118,7 +118,7 @@ function Sparkline({ data, width = 64, height = 24 }: {
   );
 }
 
-// ─── Per-page Citation Pulse Panel ────────────────────────────────────────────
+// ─── Per-page AI Visibility Monitor Panel ────────────────────────────────────────────
 
 function PagePulsePanel({
   page,
@@ -500,7 +500,7 @@ function EmptyState({ plan }: { plan: string }) {
       <h3 className="text-lg font-semibold mb-2">Brak monitorowanych stron</h3>
       <p className="text-sm text-muted-foreground max-w-sm mb-6">
         {isFree
-          ? "Pulse Monitor wymaga planu Starter lub wyższego. Dodaj stronę do Pulse Monitor i śledź cytowania w AI Search."
+          ? "AI Visibility Monitor wymaga planu Starter lub wyższego. Dodaj stronę do AI Visibility Monitor i śledź cytowania w AI Search."
           : "Dodaj pierwszą stronę do monitoringu, aby śledzić jej widoczność w ChatGPT, Perplexity, Google AI i Gemini."}
       </p>
       {isFree ? (
@@ -563,7 +563,7 @@ export default function CitationPulse() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <Brain className="w-10 h-10 text-violet-400" />
-        <p className="text-muted-foreground">Zaloguj się, aby zobaczyć Citation Pulse.</p>
+        <p className="text-muted-foreground">Zaloguj się, aby zobaczyć AI Visibility Monitor.</p>
         <a href={getLoginUrl()}>
           <Button className="bg-violet-600 hover:bg-violet-700 text-white">Zaloguj się</Button>
         </a>
@@ -590,7 +590,7 @@ export default function CitationPulse() {
                 <span className="text-border/60">/</span>
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  Citation Pulse
+                  AI Visibility Monitor
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -609,7 +609,7 @@ export default function CitationPulse() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-violet-400" />
-              Citation Pulse
+              AI Visibility Monitor
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Weryfikacja cytowań każdej monitorowanej podstrony w ChatGPT, Perplexity, Google AI i Gemini — per fraza, per silnik.
@@ -621,7 +621,7 @@ export default function CitationPulse() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="rounded-xl border border-border bg-card p-4 text-center">
                 <p className="text-2xl font-bold text-foreground tabular-nums">{pages.length}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Stron w Pulse Monitor</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Stron w AI Visibility Monitor</p>
               </div>
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-400 tabular-nums">{citedPages.length}</p>
@@ -670,7 +670,7 @@ export default function CitationPulse() {
           ) : !isEligible ? (
             <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-8 text-center">
               <Lock className="w-8 h-8 text-violet-400 mx-auto mb-3" />
-              <h3 className="text-base font-semibold mb-1">Pulse Monitor wymaga planu Starter</h3>
+              <h3 className="text-base font-semibold mb-1">AI Visibility Monitor wymaga planu Starter</h3>
               <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
                 Śledź widoczność swoich stron w AI Search co tydzień. Pierwszy krok do dominacji w AI Search.
               </p>

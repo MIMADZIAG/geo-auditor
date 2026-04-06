@@ -469,7 +469,7 @@ export default function DemoAudit() {
                 <div className="flex items-center gap-2">
                   <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
                   <p className="text-xs text-muted-foreground">
-                    Pełna analiza Citation Intelligence (wszystkie frazy + 3 konkurenci) dostępna w planie <strong>Starter</strong>.
+                    Pełna analiza AI Visibility Check (wszystkie frazy + 3 konkurenci) dostępna w planie <strong>Starter</strong>.
                   </p>
                   <Button size="sm" variant="outline" className="ml-auto h-7 text-[11px] shrink-0" onClick={() => window.location.href = "/pricing"}>
                     Odblokuj <ArrowRight className="w-3 h-3 ml-1" />

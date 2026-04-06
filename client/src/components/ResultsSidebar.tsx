@@ -1,5 +1,5 @@
-import { useLocation } from "wouter";
-import { Bot, LayoutDashboard, Activity, Plus, LogIn, ChevronDown, User } from "lucide-react";
+import { useLocation, Link } from "wouter";
+import { Bot, LayoutDashboard, Activity, Plus, LogIn, ChevronDown, User, Eye } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,12 @@ export function ResultsSidebar({
   const navItems = [
     {
       id: "visibility" as const,
-      label: "Widoczność w AI",
+      label: "AI Visibility Check",
       sublabel: citationStatus === "done"
         ? `${citedEngines ?? 0}/${totalEngines} silników`
         : citationStatus === "running"
         ? "Analizuję…"
-        : "Citation Intelligence",
+        : "Jednorazowe sprawdzenie",
       icon: (
         <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4">
           <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -122,6 +122,17 @@ export function ResultsSidebar({
 
         {/* Separator */}
         <div className="h-px bg-border/20 mx-2 my-2" />
+
+        {/* Monitor link — track changes over time */}
+        <Link href="/pulse">
+          <div className="w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer">
+            <Eye className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="text-left min-w-0">
+              <div className="text-xs font-semibold leading-tight">Śledź zmiany</div>
+              <div className="text-[10px] mt-0.5 leading-tight text-muted-foreground/60">AI Visibility Monitor</div>
+            </div>
+          </div>
+        </Link>
 
         {/* New audit */}
         <button

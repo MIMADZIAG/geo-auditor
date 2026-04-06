@@ -1619,3 +1619,10 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Empty states
 - [ ] Auth gate messages
 - [ ] Plan upgrade gate messages
+
+## Konsolidacja Citation Intelligence / Pulse Monitor
+
+- [x] Zmiana nazwy "Citation Intelligence" → "AI Visibility Check" we wszystkich komponentach
+- [x] Zmiana nazwy "Pulse Monitor" → "AI Visibility Monitor" we wszystkich komponentach i na stronie /pulse
+- [x] Usunięcie zakładki "Widoczność AI" z karty monitorowanej strony w Dashboard, zastąpienie linkiem do /pulse
+- [x] Aktualizacja sidebara: "Sprawdź teraz" (jednorazowy) vs "śledź zmiany" (monitoring)

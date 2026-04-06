@@ -112,7 +112,7 @@ function LiveCitationDemoCard({ onCtaClick }: { onCtaClick: () => void }) {
         </div>
         <div className="flex-1 flex items-center justify-center gap-2">
           <Radio className="w-3 h-3 text-primary animate-pulse" />
-          <span className="text-[11px] text-muted-foreground font-mono">Citation Intelligence · na żywo</span>
+          <span className="text-[11px] text-muted-foreground font-mono">AI Visibility Check · na żywo</span>
         </div>
       </div>
 
@@ -275,7 +275,7 @@ export default function Home() {
   usePendingAudit(isAuthenticated);
 
   // audit.start returns auditId immediately (fire-and-forget backend)
-  // → navigate to /results right away, both Signal Audit + Citation Intelligence run in parallel
+  // → navigate to /results right away, both Signal Audit + AI Visibility Check run in parallel
   const createAuditMutation = trpc.audit.start.useMutation({
     onSuccess: (data: { auditId: number }) => {
       // Navigate immediately — no timer gate needed
@@ -739,7 +739,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
                 <span className="text-amber-400/80">Ktoś ją właśnie zamknął.</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8 text-sm max-w-md">
-                AI nie cytuje losowo. Wybiera strony, które spełniają konkretne kryteria techniczne i contentowe. Citation Intelligence pokazuje które URL-e Cię wyprzedzają, dlaczego AI je preferuje i co zmienić, żeby odwrócić tę relację.
+                AI nie cytuje losowo. Wybiera strony, które spełniają konkretne kryteria techniczne i contentowe. AI Visibility Check pokazuje które URL-e Cię wyprzedzają, dlaczego AI je preferuje i co zmienić, żeby odwrócić tę relację.
               </p>
               <div className="space-y-3">
                 {EMOTIONAL_ITEMS.map((item) => (
@@ -952,7 +952,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
                 <span className="font-bold text-sm">GEO-Auditor</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                Platforma do AI Search Optimization na poziomie podstrony. Signal Audit, Citation Intelligence, Signal Rewrite i Pulse Monitor — w jednym miejscu.
+                Platforma do AI Search Optimization na poziomie podstrony. Signal Audit, AI Visibility Check, Signal Rewrite i AI Visibility Monitor — w jednym miejscu.
               </p>
             </div>
             <div>
@@ -997,10 +997,10 @@ const SCAN_STEPS = [
 ];
 
 const WORKFLOW_PREVIEW = [
-  { icon: Eye, label: "Citation Intelligence", sub: "Cytowania w ChatGPT, Gemini, Perplexity" },
+  { icon: Eye, label: "AI Visibility Check", sub: "Cytowania w ChatGPT, Gemini, Perplexity" },
   { icon: Shield, label: "Signal Audit", sub: "40+ sprawdzeń · AI Readiness Score" },
   { icon: Sparkles, label: "Signal Rewrite", sub: "Przepisany tekst gotowy do wdrożenia" },
-  { icon: Activity, label: "Pulse Monitor", sub: "Cotygodniowy re-audyt i alerty" },
+  { icon: Activity, label: "AI Visibility Monitor", sub: "Cotygodniowy re-audyt i alerty" },
 ];
 
 const AI_ENGINES = [
@@ -1074,7 +1074,7 @@ const WORKFLOW_CARDS = [
     icon: Eye,
     iconBg: "bg-violet-500/10",
     iconColor: "text-violet-400",
-    title: "Citation Intelligence",
+    title: "AI Visibility Check",
     featured: true,
     desc: "Sprawdź w 60 sekund, czy ChatGPT, Gemini, Perplexity i Google AI cytują Twoją stronę — i kto Cię wyprzedza.",
     bullets: ["Per-frazowa analiza czterech silników AI", "Pełna lista URL-i cytowanych zamiast Ciebie", "Analiza porównawcza z konkurentami"],
@@ -1101,7 +1101,7 @@ const WORKFLOW_CARDS = [
     icon: Activity,
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-400",
-    title: "Pulse Monitor",
+    title: "AI Visibility Monitor",
     featured: false,
     desc: "Cotygodniowy re-audyt monitorowanych podstron. Alert gdy score spada lub nowy konkurent przejmuje cytowania.",
     bullets: ["Automatyczne re-audyty co 7 dni", "Alerty o zmianach cytowań", "Historia AI Readiness Score"],
@@ -1129,7 +1129,7 @@ const PRICING_PLANS = [
       "AI Readiness Score (0–100)",
       "Signal Audit — 40+ sprawdzeń",
       "Content Intelligence",
-      "1 strona w Pulse Monitor",
+      "1 strona w AI Visibility Monitor",
     ],
   },
   {
@@ -1143,10 +1143,10 @@ const PRICING_PLANS = [
     badge: "Najpopularniejszy",
     features: [
       "50 analiz / miesiąc",
-      "Citation Intelligence (Google + ChatGPT)",
+      "AI Visibility Check (Google + ChatGPT)",
       "Signal Rewrite — 10 przepisań/mies.",
       "Historia AI Readiness Score",
-      "Pulse Monitor — 10 podstron",
+      "AI Visibility Monitor — 10 podstron",
       "Eksport PDF",
       "Wsparcie priorytetowe",
     ],
@@ -1162,9 +1162,9 @@ const PRICING_PLANS = [
     badge: null,
     features: [
       "200 analiz / miesiąc",
-      "Citation Intelligence — 3 konkurenci",
+      "AI Visibility Check — 3 konkurenci",
       "Signal Rewrite bez limitu",
-      "Pulse Monitor — 50 podstron",
+      "AI Visibility Monitor — 50 podstron",
       "Zaawansowane rekomendacje contentowe",
       "Dostęp do API",
       "Raporty white-label",
@@ -1186,19 +1186,19 @@ const FAQ = [
     a: "Signal Rewrite pobiera treść Twojej strony, analizuje URL-e cytowane przez AI na Twoich frazach, wyciąga kluczowe encje i fakty — a następnie generuje nową wersję treści zoptymalizowaną pod sygnały AI Search. Wynik to gotowy tekst do wklejenia, nie lista sugestii do samodzielnego wdrożenia.",
   },
   {
-    q: "Jak działa Pulse Monitor?",
-    a: "Pulse Monitor re-audytuje monitorowane podstrony automatycznie co 7 dni. Dostajesz alert gdy AI Readiness Score spada, gdy nowy konkurent przejmuje cytowania na Twoich frazach, lub gdy Twoja strona po raz pierwszy zostaje zacytowana przez AI. Nie musisz pamiętać o ręcznym sprawdzaniu.",
+    q: "Jak działa AI Visibility Monitor?",
+    a: "AI Visibility Monitor re-audytuje monitorowane podstrony automatycznie co 7 dni. Dostajesz alert gdy AI Readiness Score spada, gdy nowy konkurent przejmuje cytowania na Twoich frazach, lub gdy Twoja strona po raz pierwszy zostaje zacytowana przez AI. Nie musisz pamiętać o ręcznym sprawdzaniu.",
   },
   {
     q: "Czy mogę korzystać z GEO-Auditor bez zakładania konta?",
-    a: "Tak — pierwsze 5 analiz Signal Audit dostępnych jest bez rejestracji i bez podawania karty. Konto jest wymagane do zapisu historii wyników, Pulse Monitor i Signal Rewrite.",
+    a: "Tak — pierwsze 5 analiz Signal Audit dostępnych jest bez rejestracji i bez podawania karty. Konto jest wymagane do zapisu historii wyników, AI Visibility Monitor i Signal Rewrite.",
   },
   {
     q: "Ile czasu zajmuje pełna analiza?",
-    a: "Signal Audit jest gotowy w 30–60 sekund. Citation Intelligence — weryfikacja cytowań w ChatGPT, Gemini i Google AI — trwa 2–5 minut, ponieważ odpytujemy rzeczywiste silniki AI w czasie rzeczywistym, nie bazę danych. Signal Rewrite generuje się w 30–90 sekund w zależności od długości strony.",
+    a: "Signal Audit jest gotowy w 30–60 sekund. AI Visibility Check — weryfikacja cytowań w ChatGPT, Gemini i Google AI — trwa 2–5 minut, ponieważ odpytujemy rzeczywiste silniki AI w czasie rzeczywistym, nie bazę danych. Signal Rewrite generuje się w 30–90 sekund w zależności od długości strony.",
   },
   {
     q: "Czy GEO-Auditor działa dla stron w języku polskim?",
-    a: "Tak — platforma obsługuje strony w języku polskim i angielskim. Signal Audit, Citation Intelligence i Signal Rewrite działają w obu językach. Rekomendacje są generowane w języku analizowanej strony.",
+    a: "Tak — platforma obsługuje strony w języku polskim i angielskim. Signal Audit, AI Visibility Check i Signal Rewrite działają w obu językach. Rekomendacje są generowane w języku analizowanej strony.",
   },
 ];

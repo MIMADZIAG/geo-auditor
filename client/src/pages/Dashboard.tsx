@@ -769,32 +769,44 @@ function MonitoredPageCard({
                 <Link href={`/results/${page.lastAuditId}`}>
                   <Button size="sm" variant="outline" className="h-6 text-xs">Raport</Button>
                 </Link>
-                {/* Run Citation Intelligence directly from Pulse Monitor */}
+                {/* Link to AI Visibility Monitor — dedicated per-phrase tracking view */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={`h-6 text-xs gap-1 ${
-                        isRunningCitation
-                          ? "border-violet-500/40 bg-violet-500/10 text-violet-400 cursor-not-allowed"
-                          : "hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-400"
-                      }`}
-                      disabled={isRunningCitation || runCitationMutation.isPending}
-                      onClick={(e) => { e.preventDefault(); runCitationMutation.mutate({ monitoredPageId: page.id }); }}
-                    >
-                      {isRunningCitation ? (
-                        <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Bot className="w-3 h-3" />
-                      )}
-                      {isRunningCitation ? "AI..." : "Widoczność AI"}
-                    </Button>
+                    <Link href="/pulse">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`h-6 text-xs gap-1 ${
+                          hasCitationData
+                            ? citedEngines > 0
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
+                              : "border-red-500/30 bg-red-500/8 text-red-400 hover:bg-red-500/15"
+                            : "hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-400"
+                        }`}
+                      >
+                        {isRunningCitation ? (
+                          <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                        ) : hasCitationData ? (
+                          citedEngines > 0
+                            ? <CheckCircle2 className="w-3 h-3" />
+                            : <XCircle className="w-3 h-3" />
+                        ) : (
+                          <Eye className="w-3 h-3" />
+                        )}
+                        {isRunningCitation
+                          ? "Sprawdzam..."
+                          : hasCitationData
+                            ? `${citedEngines}/${totalEngines} silników`
+                            : "Monitor"}
+                      </Button>
+                    </Link>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs max-w-56">
                     {isRunningCitation
                       ? "Analiza widoczności AI jest w toku. Wyniki pojawią się za 2–5 minut."
-                      : "Uruchom analizę widoczności AI — sprawdzimy czy Twoja strona jest cytowana przez ChatGPT, Perplexity, Gemini i Google AI."}
+                      : hasCitationData
+                        ? `Widoczność w AI: ${citedEngines}/${totalEngines} silników. Kliknij, aby zobaczyć szczegóły w AI Visibility Monitor.`
+                        : "Otwórz AI Visibility Monitor, aby śledzić cytowania tej strony per fraza i per silnik."}
                   </TooltipContent>
                 </Tooltip>
               </>
@@ -1087,7 +1099,7 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
               <Link href="/pulse">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
                   <Eye className="w-3.5 h-3.5" />
-                  Pulse Monitor
+                  AI Visibility Monitor
                 </div>
               </Link>
               <Link href="/page-creator">
@@ -1229,7 +1241,7 @@ function AIVisibilityCommandCenter({
         <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-4">
           <Eye className="w-6 h-6 text-violet-400" />
         </div>
-        <h2 className="text-base font-semibold mb-1">Citation Intelligence</h2>
+        <h2 className="text-base font-semibold mb-1">AI Visibility Check</h2>
         <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
           Dodaj pierwszą stronę do monitoringu, aby śledzić jej widoczność w ChatGPT, Google AI, Perplexity i Gemini.
         </p>
@@ -1252,7 +1264,7 @@ function AIVisibilityCommandCenter({
           <Eye className="w-5 h-5 text-violet-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold">Citation Intelligence</h2>
+          <h2 className="text-sm font-semibold">AI Visibility Check</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {(monitoredPages ?? []).length} stron w monitoringu — oczekiwanie na pierwsze dane widoczności.
           </p>
@@ -1268,7 +1280,7 @@ function AIVisibilityCommandCenter({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Eye className={`w-4 h-4 ${visResult?.colorClass ?? "text-violet-400"}`} />
-          <span className="text-sm font-semibold">Citation Intelligence</span>
+          <span className="text-sm font-semibold">AI Visibility Check</span>
           <Badge variant="secondary" className="text-xs">{(monitoredPages ?? []).length} stron</Badge>
         </div>
         <Button
@@ -1475,7 +1487,7 @@ export default function Dashboard() {
           <Link href="/pulse">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
               <Eye className="w-3.5 h-3.5" />
-              Pulse Monitor
+              AI Visibility Monitor
             </div>
           </Link>
           <Link href="/page-creator">
@@ -1699,7 +1711,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-sm font-bold">Pulse Monitor</h2>
+                  <h2 className="text-sm font-bold">AI Visibility Monitor</h2>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20">Aktywny</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
@@ -1844,7 +1856,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm font-medium text-violet-300">Widzisz tylko ostatnie analizy</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Starter odblokowuje pełną historię Signal Audit, eksport PDF i Pulse Monitor dla 10 podstron.
+                        Starter odblokowuje pełną historię Signal Audit, eksport PDF i AI Visibility Monitor dla 10 podstron.
                       </p>
                     </div>
                     <Link href="/pricing">
@@ -1902,7 +1914,7 @@ export default function Dashboard() {
                 <>
                   <p className="text-xs text-muted-foreground mb-3">Odblokuj pełną platformę Signal Audit</p>
                   <div className="space-y-1.5 mb-4">
-                    {["50 analiz/mies.", "Pełna historia Signal Audit", "Pulse Monitor — 10 stron", "Eksport PDF"].map((f) => (
+                    {["50 analiz/mies.", "Pełna historia Signal Audit", "AI Visibility Monitor — 10 stron", "Eksport PDF"].map((f) => (
                       <div key={f} className="flex items-center gap-2 text-xs">
                         <CheckCircle className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                         <span>{f}</span>
@@ -1919,7 +1931,7 @@ export default function Dashboard() {
 
               {plan === "starter" && (
                 <>
-                  <p className="text-xs text-muted-foreground mb-3">Odblokuj Citation Intelligence dla 3 konkurentów i 200 analiz/mies.</p>
+                  <p className="text-xs text-muted-foreground mb-3">Odblokuj AI Visibility Check dla 3 konkurentów i 200 analiz/mies.</p>
                   <Link href="/pricing">
                     <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold gap-1.5">
                       <ArrowUpRight className="w-3.5 h-3.5" /> Upgrade do Pro — $99/mies.
@@ -1988,7 +2000,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               <LockedFeatureCard
                 icon={BarChart2}
-                title="Citation Intelligence Pro"
+                title="AI Visibility Check Pro"
                 description="Porównaj cytowania AI swojej domeny z 3 wybranymi konkurentami na tych samych frazach."
                 requiredPlan="Pro"
               />
@@ -2000,7 +2012,7 @@ export default function Dashboard() {
               />
               <LockedFeatureCard
                 icon={Globe}
-                title="Pulse Monitor — 50 stron"
+                title="AI Visibility Monitor — 50 stron"
                 description="Cotygodniowy re-audyt dla całego sklepu. Alert gdy AI Readiness Score spada."
                 requiredPlan="Pro"
               />

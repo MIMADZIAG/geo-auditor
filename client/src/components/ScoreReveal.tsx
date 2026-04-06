@@ -1,5 +1,5 @@
 /**
- * ScoreReveal — Emotional payoff after the full Citation Intelligence sequence.
+ * ScoreReveal — Emotional payoff after the full AI Visibility Check sequence.
  *
  * Architecture (Profound/Perplexity engineering standard):
  * - Appears AFTER EmotionalTensionFeed completes (400ms delay post-isDone).
@@ -197,7 +197,7 @@ export function ScoreReveal({ citedEngines, totalEngines, engineResults, visible
       {/* Header bar */}
       <div className="px-5 pt-4 pb-3 border-b border-white/5 flex items-center justify-between">
         <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">
-          Wynik Citation Intelligence
+          Wynik AI Visibility Check
         </span>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${variant.badgeColor}`}>
           {variant.badgeText}

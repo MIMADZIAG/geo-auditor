@@ -1,5 +1,5 @@
 /**
- * useCitationStream — SSE client hook for Citation Intelligence
+ * useCitationStream — SSE client hook for AI Visibility Check
  * ─────────────────────────────────────────────────────────────────────────────
  * Replaces the 4-second polling interval with a real-time EventSource stream.
  *

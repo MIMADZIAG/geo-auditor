@@ -1,7 +1,7 @@
 /**
  * CitationLoadingBridge — Warunek 1: Valuable Loading State
  *
- * Visibility First spec: "Podczas gdy Citation Intelligence ładuje się (2–5 min),
+ * Visibility First spec: "Podczas gdy AI Visibility Check ładuje się (2–5 min),
  * użytkownik musi widzieć coś wartościowego — np. Signal Audit jako 'wstępna diagnoza'
  * z komunikatem 'Sprawdzamy teraz cytowania w ChatGPT, Gemini i Perplexity — to zajmie chwilę.'"
  *

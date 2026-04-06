@@ -25,15 +25,15 @@ const plans = [
       "40+ sprawdzeń technicznych i contentowych",
       "AI Readiness Score 0–100",
       "Signal Rewrite — 10 przepisań/mies.",
-      "Pulse Monitor — 10 stron (re-audyt co 7 dni)",
+      "AI Visibility Monitor — 10 stron (re-audyt co 7 dni)",
       "Historia AI Readiness Score",
       "Eksport PDF",
       "Alerty email przy spadku wyniku",
     ],
     missing: [
-      "Citation Intelligence Pro (3 konkurenci)",
+      "AI Visibility Check Pro (3 konkurenci)",
       "Signal Rewrite bez limitu",
-      "Pulse Monitor 50 stron",
+      "AI Visibility Monitor 50 stron",
     ],
   },
   {
@@ -47,8 +47,8 @@ const plans = [
     features: [
       "200 analiz Signal Audit / mies.",
       "Wszystko ze Starter",
-      "Pulse Monitor — 50 stron",
-      "Citation Intelligence Pro — 3 konkurenci",
+      "AI Visibility Monitor — 50 stron",
+      "AI Visibility Check Pro — 3 konkurenci",
       "Signal Rewrite bez limitu",
       "Priorytetowe wsparcie",
     ],
@@ -71,11 +71,11 @@ const faqs = [
   },
   {
     q: "Czy jest bezpłatna wersja?",
-    a: "Tak — jeden pełny Signal Audit bezpłatnie, bez rejestracji i bez karty. Obejmuje pełną diagnostykę: 40+ sprawdzeń, AI Readiness Score i Content Intelligence. Aby korzystać z historii, Pulse Monitor i Signal Rewrite, wybierz plan Starter lub Pro.",
+    a: "Tak — jeden pełny Signal Audit bezpłatnie, bez rejestracji i bez karty. Obejmuje pełną diagnostykę: 40+ sprawdzeń, AI Readiness Score i Content Intelligence. Aby korzystać z historii, AI Visibility Monitor i Signal Rewrite, wybierz plan Starter lub Pro.",
   },
   {
     q: "Jaka jest różnica między Starter a Pro?",
-    a: "Starter to 50 audytów Signal Audit miesięcznie, Pulse Monitor dla 10 stron i 10 przepisań Signal Rewrite. Pro to 200 audytów, Pulse Monitor dla 50 stron, Signal Rewrite bez limitu i Citation Intelligence Pro z analizą 3 konkurentów. Jeśli prowadzisz sklep lub agencję z więcej niż 10 monitorowanymi stronami — Pro jest właściwym wyborem.",
+    a: "Starter to 50 audytów Signal Audit miesięcznie, AI Visibility Monitor dla 10 stron i 10 przepisań Signal Rewrite. Pro to 200 audytów, AI Visibility Monitor dla 50 stron, Signal Rewrite bez limitu i AI Visibility Check Pro z analizą 3 konkurentów. Jeśli prowadzisz sklep lub agencję z więcej niż 10 monitorowanymi stronami — Pro jest właściwym wyborem.",
   },
 ];
 
@@ -142,7 +142,7 @@ export default function Pricing() {
             <span className="gradient-text">Gotowy plan naprawy.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-            Pierwszy Signal Audit bezpłatnie — bez rejestracji i bez karty. Skaluj do Pulse Monitor i Citation Intelligence gdy wyniki rosną.
+            Pierwszy Signal Audit bezpłatnie — bez rejestracji i bez karty. Skaluj do AI Visibility Monitor i AI Visibility Check gdy wyniki rosną.
           </p>
 
           {/* Billing toggle */}

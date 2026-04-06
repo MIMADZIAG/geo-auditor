@@ -29,11 +29,11 @@ export default function Terms() {
           </section>
           <section>
             <h2 className="text-base font-semibold text-foreground mb-3">2. Zakres Usługi</h2>
-            <p>GEO-Auditor to platforma SaaS do analizy widoczności stron internetowych w silnikach AI Search (Signal Audit, Citation Intelligence, Signal Rewrite, Pulse Monitor). Usługa dostępna jest w planach: Free (1 audyt bezpłatnie), Starter ($59/mies.) i Pro ($99/mies.).</p>
+            <p>GEO-Auditor to platforma SaaS do analizy widoczności stron internetowych w silnikach AI Search (Signal Audit, AI Visibility Check, Signal Rewrite, AI Visibility Monitor). Usługa dostępna jest w planach: Free (1 audyt bezpłatnie), Starter ($59/mies.) i Pro ($99/mies.).</p>
           </section>
           <section>
             <h2 className="text-base font-semibold text-foreground mb-3">3. Konto użytkownika</h2>
-            <p>Rejestracja konta jest wymagana do korzystania z funkcji zaawansowanych (historia audytów, Pulse Monitor, Signal Rewrite). Użytkownik odpowiada za bezpieczeństwo danych logowania. Konto może być usunięte na żądanie użytkownika.</p>
+            <p>Rejestracja konta jest wymagana do korzystania z funkcji zaawansowanych (historia audytów, AI Visibility Monitor, Signal Rewrite). Użytkownik odpowiada za bezpieczeństwo danych logowania. Konto może być usunięte na żądanie użytkownika.</p>
           </section>
           <section>
             <h2 className="text-base font-semibold text-foreground mb-3">4. Płatności i anulowanie</h2>

@@ -95,7 +95,7 @@ function getScoreLabel(score: number): string {
   return "Niewidoczny";
 }
 function getNextLevelMessage(score: number): { points: number; action: string } | null {
-  if (score >= 83) return { points: 0, action: "Uruchom Pulse Monitor — algorytmy AI zmieniają się co tydzień" };
+  if (score >= 83) return { points: 0, action: "Uruchom AI Visibility Monitor — algorytmy AI zmieniają się co tydzień" };
   if (score >= 70) return { points: 83 - score, action: "Dodaj FAQ ze schematem, TL;DR i dane strukturalne" };
   if (score >= 55) return { points: 70 - score, action: "Wzmocnij strukturę treści i sygnały E-E-A-T" };
   if (score >= 36) return { points: 55 - score, action: "Dodaj TL;DR, nagłówki H2/H3 i sekcję FAQ" };
@@ -347,7 +347,7 @@ export default function Results() {
       const tab = new URLSearchParams(window.location.search).get("tab");
       if (tab === "optimization") return "optimization";
       if (tab === "content") return "content";
-      // Visibility First: Citation Intelligence is the default entry point
+      // Visibility First: AI Visibility Check is the default entry point
       return "visibility";
     }
   );
@@ -510,16 +510,16 @@ export default function Results() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount — handleSwitchToVisibility is stable (useCallback [])
 
-  // #7 — Parallel auto-start Citation Intelligence on page mount.
+  // #7 — Parallel auto-start AI Visibility Check on page mount.
   // With audit.start, the audit runs in the background. We no longer need to wait
-  // for audit.status === "completed" — Citation Intelligence can start immediately
+  // for audit.status === "completed" — AI Visibility Check can start immediately
   // because it fetches the page content independently via its own scraper.
   //
   // Flow:
   //   t=0ms   → User submits URL on Home, audit.start returns auditId immediately
   //   t=~50ms → Navigate to /results/:auditId
   //   t=~500ms → AICitationPanel mounts, registers ref
-  //   t=~800ms → bgCitation fires startCheck() — Citation Intelligence begins
+  //   t=~800ms → bgCitation fires startCheck() — AI Visibility Check begins
   //   t=~1s   → First SSE events arrive (EmotionalTensionFeed shows live queries)
   //   t=30-60s → Signal Audit completes in background, tabs fill in
   //
@@ -589,7 +589,7 @@ export default function Results() {
   if (error || !audit) return <ErrorState message={error?.message ?? "Audyt nie został znaleziony."} />;
   // NOTE: We no longer early-return for running/pending status.
   // With audit.start (fire-and-forget), the page renders immediately while
-  // Signal Audit runs in the background. Citation Intelligence starts in parallel.
+  // Signal Audit runs in the background. AI Visibility Check starts in parallel.
   // Tab 02 (Signal Audit) shows an inline loading state when audit is still running.
   const isAuditRunning = audit.status === "running" || audit.status === "pending";
   if (audit.status === "failed") {
@@ -835,7 +835,7 @@ export default function Results() {
         </div>
       )}
 
-      {/* Citation Intelligence Celebration Banner */}
+      {/* AI Visibility Check Celebration Banner */}
       {citationCelebration && (
         <div
           className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-500"
@@ -847,7 +847,7 @@ export default function Results() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold text-indigo-300">
-                Citation Intelligence gotowy — {citationCelebration.citedEngines}/{citationCelebration.totalEngines} silników AI
+                AI Visibility Check gotowy — {citationCelebration.citedEngines}/{citationCelebration.totalEngines} silników AI
               </div>
               <div className="text-xs text-zinc-400 mt-0.5">
                 {citationCelebration.citedEngines > 0
@@ -1079,7 +1079,7 @@ export default function Results() {
                 </div>
                 <div className="text-sm font-semibold text-white mb-1">Zweryfikuj cytowania po wdrożeniu zmian</div>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Po opublikowaniu poprawek wróć do Citation Intelligence i uruchom nową weryfikację. Sprawdzisz, które silniki AI zaczęły cytować Twoją stronę i co jeszcze wymaga poprawy.
+                  Po opublikowaniu poprawek wróć do AI Visibility Check i uruchom nową weryfikację. Sprawdzisz, które silniki AI zaczęły cytować Twoją stronę i co jeszcze wymaga poprawy.
                 </p>
               </div>
               <Button
@@ -1094,7 +1094,7 @@ export default function Results() {
         </main>
       )}
 
-      {/* ── Tab 2: Citation Intelligence ── */}
+      {/* ── Tab 2: AI Visibility Check ── */}
       {activeTab === "visibility" && (
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
@@ -1156,7 +1156,7 @@ export default function Results() {
                 </div>
               </div>
               <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Card 1: Pulse Monitor */}
+                {/* Card 1: AI Visibility Monitor */}
                 {isAuthenticated && (() => {
                   const normalise = (u: string) => { try { return new URL(u).href.replace(/\/$/, ""); } catch { return u.replace(/\/$/, ""); } };
                   const isAlreadyMonitored = (monitoredPages ?? []).some((p) => normalise(p.url) === normalise(audit.url));
@@ -1167,7 +1167,7 @@ export default function Results() {
                           <Eye className="w-3.5 h-3.5 text-violet-400" />
                         </div>
                         <div>
-                          <div className="text-xs font-semibold">Pulse Monitor</div>
+                          <div className="text-xs font-semibold">AI Visibility Monitor</div>
                           <div className="text-[10px] text-muted-foreground">Śledź cytowania w czasie</div>
                         </div>
                       </div>
@@ -1254,9 +1254,9 @@ export default function Results() {
 // ─── 1a-2. Audit Competitor Benchmark Panel ───────────────────────────────────────
 
 /**
- * AuditCompetitorBenchmarkPanel — shows competitor data from Citation Intelligence
- * without requiring Pulse Monitor. Uses getCompetitorBenchmarkByAudit procedure.
- * Includes a Pulse Monitor upsell CTA for trend tracking.
+ * AuditCompetitorBenchmarkPanel — shows competitor data from AI Visibility Check
+ * without requiring AI Visibility Monitor. Uses getCompetitorBenchmarkByAudit procedure.
+ * Includes a AI Visibility Monitor upsell CTA for trend tracking.
  */
 function AuditCompetitorBenchmarkPanel({
   auditId,
@@ -1307,7 +1307,7 @@ function AuditCompetitorBenchmarkPanel({
           <div>
             <div className="text-sm font-semibold">Analiza konkurencji AI</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Kto jest cytowany zamiast Ciebie — dane z Citation Intelligence
+              Kto jest cytowany zamiast Ciebie — dane z AI Visibility Check
             </div>
           </div>
         </div>
@@ -1358,7 +1358,7 @@ function AuditCompetitorBenchmarkPanel({
         </div>
       )}
 
-      {/* Pulse Monitor upsell CTA */}
+      {/* AI Visibility Monitor upsell CTA */}
       <div className="mx-5 mb-5 rounded-xl border border-violet-500/25 bg-gradient-to-r from-violet-500/8 to-violet-600/4 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1">
@@ -1366,7 +1366,7 @@ function AuditCompetitorBenchmarkPanel({
             <span className="text-xs font-semibold text-violet-300">Śledź trend Share of Voice w czasie</span>
           </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Pulse Monitor sprawdza automatycznie co tydzień, czy Twoja pozycja wzrasta czy spada — i alarmuje, gdy konkurent Cię wyprzedza.
+            AI Visibility Monitor sprawdza automatycznie co tydzień, czy Twoja pozycja wzrasta czy spada — i alarmuje, gdy konkurent Cię wyprzedza.
           </p>
         </div>
         <Button
@@ -1375,7 +1375,7 @@ function AuditCompetitorBenchmarkPanel({
           className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 shrink-0"
           onClick={() => navigate("/dashboard")}
         >
-          <Eye className="w-3 h-3" /> Pulse Monitor
+          <Eye className="w-3 h-3" /> AI Visibility Monitor
           <ChevronRight className="w-3 h-3" />
         </Button>
       </div>
@@ -2560,9 +2560,9 @@ Pełny raport: ${reportUrl}
   );
 }
 
-// ─── 7. Aha Moment + Pulse Monitor Preview (for unauthenticated users) ─────────────────────────────────────────────────────────────────────────────────────
+// ─── 7. Aha Moment + AI Visibility Monitor Preview (for unauthenticated users) ─────────────────────────────────────────────────────────────────────────────────────
 // #10 — Concrete aha moment: one action to take right now
-// #11 — Animated Pulse Monitor preview so user knows what they get after signup
+// #11 — Animated AI Visibility Monitor preview so user knows what they get after signup
 function ScoreHistoryTeaser({ score, topIssue }: { score: number; topIssue?: string }) {
   const [pulseStep, setPulseStep] = useState(0);
   const pulseData = [45, 52, 48, 61, 58, 67, 72, 75];
@@ -2598,12 +2598,12 @@ function ScoreHistoryTeaser({ score, topIssue }: { score: number; topIssue?: str
         </div>
       </div>
 
-      {/* #11 — Animated Pulse Monitor preview */}
+      {/* #11 — Animated AI Visibility Monitor preview */}
       <div className="rounded-2xl bg-card border border-border/50 overflow-hidden">
         <div className="p-4 flex items-center justify-between border-b border-border/30">
           <div className="flex items-center gap-2.5">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold">Pulse Monitor</span>
+            <span className="text-xs font-semibold">AI Visibility Monitor</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-medium">Preview</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -2640,7 +2640,7 @@ function ScoreHistoryTeaser({ score, topIssue }: { score: number; topIssue?: str
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
-            Pulse Monitor sprawdza cytowania co tydzień i wysyła alert gdy AI przestaje Cię cytować
+            AI Visibility Monitor sprawdza cytowania co tydzień i wysyła alert gdy AI przestaje Cię cytować
           </p>
         </div>
       </div>
@@ -2658,7 +2658,7 @@ function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: bool
     <div className="rounded-2xl bg-gradient-to-br from-primary/8 via-violet-500/4 to-background border border-primary/20 p-6">
       <div className="text-center mb-6">
         <h3 className="text-lg font-bold mb-1">Gotowy, żeby naprawić te problemy — na stałe?</h3>
-        <p className="text-sm text-muted-foreground">Jednorazowy Signal Audit wykrywa blokady. Pulse Monitor pilnuje, żeby nikt Cię nie wyprzedził.</p>
+        <p className="text-sm text-muted-foreground">Jednorazowy Signal Audit wykrywa blokady. AI Visibility Monitor pilnuje, żeby nikt Cię nie wyprzedził.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {plans.map((plan) => (
@@ -2949,7 +2949,7 @@ function SignalRewriteReadinessPanel({
       icon: <Shield className="w-4 h-4" />,
     },
     {
-      label: "Citation Intelligence",
+      label: "AI Visibility Check",
       value: ciDone ? `${citationCitedCount}/${citationTotalEngines} AI` : ciRunning ? "W toku…" : "Nie uruchomiono",
       sub: ciDone ? (citationCitedCount > 0 ? "Cytowania wykryte" : "Brak cytowań") : ciRunning ? "Analizuję silniki AI" : "Wymagane do pełnego rewrite",
       status: ciDone ? (citationCitedCount > 0 ? "green" : "yellow") : ciRunning ? "blue" : "gray",
@@ -2958,7 +2958,7 @@ function SignalRewriteReadinessPanel({
     {
       label: "Citation Opportunities",
       value: citationOpportunitiesCount > 0 ? `${citationOpportunitiesCount} instrukcji` : ciDone ? "Brak luk" : "—",
-      sub: citationOpportunitiesCount > 0 ? "Załadowane do promptu AI" : ciDone ? "Strona dobrze pokryta" : "Dostępne po Citation Intelligence",
+      sub: citationOpportunitiesCount > 0 ? "Załadowane do promptu AI" : ciDone ? "Strona dobrze pokryta" : "Dostępne po AI Visibility Check",
       status: citationOpportunitiesCount > 0 ? "green" : ciDone ? "yellow" : "gray",
       icon: <Target className="w-4 h-4" />,
     },
@@ -3023,11 +3023,11 @@ function SignalRewriteReadinessPanel({
           );
         })}
       </div>
-      {/* CTA if Citation Intelligence not run */}
+      {/* CTA if AI Visibility Check not run */}
       {citationStatus === "idle" && (
         <div className="px-5 py-3 bg-amber-500/5 border-t border-amber-500/15 flex items-center justify-between gap-3">
           <p className="text-xs text-amber-300/80">
-            Uruchom Citation Intelligence, aby Signal Rewrite miał pełny kontekst cytowań i luk konkurencji.
+            Uruchom AI Visibility Check, aby Signal Rewrite miał pełny kontekst cytowań i luk konkurencji.
           </p>
           <button
             onClick={onRunCitation}
@@ -3041,7 +3041,7 @@ function SignalRewriteReadinessPanel({
       {citationOpportunitiesCount > 0 && (
         <div className="px-5 py-3 bg-violet-500/5 border-t border-violet-500/15">
           <p className="text-[11px] text-violet-300/80">
-            <span className="font-semibold text-violet-300">{citationOpportunitiesCount} instrukcji contentowych</span> z Citation Intelligence zostało załadowanych do promptu AI — rewrite adresuje konkretne luki widoczności w AI Search.
+            <span className="font-semibold text-violet-300">{citationOpportunitiesCount} instrukcji contentowych</span> z AI Visibility Check zostało załadowanych do promptu AI — rewrite adresuje konkretne luki widoczności w AI Search.
           </p>
         </div>
       )}
@@ -3176,7 +3176,7 @@ function BeforeAfterDiff({
   );
 }
 
-// ─── Feature C: Citation Intelligence Gate ────────────────────────────────────
+// ─── Feature C: AI Visibility Check Gate ────────────────────────────────────
 function CitationIntelligenceGate({ navigate }: { navigate: (path: string) => void }) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-violet-500/30 bg-violet-950/20 overflow-hidden">
@@ -3185,9 +3185,9 @@ function CitationIntelligenceGate({ navigate }: { navigate: (path: string) => vo
           <Eye className="w-7 h-7 text-violet-400" />
         </div>
         <div className="max-w-sm">
-          <h3 className="text-base font-bold mb-2">Uruchom Citation Intelligence</h3>
+          <h3 className="text-base font-bold mb-2">Uruchom AI Visibility Check</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Signal Rewrite działa najlepiej z danymi z Citation Intelligence — analizą widoczności w ChatGPT, Gemini i Perplexity. Bez tych danych AI nie wie, które luki contentowe wypełnić.
+            Signal Rewrite działa najlepiej z danymi z AI Visibility Check — analizą widoczności w ChatGPT, Gemini i Perplexity. Bez tych danych AI nie wie, które luki contentowe wypełnić.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 items-center">
@@ -3195,7 +3195,7 @@ function CitationIntelligenceGate({ navigate }: { navigate: (path: string) => vo
             onClick={() => navigate(window.location.pathname + "?tab=visibility")}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
           >
-            <Eye className="w-4 h-4" /> Uruchom Citation Intelligence
+            <Eye className="w-4 h-4" /> Uruchom AI Visibility Check
           </button>
           <p className="text-xs text-muted-foreground">lub przewiń do zakładki "Widoczność AI"</p>
         </div>
@@ -3505,7 +3505,7 @@ function WhatIfSection({
     if (canRedo) setHistoryIndex(i => i + 1);
   }
 
-  // Feature C: Citation Intelligence gate — if not run, show CTA
+  // Feature C: AI Visibility Check gate — if not run, show CTA
   if (citationStatus === "idle") {
     return <CitationIntelligenceGate navigate={navigate} />;
   }
@@ -3562,7 +3562,7 @@ function WhatIfSection({
         pageType: detectedPageType,
         targetQueries: [],
         citedCompetitorUrls,
-        // Citation Opportunities — contentBriefs from Citation Intelligence for targeted rewrite
+        // Citation Opportunities — contentBriefs from AI Visibility Check for targeted rewrite
         citationOpportunities: citationOpportunities.length > 0 ? citationOpportunities : undefined,
         // Pass page metadata for research pipeline
         pageTitle: pageMetadata?.title,

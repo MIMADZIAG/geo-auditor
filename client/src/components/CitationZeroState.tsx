@@ -1,9 +1,9 @@
 /**
  * CitationZeroState — Emotional Zero-State for 0 Citations
  *
- * Visibility First — Warunek 2: gdy Citation Intelligence zwróci 0 cytowań,
+ * Visibility First — Warunek 2: gdy AI Visibility Check zwróci 0 cytowań,
  * ekran nie może być pusty. Musi pokazywać konkretny ból + top-3 konkurentów
- * + bezpośrednie CTA do Pulse Monitor.
+ * + bezpośrednie CTA do AI Visibility Monitor.
  *
  * Zasada: "Pokaż ból przed rozwiązaniem" — konkurenci pojawiają się PRZED
  * jakimikolwiek wskazówkami. Użytkownik musi najpierw zobaczyć, kto go wyprzedza.
@@ -177,7 +177,7 @@ export function CitationZeroState({
             Widoczność w AI zmienia się co tydzień. Monitoruj zmiany i dowiedz się, kiedy AI zacznie Cię cytować.
           </p>
           <div className="flex flex-col sm:flex-row gap-2">
-            {/* Primary CTA — Pulse Monitor */}
+            {/* Primary CTA — AI Visibility Monitor */}
             <button
               onClick={handlePulse}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"

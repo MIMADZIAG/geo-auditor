@@ -660,7 +660,7 @@ export default function PageCreatorResult() {
             <Sparkles className="w-8 h-8 text-violet-400 shrink-0" />
             <div>
               <h3 className="text-xl font-bold text-white">Treść gotowa. Zamknij pętlę sygnałów.</h3>
-              <p className="text-zinc-400 text-sm mt-0.5">Wdroż treść, uruchom Signal Audit i dodaj stronę do Pulse Monitor.</p>
+              <p className="text-zinc-400 text-sm mt-0.5">Wdroż treść, uruchom Signal Audit i dodaj stronę do AI Visibility Monitor.</p>
             </div>
           </div>
           {/* Workflow steps */}
@@ -683,7 +683,7 @@ export default function PageCreatorResult() {
               <div className="w-8 h-8 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mx-auto mb-2">
                 <Globe className="w-4 h-4 text-blue-400" />
               </div>
-              <div className="text-xs font-semibold text-white">03 · Pulse Monitor</div>
+              <div className="text-xs font-semibold text-white">03 · AI Visibility Monitor</div>
               <div className="text-[11px] text-zinc-500 mt-1">Śledź cytowania w ChatGPT, Gemini, Perplexity</div>
             </div>
           </div>
@@ -708,7 +708,7 @@ export default function PageCreatorResult() {
                 className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-6 flex-1 sm:flex-none"
               >
                 <Globe className="w-4 h-4 mr-2" />
-                Dodaj do Pulse Monitor
+                Dodaj do AI Visibility Monitor
               </Button>
             )}
             <Button
