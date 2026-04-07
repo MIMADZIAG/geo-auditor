@@ -1718,3 +1718,6 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Change AI-Powered badge → professional alternative (Anton Osika style)
 - [x] Translate "How likely AI search engines are to cite your content" to Polish
 - [x] Rename "Aktualizacja treści AI" → "AI Writer" with new claim and button text
+
+## Bug — H1 detection false negative
+- [x] Fix H1 heading detection — gap analysis now treats h1_present warning (2+ H1) as pass (warningIsPass: true), not a gap

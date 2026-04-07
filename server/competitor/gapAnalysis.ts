@@ -74,6 +74,13 @@ interface CheckDef {
   column: keyof CompetitorAudit;
   /** true = column value 1 means BAD (inverted), false = 1 means GOOD */
   inverted?: boolean;
+  /**
+   * When true, a "warning" status on the target check is treated as a PASS
+   * for gap analysis purposes. Use for checks where "warning" means the feature
+   * IS present but suboptimal (e.g. h1_present with 2 H1 tags — the page HAS
+   * an H1, it just has too many).
+   */
+  warningIsPass?: boolean;
   recommendation: string;
   impact: string;
 }
@@ -202,6 +209,8 @@ const CHECK_DEFS: CheckDef[] = [
     label: "Nagłówek H1",
     category: "contentStructure",
     column: "cs_h1_present",
+    // warning = page has H1 but has more than one — still HAS an H1, not a gap
+    warningIsPass: true,
     recommendation: "Dodaj jeden wyraźny nagłówek H1 opisujący temat strony.",
     impact: "H1 to główny sygnał tematyczny dla crawlerów AI.",
   },
@@ -434,8 +443,18 @@ export function computeGapAnalysis(
     ...(targetFindings.brandAuthority?.checks ?? []),
   ];
 
+  // Build a lookup from checkId → warningIsPass flag for quick access
+  const warningIsPassSet = new Set(
+    CHECK_DEFS.filter(d => d.warningIsPass).map(d => d.checkId)
+  );
+
   for (const check of allTargetChecks) {
     if (check.status === "pass") {
+      targetPassStatus[check.id] = true;
+      targetValues[check.id] = 1;
+    } else if (check.status === "warning" && warningIsPassSet.has(check.id)) {
+      // For checks where warning = feature IS present but suboptimal,
+      // treat as pass in gap analysis (the feature exists, no gap to fill).
       targetPassStatus[check.id] = true;
       targetValues[check.id] = 1;
     } else if (check.status === "fail" || check.status === "warning") {
