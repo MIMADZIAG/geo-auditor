@@ -1614,14 +1614,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">
                     {totalAudits === 0
                       ? "Pierwszy krok: sprawdź swoją stronę produktową → wynik w 30 sekund."
-                      : bestScore != null && bestAuditUrl
-                        ? <>
-                            <span className="text-foreground font-semibold">{bestAuditUrl}</span>
-                            {" — "}
-                            <span className={bestScore >= 75 ? "text-emerald-400 font-semibold" : bestScore >= 50 ? "text-amber-400 font-semibold" : "text-red-400 font-semibold"}>{bestScore}/100</span>
-                            {lastAuditDate && <span className="text-muted-foreground/60"> · ostatnia analiza: {lastAuditDate}</span>}
-                          </>
-                        : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`
+                      : `${totalAudits} analiz${totalAudits === 1 ? "a" : totalAudits < 5 ? "y" : ""} · ${planLabel(plan)}`
                     }
                   </p>
                   {totalAudits === 0 ? (
