@@ -185,6 +185,9 @@ export const monitoredPagePhrases = mysqlTable("monitored_page_phrases", {
   intentType: mysqlEnum("intentType", ["informational", "navigational", "commercial", "transactional", "comparative", "how_to", "problem_solving"]).default("informational"),
   isActive: boolean("isActive").default(true).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  // INTENT-MATRIX v4 metadata — persisted from phraseGenerator output
+  engineAffinity: json("engineAffinity").$type<Array<"chatgpt" | "perplexity" | "gemini" | "google">>(),  // Which engines are most likely to cite this page for this query
+  citationProbability: mysqlEnum("citationProbability", ["high", "medium", "low"]),                      // Estimated citation probability from LLM analysis
   // Denormalized citation metrics for fast UI rendering
   lastCitedEngines: int("lastCitedEngines").default(0),
   lastCheckedAt: timestamp("lastCheckedAt"),

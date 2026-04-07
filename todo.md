@@ -1680,3 +1680,12 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Signal Audit: per-domain KPI delta (↑↓ trend w ostatnich 5 audytach)
 - [x] PhraseManager: dodanie nowych typów intencji (comparative, how_to, problem_solving) do INTENT_LABELS
 - [x] Architektura: dokument decyzji INTENT-MATRIX v4 (phraseGenerator architecture doc)
+
+## Backlog: INTENT-MATRIX v4 — Luki implementacyjne (sesja 2026-04-07 #2)
+
+- [x] Fix #1 (HIGH): worker.ts cron — przekazać getActivePhrasesForPage(pageId) jako prompts do createCitationJob
+- [x] Fix #2 (HIGH): schema.ts — dodać kolumny engineAffinity (JSON) i citationProbability (enum) do monitored_page_phrases (migracja 0028)
+- [x] Fix #2b (HIGH): phrases.ts insertPhrases — zapisywać engineAffinity i citationProbability przy inicjalizacji fraz
+- [x] Fix #3 (MEDIUM): PhraseManager.tsx — wyświetlać engineAffinity (ikony silników) i citationProbability (badge)
+- [x] Fix #4 (LOW): phrases.ts initializePhrasesForPage — semantic deduplication (Jaccard similarity) przed insertPhrases
+- [x] Fix #5 (LOW): phrases.ts — citation feedback loop: flagowanie fraz z 0 cytowań po 3+ runach (WEAK_PHRASE_THRESHOLD=3)

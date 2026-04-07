@@ -43,6 +43,9 @@ interface Phrase {
   lastCitedEngines: number | null;
   citationStreakDays: number | null;
   lastCheckedAt: Date | string | null;
+  // INTENT-MATRIX v4 fields
+  engineAffinity: Array<"chatgpt" | "perplexity" | "gemini" | "google"> | null;
+  citationProbability: "high" | "medium" | "low" | null;
 }
 
 interface PhraseManagerProps {
@@ -54,6 +57,19 @@ interface PhraseManagerProps {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const ENGINE_ICONS: Record<string, { label: string; icon: string }> = {
+  chatgpt: { label: "ChatGPT", icon: "C" },
+  perplexity: { label: "Perplexity", icon: "P" },
+  gemini: { label: "Gemini", icon: "G" },
+  google: { label: "Google AI", icon: "A" },
+};
+
+const PROB_CONFIG: Record<string, { label: string; color: string }> = {
+  high: { label: "Wysoka szansa", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
+  medium: { label: "Średnia szansa", color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
+  low: { label: "Niska szansa", color: "bg-muted/30 text-muted-foreground border-border" },
+};
 
 const INTENT_LABELS: Record<string, { label: string; color: string }> = {
   informational: { label: "Info", color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
@@ -265,6 +281,38 @@ export function PhraseManager({ monitoredPageId, plan, className = "", compact =
                         </span>
                       )}
                     </div>
+
+                    {/* INTENT-MATRIX metadata row: engine affinity + citation probability */}
+                    {(phrase.engineAffinity?.length || phrase.citationProbability) && (
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {/* Engine affinity dots */}
+                        {phrase.engineAffinity && phrase.engineAffinity.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-0.5 cursor-help">
+                                {phrase.engineAffinity.map((eng) => (
+                                  <span
+                                    key={eng}
+                                    className="w-4 h-4 rounded-full bg-muted/50 border border-border flex items-center justify-center text-[8px] font-bold text-muted-foreground"
+                                  >
+                                    {ENGINE_ICONS[eng]?.icon ?? eng[0].toUpperCase()}
+                                  </span>
+                                ))}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              Najlepiej dla: {phrase.engineAffinity.map(e => ENGINE_ICONS[e]?.label ?? e).join(", ")}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {/* Citation probability badge */}
+                        {phrase.citationProbability && PROB_CONFIG[phrase.citationProbability] && (
+                          <span className={`text-[10px] px-1.5 py-0 rounded border font-medium ${PROB_CONFIG[phrase.citationProbability].color}`}>
+                            {PROB_CONFIG[phrase.citationProbability].label}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Citation metrics */}
                     {phrase.lastCheckedAt && (
