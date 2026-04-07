@@ -10,7 +10,7 @@ import {
   Search, ArrowUpRight, Clock, BarChart2, Eye, Zap,
   ChevronRight, ChevronDown, Filter, SortAsc, SortDesc, LayoutDashboard,
   Activity, Sparkles, FileText, Star, Globe, TrendingUp,
-  AlertTriangle, CheckCircle, XCircle, Plus,
+  AlertTriangle, CheckCircle, XCircle, Plus, PenLine, LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -112,12 +112,20 @@ function AuditSidebar({ user, plan }: { user: { name?: string | null } | null; p
           </div>
         </Link>
 
+        {/* AI HUB — always violet highlight */}
         <Link href="/hub">
-          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-violet-500/10 border border-violet-500/20 text-violet-400 hover:bg-violet-500/15 transition-colors">
             <LayoutDashboard className="w-3.5 h-3.5" />
             AI HUB
+            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
           </div>
         </Link>
+        {/* AI Audit — active */}
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-muted/50 text-foreground">
+          <Search className="w-3.5 h-3.5 text-primary" />
+          AI Audit
+          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+        </div>
         <Link href="/ai-monitoring">
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
             <Eye className="w-3.5 h-3.5" />
@@ -126,16 +134,10 @@ function AuditSidebar({ user, plan }: { user: { name?: string | null } | null; p
         </Link>
         <Link href="/page-creator">
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-            <Sparkles className="w-3.5 h-3.5" />
-            Signal Rewrite
+            <PenLine className="w-3.5 h-3.5" />
+            AI Writer
           </div>
         </Link>
-        {/* Active */}
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-muted/50 text-foreground">
-          <Search className="w-3.5 h-3.5 text-primary" />
-          Signal Audit
-          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-        </div>
         <Link href="/pricing">
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
             <Star className="w-3.5 h-3.5" />
@@ -176,7 +178,7 @@ function AuditSidebar({ user, plan }: { user: { name?: string | null } | null; p
           onClick={() => logout.mutate()}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
         >
-          <XCircle className="w-3.5 h-3.5" />
+          <LogOut className="w-3.5 h-3.5" />
           Wyloguj
         </button>
       </div>

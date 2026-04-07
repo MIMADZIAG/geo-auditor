@@ -1520,11 +1520,18 @@ export default function Dashboard() {
           </Link>
 
           {/* Main nav — no section labels, active state speaks for itself */}
+          {/* AI HUB — active, violet highlight */}
           <Link href="/hub">
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 border border-primary/20 text-primary">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-violet-500/10 border border-violet-500/20 text-violet-400">
               <LayoutDashboard className="w-3.5 h-3.5" />
               AI HUB
-              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+            </div>
+          </Link>
+          <Link href="/audit">
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <Search className="w-3.5 h-3.5" />
+              AI Audit
             </div>
           </Link>
           <Link href="/ai-monitoring">
@@ -1533,16 +1540,10 @@ export default function Dashboard() {
               AI Monitoring
             </div>
           </Link>
-           <Link href="/page-creator">
+          <Link href="/page-creator">
             <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-              <Sparkles className="w-3.5 h-3.5" />
-              Signal Rewrite
-            </div>
-          </Link>
-          <Link href="/audit">
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-              <Search className="w-3.5 h-3.5" />
-              Signal Audit
+              <PenLine className="w-3.5 h-3.5" />
+              AI Writer
             </div>
           </Link>
           <Link href="/pricing">
