@@ -17,6 +17,7 @@
  *   - Upsell triggers for phrase limits and Pro features
  */
 import { useState, useMemo, useEffect } from "react";
+import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -612,8 +613,8 @@ export default function CitationPulse() {
     <TooltipProvider>
       <div className="flex h-screen overflow-hidden bg-background">
 
-        {/* ── LEFT SIDEBAR ── */}
-        <aside className="w-56 shrink-0 flex flex-col border-r border-border/40 bg-card/30">
+        {/* ── LEFT SIDEBAR — desktop only ── */}
+        <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-border/40 bg-card/30">
           {/* Logo */}
           <div className="h-14 flex items-center px-4 border-b border-border/30">
             <Link href="/">
@@ -717,8 +718,16 @@ export default function CitationPulse() {
 
         {/* ── MAIN CONTENT ── */}
         <div className="flex-1 overflow-y-auto">
+          {/* Mobile top bar */}
+          <div className="lg:hidden flex items-center gap-3 px-4 h-14 border-b border-border/30 bg-background/95 backdrop-blur-sm sticky top-0 z-40">
+            <MobileNavDrawer activeRoute="ai-monitoring" plan={plan} userName={user?.name} onLogout={() => logout?.()} />
+            <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center">
+              <Brain className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+          </div>
           {/* Sticky header */}
-          <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border/30">
+          <header className="sticky top-0 lg:top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border/30">
             <div className="px-6 h-14 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-violet-400" />

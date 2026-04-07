@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -360,6 +361,7 @@ export default function SignalAudit() {
   const { user, isAuthenticated } = useAuth();
   const authLoading = !isAuthenticated && user === null;
   const [, navigate] = useLocation();
+  const logoutMutation = trpc.auth.logout.useMutation({ onSuccess: () => navigate("/") });
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -489,16 +491,27 @@ export default function SignalAudit() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <AuditSidebar user={user} plan={plan} />
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex">
+        <AuditSidebar user={user} plan={plan} />
+      </div>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 px-4 h-14 border-b border-border/30 bg-background/95 backdrop-blur-sm shrink-0">
+          <MobileNavDrawer activeRoute="audit" plan={plan} userName={user?.name} onLogout={() => logoutMutation.mutate()} />
+          <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center">
+            <Zap className="w-3.5 h-3.5 text-primary" />
+          </div>
+          <span className="text-sm font-bold tracking-tight">GEO-Auditor</span>
+        </div>
         {/* Header */}
         <div className="px-8 pt-8 pb-6 border-b border-border/30 bg-background/95 backdrop-blur-sm shrink-0">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-semibold tracking-widest text-primary/70 uppercase">Signal Audit</span>
+                <span className="text-[10px] font-semibold tracking-widest text-primary/70 uppercase">AI Audit</span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight">Historia analiz</h1>
               <p className="text-sm text-muted-foreground mt-1">

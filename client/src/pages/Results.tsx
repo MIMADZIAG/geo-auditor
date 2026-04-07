@@ -67,7 +67,6 @@ import { AICitationPanel } from "@/components/AICitationPanel";
 import { ResultsSidebar } from "@/components/ResultsSidebar";
 import { CitationLoadingBridge } from "@/components/CitationLoadingBridge";
 import { useRewriteStream } from "@/hooks/useRewriteStream";
-import { KnowledgeGraphReadinessPanel } from "@/components/KnowledgeGraphReadinessPanel";
 import { AnswerFirstOpeningCard } from "@/components/AnswerFirstOpeningCard";
 import UpsellProModal from "@/components/UpsellProModal";
 import { Streamdown } from "streamdown";
@@ -382,10 +381,14 @@ export default function Results() {
     const isQuickWin = opp.semanticInsight?.isQuickWin ?? (opp.priority === "critical" || opp.priority === "high");
     return { keyword: opp.query, contentBrief, isQuickWin };
   }).filter((opp) => opp.contentBrief.length > 0);
-  // Upsell modal statee
+  // Upsell modal state
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [upsellTier, setUpsellTier] = useState<"Niewidoczny" | "Startujący">("Startujący");
   const upsellTriggeredRef = useRef(false);
+
+  // Onboarding modal: fires once after first audit completes for logged-in users
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const onboardingShownRef = useRef(false);
 
   // B1 — Celebration moment: detect score improvement vs previous audit of same URL
   const [celebrationData, setCelebrationData] = useState<{ prevScore: number; delta: number } | null>(null);
@@ -581,6 +584,16 @@ export default function Results() {
         setTimeout(() => setCelebrationData(null), 8000);
       }, 1800);
     }
+    // Onboarding modal: show after first audit for logged-in users not yet monitoring this URL
+    if (isFirstAudit && isAuthenticated && !onboardingShownRef.current) {
+      const alreadyMonitored = (monitoredPages ?? []).some((p) => {
+        try { return new URL(p.url).href === new URL(url).href; } catch { return p.url === url; }
+      });
+      if (!alreadyMonitored) {
+        onboardingShownRef.current = true;
+        setTimeout(() => setShowOnboardingModal(true), 3500);
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audit?.status]);
 
@@ -660,6 +673,54 @@ export default function Results() {
         scoreLabel={upsellTier}
         score={overallScore}
       />
+
+      {/* ── Onboarding Modal: fires after first audit for logged-in users ── */}
+      {showOnboardingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl border border-violet-500/30 bg-card shadow-2xl overflow-hidden">
+            {/* Gradient accent */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-emerald-500" />
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+                  <Eye className="w-5 h-5 text-violet-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold">Monitoruj tę stronę na bieżąco</div>
+                  <div className="text-xs text-muted-foreground">AI Search zmienia się co tydzień</div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">
+                Algorytmy ChatGPT, Gemini i Perplexity aktualizują swoje bazy wiedzy regularnie.
+                Strony bez monitoringu tracą średnio <span className="text-amber-400 font-semibold">8–12 pkt</span> w ciągu 90 dni.
+              </p>
+              <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 mb-5 mt-3">
+                <div className="text-xs font-semibold text-violet-300 mb-1">Strona do monitorowania</div>
+                <div className="text-sm font-mono text-foreground truncate">{audit.url}</div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+                  onClick={() => {
+                    addMonitoringMutation.mutate({ url: audit.url as string });
+                    setShowOnboardingModal(false);
+                  }}
+                  disabled={addMonitoringMutation.isPending}
+                >
+                  {addMonitoringMutation.isPending ? "Dodawanie…" : "✅ Dodaj do AI Monitoring"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowOnboardingModal(false)}
+                >
+                  Nie teraz
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Left Sidebar ── */}
       <div className="hidden lg:flex shrink-0">
@@ -986,14 +1047,7 @@ export default function Results() {
             recommendations={recommendations}
           />}
           {!hasPaidPlan && !isAuditRunning && <MonitorCTA isAuthenticated={isAuthenticated} navigate={navigate} />}
-          {/* ── Knowledge Graph Readiness Score (Mike King / iPullRank) ── */}
-          {findings?.contentStructure && (
-            <KnowledgeGraphReadinessPanel
-              entityData={(findings.contentStructure as ContentStructureResult).entityData}
-              entityRichnessCheck={findings.contentStructure.checks.find(c => c.id === "entity_richness")}
-              pageUrl={audit.url}
-            />
-          )}
+
           {/* ── Answer-First Opening Score (Metehan Yeşilyurt + Dan Petrovic) ── */}
           {findings?.contentStructure && (
             <AnswerFirstOpeningCard

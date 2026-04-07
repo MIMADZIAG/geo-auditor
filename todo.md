@@ -1699,3 +1699,11 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix: FAQ schema = fail na article/service/homepage gdy brak (było: zawsze warning)
 - [x] Fix: analyzeStructuredData(page, pageType) — przekazanie pageType w audit/index.ts
 - [x] 23 nowe testy walidacyjne (scoring-recalibration.test.ts): zakresy scoringowe per typ strony, adaptive E-E-A-T, warning multiplier
+
+## UI/UX Sprint (sesja 2026-04-07 #3)
+
+- [ ] Mobile hamburger sidebar we wszystkich 3 widokach (/hub, /audit, /ai-monitoring)
+- [ ] Onboarding po pierwszym audycie — modal z propozycją dodania strony do monitoringu (pre-filled URL)
+- [ ] Usunięcie Knowledge Graph widget z widoku wyników audytu (/results)
+- [ ] Pricing.tsx: aktualizacja copy (Signal Audit→AI Audit, Signal Rewrite→AI Writer, AI Visibility Monitor→AI Monitoring)
+- [ ] Pricing.tsx: FAQ sekcja (3–4 pytania o różnicę między planami)

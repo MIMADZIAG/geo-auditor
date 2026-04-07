@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
-  CheckCircle2, ArrowLeft, Bot, Zap, Shield, Building2, Star,
-  ArrowRight, Globe, Brain, BarChart3, Download, Users, Infinity,
-  ChevronDown, ChevronUp, Loader2,
+  CheckCircle2, ArrowLeft, Bot, Zap, Star,
+  ArrowRight, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -21,19 +20,19 @@ const plans = [
     highlight: false,
     badge: null,
     features: [
-      "50 analiz Signal Audit / mies.",
+      "50 audytów AI Audit / mies.",
       "40+ sprawdzeń technicznych i contentowych",
       "AI Readiness Score 0–100",
-      "Signal Rewrite — 10 przepisań/mies.",
-      "AI Visibility Monitor — 10 stron (re-audyt co 7 dni)",
+      "AI Writer — 10 przepisań/mies.",
+      "AI Monitoring — 10 stron (re-audyt co 7 dni)",
       "Historia AI Readiness Score",
       "Eksport PDF",
       "Alerty email przy spadku wyniku",
     ],
     missing: [
       "AI Visibility Check Pro (3 konkurenci)",
-      "Signal Rewrite bez limitu",
-      "AI Visibility Monitor 50 stron",
+      "AI Writer bez limitu",
+      "AI Monitoring 50 stron",
     ],
   },
   {
@@ -45,11 +44,11 @@ const plans = [
     highlight: true,
     badge: "Najlepsza wartość",
     features: [
-      "200 analiz Signal Audit / mies.",
+      "200 audytów AI Audit / mies.",
       "Wszystko ze Starter",
-      "AI Visibility Monitor — 50 stron",
+      "AI Monitoring — 50 stron",
       "AI Visibility Check Pro — 3 konkurenci",
-      "Signal Rewrite bez limitu",
+      "AI Writer bez limitu",
       "Priorytetowe wsparcie",
     ],
     missing: [],
@@ -59,11 +58,15 @@ const plans = [
 const faqs = [
   {
     q: "Czym jest AI Readiness Score?",
-    a: "AI Readiness Score (0–100) to wynik Signal Audit — agregat 40+ sprawdzeń technicznych i contentowych, które decydują o tym, czy ChatGPT, Gemini, Perplexity i Google AI Overviews cytują daną podstronę. Im wyższy score, tym wyższa szansa na cytowanie.",
+    a: "AI Readiness Score (0–100) to wynik AI Audit — agregat 40+ sprawdzeń technicznych i contentowych, które decydują o tym, czy ChatGPT, Gemini, Perplexity i Google AI Overviews cytują daną podstronę. Im wyższy score, tym wyższa szansa na cytowanie.",
   },
   {
     q: "Czym GEO-Auditor różni się od Semrush czy Ahrefs?",
-    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search. GEO-Auditor analizuje wyłącznie sygnały AI Search na poziomie konkretnej podstrony — nie domeny. To różne metryki, różne algorytmy, różne rekomendacje.",
+    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search. GEO-Auditor analizuje wyłącznie sygnały AI Search na poziomie konkretnej podstrony — nie domeny. To różne metryki, różne algorytmy, różne rekomendacje. Możesz mieć świetne pozycje w Google i zerową widoczność w ChatGPT — i odwrotnie.",
+  },
+  {
+    q: "Jaka jest różnica między Starter a Pro?",
+    a: "Starter to 50 audytów AI Audit miesięcznie, AI Monitoring dla 10 stron i 10 przepisań AI Writer. Pro to 200 audytów, AI Monitoring dla 50 stron, AI Writer bez limitu i AI Visibility Check Pro z analizą 3 konkurentów. Jeśli prowadzisz sklep lub agencję z więcej niż 10 monitorowanymi stronami — Pro jest właściwym wyborem.",
   },
   {
     q: "Czy mogę anulować w dowolnym momencie?",
@@ -71,11 +74,19 @@ const faqs = [
   },
   {
     q: "Czy jest bezpłatna wersja?",
-    a: "Tak — jeden pełny Signal Audit bezpłatnie, bez rejestracji i bez karty. Obejmuje pełną diagnostykę: 40+ sprawdzeń, AI Readiness Score i Content Intelligence. Aby korzystać z historii, AI Visibility Monitor i Signal Rewrite, wybierz plan Starter lub Pro.",
+    a: "Tak — jeden pełny AI Audit bezpłatnie, bez rejestracji i bez karty. Obejmuje pełną diagnostykę: 40+ sprawdzeń, AI Readiness Score i Content Intelligence. Aby korzystać z historii, AI Monitoring i AI Writer, wybierz plan Starter lub Pro.",
   },
   {
-    q: "Jaka jest różnica między Starter a Pro?",
-    a: "Starter to 50 audytów Signal Audit miesięcznie, AI Visibility Monitor dla 10 stron i 10 przepisań Signal Rewrite. Pro to 200 audytów, AI Visibility Monitor dla 50 stron, Signal Rewrite bez limitu i AI Visibility Check Pro z analizą 3 konkurentów. Jeśli prowadzisz sklep lub agencję z więcej niż 10 monitorowanymi stronami — Pro jest właściwym wyborem.",
+    q: "Co to jest AI Monitoring i po co mi go?",
+    a: "AI Monitoring śledzi widoczność Twoich stron w ChatGPT, Gemini, Perplexity i Google AI Overviews w regularnych odstępach (co 3, 7 lub 14 dni). Algorytmy AI aktualizują swoje bazy wiedzy co kilka tygodni — bez monitoringu nie wiesz, kiedy Twoja strona traci cytowania. Monitoring wysyła alert, zanim stracisz ruch.",
+  },
+  {
+    q: "Czym jest AI Writer i jak działa?",
+    a: "AI Writer to narzędzie do przepisywania i tworzenia treści zoptymalizowanych pod AI Search. Na podstawie wyników AI Audit generuje wersję strony z poprawioną strukturą, FAQ, sygnałami E-E-A-T i formatem odpowiedzi — gotową do publikacji. Nie zastępuje copywritera, ale skraca czas wdrożenia rekomendacji z dni do minut.",
+  },
+  {
+    q: "Czy GEO-Auditor działa dla każdego języka i rynku?",
+    a: "Tak. AI Audit analizuje strukturę techniczną i contentową strony niezależnie od języka. Frazy do AI Monitoring są generowane automatycznie na podstawie treści strony — dla polskich, angielskich i innych stron. Widoczność w ChatGPT, Gemini i Perplexity jest sprawdzana w języku docelowym strony.",
   },
 ];
 
@@ -85,6 +96,7 @@ export default function Pricing() {
   const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
   const createCheckout = trpc.payments.createCheckout.useMutation({
     onSuccess: ({ url }) => {
       window.open(url, "_blank");
@@ -142,7 +154,7 @@ export default function Pricing() {
             <span className="gradient-text">Gotowy plan naprawy.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-            Pierwszy Signal Audit bezpłatnie — bez rejestracji i bez karty. Skaluj do AI Visibility Monitor i AI Visibility Check gdy wyniki rosną.
+            Pierwszy AI Audit bezpłatnie — bez rejestracji i bez karty. Skaluj do AI Monitoring i AI Visibility Check gdy wyniki rosną.
           </p>
 
           {/* Billing toggle */}
@@ -199,8 +211,9 @@ export default function Pricing() {
                 onClick={() => handleCta(plan.id)}
                 variant={plan.highlight ? "default" : "outline"}
                 className="w-full mb-5 text-sm"
+                disabled={loadingPlan === plan.id}
               >
-                {plan.cta}
+                {loadingPlan === plan.id ? "Przekierowywanie…" : plan.cta}
               </Button>
 
               <div className="space-y-2.5 flex-1">
@@ -223,7 +236,8 @@ export default function Pricing() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-black text-center mb-8">Pytania</h2>
+          <h2 className="text-2xl font-black text-center mb-2">Pytania i odpowiedzi</h2>
+          <p className="text-sm text-muted-foreground text-center mb-8">Wszystko, co chcesz wiedzieć przed zakupem.</p>
           <div className="space-y-3">
             {faqs.map((faq, i) => (
               <div key={i} className="rounded-xl border border-border/50 bg-card overflow-hidden">
@@ -247,7 +261,7 @@ export default function Pricing() {
         {/* Bottom CTA */}
         <div className="text-center mt-16">
           <h3 className="text-2xl font-black mb-3">Zacznij od jednego URL.</h3>
-          <p className="text-sm text-muted-foreground mb-6">Bez konta. Bez karty. Pełny Signal Audit w 60 sekund.</p>
+          <p className="text-sm text-muted-foreground mb-6">Bez konta. Bez karty. Pełny AI Audit w 60 sekund.</p>
           <Button onClick={() => navigate("/")} className="gap-2 text-base px-8 py-3 h-auto">
             <Zap className="w-4 h-4" /> Sprawdź sygnał swojej strony
           </Button>

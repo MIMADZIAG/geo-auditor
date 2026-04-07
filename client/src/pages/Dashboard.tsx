@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { PhraseManager } from "@/components/PhraseManager";
 import { VisibilityScoreKPI } from "@/components/monitoring/VisibilityScoreKPI";
 import { SentimentDashboard } from "@/components/monitoring/SentimentDashboard";
@@ -1079,7 +1080,11 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
     <header className="sticky top-0 z-40">
       <div className="glass-strong border-b border-border/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile hamburger — only on small screens */}
+            <div className="lg:hidden">
+              <MobileNavDrawer activeRoute="hub" plan={plan} userName={user?.name} onLogout={logout} />
+            </div>
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
                 <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
@@ -1091,26 +1096,32 @@ function DashboardTopNav({ plan, user }: { plan: string; user?: { name?: string 
             <div className="h-4 w-px bg-border/50 hidden md:block" />
             <nav className="hidden md:flex items-center gap-1">
               <Link href="/hub">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/8 text-primary">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-500/10 border border-violet-500/20 text-violet-400">
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   AI HUB
                 </div>
               </Link>
-              <Link href="/pulse">
+              <Link href="/audit">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                  <Search className="w-3.5 h-3.5" />
+                  AI Audit
+                </div>
+              </Link>
+              <Link href="/ai-monitoring">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
                   <Eye className="w-3.5 h-3.5" />
-                  AI Visibility Monitor
+                  AI Monitoring
                 </div>
               </Link>
               <Link href="/page-creator">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Signal Rewrite
+                  <PenLine className="w-3.5 h-3.5" />
+                  AI Writer
                 </div>
               </Link>
               <Link href="/pricing">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-                  Plany
+                  Plany i cennik
                 </div>
               </Link>
             </nav>
