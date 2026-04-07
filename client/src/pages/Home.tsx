@@ -244,7 +244,6 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scanStep, setScanStep] = useState(0);
-  const [annual, setAnnual] = useState(false);
   const [timerActive, setTimerActive] = useState(false);
   const [urlFocused, setUrlFocused] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -335,7 +334,7 @@ export default function Home() {
             {/* Nav links */}
             <nav className="hidden md:flex items-center gap-1">
               <a href="#how-it-works" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Jak to działa</a>
-              <a href="#pricing" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Plany</a>
+              <a href="/pricing" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">Plany i cennik</a>
               <a href="#faq" className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5">FAQ</a>
             </nav>
 
@@ -802,89 +801,6 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
         </div>
       </section>
 
-      {/* ── Pricing ── */}
-      <section id="pricing" className="py-24 px-4 sm:px-6 border-t border-border/20 relative overflow-hidden">
-        <div className="absolute inset-0 hero-glow opacity-50 pointer-events-none" />
-        <div className="max-w-5xl mx-auto relative">
-          <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 pill pill-primary mb-5">
-              <BarChart3 className="w-3 h-3" />
-              <span>Plany</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">Zacznij za darmo.<br />
-              <span className="text-muted-foreground/60">Skaluj gdy wyniki rosną.</span>
-            </h2>
-
-            {/* Toggle */}
-            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-card border border-border/40 mt-4">
-              <button
-                onClick={() => setAnnual(false)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${!annual ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Miesięcznie
-              </button>
-              <button
-                onClick={() => setAnnual(true)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${annual ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Rocznie <span className="text-emerald-400 font-bold">-20%</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {PRICING_PLANS.map((plan) => (
-              <div key={plan.name} className={`relative rounded-2xl border p-6 flex flex-col transition-all ${plan.featured ? "border-primary/40 bg-gradient-to-b from-primary/8 to-transparent shadow-xl shadow-primary/8" : "border-border/30 bg-card/60"}`}>
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider shadow-md shadow-primary/30">
-                    {plan.badge}
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{plan.name}</div>
-                  <div className="flex items-baseline gap-1 mb-1">
-                    {annual && plan.name !== "Free" && (
-                      <span className="text-sm text-muted-foreground/50 line-through">{plan.price}</span>
-                    )}
-                    <span className="text-3xl font-black tracking-tight">{annual && plan.name !== "Free" ? plan.priceAnnual : plan.price}</span>
-                    {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
-                  </div>
-                  {annual && plan.name !== "Free" && (
-                    <div className="text-[11px] text-emerald-400 font-medium mb-2">Oszczędzasz 20% rocznie</div>
-                  )}
-                  <p className="text-xs text-muted-foreground leading-relaxed">{plan.desc}</p>
-                </div>
-
-                <ul className="space-y-2.5 flex-1 mb-6">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/70 shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  onClick={() => {
-                    if (plan.name === "Free") window.scrollTo({ top: 0, behavior: "smooth" });
-                    else window.location.href = "/pricing";
-                  }}
-                  variant={plan.featured ? "default" : "outline"}
-                  className={`w-full ${plan.featured ? "shadow-md shadow-primary/20" : ""}`}
-                >
-                  {plan.cta}
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-8 space-y-1.5">
-            <p className="text-xs text-muted-foreground">Płatności obsługiwane przez Stripe. Anuluj w dowolnym momencie.</p>
-            <p className="text-xs text-emerald-400/80 font-medium">14-dniowa gwarancja zwrotu — bez pytań.</p>
-          </div>
-        </div>
-      </section>
 
       {/* ── FAQ ── */}
       <section id="faq" className="py-20 px-4 sm:px-6 border-t border-border/20">
@@ -959,7 +875,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
               <div className="section-label mb-4">Platforma</div>
               <div className="space-y-2.5">
                 <a href="#how-it-works" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Jak to działa</a>
-                <a href="#pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Plany</a>
+                <a href="/pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Plany i cennik</a>
                 <a href="/hub" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">AI HUB</a>
               </div>
             </div>
@@ -968,7 +884,6 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
               <div className="space-y-2.5">
                 <a href="#faq" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
                 <a href="/demo" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Przykładowy raport</a>
-                <a href="/pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Cennik</a>
                 <a href="mailto:hello@geoauditor.app" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Kontakt</a>
               </div>
             </div>
@@ -1114,63 +1029,6 @@ const EMOTIONAL_ITEMS = [
   { icon: Sparkles, label: "Co zmienić, żeby ich wyprzedzić", desc: "Signal Rewrite generuje nową wersję treści gotową do wdrożenia" },
 ];
 
-const PRICING_PLANS = [
-  {
-    name: "Free",
-    price: "0 zł",
-    priceAnnual: "0 zł",
-    period: "",
-    desc: "Pełny Signal Audit bez konta i karty",
-    featured: false,
-    cta: "Sprawdź za darmo →",
-    badge: null,
-    features: [
-      "5 analiz / miesiąc",
-      "AI Readiness Score (0–100)",
-      "Signal Audit — 40+ sprawdzeń",
-      "Content Intelligence",
-      "1 strona w AI Visibility Monitor",
-    ],
-  },
-  {
-    name: "Starter",
-    price: "149 zł",
-    priceAnnual: "119 zł",
-    period: "/ mies.",
-    desc: "Dla właścicieli sklepów i specjalistów SEO",
-    featured: true,
-    cta: "Zacznij bezpłatny trial →",
-    badge: "Najpopularniejszy",
-    features: [
-      "50 analiz / miesiąc",
-      "AI Visibility Check (Google + ChatGPT)",
-      "Signal Rewrite — 10 przepisań/mies.",
-      "Historia AI Readiness Score",
-      "AI Visibility Monitor — 10 podstron",
-      "Eksport PDF",
-      "Wsparcie priorytetowe",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "399 zł",
-    priceAnnual: "319 zł",
-    period: "/ mies.",
-    desc: "Dla agencji SEO i e-commerce w skali",
-    featured: false,
-    cta: "Zacznij bezpłatny trial →",
-    badge: null,
-    features: [
-      "200 analiz / miesiąc",
-      "AI Visibility Check — 3 konkurenci",
-      "Signal Rewrite bez limitu",
-      "AI Visibility Monitor — 50 podstron",
-      "Zaawansowane rekomendacje contentowe",
-      "Dostęp do API",
-      "Raporty white-label",
-    ],
-  },
-];
 
 const FAQ = [
   {

@@ -2042,7 +2042,7 @@ export default function Dashboard() {
                   </div>
                   <Link href="/pricing">
                     <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold gap-1.5">
-                      <Zap className="w-3.5 h-3.5" /> Starter — $39/mies.
+                      <Zap className="w-3.5 h-3.5" /> Przejdź na Starter
                     </Button>
                   </Link>
                 </>
@@ -2053,7 +2053,7 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground mb-3">Odblokuj AI Visibility Check dla 3 konkurentów i 200 analiz/mies.</p>
                   <Link href="/pricing">
                     <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold gap-1.5">
-                      <ArrowUpRight className="w-3.5 h-3.5" /> Upgrade do Pro — $99/mies.
+                      <ArrowUpRight className="w-3.5 h-3.5" /> Upgrade do Pro
                     </Button>
                   </Link>
                 </>

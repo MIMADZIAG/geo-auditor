@@ -2691,48 +2691,23 @@ function ScoreHistoryTeaser({ score, topIssue }: { score: number; topIssue?: str
 }
 
 function PLGUpgradeBanner({ isAuthenticated, navigate }: { isAuthenticated: boolean; navigate: (path: string) => void }) {
-  const plans = [
-    { name: "Free", price: "0 zł", features: ["5 audytów/mies.", "1 monitorowana strona", "Pełny raport i CI"], cta: null, highlight: false },
-    { name: "Starter", price: "149 zł", features: ["50 audytów/mies.", "10 monitorowanych stron", "Alerty tygodniowe", "Eksport PDF"], cta: "Wybierz Starter", highlight: false },
-    { name: "Pro", price: "399 zł", features: ["200 audytów/mies.", "50 monitorowanych stron", "Analiza konkurencji", "Zaawansowane CI"], cta: "Wybierz Pro", highlight: true },
-  ];
   return (
     <div className="rounded-2xl bg-gradient-to-br from-primary/8 via-violet-500/4 to-background border border-primary/20 p-6">
       <div className="text-center mb-6">
         <h3 className="text-lg font-bold mb-1">Gotowy, żeby naprawić te problemy — na stałe?</h3>
-        <p className="text-sm text-muted-foreground">Jednorazowy Signal Audit wykrywa blokady. AI Visibility Monitor pilnuje, żeby nikt Cię nie wyprzedził.</p>
+        <p className="text-sm text-muted-foreground">Jednorazowy AI Audit wykrywa blokady. AI Monitoring pilnuje, żeby nikt Cię nie wyprze dził.</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-        {plans.map((plan) => (
-          <div key={plan.name} className={`rounded-xl p-4 border ${plan.highlight ? "border-primary/40 bg-primary/8" : "border-border/50 bg-card"}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold">{plan.name}</span>
-              <span className="text-sm font-black text-primary">{plan.price}<span className="text-[10px] font-normal text-muted-foreground">/mies.</span></span>
-            </div>
-            <div className="space-y-1 mb-3">
-              {plan.features.map((f) => (
-                <div key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />{f}
-                </div>
-              ))}
-            </div>
-            {plan.cta ? (
-              <Button size="sm" onClick={() => navigate("/pricing")} className="w-full text-xs" variant={plan.highlight ? "default" : "outline"}>
-                {plan.cta}
-              </Button>
-            ) : (
-              <div className="text-[10px] text-center text-muted-foreground py-1">{isAuthenticated ? "Twój aktualny plan" : "Aktualny plan"}</div>
-            )}
-          </div>
-        ))}
-      </div>
-      {!isAuthenticated && (
-        <div className="text-center">
-          <Button onClick={() => (window.location.href = getLoginUrl())} variant="ghost" size="sm" className="text-xs gap-1.5 text-muted-foreground">
-            <LogIn className="w-3 h-3" /> Zaloguj się najpierw — bezpłatnie
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+        <Button onClick={() => navigate("/pricing")} className="gap-2 shadow-md shadow-primary/20">
+          <Zap className="w-4 h-4" /> Zobacz plany i cennik
+        </Button>
+        {!isAuthenticated && (
+          <Button variant="outline" onClick={() => (window.location.href = getLoginUrl())} className="gap-2">
+            <LogIn className="w-3.5 h-3.5" /> Zaloguj się bezpłatnie
           </Button>
-        </div>
-      )}
+        )}
+      </div>
+      <p className="text-center text-[11px] text-muted-foreground">Płatności obsługiwane przez Stripe. Anuluj w dowolnym momencie.</p>
     </div>
   );
 }
@@ -2950,7 +2925,7 @@ function FullRewriteUpsell({ navigate }: { navigate: (path: string) => void }) {
               onClick={() => navigate("/pricing")}
               className="bg-violet-600 hover:bg-violet-500 text-white font-semibold gap-2 shadow-lg shadow-violet-500/25 px-6"
             >
-              <Sparkles className="w-4 h-4" /> Przejdź na Starter — od $39/mies.
+              <Sparkles className="w-4 h-4" /> Przejdź na plan płatny
             </Button>
             <p className="text-[10px] text-zinc-600 mt-2">Anuluj w dowolnym momencie • Bez ukrytych opłat</p>
           </div>
