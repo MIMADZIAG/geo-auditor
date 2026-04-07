@@ -747,12 +747,12 @@ function MonitoredPageCard({
         )}
 
         {/* Actions row */}
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-3">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
             <Clock className="w-3 h-3" />
-            <span>Ostatni: {lastAudit}</span>
+            <span className="whitespace-nowrap">Ostatni: {lastAudit}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 ml-auto">
             <Button
               size="sm"
               variant="ghost"
