@@ -151,14 +151,13 @@ function AuditSidebar({ user, plan }: { user: { name?: string | null } | null; p
             <div className="rounded-xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/8 via-teal-500/5 to-transparent p-3 cursor-pointer hover:border-emerald-500/40 transition-all group">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <FileText className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-bold text-emerald-300">Content Creator</span>
-                <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">BETA</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground leading-snug">
-                Twórz nowe podstrony zoptymalizowane pod AI Search — od zera.
-              </p>
-              <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-400 group-hover:gap-1.5 transition-all">
-                Stwórz nową stronę <ChevronRight className="w-3 h-3" />
+                <span className="text-[11px] font-bold text-emerald-300">AI Writer</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  Uwaga! Możesz tworzyć także zoptymalizowane pod AI Search — od zera, gotowe do publikacji.
+                </p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-400 group-hover:gap-1.5 transition-all">
+                  Stwórz świetny content <ChevronRight className="w-3 h-3" />
               </div>
             </div>
           </Link>

@@ -344,7 +344,7 @@ export default function Home() {
               {isAuthenticated ? (
                 <Button variant="ghost" size="sm" onClick={() => navigate("/hub")} className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground">
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Dashboard</span>
+                  <span className="hidden sm:inline">AI HUB</span>
                 </Button>
               ) : (
                 <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground">
