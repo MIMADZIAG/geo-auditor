@@ -97,17 +97,17 @@ export function analyzeBrandAuthority(
 
   checks.push({
     id: "brand_consistency",
-    label: "Spójność nazwy marki",
+    label: "Rozpoznawalność marki w danych strukturalnych",
     status: brandName
       ? (consistencyScore >= 2 ? "pass" : consistencyScore === 1 ? "warning" : "fail")
       : "fail",
     description: !brandName
-      ? "Nie udało się wykryć nazwy marki. Upewnij się, że nazwa marki pojawia się w tytule strony, meta tagu OG site_name i znacznikach schema.org."
+      ? "Nazwa domeny nie występuje w danych strukturalnych strony. Dodaj pole \"name\" w schema.org Organization lub WebSite, aby silniki AI mogły jednoznacznie powiązać tę stronę z Twoją marką."
       : consistencyScore >= 2
-      ? `Nazwa marki "${brandName}" jest spójnie używana w tytule, tagach OG i schema — silny sygnał tożsamości dla silników AI.`
+      ? `Marka "${brandName}" jest spójnie zdefiniowana w danych strukturalnych (tytuł, OG, schema.org) — silniki AI mogą jednoznacznie zidentyfikować tę stronę jako reprezentację Twojej marki.`
       : consistencyScore === 1
-      ? `Nazwa marki "${brandName}" jest tylko częściowo spójna. Dodaj ją do OG site_name i znaczników schema.org Organization/WebSite.`
-      : `Wykryto nazwę marki, ale nie jest spójnie używana w meta tagach i schema. Silniki AI używają spójności marki do ustalania tożsamości encji.`,
+      ? `Marka "${brandName}" występuje tylko w części danych strukturalnych. Uzupełnij pole og:site_name i schema.org Organization/WebSite o nazwę marki — spójność jest kluczowa dla rozpoznawania encji przez modele AI.`
+      : `Marka "${brandName}" nie jest zdefiniowana w danych strukturalnych. Silniki AI identyfikują marki przez schema.org — bez tego sygnału strona może być traktowana jako anonimowe źródło, a nie rozpoznawalny byt.`,
     impact: "high",
     value: brandName,
   });

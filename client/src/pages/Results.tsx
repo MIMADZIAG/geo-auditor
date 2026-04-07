@@ -1032,14 +1032,6 @@ export default function Results() {
             />
           )}
 
-          {/* Citation Status Banner — compact widget linking to Tab 2 */}
-          <CitationStatusBanner
-            status={citationStatus}
-            citedCount={citationCitedCount}
-            totalEngines={citationTotalEngines}
-            onGoToTab={() => handleSwitchToVisibility(citationStatus === "idle")}
-          />
-
           {/* Issues & Fixes */}
           {!isAuditRunning && <IssuesAndFixes
             findings={findings}
@@ -1508,18 +1500,24 @@ function CompetitorDecayCard({
   // For paid users who already have monitoring
   if (hasPaidPlan) {
     return (
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
+      <button
+        onClick={() => navigate("/ai-monitoring")}
+        className="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3 hover:bg-emerald-500/8 transition-colors text-left group"
+      >
         <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-          <TrendingUp className="w-4 h-4 text-emerald-400" />
+          <Activity className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-emerald-300">Monitoring aktywny</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Otrzymasz alert, gdy wynik tej strony lub konkurenta zmieni się o ≥5 pkt.</div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-emerald-300">AI Monitoring aktywny</div>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">Otrzymasz alert, gdy wynik tej strony zmieni się o ≥5 pkt. Kliknij, aby zobaczyć historię.</div>
         </div>
-        <Button size="sm" onClick={() => navigate("/hub")} variant="outline" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 shrink-0">
-          <LayoutDashboard className="w-3 h-3" /> Dashboard
-        </Button>
-      </div>
+        <div className="flex items-center gap-1 text-xs text-emerald-400 group-hover:gap-2 transition-all shrink-0 font-semibold">
+          AI Monitoring <ChevronDown className="w-3.5 h-3.5 rotate-[-90deg]" />
+        </div>
+      </button>
     );
   }
 
@@ -1922,16 +1920,16 @@ function ContentIntelligencePanel({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold">Content Intelligence</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">Deep Analysis</span>
               </div>
-              <p className="text-xs text-muted-foreground">Deep content analysis — answer density, factual richness, citeability</p>
+              <p className="text-xs text-muted-foreground">Jak często silniki AI Search cytują treść tej strony w swoich odpowiedziach</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-amber-300 font-medium">Analiza AI chwilowo niedostępna</p>
-              <p className="text-xs text-muted-foreground mt-1">Serwer AI był przeciążony podczas tej analizy. Uruchom Signal Audit ponownie, aby uzyskać pełną analizę Content Intelligence.</p>
+              <p className="text-xs text-muted-foreground mt-1">Serwer AI był przeciążony podczas tej analizy. Uruchom AI Audit ponownie, aby uzyskać pełną analizę Content Intelligence.</p>
             </div>
           </div>
         </div>
@@ -1947,9 +1945,9 @@ function ContentIntelligencePanel({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold">Content Intelligence</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">Deep Analysis</span>
             </div>
-            <p className="text-xs text-muted-foreground">Analyzing how likely AI is to cite your content…</p>
+              <p className="text-xs text-muted-foreground">Analizuję cytowalność treści — gęstość odpowiedzi, fakty, sygnały E-E-A-T…</p>
           </div>
         </div>
         <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border/40">
@@ -1981,9 +1979,9 @@ function ContentIntelligencePanel({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold">Content Intelligence</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">AI-Powered</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-semibold uppercase tracking-wide">Deep Analysis</span>
               </div>
-              <p className="text-xs text-muted-foreground">How likely AI search engines are to cite your content</p>
+              <p className="text-xs text-muted-foreground">Jak często silniki AI Search cytują treść tej strony w swoich odpowiedziach</p>
             </div>
           </div>
         </div>
@@ -2854,12 +2852,11 @@ function ContentCreatorRewriteWidget({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-bold text-white">Aktualizacja treści AI</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">Content Creator</span>
+            <span className="text-sm font-bold text-white">AI Writer</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-semibold uppercase tracking-wide">Starter+</span>
           </div>
           <p className="text-xs text-zinc-400 mb-3">
-            AI przepisze tę stronę zgodnie z zasadami GEO — z FAQ, danymi strukturalnymi i treścią cytowaną przez modele AI.
-            Wnioski z audytu są automatycznie wczytywane jako kontekst.
+            Przetwórz tę podstronę w treść, którą algorytmy AI Search chcą cytować. Wyniki audytu są automatycznie wczytywane jako kontekst.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -2875,7 +2872,7 @@ function ContentCreatorRewriteWidget({
               }`}
             >
               {isPaid ? (
-                <><Sparkles className="w-3.5 h-3.5" /> Aktualizuj z AI</>
+                <><Sparkles className="w-3.5 h-3.5" /> Ulepsz z Writerem</>
               ) : (
                 <><Lock className="w-3 h-3" /> Odblokuj — plan Starter</>
               )}

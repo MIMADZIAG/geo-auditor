@@ -262,21 +262,6 @@ export function analyzeTechnical(page: ScrapedPage): CategoryResult {
     value: urlDepth,
   });
 
-  // 14. Page size (HTML weight — very large pages slow crawling)
-  const htmlSizeKb = Math.round(page.html.length / 1024);
-  checks.push({
-    id: "page_size",
-    label: "Rozmiar HTML strony",
-    status: htmlSizeKb < 200 ? "pass" : htmlSizeKb < 500 ? "warning" : "fail",
-    description: htmlSizeKb < 200
-      ? `Rozmiar HTML wynosi ${htmlSizeKb}KB — lekki i szybki do indeksowania.`
-      : htmlSizeKb < 500
-      ? `Rozmiar HTML wynosi ${htmlSizeKb}KB — rozważ zmniejszenie skryptów i stylów inline, aby poprawić efektywność indeksowania.`
-      : `Rozmiar HTML wynosi ${htmlSizeKb}KB — bardzo duży HTML może spowolnić przetwarzanie przez crawlery AI i zmniejszyć budżet indeksowania.`,
-    impact: "low",
-    value: htmlSizeKb,
-  });
-
   // 15. Render-blocking resources (inline scripts in <head>)
   const headScripts = $('head script:not([async]):not([defer]):not([type="application/ld+json"])').length;
   checks.push({
@@ -445,7 +430,6 @@ function computeScore(checks: AuditCheck[]): number {
     hreflang_validity: 4,
     sitemap_reference: 5,
     url_depth: 3,
-    page_size: 3,
     render_blocking: 4,
   };
 

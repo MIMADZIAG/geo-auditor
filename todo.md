@@ -1707,3 +1707,14 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [ ] Usunięcie Knowledge Graph widget z widoku wyników audytu (/results)
 - [ ] Pricing.tsx: aktualizacja copy (Signal Audit→AI Audit, Signal Rewrite→AI Writer, AI Visibility Monitor→AI Monitoring)
 - [ ] Pricing.tsx: FAQ sekcja (3–4 pytania o różnicę między planami)
+
+## Session — Results.tsx 9 UI/UX changes
+
+- [x] Badge "Monitoring aktywny" → link to /ai-monitoring
+- [x] Remove AI visibility badge (Niewidoczna w X silnikach AI) from below priority fix
+- [x] Rename SPO element to user-friendly language
+- [x] Remove HTML size check from technical checklist
+- [x] Rewrite/remove brand consistency check (site_name)
+- [x] Change AI-Powered badge → professional alternative (Anton Osika style)
+- [x] Translate "How likely AI search engines are to cite your content" to Polish
+- [x] Rename "Aktualizacja treści AI" → "AI Writer" with new claim and button text

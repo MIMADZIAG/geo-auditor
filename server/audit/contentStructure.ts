@@ -411,16 +411,16 @@ export async function analyzeContentStructure(
 
   checks.push({
     id: "semantic_triples",
-    label: "Gęstość trójek semantycznych (SPO)",
+    label: "Zdania faktyczne i konkretne",
     status: scoreToStatus(spoScore),
     score: spoScore,
     description: spoScore >= 70
-      ? `Silna gęstość SPO: ${Math.round(spoRatio)}% zdań zawiera strukturę podmiot-orzeczenie-dopełnienie.`
+      ? `${Math.round(spoRatio)}% zdań zawiera konkretne fakty i stwierdzenia — algorytmy AI chętnie cytują treść, która mówi wprost, co, kto i dlaczego.`
       : spoScore >= 40
-      ? `Umiarkowana gęstość SPO: ${Math.round(spoRatio)}% zdań. Pisz więcej stwierdzeń faktycznych z podmiotem i orzeczeniem.`
-      : `Niska gęstość SPO: tylko ${Math.round(spoRatio)}% zdań zawiera jasne stwierdzenia faktyczne. Unikaj zdań ogólnikowych.`,
+      ? `${Math.round(spoRatio)}% zdań to konkretne stwierdzenia faktyczne. Pisz więcej zdań z podmiotem i orzeczeniem — zamiast „to dobre rozwiązanie” napisz „ten produkt zmniejsza czas realizacji o 30%”.`
+      : `Tylko ${Math.round(spoRatio)}% zdań zawiera konkretne fakty. Algorytmy AI pomijają treść ogólnikową — zastąp ogólne sformułowania konkretnymi danymi, nazwami i wynikami.`,
     impact: "medium",
-    value: `${Math.round(spoRatio)}% SPO sentences (${spoSentences.length}/${sentences.length})`,
+    value: `${Math.round(spoRatio)}% factual sentences (${spoSentences.length}/${sentences.length})`,
   });
 
   // ── 10. Co-reference Clarity ───────────────────────────────────────────────

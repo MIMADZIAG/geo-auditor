@@ -261,7 +261,7 @@ describe("semantic_triples SPO density", () => {
     const check = result.checks.find(c => c.id === "semantic_triples");
     expect(check).toBeDefined();
     expect(check!.status).toBe("pass");
-    expect(check!.value).toContain("SPO sentences");
+    expect(check!.value).toContain("factual sentences");
   });
 
   it("fails or warns for vague content with no SPO structure", async () => {
@@ -283,6 +283,6 @@ describe("semantic_triples SPO density", () => {
     const result = await analyzeContentStructure(makePage(html), "article");
     const check = result.checks.find(c => c.id === "semantic_triples");
     expect(check).toBeDefined();
-    expect(check!.value).toMatch(/\d+% SPO sentences/);
+    expect(check!.value).toMatch(/\d+% factual sentences/);
   });
 });
