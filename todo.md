@@ -1689,3 +1689,13 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 - [x] Fix #3 (MEDIUM): PhraseManager.tsx — wyświetlać engineAffinity (ikony silników) i citationProbability (badge)
 - [x] Fix #4 (LOW): phrases.ts initializePhrasesForPage — semantic deduplication (Jaccard similarity) przed insertPhrases
 - [x] Fix #5 (LOW): phrases.ts — citation feedback loop: flagowanie fraz z 0 cytowań po 3+ runach (WEAK_PHRASE_THRESHOLD=3)
+
+## Scoring Recalibration + Page Type Detector — Implementacja (sesja 2026-04-07)
+
+- [x] Analiza stanu: pageTypeDetector.ts, eeat.ts, contentStructure.ts, scorer.ts — większość już zaimplementowana
+- [x] Fix: warning multiplier 0.5→0.2 w technical.ts
+- [x] Fix: warning multiplier 0.5→0.2 w metaTags.ts + info multiplier 0.3→0.1
+- [x] Fix: Organization schema = fail na homepage/landing gdy brak (było: zawsze warning)
+- [x] Fix: FAQ schema = fail na article/service/homepage gdy brak (było: zawsze warning)
+- [x] Fix: analyzeStructuredData(page, pageType) — przekazanie pageType w audit/index.ts
+- [x] 23 nowe testy walidacyjne (scoring-recalibration.test.ts): zakresy scoringowe per typ strony, adaptive E-E-A-T, warning multiplier

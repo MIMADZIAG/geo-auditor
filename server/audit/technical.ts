@@ -456,7 +456,7 @@ function computeScore(checks: AuditCheck[]): number {
     const w = weights[check.id] ?? 5;
     total += w;
     if (check.status === "pass") earned += w;
-    else if (check.status === "warning") earned += w * 0.5;
+    else if (check.status === "warning") earned += w * 0.2; // warning is a real penalty (not half-pass)
   }
 
   return Math.round((earned / total) * 100);

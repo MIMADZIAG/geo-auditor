@@ -15,6 +15,7 @@
 import type { ScrapedPage } from "./scraper";
 import type { AuditCheck, CategoryResult } from "./types";
 import { validateAllSchemas } from "./schemaSemanticValidator";
+import type { PageType } from "./pageTypeDetector";
 
 const HIGH_VALUE_TYPES = [
   "Article",
@@ -221,7 +222,7 @@ function extractSchemas($: ScrapedPage["$"]): ParsedSchema[] {
   return schemas;
 }
 
-export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { schemas: ParsedSchema[] } {
+export function analyzeStructuredData(page: ScrapedPage, pageType: PageType = "generic"): CategoryResult & { schemas: ParsedSchema[] } {
   const checks: AuditCheck[] = [];
   const schemas = extractSchemas(page.$);
   const detectedTypes = schemas.map((s) => s.type);
@@ -308,13 +309,17 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
     ? (schemas.find(s => s.type === "FAQPage")!.raw["mainEntity"] as unknown[] | undefined)?.length ?? 0
     : 0;
 
+  // FAQ schema is critical for article, service, homepage — fail if absent; warning for others
+  const faqCritical = ["article", "service", "homepage"].includes(pageType);
   checks.push({
     id: "faq_schema",
     label: "Schema FAQPage",
-    status: hasFaq ? "pass" : "warning",
+    status: hasFaq ? "pass" : faqCritical ? "fail" : "warning",
     description: hasFaq
       ? `Znaleziono schemat FAQPage z ${faqItemCount} par${faqItemCount !== 1 ? "ami" : "ą"} Q&A — świetne dla inkluzji odpowiedzi AI. FAQPage to jeden z najbardziej wpływowych typów schematu dla GEO.`
-      : "Brak schematu FAQPage. Dodanie danych strukturalnych FAQ znacznie poprawia inkluzję odpowiedzi AI — to jeden z najczęściej cytowanych typów schematu w AI Overviews i odpowiedziach Perplexity.",
+      : faqCritical
+      ? "Brak schematu FAQPage. Dla tego typu strony to poważna luka GEO — FAQPage to jeden z najczęściej cytowanych typów schematu w AI Overviews i Perplexity. Dodaj przynajmniej 3 pary Q&A."
+      : "Brak schematu FAQPage. Dodanie danych strukturalnych FAQ może poprawić inkluzję odpowiedzi AI.",
     impact: "high",
     value: hasFaq,
   });
@@ -358,16 +363,20 @@ export function analyzeStructuredData(page: ScrapedPage): CategoryResult & { sch
   const hasOrg = expandedTypes.has("Organization") || detectedTypes.includes("WebSite");
   const hasSameAs = schemas.some((s) => s.hasSameAs);
 
+  // Organization schema: fail on homepage/landing (brand identity is critical there), warning elsewhere
+  const orgCritical = ["homepage", "landing"].includes(pageType);
   checks.push({
     id: "organization_schema",
     label: "Schema Organization / WebSite",
-    status: hasOrg ? (hasSameAs ? "pass" : "warning") : "warning",
+    status: hasOrg ? (hasSameAs ? "pass" : "warning") : orgCritical ? "fail" : "warning",
     description: hasOrg
       ? hasSameAs
         ? "Znaleziono schemat Organization lub WebSite z linkami sameAs — silny sygnał gotowości do Knowledge Graph. Silniki AI używają sameAs do identyfikacji Twojej marki jako znany podmiot."
         : "Znaleziono schemat Organization, ale brak właściwości sameAs. Dodaj linki sameAs (Wikipedia, Wikidata, oficjalne profile społecznościowe), aby ustanowić markę jako znany podmiot w grafach wiedzy AI."
+      : orgCritical
+      ? "Brak schematu Organization na stronie głównej/landing. To krytyczna luka — silniki AI nie mogą zidentyfikować Twojej marki jako znany podmiot. Dodaj schemat Organization z sameAs (Wikipedia, Wikidata, profile społecznościowe)."
       : "Brak schematu Organization. Dodaj schemat Organization lub WebSite z linkami sameAs, aby ustanowić tożsamość podmiotu w grafach wiedzy AI.",
-    impact: "medium",
+    impact: orgCritical ? "high" : "medium",
     value: hasOrg,
   });
 

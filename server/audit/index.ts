@@ -85,7 +85,7 @@ export async function runAudit(url: string): Promise<AuditResult> {
   const pageTypeLabel = getPageTypeLabel(pageType);
 
   const technical = analyzeTechnical(page);
-  const structuredDataResult = analyzeStructuredData(page);
+  const structuredDataResult = analyzeStructuredData(page, pageType);
   const contentStructure = await analyzeContentStructure(page, pageType);
   const eeat = analyzeEEAT(page, pageType);
   const metaTags = analyzeMetaTags(page);
