@@ -219,6 +219,8 @@ const CHECK_DEFS: CheckDef[] = [
     label: "Hierarchia nagłówków",
     category: "contentStructure",
     column: "cs_heading_hierarchy",
+    // warning = partial hierarchy (e.g. H1+H2 present, H3 absent) — hierarchy EXISTS, just not deep
+    warningIsPass: true,
     recommendation: "Użyj H1 → H2 → H3 w logicznej kolejności bez pomijania poziomów.",
     impact: "Prawidłowa hierarchia ułatwia AI parsowanie struktury treści.",
   },

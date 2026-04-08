@@ -1721,3 +1721,6 @@ Based on: https://ipullrank.com/ai-search-manual/ (Chapters 7, 9, 10, 11)
 
 ## Bug — H1 detection false negative
 - [x] Fix H1 heading detection — gap analysis now treats h1_present warning (2+ H1) as pass (warningIsPass: true), not a gap
+
+## Bug — heading_hierarchy warningIsPass
+- [x] Fix gapAnalysis.ts: heading_hierarchy warning (partial hierarchy H1+H2, no H3) treated as pass in gap analysis (warningIsPass: true)
