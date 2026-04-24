@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import type { EntityWorkspaceCompetitor, EntityWorkspacePrompt } from "@shared/entity";
+import type { EntityWorkspaceAsset, EntityWorkspaceCompetitor, EntityWorkspacePrompt, EntityMissingAsset, EntityPromptDiff, EntityActionRecommendation } from "@shared/entity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,6 +125,10 @@ export default function EntityWorkspace() {
   const prompts = detail?.prompts ?? [];
   const competitors = detail?.competitors ?? [];
   const pages = detail?.linkedPages ?? [];
+  const assets = detail?.assets ?? [];
+  const missingAssets = detail?.missingAssets ?? [];
+  const explainability = detail?.explainability;
+  const actionPlan = detail?.actionPlan ?? [];
 
   const activePromptCount = prompts.filter((prompt: EntityWorkspacePrompt) => prompt.isActive).length;
   const coverage = portfolio?.coverageRate ?? 0;
@@ -414,16 +418,165 @@ export default function EntityWorkspace() {
           </div>
         </div>
 
+        <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <Card className="border-border/50 bg-card/70">
+            <CardHeader>
+              <CardTitle className="text-lg">Asset mapping</CardTitle>
+              <CardDescription>
+                Jawnie przypisane assety encji wraz z typem, rolą strategiczną i coverage dla AI Search.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {assets.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border/50 bg-background/40 p-5 text-sm text-muted-foreground">
+                  Brak jawnie zmapowanych assetów. Dodaj asset lub przypnij monitorowaną stronę do encji.
+                </div>
+              ) : (
+                assets.map((asset: EntityWorkspaceAsset) => (
+                  <div key={`${asset.id}-${asset.url}`} className="rounded-2xl border border-border/40 bg-background/50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary">{asset.assetType}</Badge>
+                          <Badge variant="outline">{asset.strategicRole}</Badge>
+                          {asset.isPrimary && <Badge variant="outline">primary</Badge>}
+                        </div>
+                        <div className="mt-2 text-sm font-semibold">{asset.title}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{asset.url}</div>
+                      </div>
+                      <div className="grid gap-2 text-right text-xs text-muted-foreground">
+                        <span>readiness: {asset.readinessScore ?? "—"}</span>
+                        <span>coverage: {asset.citationCoverage != null ? `${asset.citationCoverage}%` : "—"}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {asset.supportsPromptClusters.map((cluster) => (
+                        <Badge key={cluster} variant="outline">{cluster}</Badge>
+                      ))}
+                    </div>
+                    {asset.notes && <div className="mt-2 text-xs text-muted-foreground">{asset.notes}</div>}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <Card className="border-border/50 bg-card/70">
+              <CardHeader>
+                <CardTitle className="text-lg">Missing assets</CardTitle>
+                <CardDescription>
+                  System wykrywa, których assetów brakuje dla konkretnych klastrów promptów.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {missingAssets.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border/50 bg-background/40 p-5 text-sm text-muted-foreground">
+                    Nie wykryto krytycznych braków assetów dla tej encji.
+                  </div>
+                ) : (
+                  missingAssets.map((asset: EntityMissingAsset) => (
+                    <div key={asset.id} className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{asset.assetType}</Badge>
+                        <Badge variant="outline">{asset.promptCluster}</Badge>
+                        <Badge>{asset.priority}</Badge>
+                      </div>
+                      <div className="mt-2 text-sm font-semibold">{asset.targetDescription}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{asset.reason}</div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_1fr]">
+          <Card className="border-border/50 bg-card/70">
+            <CardHeader>
+              <CardTitle className="text-lg">Explainability engine</CardTitle>
+              <CardDescription>
+                Dlaczego AI cytuje konkurenta i czego brakuje naszym assetom lub promptom.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {explainability?.promptDiffs?.length ? explainability.promptDiffs.map((diff: EntityPromptDiff) => (
+                <div key={diff.prompt} className="rounded-2xl border border-border/40 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{diff.promptCluster}</Badge>
+                    <Badge variant="outline">confidence {diff.confidence}</Badge>
+                    {diff.topCompetitor && <Badge variant="outline">{diff.topCompetitor}</Badge>}
+                  </div>
+                  <div className="mt-2 text-sm font-semibold">{diff.prompt}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">{diff.whyCompetitorWon}</div>
+                  {diff.missingStructures.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {diff.missingStructures.map((item) => (
+                        <Badge key={item} variant="outline">{item}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {diff.missingSchema.length > 0 && (
+                    <div className="mt-3 text-xs text-muted-foreground">Schema gap: {diff.missingSchema.join(", ")}</div>
+                  )}
+                  <div className="mt-3 text-xs text-primary">Target asset: {diff.recommendedAssetLabel}</div>
+                </div>
+              )) : (
+                <div className="rounded-2xl border border-dashed border-border/50 bg-background/40 p-5 text-sm text-muted-foreground">
+                  Explainability pojawi się po analizie różnic promptów i konkurentów.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/70">
+            <CardHeader>
+              <CardTitle className="text-lg">Action engine</CardTitle>
+              <CardDescription>
+                Gotowe bloki wdrożeniowe i rekomendacje per asset / prompt cluster.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {actionPlan.length ? actionPlan.map((action: EntityActionRecommendation) => (
+                <div key={action.id} className="rounded-2xl border border-border/40 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{action.priority}</Badge>
+                    <Badge variant="outline">{action.type}</Badge>
+                    {action.promptCluster && <Badge variant="outline">{action.promptCluster}</Badge>}
+                  </div>
+                  <div className="mt-2 text-sm font-semibold">{action.title}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{action.summary}</div>
+                  <div className="mt-3 text-xs text-primary">Target asset: {action.targetAssetLabel}</div>
+                  <div className="mt-3 grid gap-3">
+                    {action.blocks.slice(0, 2).map((block) => (
+                      <div key={block.title} className="rounded-xl border border-border/40 bg-background/60 p-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{block.format}</div>
+                        <div className="mt-1 text-sm font-medium">{block.title}</div>
+                        <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{block.content}</pre>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )) : (
+                <div className="rounded-2xl border border-dashed border-border/50 bg-background/40 p-5 text-sm text-muted-foreground">
+                  Action plan wygeneruje się po zebraniu promptów, assetów i różnic konkurencyjnych.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="mt-6">
           <Card className="border-border/50 bg-card/70">
             <CardHeader>
               <CardTitle className="text-lg">Entity strategy memo</CardTitle>
-              <CardDescription>Operacyjny brief dla tej encji na bazie prompt library, SoV i konkurencji.</CardDescription>
+              <CardDescription>Operacyjny brief dla tej encji na bazie prompt library, SoV, explainability i action engine.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 lg:grid-cols-3">
               <StrategyCard title="Primary domain" description={workspace.primaryDomain} />
               <StrategyCard title="Prompt footprint" description={`${prompts.length} promptów w bibliotece encji`} />
-              <StrategyCard title="Priority action" description={portfolio?.priorityAction ?? "Dodaj więcej assetów lub promptów, aby wygenerować backlog."} />
+              <StrategyCard title="Priority action" description={portfolio?.priorityAction ?? actionPlan[0]?.summary ?? "Dodaj więcej assetów lub promptów, aby wygenerować backlog."} />
             </CardContent>
           </Card>
         </div>

@@ -40,9 +40,76 @@ const PROMPT_LIBRARY = [
 ];
 
 const CONNECTED_ASSETS = [
-  { title: "Homepage", url: "https://x-kom.pl", score: "72", cited: "3/4" },
-  { title: "Category page", url: "https://x-kom.pl/laptopy-i-komputery/laptopy", score: "68", cited: "2/4" },
-  { title: "Comparison / editorial", url: "https://x-kom.pl/blog/jaki-laptop-do-gier", score: "61", cited: "1/4" },
+  { title: "Homepage", url: "https://x-kom.pl", score: "72", cited: "3/4", assetType: "homepage", role: "brand" },
+  { title: "Category page", url: "https://x-kom.pl/laptopy-i-komputery/laptopy", score: "68", cited: "2/4", assetType: "category", role: "transactional" },
+  { title: "Comparison / editorial", url: "https://x-kom.pl/blog/jaki-laptop-do-gier", score: "61", cited: "1/4", assetType: "comparison", role: "comparison" },
+];
+
+const MISSING_ASSETS = [
+  {
+    assetType: "trust",
+    cluster: "trust",
+    priority: "high",
+    reason: "Brakuje dedykowanego assetu trust / reputation dla promptow opinii i wiarygodnosci.",
+  },
+  {
+    assetType: "docs",
+    cluster: "problem-solving",
+    priority: "high",
+    reason: "Klaster problem-solving nie ma assetu typu docs/support.",
+  },
+];
+
+const EXPLAINABILITY_DIFFS = [
+  {
+    prompt: "x-kom vs morele laptopy gamingowe",
+    cluster: "comparison",
+    competitor: "morele.net",
+    reason: "Konkurent ma comparison table, answer-first intro i FAQ schema.",
+    missing: ["comparison table", "FAQ schema", "answer-first intro"],
+    target: "Comparison / editorial",
+  },
+  {
+    prompt: "opinie o x-kom dla firm",
+    cluster: "trust",
+    competitor: "mediaexpert.pl",
+    reason: "Konkurent wzmacnia trust author blockiem, sameAs i sekcja proof points.",
+    missing: ["trust section", "author block", "Organization schema"],
+    target: "Homepage",
+  },
+];
+
+const ACTION_PLAN = [
+  {
+    type: "jsonld",
+    priority: "high",
+    title: "Organization + FAQ JSON-LD",
+    target: "Homepage",
+    snippet: `{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "X-Kom"
+}`,
+  },
+  {
+    type: "comparison-table",
+    priority: "critical",
+    title: "Comparison table block",
+    target: "Comparison / editorial",
+    snippet: `| Marka | Przewaga | Luka |
+| --- | --- | --- |
+| X-Kom | ... | ... |`,
+  },
+  {
+    type: "trust-section",
+    priority: "high",
+    title: "Trust / author block",
+    target: "Homepage",
+    snippet: `## Dlaczego warto zaufac X-Kom
+- oficjalna domena
+- proof points
+- autor / ekspert`,
+  },
 ];
 
 const ACTION_ITEMS = [
@@ -264,11 +331,15 @@ export default function Preview() {
                     </div>
 
                     <div className="rounded-2xl border border-border/40 bg-background/50 p-4">
-                      <div className="mb-3 text-sm font-semibold">Connected assets</div>
+                      <div className="mb-3 text-sm font-semibold">Asset mapping</div>
                       <div className="space-y-3">
                         {CONNECTED_ASSETS.map((asset) => (
                           <div key={asset.url} className="rounded-xl border border-border/40 bg-background/60 p-3">
-                            <div className="text-sm font-medium">{asset.title}</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary">{asset.assetType}</Badge>
+                              <Badge variant="outline">{asset.role}</Badge>
+                            </div>
+                            <div className="mt-2 text-sm font-medium">{asset.title}</div>
                             <div className="mt-1 text-xs text-muted-foreground">{asset.url}</div>
                             <div className="mt-2 flex flex-wrap gap-2">
                               <Badge variant="outline">score {asset.score}</Badge>
@@ -276,6 +347,62 @@ export default function Preview() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-2xl border border-border/40 bg-background/50 p-4">
+                      <div className="mb-3 text-sm font-semibold">Missing asset detector</div>
+                      <div className="space-y-3">
+                        {MISSING_ASSETS.map((asset) => (
+                          <div key={`${asset.assetType}-${asset.cluster}`} className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">{asset.assetType}</Badge>
+                              <Badge variant="outline">{asset.cluster}</Badge>
+                              <Badge>{asset.priority}</Badge>
+                            </div>
+                            <div className="mt-2 text-xs text-muted-foreground">{asset.reason}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-border/40 bg-background/50 p-4">
+                      <div className="mb-3 text-sm font-semibold">Explainability + Action engine</div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-3">
+                          {EXPLAINABILITY_DIFFS.map((item) => (
+                            <div key={item.prompt} className="rounded-xl border border-border/40 bg-background/60 p-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="secondary">{item.cluster}</Badge>
+                                <Badge variant="outline">{item.competitor}</Badge>
+                              </div>
+                              <div className="mt-2 text-sm font-medium">{item.prompt}</div>
+                              <div className="mt-2 text-xs text-muted-foreground">{item.reason}</div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {item.missing.map((gap) => (
+                                  <Badge key={gap} variant="outline">{gap}</Badge>
+                                ))}
+                              </div>
+                              <div className="mt-2 text-xs text-primary">Target asset: {item.target}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="space-y-3">
+                          {ACTION_PLAN.map((action) => (
+                            <div key={action.title} className="rounded-xl border border-border/40 bg-background/60 p-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge>{action.priority}</Badge>
+                                <Badge variant="outline">{action.type}</Badge>
+                              </div>
+                              <div className="mt-2 text-sm font-medium">{action.title}</div>
+                              <div className="mt-1 text-xs text-primary">Target asset: {action.target}</div>
+                              <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{action.snippet}</pre>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>

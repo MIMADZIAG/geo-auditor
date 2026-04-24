@@ -266,6 +266,26 @@ export const entityWorkspaceCompetitors = mysqlTable("entity_workspace_competito
 export type EntityWorkspaceCompetitor = typeof entityWorkspaceCompetitors.$inferSelect;
 export type InsertEntityWorkspaceCompetitor = typeof entityWorkspaceCompetitors.$inferInsert;
 
+
+export const entityWorkspaceAssets = mysqlTable("entity_workspace_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceId: int("workspaceId").notNull(),
+  userId: int("userId").notNull(),
+  url: varchar("url", { length: 2048 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  assetType: mysqlEnum("assetType", ["homepage", "product", "category", "blog", "docs", "about", "trust", "comparison", "faq", "support", "landing", "other"]).default("other").notNull(),
+  strategicRole: mysqlEnum("strategicRole", ["brand", "comparison", "transactional", "trust", "problem-solving", "entity-reinforcement", "support"]).default("brand").notNull(),
+  supportsPromptClusters: json("supportsPromptClusters"),
+  source: mysqlEnum("source", ["mapped_from_monitoring", "user_added", "suggested"]).default("user_added").notNull(),
+  monitoredPageId: int("monitoredPageId"),
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EntityWorkspaceAsset = typeof entityWorkspaceAssets.$inferSelect;
+export type InsertEntityWorkspaceAsset = typeof entityWorkspaceAssets.$inferInsert;
+
 // Email leads — captured from diagnostic results page (pre-registration)
 export const emailLeads = mysqlTable("email_leads", {
   id: int("id").autoincrement().primaryKey(),

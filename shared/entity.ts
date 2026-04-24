@@ -4,6 +4,52 @@ export type EntitySentimentLabel =
   | "negative"
   | "modelled";
 
+export type EntityAssetType =
+  | "homepage"
+  | "product"
+  | "category"
+  | "blog"
+  | "docs"
+  | "about"
+  | "trust"
+  | "comparison"
+  | "faq"
+  | "support"
+  | "landing"
+  | "other";
+
+export type EntityStrategicRole =
+  | "brand"
+  | "comparison"
+  | "transactional"
+  | "trust"
+  | "problem-solving"
+  | "entity-reinforcement"
+  | "support";
+
+export type PromptCluster =
+  | "brand"
+  | "category"
+  | "comparison"
+  | "transactional"
+  | "how-to"
+  | "local"
+  | "trust"
+  | "problem-solving";
+
+export type ExplainabilityConfidence = "high" | "medium" | "low";
+export type ActionPriority = "critical" | "high" | "medium" | "low";
+export type ActionBlockFormat = "markdown" | "html" | "jsonld";
+export type ActionType =
+  | "jsonld"
+  | "faq-block"
+  | "comparison-table"
+  | "answer-first-intro"
+  | "trust-section"
+  | "author-section"
+  | "entity-reinforcement"
+  | "new-asset";
+
 export type EntityPageSummary = {
   id: number;
   url: string;
@@ -36,6 +82,7 @@ export type EntityWorkspacePrompt = {
   source: "onboarding" | "user_added" | "suggested";
   isActive: boolean;
   syncedAssets: number;
+  lastCitedEngines?: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -84,9 +131,77 @@ export type EntityPortfolioSummary = {
   lastUpdatedAt: Date | null;
 };
 
-export type EntityPortfolioResponse = {
-  entities: EntityPortfolioItem[];
-  summary: EntityPortfolioSummary;
+export type EntityWorkspaceAsset = {
+  id: number;
+  url: string;
+  title: string;
+  assetType: EntityAssetType;
+  strategicRole: EntityStrategicRole;
+  supportsPromptClusters: PromptCluster[];
+  source: "mapped_from_monitoring" | "user_added" | "suggested";
+  monitoredPageId: number | null;
+  isPrimary: boolean;
+  notes: string | null;
+  readinessScore: number | null;
+  citationCoverage: number | null;
+};
+
+export type EntityMissingAsset = {
+  id: string;
+  assetType: EntityAssetType;
+  strategicRole: EntityStrategicRole;
+  promptCluster: PromptCluster;
+  priority: ActionPriority;
+  reason: string;
+  targetDescription: string;
+};
+
+export type EntityExplainabilityReason = {
+  label: string;
+  summary: string;
+  confidence: ExplainabilityConfidence;
+  evidence: string[];
+};
+
+export type EntityPromptDiff = {
+  prompt: string;
+  promptCluster: PromptCluster;
+  topCompetitor: string | null;
+  whyCompetitorWon: string;
+  missingStructures: string[];
+  missingFacts: string[];
+  missingSchema: string[];
+  recommendedAssetId: number | null;
+  recommendedAssetLabel: string;
+  confidenceScore: number;
+  confidence: ExplainabilityConfidence;
+  engines: string[];
+};
+
+export type EntityExplainabilitySummary = {
+  topReasons: EntityExplainabilityReason[];
+  promptDiffs: EntityPromptDiff[];
+  blockerSummary: string[];
+};
+
+export type EntityActionBlock = {
+  format: ActionBlockFormat;
+  title: string;
+  content: string;
+};
+
+export type EntityActionRecommendation = {
+  id: string;
+  type: ActionType;
+  priority: ActionPriority;
+  title: string;
+  summary: string;
+  promptCluster: PromptCluster | null;
+  targetAssetId: number | null;
+  targetAssetLabel: string;
+  suggestedSchemas: string[];
+  sourceReasons: string[];
+  blocks: EntityActionBlock[];
 };
 
 export type EntityWorkspaceResponse = {
@@ -95,8 +210,17 @@ export type EntityWorkspaceResponse = {
   prompts: EntityWorkspacePrompt[];
   competitors: EntityWorkspaceCompetitor[];
   linkedPages: EntityPageSummary[];
+  assets: EntityWorkspaceAsset[];
+  missingAssets: EntityMissingAsset[];
+  explainability: EntityExplainabilitySummary;
+  actionPlan: EntityActionRecommendation[];
   summary: EntityPortfolioSummary;
   isConfigured: boolean;
+};
+
+export type EntityPortfolioResponse = {
+  entities: EntityPortfolioItem[];
+  summary: EntityPortfolioSummary;
 };
 
 export type EntityGroup = EntityPortfolioItem;

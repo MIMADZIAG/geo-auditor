@@ -43,6 +43,9 @@ import {
   addEntityWorkspaceCompetitor,
   deleteEntityWorkspaceCompetitor,
   syncEntityWorkspacePromptsToMonitoring,
+  addEntityWorkspaceAsset,
+  updateEntityWorkspaceAsset,
+  deleteEntityWorkspaceAsset,
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
@@ -1091,6 +1094,131 @@ export const appRouter = router({
       .input(z.object({ competitorId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         await deleteEntityWorkspaceCompetitor(input.competitorId, ctx.user.id);
+        return { success: true };
+      }),
+
+    addAsset: protectedProcedure
+      .input(
+        z.object({
+          entityId: z.number().int().positive(),
+          url: z.string().url(),
+          title: z.string().min(2).max(255),
+          assetType: z.enum([
+            "homepage",
+            "product",
+            "category",
+            "blog",
+            "docs",
+            "about",
+            "trust",
+            "comparison",
+            "faq",
+            "support",
+            "landing",
+            "other",
+          ]),
+          strategicRole: z.enum([
+            "brand",
+            "comparison",
+            "transactional",
+            "trust",
+            "problem-solving",
+            "entity-reinforcement",
+            "support",
+          ]),
+          supportsPromptClusters: z.array(
+            z.enum([
+              "brand",
+              "category",
+              "comparison",
+              "transactional",
+              "how-to",
+              "local",
+              "trust",
+              "problem-solving",
+            ])
+          ).default([]),
+          notes: z.string().max(1000).optional(),
+          isPrimary: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const assetId = await addEntityWorkspaceAsset({
+          workspaceId: input.entityId,
+          userId: ctx.user.id,
+          url: input.url,
+          title: input.title,
+          assetType: input.assetType,
+          strategicRole: input.strategicRole,
+          supportsPromptClusters: input.supportsPromptClusters,
+          notes: input.notes,
+          isPrimary: input.isPrimary,
+        });
+        return { id: assetId };
+      }),
+
+    updateAsset: protectedProcedure
+      .input(
+        z.object({
+          assetId: z.number().int().positive(),
+          title: z.string().min(2).max(255).optional(),
+          assetType: z.enum([
+            "homepage",
+            "product",
+            "category",
+            "blog",
+            "docs",
+            "about",
+            "trust",
+            "comparison",
+            "faq",
+            "support",
+            "landing",
+            "other",
+          ]).optional(),
+          strategicRole: z.enum([
+            "brand",
+            "comparison",
+            "transactional",
+            "trust",
+            "problem-solving",
+            "entity-reinforcement",
+            "support",
+          ]).optional(),
+          supportsPromptClusters: z.array(
+            z.enum([
+              "brand",
+              "category",
+              "comparison",
+              "transactional",
+              "how-to",
+              "local",
+              "trust",
+              "problem-solving",
+            ])
+          ).optional(),
+          notes: z.string().max(1000).optional(),
+          isPrimary: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await updateEntityWorkspaceAsset({
+          assetId: input.assetId,
+          userId: ctx.user.id,
+          title: input.title,
+          assetType: input.assetType,
+          strategicRole: input.strategicRole,
+          supportsPromptClusters: input.supportsPromptClusters,
+          notes: input.notes,
+          isPrimary: input.isPrimary,
+        });
+        return { success: true };
+      }),
+
+    removeAsset: protectedProcedure
+      .input(z.object({ assetId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteEntityWorkspaceAsset(input.assetId, ctx.user.id);
         return { success: true };
       }),
   }),
