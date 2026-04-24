@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Results from "./pages/Results";
 import Dashboard from "./pages/Dashboard";
+import CommandCenter from "./pages/CommandCenter";
 import PublicReport from "./pages/PublicReport";
 import Pricing from "./pages/Pricing";
 import Sandbox from "./pages/Sandbox";
@@ -15,6 +16,8 @@ import PageCreatorResult from "./pages/PageCreatorResult";
 import CitationPulse from "./pages/CitationPulse";
 import SignalAudit from "./pages/SignalAudit";
 import DemoAudit from "./pages/DemoAudit";
+import EntityWorkspace from "./pages/EntityWorkspace";
+import Preview from "./pages/Preview";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 function Router() {
@@ -63,15 +66,25 @@ function Router() {
           <CitationPulse />
         </ErrorBoundary>
       </Route>
-      {/* /hub is the canonical URL for Dashboard; /dashboard kept for backward compat */}
+      {/* /hub is the GEO-Command command center; /dashboard kept as legacy dashboard */}
       <Route path="/hub">
-        <ErrorBoundary context="AI HUB">
-          <Dashboard />
+        <ErrorBoundary context="GEO-Command">
+          <CommandCenter />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/hub/entity/:domain">
+        <ErrorBoundary context="Entity Workspace">
+          <EntityWorkspace />
         </ErrorBoundary>
       </Route>
       <Route path="/audit">
         <ErrorBoundary context="Signal Audit">
           <SignalAudit />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/preview">
+        <ErrorBoundary context="Preview">
+          <Preview />
         </ErrorBoundary>
       </Route>
       <Route path="/demo" component={DemoAudit} />
