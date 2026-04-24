@@ -969,7 +969,7 @@ export async function addEntityWorkspacePrompt(params: {
     userId: params.userId,
     prompt: params.prompt.trim(),
     promptCluster: params.intentType ?? "commercial",
-    priority: "medium",
+    priority: "medium" as const,
     source: "user_added" as const,
     isActive: true,
   });

@@ -119,12 +119,12 @@ export default function EntityWorkspace() {
     onError: (error) => toast.error(error.message),
   });
 
-  const data = workspaceQuery.data?.workspace;
-  const workspace = data?.workspace;
-  const portfolio = data?.portfolio;
-  const prompts = data?.prompts ?? [];
-  const competitors = data?.competitors ?? [];
-  const pages = data?.linkedPages ?? [];
+  const detail = workspaceQuery.data?.workspace;
+  const workspace = detail?.workspace;
+  const portfolio = detail?.portfolio;
+  const prompts = detail?.prompts ?? [];
+  const competitors = detail?.competitors ?? [];
+  const pages = detail?.linkedPages ?? [];
 
   const activePromptCount = prompts.filter((prompt: EntityWorkspacePrompt) => prompt.isActive).length;
   const coverage = portfolio?.coverageRate ?? 0;
@@ -175,7 +175,7 @@ export default function EntityWorkspace() {
     );
   }
 
-  if (!data || !workspace) {
+  if (!detail || !workspace) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center">
