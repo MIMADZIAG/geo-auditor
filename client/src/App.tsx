@@ -17,6 +17,7 @@ import CitationPulse from "./pages/CitationPulse";
 import SignalAudit from "./pages/SignalAudit";
 import DemoAudit from "./pages/DemoAudit";
 import EntityWorkspace from "./pages/EntityWorkspace";
+import Preview from "./pages/Preview";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 function Router() {
@@ -79,6 +80,11 @@ function Router() {
       <Route path="/audit">
         <ErrorBoundary context="Signal Audit">
           <SignalAudit />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/preview">
+        <ErrorBoundary context="Preview">
+          <Preview />
         </ErrorBoundary>
       </Route>
       <Route path="/demo" component={DemoAudit} />
