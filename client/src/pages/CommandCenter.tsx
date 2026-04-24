@@ -1,8 +1,9 @@
-import { type ElementType, useMemo } from "react";
+import { type ElementType } from "react";
 import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import type { EntityGroup, EntityPageSummary } from "@shared/entity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,28 +40,6 @@ import {
   Users,
   Workflow,
 } from "lucide-react";
-
-type MonitoredPageItem = {
-  id: number;
-  url: string;
-  label: string | null;
-  lastScore: number | null;
-  lastAuditAt: Date | null;
-  lastCitationAt: Date | null;
-  lastCitedEngines: number | null;
-  lastTotalEngines: number | null;
-  scheduleFrequency: number;
-};
-
-type EntityGroup = {
-  domain: string;
-  brandName: string;
-  representative: MonitoredPageItem;
-  pages: MonitoredPageItem[];
-  avgScore: number | null;
-  coverageRate: number | null;
-  promptEstimate: number;
-};
 
 type PlanName = "free" | "starter" | "pro" | "business";
 
@@ -215,12 +194,6 @@ function toBrandName(domain: string) {
     .join(" ");
 }
 
-function average(values: Array<number | null | undefined>) {
-  const filtered = values.filter((value): value is number => typeof value === "number");
-  if (filtered.length === 0) return null;
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-}
-
 function formatPercent(value: number | null | undefined, fallback = 0) {
   const safeValue = value ?? fallback;
   return `${Math.round(safeValue)}%`;
@@ -288,52 +261,6 @@ function sentimentTone(label: "positive" | "neutral" | "negative" | "modelled") 
     label: "Neutralny",
     className: "border-blue-500/30 bg-blue-500/10 text-blue-300",
   };
-}
-
-function buildEntities(monitoredPages: MonitoredPageItem[]) {
-  const grouped = new Map<string, MonitoredPageItem[]>();
-
-  for (const page of monitoredPages) {
-    const domain = getRootDomain(getHostname(page.url));
-    const existing = grouped.get(domain) ?? [];
-    existing.push(page);
-    grouped.set(domain, existing);
-  }
-
-  return Array.from(grouped.entries())
-    .map(([domain, pages]) => {
-      const avgScore = average(pages.map((page) => page.lastScore));
-      const coverageRate = average(
-        pages.map((page) => {
-          if (
-            typeof page.lastCitedEngines !== "number" ||
-            typeof page.lastTotalEngines !== "number" ||
-            page.lastTotalEngines === 0
-          ) {
-            return null;
-          }
-          return (page.lastCitedEngines / page.lastTotalEngines) * 100;
-        })
-      );
-
-      return {
-        domain,
-        brandName: toBrandName(domain),
-        representative: [...pages].sort(
-          (left, right) =>
-            new Date(right.lastCitationAt ?? right.lastAuditAt ?? 0).getTime() -
-            new Date(left.lastCitationAt ?? left.lastAuditAt ?? 0).getTime()
-        )[0]!,
-        pages,
-        avgScore: avgScore != null ? Math.round(avgScore) : null,
-        coverageRate: coverageRate != null ? Math.round(coverageRate) : null,
-        promptEstimate: Math.max(pages.length * 14, 14),
-      } satisfies EntityGroup;
-    })
-    .sort(
-      (left, right) =>
-        (right.coverageRate ?? right.avgScore ?? 0) - (left.coverageRate ?? left.avgScore ?? 0)
-    );
 }
 
 function DashboardSkeleton() {
@@ -431,17 +358,18 @@ function UnauthenticatedPreview() {
 }
 
 function EntityCard({ entity }: { entity: EntityGroup }) {
-  const canQueryEntity = entity.representative.id > 0;
+  const representative = entity.representative ?? entity.pages[0];
+  const canQueryEntity = Boolean(representative && representative.id > 0);
   const benchmarkQuery = trpc.monitoring.getCompetitorBenchmark.useQuery(
-    { monitoredPageId: entity.representative.id },
+    { monitoredPageId: representative?.id ?? 0 },
     { staleTime: 60_000, enabled: canQueryEntity }
   );
   const sentimentQuery = trpc.monitoring.getSentimentDashboard.useQuery(
-    { monitoredPageId: entity.representative.id },
+    { monitoredPageId: representative?.id ?? 0 },
     { staleTime: 60_000, enabled: canQueryEntity }
   );
   const phraseCoverageQuery = trpc.monitoring.getPhraseCoverage.useQuery(
-    { monitoredPageId: entity.representative.id },
+    { monitoredPageId: representative?.id ?? 0 },
     { staleTime: 60_000, enabled: canQueryEntity }
   );
 
@@ -532,7 +460,7 @@ function EntityCard({ entity }: { entity: EntityGroup }) {
             <div className="mt-1 text-xs leading-5 text-muted-foreground">
               Ostatnie odswiezenie:{" "}
               {formatDateLabel(
-                entity.representative.lastCitationAt ?? entity.representative.lastAuditAt
+                representative?.lastCitationAt ?? representative?.lastAuditAt
               )}
             </div>
           </div>
@@ -600,50 +528,25 @@ function EntityCard({ entity }: { entity: EntityGroup }) {
 export default function CommandCenter() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
 
-  const monitoringQuery = trpc.monitoring.list.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
-  const historyQuery = trpc.audit.myHistory.useQuery(
-    { limit: 12 },
-    { enabled: isAuthenticated }
-  );
-  const usageQuery = trpc.audit.getUsageStats.useQuery(undefined, {
+  const entityPortfolioQuery = trpc.entity.portfolio.useQuery(undefined, {
     enabled: isAuthenticated,
   });
   const planQuery = trpc.payments.getMyPlan.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
-  const monitoredPages = (monitoringQuery.data ?? []) as MonitoredPageItem[];
-  const entities = useMemo(() => buildEntities(monitoredPages), [monitoredPages]);
+  const portfolio = entityPortfolioQuery.data;
+  const entities = portfolio?.entities ?? [];
+  const summary = portfolio?.summary;
   const priorityEntities = entities.slice(0, 4);
   const plan = (planQuery.data?.plan ?? "free") as PlanName;
   const planBadge = planTone(plan);
-  const avgReadiness =
-    usageQuery.data?.avgScore ??
-    (average(monitoredPages.map((page) => page.lastScore)) != null
-      ? Math.round(average(monitoredPages.map((page) => page.lastScore))!)
-      : 58);
-  const avgCoverage =
-    entities.length > 0
-      ? Math.round(
-          entities.reduce((sum, entity) => sum + (entity.coverageRate ?? 0), 0) / entities.length
-        )
-      : 34;
-  const promptFootprint =
-    entities.length > 0
-      ? entities.reduce((sum, entity) => sum + entity.promptEstimate, 0)
-      : 96;
-  const activeAlerts =
-    entities.length > 0
-      ? entities.filter((entity) => (entity.coverageRate ?? 0) < 35 || (entity.avgScore ?? 0) < 60)
-          .length
-      : 4;
-  const history = historyQuery.data ?? [];
-  const momentumScore =
-    history.length >= 2 && history[0]?.overallScore != null && history[1]?.overallScore != null
-      ? Math.round((history[0].overallScore ?? 0) - (history[1].overallScore ?? 0))
-      : 9;
+  const avgReadiness = summary?.avgReadinessScore ?? 58;
+  const avgCoverage = summary?.avgCoverageRate ?? 34;
+  const promptFootprint = summary?.totalPrompts ?? 96;
+  const activeAlerts = summary?.activeAlertEntities ?? 4;
+  const totalPages = summary?.totalPages ?? entities.reduce((sum, entity) => sum + entity.pages.length, 0);
+  const momentumScore = avgCoverage >= 50 ? 12 : avgCoverage >= 35 ? 6 : 2;
 
   const focusEntity = priorityEntities[0];
   const focusName = focusEntity?.brandName ?? "Twoja marka";
@@ -669,7 +572,7 @@ export default function CommandCenter() {
     },
   ];
 
-  if (authLoading) return <DashboardSkeleton />;
+  if (authLoading || entityPortfolioQuery.isLoading) return <DashboardSkeleton />;
   if (!isAuthenticated) return <UnauthenticatedPreview />;
 
   return (
@@ -890,7 +793,7 @@ export default function CommandCenter() {
                 <StatusRow
                   icon={Activity}
                   label="Ostatnie assety"
-                  value={String(monitoredPages.length || 3)}
+                  value={String(totalPages || 3)}
                   note="monitorowane strony i sekcje marki"
                 />
                 <StatusRow
@@ -1068,8 +971,12 @@ export default function CommandCenter() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 lg:grid-cols-2">
-                {(priorityEntities.length > 0 ? priorityEntities : buildEntities([
-                  {
+                {(priorityEntities.length > 0 ? priorityEntities : [{
+                  entityKey: "twojamarka.pl",
+                  domain: "twojamarka.pl",
+                  brandName: "Twoja Marka",
+                  representativePageId: 0,
+                  representative: {
                     id: 0,
                     url: "https://twojamarka.pl",
                     label: "Brand root",
@@ -1079,8 +986,35 @@ export default function CommandCenter() {
                     lastCitedEngines: 1,
                     lastTotalEngines: 4,
                     scheduleFrequency: 7,
-                  },
-                ])).map((entity) => (
+                  } satisfies EntityPageSummary,
+                  pages: [{
+                    id: 0,
+                    url: "https://twojamarka.pl",
+                    label: "Brand root",
+                    lastScore: 58,
+                    lastAuditAt: null,
+                    lastCitationAt: null,
+                    lastCitedEngines: 1,
+                    lastTotalEngines: 4,
+                    scheduleFrequency: 7,
+                  } satisfies EntityPageSummary],
+                  avgScore: 58,
+                  avgReadinessScore: 58,
+                  avgVisibilityScore: 24,
+                  coverageRate: 25,
+                  promptEstimate: 14,
+                  promptCount: 14,
+                  citedPromptCount: 3,
+                  shareOfVoice: 24,
+                  topCompetitors: ["benchmark in progress"],
+                  topThemes: ["entity authority", "commercial prompts"],
+                  sentimentLabel: "modelled",
+                  sentimentScore: null,
+                  priorityAction: "Dodaj comparison block + FAQ schema + proof points.",
+                  activeAlerts: 1,
+                  dataSource: "fallback",
+                  lastUpdatedAt: null,
+                } satisfies EntityGroup]).map((entity) => (
                   <EntityCard key={entity.domain} entity={entity} />
                 ))}
               </CardContent>

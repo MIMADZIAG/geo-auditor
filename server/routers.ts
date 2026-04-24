@@ -34,6 +34,7 @@ import {
   captureEmailLead,
   updateMonitoredPageCitationStatus,
   updateScoreSnapshotCitation,
+  getEntityPortfolioData,
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
@@ -968,6 +969,25 @@ export const appRouter = router({
         };
       }),
    }),
+  entity: router({
+    portfolio: protectedProcedure.query(async ({ ctx }) => {
+      return getEntityPortfolioData(ctx.user.id);
+    }),
+
+    workspace: protectedProcedure
+      .input(z.object({ domain: z.string().min(3).max(255) }))
+      .query(async ({ ctx, input }) => {
+        const data = await getEntityPortfolioData(ctx.user.id);
+        const workspace = data.entities.find((entity) => entity.domain === input.domain);
+        if (!workspace) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Entity workspace not found." });
+        }
+        return {
+          workspace,
+          summary: data.summary,
+        };
+      }),
+  }),
   leads: router({
     captureEmail: publicProcedure
       .input(z.object({ email: z.string().email(), auditId: z.number().optional(), source: z.string().optional() }))

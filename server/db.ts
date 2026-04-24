@@ -1,11 +1,13 @@
-import { eq, desc, and, gte, lt } from "drizzle-orm";
+import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users, audits, auditRateLimits, InsertAudit,
   monitoredPages, InsertMonitoredPage, scoreSnapshots, InsertScoreSnapshot,
-  emailLeads,
+  emailLeads, visibilitySnapshots, monitoredPagePhrases,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { computeAIVisibilityScore } from "../shared/visibilityScore";
+import { domainToBrandName, getEntityHostname, getEntityRootDomain, type EntityPortfolioResponse, type EntityPortfolioItem } from "../shared/entity";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -506,4 +508,260 @@ export async function getEngineBreakdownForPage(monitoredPageId: number): Promis
       checkedAt: completedAt,
     };
   });
+}
+
+function averageNumbers(values: Array<number | null | undefined>) {
+  const filtered = values.filter((value): value is number => typeof value === "number");
+  if (filtered.length === 0) return null;
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
+
+function resolvePriorityAction(shareOfVoice: number | null, readinessScore: number | null) {
+  if ((shareOfVoice ?? 0) < 30) {
+    return "Priorytet: uruchom gap analysis i schema deployment dla promptow z niska cytowalnoscia.";
+  }
+  if ((shareOfVoice ?? 0) < 55 || (readinessScore ?? 0) < 60) {
+    return "Priorytet: rozbuduj info gain oraz proof points, zeby przejac prompty porownawcze.";
+  }
+  return "Priorytet: utrzymaj momentum i rozszerz monitoring o kolejne prompt clusters.";
+}
+
+export async function getEntityPortfolioData(userId: number): Promise<EntityPortfolioResponse> {
+  const db = await getDb();
+  if (!db) {
+    return {
+      entities: [],
+      summary: {
+        totalEntities: 0,
+        totalPages: 0,
+        totalPrompts: 0,
+        totalCitedPrompts: 0,
+        avgReadinessScore: null,
+        avgShareOfVoice: null,
+        avgCoverageRate: null,
+        activeAlertEntities: 0,
+        lastUpdatedAt: null,
+      },
+    };
+  }
+
+  const pages = await getMonitoredPagesByUser(userId);
+  if (pages.length === 0) {
+    return {
+      entities: [],
+      summary: {
+        totalEntities: 0,
+        totalPages: 0,
+        totalPrompts: 0,
+        totalCitedPrompts: 0,
+        avgReadinessScore: null,
+        avgShareOfVoice: null,
+        avgCoverageRate: null,
+        activeAlertEntities: 0,
+        lastUpdatedAt: null,
+      },
+    };
+  }
+
+  const pageIds = pages.map((page) => page.id);
+  const [phraseRows, snapshotRows] = await Promise.all([
+    db
+      .select({
+        monitoredPageId: monitoredPagePhrases.monitoredPageId,
+        isActive: monitoredPagePhrases.isActive,
+        lastCitedEngines: monitoredPagePhrases.lastCitedEngines,
+      })
+      .from(monitoredPagePhrases)
+      .where(inArray(monitoredPagePhrases.monitoredPageId, pageIds)),
+    db
+      .select({
+        monitoredPageId: visibilitySnapshots.monitoredPageId,
+        shareOfVoice: visibilitySnapshots.shareOfVoice,
+        sentimentLabel: visibilitySnapshots.sentimentLabel,
+        sentimentScore: visibilitySnapshots.sentimentScore,
+        sentimentThemes: visibilitySnapshots.sentimentThemes,
+        topCompetitorDomains: visibilitySnapshots.topCompetitorDomains,
+        visibilityScore: visibilitySnapshots.visibilityScore,
+        recordedAt: visibilitySnapshots.recordedAt,
+      })
+      .from(visibilitySnapshots)
+      .where(inArray(visibilitySnapshots.monitoredPageId, pageIds))
+      .orderBy(desc(visibilitySnapshots.recordedAt)),
+  ]);
+
+  const latestSnapshotByPage = new Map<number, typeof snapshotRows[number]>();
+  for (const row of snapshotRows) {
+    if (!latestSnapshotByPage.has(row.monitoredPageId)) {
+      latestSnapshotByPage.set(row.monitoredPageId, row);
+    }
+  }
+
+  const phraseStatsByPage = new Map<number, { total: number; cited: number }>();
+  for (const row of phraseRows) {
+    if (!row.isActive) continue;
+    const current = phraseStatsByPage.get(row.monitoredPageId) ?? { total: 0, cited: 0 };
+    current.total += 1;
+    if ((row.lastCitedEngines ?? 0) > 0) current.cited += 1;
+    phraseStatsByPage.set(row.monitoredPageId, current);
+  }
+
+  const groups = new Map<string, typeof pages>();
+  for (const page of pages) {
+    const domain = getEntityRootDomain(getEntityHostname(page.url));
+    const existing = groups.get(domain) ?? [];
+    existing.push(page);
+    groups.set(domain, existing);
+  }
+
+  const entities: EntityPortfolioItem[] = Array.from(groups.entries())
+    .map(([domain, groupedPages]) => {
+      const sortedPages = [...groupedPages].sort(
+        (left, right) =>
+          new Date(right.lastCitationAt ?? right.lastAuditAt ?? 0).getTime() -
+          new Date(left.lastCitationAt ?? left.lastAuditAt ?? 0).getTime()
+      );
+      const representative = sortedPages[0]!;
+
+      const promptStats = groupedPages.reduce(
+        (acc, page) => {
+          const pageStats = phraseStatsByPage.get(page.id) ?? { total: 0, cited: 0 };
+          acc.total += pageStats.total;
+          acc.cited += pageStats.cited;
+          return acc;
+        },
+        { total: 0, cited: 0 }
+      );
+
+      const snapshots = groupedPages
+        .map((page) => latestSnapshotByPage.get(page.id))
+        .filter((snapshot): snapshot is NonNullable<typeof snapshotRows[number]> => Boolean(snapshot));
+
+      const avgReadinessScore = averageNumbers(groupedPages.map((page) => page.lastScore));
+      const fallbackVisibilityScores = groupedPages.map((page) =>
+        page.lastCitedEngines != null && page.lastTotalEngines != null
+          ? computeAIVisibilityScore(page.lastCitedEngines, page.lastTotalEngines, null)
+          : null
+      );
+      const avgVisibilityScore = averageNumbers([
+        ...snapshots.map((snapshot) => snapshot.visibilityScore),
+        ...fallbackVisibilityScores,
+      ]);
+      const shareOfVoice = averageNumbers(snapshots.map((snapshot) =>
+        typeof snapshot.shareOfVoice === "number" ? snapshot.shareOfVoice * 100 : null
+      ));
+      const coverageRate = promptStats.total > 0 ? (promptStats.cited / promptStats.total) * 100 : null;
+
+      const competitorCounts = new Map<string, number>();
+      const themeCounts = new Map<string, number>();
+      for (const snapshot of snapshots) {
+        const competitors = Array.isArray(snapshot.topCompetitorDomains)
+          ? snapshot.topCompetitorDomains as Array<{ domain?: string; count?: number }>
+          : [];
+        for (const competitor of competitors) {
+          if (!competitor?.domain) continue;
+          competitorCounts.set(
+            competitor.domain,
+            (competitorCounts.get(competitor.domain) ?? 0) + (competitor.count ?? 1)
+          );
+        }
+
+        const themes = Array.isArray(snapshot.sentimentThemes) ? snapshot.sentimentThemes as string[] : [];
+        for (const theme of themes) {
+          if (!theme) continue;
+          themeCounts.set(theme, (themeCounts.get(theme) ?? 0) + 1);
+        }
+      }
+
+      const topCompetitors = Array.from(competitorCounts.entries())
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 3)
+        .map(([competitor]) => competitor);
+
+      const topThemes = Array.from(themeCounts.entries())
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 3)
+        .map(([theme]) => theme);
+
+      const latestSnapshot = snapshots[0] ?? null;
+      const lastUpdatedAt = groupedPages.reduce<Date | null>((latest, page) => {
+        const candidate = page.lastCitationAt ?? page.lastAuditAt ?? null;
+        if (!candidate) return latest;
+        if (!latest || candidate > latest) return candidate;
+        return latest;
+      }, latestSnapshot?.recordedAt ?? null);
+
+      const sentimentLabel =
+        latestSnapshot?.sentimentLabel ??
+        (shareOfVoice != null ? "modelled" : "neutral");
+      const sentimentScore = latestSnapshot?.sentimentScore ?? null;
+      const activeAlerts = groupedPages.filter((page) =>
+        (page.lastScore ?? 0) < 60 || ((page.lastCitedEngines ?? 0) === 0 && (page.lastTotalEngines ?? 0) > 0)
+      ).length;
+
+      return {
+        entityKey: domain,
+        domain,
+        brandName: domainToBrandName(domain),
+        representative,
+        representativePageId: representative.id,
+        pages: groupedPages.map((page) => ({
+          id: page.id,
+          url: page.url,
+          label: page.label,
+          lastScore: page.lastScore,
+          lastAuditAt: page.lastAuditAt,
+          lastCitationAt: page.lastCitationAt,
+          lastCitedEngines: page.lastCitedEngines,
+          lastTotalEngines: page.lastTotalEngines,
+          scheduleFrequency: page.scheduleFrequency,
+        })),
+        avgScore: avgReadinessScore != null ? Math.round(avgReadinessScore) : null,
+        avgReadinessScore: avgReadinessScore != null ? Math.round(avgReadinessScore) : null,
+        avgVisibilityScore: avgVisibilityScore != null ? Math.round(avgVisibilityScore) : null,
+        shareOfVoice: shareOfVoice != null ? Math.round(shareOfVoice) : null,
+        promptEstimate: promptStats.total,
+        promptCount: promptStats.total,
+        citedPromptCount: promptStats.cited,
+        coverageRate: coverageRate != null ? Math.round(coverageRate) : null,
+        topCompetitors,
+        topThemes,
+        sentimentLabel,
+        sentimentScore,
+        lastUpdatedAt,
+        activeAlerts,
+        priorityAction: resolvePriorityAction(shareOfVoice, avgReadinessScore),
+        dataSource: snapshots.length > 0 ? "monitoring" : "fallback",
+      } satisfies EntityPortfolioItem;
+    })
+    .sort((left, right) => {
+      const leftScore = left.shareOfVoice ?? left.avgScore ?? 0;
+      const rightScore = right.shareOfVoice ?? right.avgScore ?? 0;
+      return rightScore - leftScore;
+    });
+
+  const summary = {
+    totalEntities: entities.length,
+    totalPages: pages.length,
+    totalPrompts: entities.reduce((sum, entity) => sum + entity.promptCount, 0),
+    totalCitedPrompts: entities.reduce((sum, entity) => sum + entity.citedPromptCount, 0),
+    avgReadinessScore: averageNumbers(entities.map((entity) => entity.avgReadinessScore)),
+    avgShareOfVoice: averageNumbers(entities.map((entity) => entity.shareOfVoice)),
+    avgCoverageRate: averageNumbers(entities.map((entity) => entity.coverageRate)),
+    activeAlertEntities: entities.filter((entity) => entity.activeAlerts > 0).length,
+    lastUpdatedAt: entities.reduce<Date | null>((latest, entity) => {
+      if (!entity.lastUpdatedAt) return latest;
+      if (!latest || entity.lastUpdatedAt > latest) return entity.lastUpdatedAt;
+      return latest;
+    }, null),
+  };
+
+  return {
+    entities,
+    summary: {
+      ...summary,
+      avgReadinessScore: summary.avgReadinessScore != null ? Math.round(summary.avgReadinessScore) : null,
+      avgShareOfVoice: summary.avgShareOfVoice != null ? Math.round(summary.avgShareOfVoice) : null,
+      avgCoverageRate: summary.avgCoverageRate != null ? Math.round(summary.avgCoverageRate) : null,
+    },
+  };
 }
