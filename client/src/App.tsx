@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Results from "./pages/Results";
 import Dashboard from "./pages/Dashboard";
+import CommandCenter from "./pages/CommandCenter";
 import PublicReport from "./pages/PublicReport";
 import Pricing from "./pages/Pricing";
 import Sandbox from "./pages/Sandbox";
@@ -63,10 +64,10 @@ function Router() {
           <CitationPulse />
         </ErrorBoundary>
       </Route>
-      {/* /hub is the canonical URL for Dashboard; /dashboard kept for backward compat */}
+      {/* /hub is the GEO-Command command center; /dashboard kept as legacy dashboard */}
       <Route path="/hub">
-        <ErrorBoundary context="AI HUB">
-          <Dashboard />
+        <ErrorBoundary context="GEO-Command">
+          <CommandCenter />
         </ErrorBoundary>
       </Route>
       <Route path="/audit">

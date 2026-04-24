@@ -328,7 +328,7 @@ export default function Home() {
               <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
                 <Bot className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
-              <span className="font-bold text-sm tracking-tight">GEO-Auditor</span>
+              <span className="font-bold text-sm tracking-tight">GEO-Command</span>
             </div>
 
             {/* Nav links */}
@@ -343,7 +343,7 @@ export default function Home() {
               {isAuthenticated ? (
                 <Button variant="ghost" size="sm" onClick={() => navigate("/hub")} className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground">
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">AI HUB</span>
+                  <span className="hidden sm:inline">Command Center</span>
                 </Button>
               ) : (
                 <Button variant="ghost" size="sm" onClick={() => (window.location.href = getLoginUrl())} className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground">
@@ -353,7 +353,7 @@ export default function Home() {
               )}
                 <Button size="sm" onClick={() => inputRef.current?.focus()} className="h-8 text-xs gap-1.5 shadow-md shadow-primary/20">
                 <Search className="w-3 h-3" />
-                <span>Sprawdź widoczność w AI</span>
+                <span>Uruchom quick scan</span>
               </Button>
             </div>
           </div>
@@ -375,17 +375,19 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-2 pill pill-primary mb-8">
                 <Radio className="w-3 h-3 animate-pulse" />
-                <span>AI Search Visibility Platform · Nowa generacja SEO</span>
+                <span>AI Entity Visibility Platform · B2B command center</span>
               </div>
 
               {/* Headline — Visibility First: emotional question, not a tool description */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight mb-5">
-                Czy AI poleca<br />
-                <span className="gradient-text">Twoją stronę?</span>
+                Czy modele AI polecaja<br />
+                <span className="gradient-text">Twoja marke?</span>
               </h1>
 
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwarki. Twoja strona albo jest w odpowiedzi — albo nie istnieje dla tych klientów. Sprawdź teraz.
+                GEO-Command zaczyna od szybkiego scanu URL-a, ale konczy na zarzadzaniu cala encja:
+                marka, prompty, share of voice, konkurencja i gotowe wdrozenia techniczne dla
+                zespolu SEO lub agencji.
               </p>
 
               {/* URL Input — dominant, Perplexity-style */}
@@ -425,8 +427,8 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
                     ) : (
                       <>
                         <Search className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Sprawdź swoją stronę →</span>
-                        <span className="sm:hidden">Sprawdź →</span>
+                        <span className="hidden sm:inline">Zacznij od quick scanu →</span>
+                        <span className="sm:hidden">Skan →</span>
                       </>
                     )}
                   </Button>
@@ -502,7 +504,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
 
               {/* Engine strip */}
               <div className="mt-10 pt-8 border-t border-border/20">
-                <p className="section-label mb-3">Sprawdzamy Twoją stronę w</p>
+                <p className="section-label mb-3">Quick scan uruchamia benchmark w</p>
                 <div className="flex flex-wrap gap-2">
                   {AI_ENGINES.map((e) => (
                     <EngineBadge key={e.name} {...e} />
@@ -548,14 +550,16 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
             <div>
               <div className="inline-flex items-center gap-2 pill pill-primary mb-6">
                 <BarChart3 className="w-3 h-3" />
-                <span>AI Visibility Score</span>
+                <span>Entity Visibility Score</span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight leading-tight">
-                Jeden wynik.<br />
-                <span className="gradient-text">Wszystko co musisz wiedzieć.</span>
+                Jeden widok.<br />
+                <span className="gradient-text">Marka, SoV i execution.</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8 text-sm max-w-md">
-                Twój AI Visibility Score to kompozyt dwóch wymiarów: ile silników AI cytuje Twoją stronę i jaką ocenę techniczną dostaje. Jeden licznik 0–100. Jeden benchmark względem konkurencji. Jeden cel.
+                W nowym modelu wynik nie dotyczy tylko jednej podstrony. Quick scan zasila
+                command center, ktore laczy techniczny readiness, cytowania marki, share of voice
+                i benchmark konkurencji na poziomie encji.
               </p>
               <div className="space-y-4">
                 {[
@@ -576,7 +580,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
             {/* Right — score card */}
             <div className="surface-elevated rounded-2xl p-6">
               <div className="text-center mb-6">
-                <div className="section-label mb-3">Twój AI Visibility Score</div>
+                <div className="section-label mb-3">Entity Visibility Score</div>
                 <div className="relative inline-flex items-center justify-center">
                   <svg width="160" height="160" viewBox="0 0 160 160">
                     <circle cx="80" cy="80" r="68" fill="none" stroke="oklch(0.20 0.010 260)" strokeWidth="10" />
@@ -653,11 +657,12 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
                 <span>Jak to działa</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">
-              Cztery kroki do widoczności<br />
-              <span className="gradient-text">w AI Search.</span>
+              Od quick scanu do<br />
+              <span className="gradient-text">command center dla AI Search.</span>
             </h2>
             <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-              Wpisz URL. W ciągu 30 sekund wiesz, czy AI Cię widzi. W ciągu 5 minut — kto Cię wyprzedza i dlaczego. W ciągu godziny — masz nową wersję strony gotową do wdrożenia.
+              Najpierw szybki scan assetu. Potem budowa encji, monitoring promptow, analiza
+              konkurencji cytowanej przez AI i gotowe deploymenty dla contentu oraz schema.
             </p>
           </div>
 
@@ -825,11 +830,12 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
             <Zap className="w-6 h-6 text-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-black mb-5 tracking-tight">
-            Twoja strona albo jest w odpowiedzi AI.<br />
-            <span className="gradient-text">Albo nie istnieje dla tych klientów.</span>
+            Szybki scan to dopiero poczatek.<br />
+            <span className="gradient-text">Docelowo zarzadzasz cala pozycja marki w AI.</span>
           </h2>
           <p className="text-muted-foreground mb-10 leading-relaxed text-sm max-w-md mx-auto">
-            Wpisz adres strony. Sprawdzamy cztery silniki AI równolegle. Wynik w 30 sekund.
+            Wpisz adres strony i uruchom pierwszy benchmark. Potem przejdz do GEO-Command,
+            aby monitorowac SoV, konkurencje i backlog wdrozen.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
@@ -838,7 +844,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
               className="gap-2.5 px-10 h-12 text-base font-semibold shadow-xl shadow-primary/25"
             >
               <Search className="w-4.5 h-4.5" />
-              Sprawdź swoją stronę →
+              Zacznij od quick scanu →
             </Button>
             <Button
               size="lg"
@@ -865,10 +871,11 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
                 <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/25">
                   <Bot className="w-3.5 h-3.5 text-primary-foreground" />
                 </div>
-                <span className="font-bold text-sm">GEO-Auditor</span>
+                <span className="font-bold text-sm">GEO-Command</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                Platforma do AI Search Optimization na poziomie podstrony. Signal Audit, AI Visibility Check, Signal Rewrite i AI Visibility Monitor — w jednym miejscu.
+                Platforma do zarzadzania widocznoscia encji i share of voice w AI Search. Quick
+                scan, monitoring, action center i agency-ready reporting w jednym miejscu.
               </p>
             </div>
             <div>
@@ -876,7 +883,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
               <div className="space-y-2.5">
                 <a href="#how-it-works" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Jak to działa</a>
                 <a href="/pricing" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">Plany i cennik</a>
-                <a href="/hub" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">AI HUB</a>
+                <a href="/hub" className="block text-xs text-muted-foreground hover:text-foreground transition-colors">GEO-Command</a>
               </div>
             </div>
             <div>
@@ -889,7 +896,7 @@ Miliony zapytań trafia do ChatGPT, Perplexity i Google AI zamiast do wyszukiwar
             </div>
           </div>
           <div className="border-t border-border/20 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">© 2026 GEO-Auditor. Wszelkie prawa zastrzeżone.</p>
+            <p className="text-xs text-muted-foreground">© 2026 GEO-Command. Wszelkie prawa zastrzezone.</p>
             <div className="flex items-center gap-5 text-xs text-muted-foreground">
               <a href="/privacy" className="hover:text-foreground transition-colors">Polityka prywatności</a>
               <a href="/terms" className="hover:text-foreground transition-colors">Regulamin</a>
@@ -1032,8 +1039,8 @@ const EMOTIONAL_ITEMS = [
 
 const FAQ = [
   {
-    q: "Czym różni się GEO-Auditor od Semrush czy Ahrefs?",
-    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search — rankingi, linki, ruch organiczny. GEO-Auditor analizuje wyłącznie sygnały AI Search: czy ChatGPT, Gemini i Perplexity cytują Twoją stronę i dlaczego nie. To różne metryki, różne algorytmy, różne rekomendacje. Jedno narzędzie nie zastępuje drugiego — uzupełniają się.",
+    q: "Czym różni się GEO-Command od Semrush czy Ahrefs?",
+    a: "Semrush i Ahrefs mierzą widoczność w tradycyjnym Google Search — rankingi, linki, ruch organiczny. GEO-Command analizuje sygnały AI Search: czy ChatGPT, Gemini, Perplexity i Google AI cytują Twoją markę lub strony i dlaczego nie. To różne metryki, różne algorytmy, różne rekomendacje. Jedno narzędzie nie zastępuje drugiego — uzupełniają się.",
   },
   {
     q: "Czy mogę analizować dowolną podstronę — nie tylko stronę główną?",
@@ -1048,7 +1055,7 @@ const FAQ = [
     a: "AI Visibility Monitor re-audytuje monitorowane podstrony automatycznie co 7 dni. Dostajesz alert gdy AI Readiness Score spada, gdy nowy konkurent przejmuje cytowania na Twoich frazach, lub gdy Twoja strona po raz pierwszy zostaje zacytowana przez AI. Nie musisz pamiętać o ręcznym sprawdzaniu.",
   },
   {
-    q: "Czy mogę korzystać z GEO-Auditor bez zakładania konta?",
+    q: "Czy mogę korzystać z GEO-Command bez zakładania konta?",
     a: "Tak — pierwsze 5 analiz Signal Audit dostępnych jest bez rejestracji i bez podawania karty. Konto jest wymagane do zapisu historii wyników, AI Visibility Monitor i Signal Rewrite.",
   },
   {
@@ -1056,7 +1063,7 @@ const FAQ = [
     a: "Signal Audit jest gotowy w 30–60 sekund. AI Visibility Check — weryfikacja cytowań w ChatGPT, Gemini i Google AI — trwa 2–5 minut, ponieważ odpytujemy rzeczywiste silniki AI w czasie rzeczywistym, nie bazę danych. Signal Rewrite generuje się w 30–90 sekund w zależności od długości strony.",
   },
   {
-    q: "Czy GEO-Auditor działa dla stron w języku polskim?",
-    a: "Tak — platforma obsługuje strony w języku polskim i angielskim. Signal Audit, AI Visibility Check i Signal Rewrite działają w obu językach. Rekomendacje są generowane w języku analizowanej strony.",
+    q: "Czy GEO-Command działa dla stron w języku polskim?",
+    a: "Tak — platforma obsługuje strony w języku polskim i angielskim. Signal Audit, AI Visibility Check, entity monitoring i Signal Rewrite działają w obu językach. Rekomendacje są generowane w języku analizowanej strony.",
   },
 ];
