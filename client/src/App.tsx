@@ -16,6 +16,7 @@ import PageCreatorResult from "./pages/PageCreatorResult";
 import CitationPulse from "./pages/CitationPulse";
 import SignalAudit from "./pages/SignalAudit";
 import DemoAudit from "./pages/DemoAudit";
+import EntityWorkspace from "./pages/EntityWorkspace";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 function Router() {
@@ -68,6 +69,11 @@ function Router() {
       <Route path="/hub">
         <ErrorBoundary context="GEO-Command">
           <CommandCenter />
+        </ErrorBoundary>
+      </Route>
+      <Route path="/hub/entity/:domain">
+        <ErrorBoundary context="Entity Workspace">
+          <EntityWorkspace />
         </ErrorBoundary>
       </Route>
       <Route path="/audit">

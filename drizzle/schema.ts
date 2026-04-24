@@ -216,6 +216,56 @@ export const phraseCitationHistory = mysqlTable("phrase_citation_history", {
 export type PhraseCitationHistory = typeof phraseCitationHistory.$inferSelect;
 export type InsertPhraseCitationHistory = typeof phraseCitationHistory.$inferInsert;
 
+// Entity workspaces — brand-level operating unit above monitored pages
+export const entityWorkspaces = mysqlTable("entity_workspaces", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  normalizedDomain: varchar("normalizedDomain", { length: 255 }).notNull(),
+  industry: varchar("industry", { length: 120 }),
+  market: varchar("market", { length: 120 }),
+  language: varchar("language", { length: 10 }).default("pl").notNull(),
+  description: text("description"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EntityWorkspace = typeof entityWorkspaces.$inferSelect;
+export type InsertEntityWorkspace = typeof entityWorkspaces.$inferInsert;
+
+export const entityWorkspacePrompts = mysqlTable("entity_workspace_prompts", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceId: int("workspaceId").notNull(),
+  userId: int("userId").notNull(),
+  prompt: varchar("prompt", { length: 512 }).notNull(),
+  promptCluster: varchar("promptCluster", { length: 120 }).default("brand").notNull(),
+  priority: mysqlEnum("priority", ["high", "medium", "low"]).default("medium").notNull(),
+  source: mysqlEnum("source", ["onboarding", "user_added", "synced_from_monitoring"]).default("onboarding").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  mappedMonitoredPageId: int("mappedMonitoredPageId"),
+  lastCitedEngines: int("lastCitedEngines").default(0),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EntityWorkspacePrompt = typeof entityWorkspacePrompts.$inferSelect;
+export type InsertEntityWorkspacePrompt = typeof entityWorkspacePrompts.$inferInsert;
+
+export const entityWorkspaceCompetitors = mysqlTable("entity_workspace_competitors", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceId: int("workspaceId").notNull(),
+  userId: int("userId").notNull(),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  label: varchar("label", { length: 255 }),
+  source: mysqlEnum("source", ["user_added", "auto_detected"]).default("user_added").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EntityWorkspaceCompetitor = typeof entityWorkspaceCompetitors.$inferSelect;
+export type InsertEntityWorkspaceCompetitor = typeof entityWorkspaceCompetitors.$inferInsert;
+
 // Email leads — captured from diagnostic results page (pre-registration)
 export const emailLeads = mysqlTable("email_leads", {
   id: int("id").autoincrement().primaryKey(),

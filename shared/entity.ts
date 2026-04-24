@@ -16,6 +16,37 @@ export type EntityPageSummary = {
   scheduleFrequency: number;
 };
 
+export type EntityWorkspaceConfig = {
+  id: number | null;
+  name: string;
+  primaryDomain: string;
+  description: string | null;
+  market: string | null;
+  language: string;
+  onboardingCompleted: boolean;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+};
+
+export type EntityWorkspacePrompt = {
+  id: number;
+  prompt: string;
+  intentType: string | null;
+  category: string | null;
+  source: "onboarding" | "user_added" | "suggested";
+  isActive: boolean;
+  syncedAssets: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type EntityWorkspaceCompetitor = {
+  id: number;
+  domain: string;
+  label: string | null;
+  createdAt: Date;
+};
+
 export type EntityPortfolioItem = {
   entityKey: string;
   domain: string;
@@ -58,20 +89,37 @@ export type EntityPortfolioResponse = {
   summary: EntityPortfolioSummary;
 };
 
+export type EntityWorkspaceResponse = {
+  workspace: EntityWorkspaceConfig;
+  portfolio: EntityPortfolioItem | null;
+  prompts: EntityWorkspacePrompt[];
+  competitors: EntityWorkspaceCompetitor[];
+  linkedPages: EntityPageSummary[];
+  summary: EntityPortfolioSummary;
+  isConfigured: boolean;
+};
+
 export type EntityGroup = EntityPortfolioItem;
 export type CommandCenterPayload = EntityPortfolioResponse;
 export type EntityOverview = EntityPortfolioItem;
 
+export function normalizeEntityDomain(input: string) {
+  const trimmed = input.trim().toLowerCase();
+  const withoutProtocol = trimmed.replace(/^https?:\/\//, "");
+  const hostname = withoutProtocol.split("/")[0] ?? trimmed;
+  return hostname.replace(/^www\./, "");
+}
+
 export function getEntityHostname(url: string) {
   try {
-    return new URL(url).hostname.replace(/^www\./, "");
+    return normalizeEntityDomain(new URL(url).hostname);
   } catch {
-    return url.replace(/^https?:\/\//, "").split("/")[0] ?? url;
+    return normalizeEntityDomain(url);
   }
 }
 
 export function getEntityRootDomain(hostname: string) {
-  const clean = hostname.replace(/^www\./, "");
+  const clean = normalizeEntityDomain(hostname);
   const parts = clean.split(".");
   if (parts.length <= 2) return clean;
   return parts.slice(-2).join(".");

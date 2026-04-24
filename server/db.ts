@@ -1,13 +1,26 @@
-import { eq, desc, and, gte, lt, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lt, inArray, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users, audits, auditRateLimits, InsertAudit,
   monitoredPages, InsertMonitoredPage, scoreSnapshots, InsertScoreSnapshot,
   emailLeads, visibilitySnapshots, monitoredPagePhrases,
+  entityWorkspaces, entityWorkspacePrompts, entityWorkspaceCompetitors,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { computeAIVisibilityScore } from "../shared/visibilityScore";
-import { domainToBrandName, getEntityHostname, getEntityRootDomain, type EntityPortfolioResponse, type EntityPortfolioItem } from "../shared/entity";
+import {
+  domainToBrandName,
+  getEntityHostname,
+  getEntityRootDomain,
+  normalizeEntityDomain,
+  type EntityPageSummary,
+  type EntityPortfolioResponse,
+  type EntityPortfolioItem,
+  type EntityWorkspaceConfig,
+  type EntityWorkspaceCompetitor,
+  type EntityWorkspacePrompt,
+  type EntityWorkspaceResponse,
+} from "../shared/entity";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -763,5 +776,399 @@ export async function getEntityPortfolioData(userId: number): Promise<EntityPort
       avgShareOfVoice: summary.avgShareOfVoice != null ? Math.round(summary.avgShareOfVoice) : null,
       avgCoverageRate: summary.avgCoverageRate != null ? Math.round(summary.avgCoverageRate) : null,
     },
+  };
+}
+
+function normalizeDomainInput(domainOrUrl: string) {
+  return getEntityRootDomain(getEntityHostname(domainOrUrl.trim().toLowerCase()));
+}
+
+async function getWorkspaceByDomain(userId: number, domain: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(entityWorkspaces)
+    .where(and(
+      eq(entityWorkspaces.userId, userId),
+      eq(entityWorkspaces.domain, domain),
+    ))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listEntityWorkspaces(userId: number): Promise<EntityWorkspaceConfig[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(entityWorkspaces)
+    .where(eq(entityWorkspaces.userId, userId))
+    .orderBy(desc(entityWorkspaces.updatedAt), desc(entityWorkspaces.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    primaryDomain: row.domain,
+    description: row.description,
+    market: row.market,
+    language: row.language,
+    onboardingCompleted: true,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
+}
+
+export async function createEntityWorkspace(params: {
+  userId: number;
+  name: string;
+  domain: string;
+  description?: string | null;
+  market?: string | null;
+  language?: string | null;
+  promptSeeds?: string[];
+  competitorSeeds?: string[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const normalizedDomain = normalizeDomainInput(params.domain);
+  const existing = await getWorkspaceByDomain(params.userId, normalizedDomain);
+  if (existing) {
+    throw new Error("Entity workspace for this domain already exists");
+  }
+
+  const [result] = await db.insert(entityWorkspaces).values({
+    userId: params.userId,
+    name: params.name.trim(),
+    domain: normalizedDomain,
+    normalizedDomain,
+    description: params.description ?? null,
+    market: params.market ?? null,
+    language: params.language ?? "pl",
+  });
+
+  const workspaceId = (result as { insertId?: number })?.insertId;
+  if (!workspaceId) throw new Error("Failed to create entity workspace");
+
+  const promptSeeds = Array.from(new Set((params.promptSeeds ?? []).map((item) => item.trim()).filter(Boolean)));
+  const competitorSeeds = Array.from(new Set((params.competitorSeeds ?? []).map((item) => normalizeDomainInput(item)).filter(Boolean)));
+
+  if (promptSeeds.length > 0) {
+    await db.insert(entityWorkspacePrompts).values(
+      promptSeeds.map((prompt) => ({
+        workspaceId,
+        userId: params.userId,
+        prompt,
+        promptCluster: "brand",
+        priority: "medium" as const,
+        source: "onboarding" as const,
+        isActive: true,
+      }))
+    );
+  }
+
+  if (competitorSeeds.length > 0) {
+    await db.insert(entityWorkspaceCompetitors).values(
+      competitorSeeds.map((domain) => ({
+        workspaceId,
+        userId: params.userId,
+        domain,
+        label: domainToBrandName(domain),
+        source: "user_added" as const,
+        isActive: true,
+      }))
+    );
+  }
+
+  return workspaceId;
+}
+
+export async function updateEntityWorkspace(params: {
+  workspaceId: number;
+  userId: number;
+  name: string;
+  description?: string | null;
+  market?: string | null;
+  language?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(entityWorkspaces)
+    .set({
+      name: params.name.trim(),
+      description: params.description ?? null,
+      market: params.market ?? null,
+      language: params.language ?? "pl",
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(entityWorkspaces.id, params.workspaceId),
+      eq(entityWorkspaces.userId, params.userId),
+    ));
+}
+
+export async function getEntityWorkspacePrompts(workspaceId: number, userId: number): Promise<EntityWorkspacePrompt[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(entityWorkspacePrompts)
+    .where(and(
+      eq(entityWorkspacePrompts.workspaceId, workspaceId),
+      eq(entityWorkspacePrompts.userId, userId),
+    ))
+    .orderBy(asc(entityWorkspacePrompts.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    prompt: row.prompt,
+    intentType: row.promptCluster,
+    category: row.priority,
+    source: row.source === "synced_from_monitoring" ? "suggested" : row.source,
+    isActive: row.isActive,
+    syncedAssets: row.mappedMonitoredPageId ? 1 : 0,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
+}
+
+export async function getEntityWorkspaceCompetitors(workspaceId: number, userId: number): Promise<EntityWorkspaceCompetitor[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(entityWorkspaceCompetitors)
+    .where(and(
+      eq(entityWorkspaceCompetitors.workspaceId, workspaceId),
+      eq(entityWorkspaceCompetitors.userId, userId),
+    ))
+    .orderBy(asc(entityWorkspaceCompetitors.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    domain: row.domain,
+    label: row.label,
+    createdAt: row.createdAt,
+  }));
+}
+
+export async function addEntityWorkspacePrompt(params: {
+  workspaceId: number;
+  userId: number;
+  prompt: string;
+  intentType?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [result] = await db.insert(entityWorkspacePrompts).values({
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+    prompt: params.prompt.trim(),
+    promptCluster: params.intentType ?? "commercial",
+    priority: "medium",
+    source: "user_added" as const,
+    isActive: true,
+  });
+
+  return (result as { insertId?: number })?.insertId ?? null;
+}
+
+export async function toggleEntityWorkspacePrompt(params: {
+  promptId: number;
+  userId: number;
+  isActive: boolean;
+}) {
+  const db = await getDb();
+  if (!db) return false;
+  await db
+    .update(entityWorkspacePrompts)
+    .set({ isActive: params.isActive, updatedAt: new Date() })
+    .where(and(
+      eq(entityWorkspacePrompts.id, params.promptId),
+      eq(entityWorkspacePrompts.userId, params.userId),
+    ));
+  return true;
+}
+
+export async function deleteEntityWorkspacePrompt(promptId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db
+    .delete(entityWorkspacePrompts)
+    .where(and(
+      eq(entityWorkspacePrompts.id, promptId),
+      eq(entityWorkspacePrompts.userId, userId),
+    ));
+  return true;
+}
+
+export async function addEntityWorkspaceCompetitor(params: {
+  workspaceId: number;
+  userId: number;
+  domain: string;
+  label?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const normalizedDomain = normalizeDomainInput(params.domain);
+
+  const [result] = await db.insert(entityWorkspaceCompetitors).values({
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+    domain: normalizedDomain,
+    label: params.label ?? domainToBrandName(normalizedDomain),
+    source: "user_added" as const,
+    isActive: true,
+  });
+
+  return (result as { insertId?: number })?.insertId ?? null;
+}
+
+export async function deleteEntityWorkspaceCompetitor(competitorId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db
+    .delete(entityWorkspaceCompetitors)
+    .where(and(
+      eq(entityWorkspaceCompetitors.id, competitorId),
+      eq(entityWorkspaceCompetitors.userId, userId),
+    ));
+  return true;
+}
+
+export async function syncEntityWorkspacePromptsToMonitoring(params: {
+  workspaceId: number;
+  userId: number;
+}) {
+  const db = await getDb();
+  if (!db) return { syncedPages: 0, syncedPrompts: 0 };
+
+  const workspaceRows = await db
+    .select()
+    .from(entityWorkspaces)
+    .where(and(
+      eq(entityWorkspaces.id, params.workspaceId),
+      eq(entityWorkspaces.userId, params.userId),
+    ))
+    .limit(1);
+
+  const workspace = workspaceRows[0];
+  if (!workspace) return { syncedPages: 0, syncedPrompts: 0 };
+
+  const pages = await getMonitoredPagesByUser(params.userId);
+  const matchingPages = pages.filter((page) => normalizeDomainInput(page.url) === workspace.domain);
+  if (matchingPages.length === 0) return { syncedPages: 0, syncedPrompts: 0 };
+
+  const prompts = await getEntityWorkspacePrompts(params.workspaceId, params.userId);
+  const activePrompts = prompts.filter((prompt) => prompt.isActive);
+  if (activePrompts.length === 0) return { syncedPages: matchingPages.length, syncedPrompts: 0 };
+
+  const { addCustomPhrase, getPhrasesForPage } = await import("./monitoring/phrases");
+  let syncedPrompts = 0;
+
+  for (const page of matchingPages) {
+    const existingPhrases = await getPhrasesForPage(page.id);
+    const existingTexts = new Set(existingPhrases.map((phrase) => phrase.phrase.trim().toLowerCase()));
+
+    for (const prompt of activePrompts) {
+      if (existingTexts.has(prompt.prompt.trim().toLowerCase())) continue;
+      const result = await addCustomPhrase({
+        monitoredPageId: page.id,
+        userId: params.userId,
+        phrase: prompt.prompt,
+        plan: "business",
+      });
+      if (result.success) {
+        syncedPrompts += 1;
+        existingTexts.add(prompt.prompt.trim().toLowerCase());
+      }
+    }
+  }
+
+  return { syncedPages: matchingPages.length, syncedPrompts };
+}
+
+export async function getEntityDetailData(userId: number, domain: string): Promise<EntityWorkspaceResponse | null> {
+  const portfolio = await getEntityPortfolioData(userId);
+  const normalizedDomain = normalizeDomainInput(domain);
+  const entity = portfolio.entities.find((item) => item.domain === normalizedDomain);
+  const workspace = await getWorkspaceByDomain(userId, normalizedDomain);
+
+  if (!entity && !workspace) return null;
+
+  const prompts = workspace
+    ? await getEntityWorkspacePrompts(workspace.id, userId)
+    : [];
+  const competitors = workspace
+    ? await getEntityWorkspaceCompetitors(workspace.id, userId)
+    : [];
+
+  return {
+    portfolio: entity ?? {
+      entityKey: normalizedDomain,
+      domain: normalizedDomain,
+      brandName: workspace?.name ?? domainToBrandName(normalizedDomain),
+      representative: {
+        id: 0,
+        url: `https://${normalizedDomain}`,
+        label: "Brand root",
+        lastScore: null,
+        lastAuditAt: null,
+        lastCitationAt: null,
+        lastCitedEngines: null,
+        lastTotalEngines: null,
+        scheduleFrequency: 7,
+      },
+      representativePageId: null,
+      pages: [],
+      avgScore: null,
+      avgReadinessScore: null,
+      avgVisibilityScore: null,
+      shareOfVoice: null,
+      promptEstimate: prompts.length,
+      promptCount: prompts.length,
+      citedPromptCount: 0,
+      coverageRate: null,
+      topCompetitors: competitors.map((item) => item.domain),
+      topThemes: [],
+      sentimentLabel: "modelled",
+      sentimentScore: null,
+      lastUpdatedAt: workspace?.updatedAt ?? null,
+      activeAlerts: 0,
+      priorityAction: "Zacznij od dodania prompt library i pierwszego monitorowanego assetu.",
+      dataSource: "fallback",
+    },
+    summary: portfolio.summary,
+    linkedPages: entity?.pages ?? [],
+    isConfigured: Boolean(workspace),
+    workspace: workspace
+      ? {
+          id: workspace.id,
+          name: workspace.name,
+          primaryDomain: workspace.domain,
+          description: workspace.description,
+          market: workspace.market,
+          language: workspace.language,
+          onboardingCompleted: true,
+          createdAt: workspace.createdAt,
+          updatedAt: workspace.updatedAt,
+        }
+      : {
+          id: null,
+          name: domainToBrandName(normalizedDomain),
+          primaryDomain: normalizedDomain,
+          description: null,
+          market: null,
+          language: "pl",
+          onboardingCompleted: false,
+          createdAt: null,
+          updatedAt: null,
+        },
+    prompts,
+    competitors,
   };
 }

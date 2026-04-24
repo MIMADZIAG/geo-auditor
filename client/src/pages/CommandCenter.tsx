@@ -1,4 +1,4 @@
-import { type ElementType } from "react";
+import { type ElementType, useState } from "react";
 import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
@@ -13,7 +13,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Activity,
   BarChart3,
@@ -40,6 +52,7 @@ import {
   Users,
   Workflow,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type PlanName = "free" | "starter" | "pro" | "business";
 
@@ -507,6 +520,12 @@ function EntityCard({ entity }: { entity: EntityGroup }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Link href={`/entity/${entity.domain}`}>
+            <Button size="sm" variant="outline" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Workspace encji
+            </Button>
+          </Link>
           <Link href="/ai-monitoring">
             <Button size="sm" className="gap-2">
               <Radar className="h-4 w-4" />

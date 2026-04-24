@@ -35,6 +35,14 @@ import {
   updateMonitoredPageCitationStatus,
   updateScoreSnapshotCitation,
   getEntityPortfolioData,
+  createEntityWorkspace,
+  getEntityDetailData,
+  addEntityWorkspacePrompt,
+  toggleEntityWorkspacePrompt,
+  deleteEntityWorkspacePrompt,
+  addEntityWorkspaceCompetitor,
+  deleteEntityWorkspaceCompetitor,
+  syncEntityWorkspacePromptsToMonitoring,
 } from "./db";
 import { guardAgainstHallucinations } from "./rewrite/hallucinationGuard";
 import { runRewriteResearch } from "./rewrite/rewriteResearch";
@@ -974,18 +982,116 @@ export const appRouter = router({
       return getEntityPortfolioData(ctx.user.id);
     }),
 
+    createWorkspace: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().min(2).max(120),
+          primaryDomain: z.string().min(3).max(255),
+          market: z.string().max(120).optional(),
+          language: z.string().min(2).max(10).default("pl"),
+          description: z.string().max(1000).optional(),
+          primaryUrl: z.string().url().optional(),
+          prompts: z.array(z.string().min(3).max(300)).max(30).default([]),
+          competitors: z.array(z.string().min(3).max(255)).max(20).default([]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const created = await createEntityWorkspace({
+          userId: ctx.user.id,
+          name: input.name,
+          domain: input.primaryDomain,
+          market: input.market,
+          language: input.language,
+          description: input.description,
+          promptSeeds: input.prompts,
+          competitorSeeds: input.competitors,
+        });
+        return created;
+      }),
+
     workspace: protectedProcedure
       .input(z.object({ domain: z.string().min(3).max(255) }))
       .query(async ({ ctx, input }) => {
-        const data = await getEntityPortfolioData(ctx.user.id);
-        const workspace = data.entities.find((entity) => entity.domain === input.domain);
+        const workspace = await getEntityDetailData(ctx.user.id, input.domain);
         if (!workspace) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Entity workspace not found." });
         }
-        return {
-          workspace,
-          summary: data.summary,
-        };
+        return { workspace };
+      }),
+
+    addPrompt: protectedProcedure
+      .input(
+        z.object({
+          entityId: z.number().int().positive(),
+          phrase: z.string().min(3).max(300),
+          intentType: z.enum([
+            "informational",
+            "navigational",
+            "commercial",
+            "transactional",
+            "comparative",
+            "how_to",
+            "problem_solving",
+          ]).default("commercial"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const promptId = await addEntityWorkspacePrompt({
+          workspaceId: input.entityId,
+          userId: ctx.user.id,
+          prompt: input.phrase,
+          intentType: input.intentType,
+        });
+        await syncEntityWorkspacePromptsToMonitoring({ workspaceId: input.entityId, userId: ctx.user.id });
+        return { id: promptId };
+      }),
+
+    togglePrompt: protectedProcedure
+      .input(
+        z.object({
+          promptId: z.number().int().positive(),
+          isActive: z.boolean(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await toggleEntityWorkspacePrompt({
+          promptId: input.promptId,
+          userId: ctx.user.id,
+          isActive: input.isActive,
+        });
+        return { success: true };
+      }),
+
+    deletePrompt: protectedProcedure
+      .input(z.object({ promptId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteEntityWorkspacePrompt(input.promptId, ctx.user.id);
+        return { success: true };
+      }),
+
+    addCompetitor: protectedProcedure
+      .input(
+        z.object({
+          entityId: z.number().int().positive(),
+          domain: z.string().min(3).max(255),
+          label: z.string().max(120).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const competitorId = await addEntityWorkspaceCompetitor({
+          workspaceId: input.entityId,
+          userId: ctx.user.id,
+          domain: input.domain,
+          label: input.label,
+        });
+        return { id: competitorId };
+      }),
+
+    removeCompetitor: protectedProcedure
+      .input(z.object({ competitorId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteEntityWorkspaceCompetitor(input.competitorId, ctx.user.id);
+        return { success: true };
       }),
   }),
   leads: router({
